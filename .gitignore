@@ -1,0 +1,63 @@
+### IntelliJ IDEA ###
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+.kotlin
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+# ========== JavaEE 项目专属忽略规则 ==========
+# IDE配置（IDEA/Eclipse/Vscode）
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+.vscode/
+
+# Java编译产物（最核心，必须忽略）
+target/
+bin/
+*.class
+*.jar
+*.war
+
+# 依赖包（Maven/Gradle自动下载）
+lib/
+node_modules/
+
+# 日志/临时文件
+*.log
+*.tmp
+temp/
+
+# 敏感配置（数据库密码等，不要上传）
+application.properties
+application.yml
+
+# 保留配置模板（方便协作）
+!application-template.properties
+!application-template.yml
