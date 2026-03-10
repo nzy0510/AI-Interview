@@ -14,7 +14,7 @@
 <style>
     form { width: 400px; margin: 0 auto; }
 </style>
-<form method="get" action="chooseAction">
+<form method="get" action="interviewAction">
     <!-- 页面标题 -->
     <div class="title">AI模拟面试 - 选择目标岗位</div>
 

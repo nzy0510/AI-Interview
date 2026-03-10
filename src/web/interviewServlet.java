@@ -1,6 +1,5 @@
 package web;
 
-import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -9,11 +8,12 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 
-@WebServlet("/chooseAction")
-public class ChooseServlet extends HttpServlet {
+
+@WebServlet("/interviewAction")
+public class interviewServlet extends HttpServlet {
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        RequestDispatcher rd = req.getRequestDispatcher("choose.jsp");
-        rd.forward(req, resp);
+        resp.setContentType("text/html;charset=UTF-8"); //修复中文乱码问题
+        resp.getWriter().append("这里是AI面试");
     }
 }
