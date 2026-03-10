@@ -14,7 +14,7 @@ public class ChooseServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         // 从 choose.jsp 表单获取用户选择的岗位
-        String jobType = req.getParameter("jobType");
+        String jobType = req.getParameter("selectedJob");
 
         // 打印到控制台，用于调试
         System.out.println("用户选择的岗位是: " + jobType);
@@ -29,6 +29,11 @@ public class ChooseServlet extends HttpServlet {
 
         // 这里我们暂时只打印一条成功信息到页面上作为演示
         resp.setContentType("text/html;charset=UTF-8");
-        resp.getWriter().println("<h1>您已选择岗位：" + jobType + "，面试即将开始...</h1>");
+        req.setAttribute("selectedJob", jobType);
+
+        // 🌟 关键2：跳转到 ZhipuChatServlet 的映射路径（/chat），而非 .java 文件
+        // 注意：路径开头加 / 表示项目根路径，避免相对路径错误
+        RequestDispatcher rd = req.getRequestDispatcher("/interview.jsp");
+        rd.forward(req, resp);
     }
 }
