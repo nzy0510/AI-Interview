@@ -14,7 +14,7 @@
 <style>
     form { width: 400px; margin: 0 auto; }
 </style>
-<form method="get" action="RegAction">
+<form method="get" action="chooseAction">
     <p>用户名：<input type="text" name="username"></p>
     <p>密码:   <input type="password" name="password"></p>
 
