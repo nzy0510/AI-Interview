@@ -46,11 +46,11 @@
 
 为了能够在本地成功运行此项目，你需要安装以下环境：
 - **JDK 17** 及以上版本
-- **Maven 3.6+**
-- **Node.js 18+** 与 **npm** (用于前端运行)
+- **Maven 3.6+** 官网链接:https://maven.apache.org/
+- **Node.js 18+** 与 **npm** (用于前端运行) 链接:https://nodejs.org/en/download/
 - **MySQL 8.0+** (用于数据存储)
-- **phpstudy** (用于管理数据库)
-- **DeepSeek API Key** 或其他兼容 OpenAI 规范的大模型 API Key。
+- **phpstudy** (用于管理数据库,里面集成了mysql) 链接:https://www.xp.cn/download.html
+- **DeepSeek API Key**  链接:https://platform.deepseek.com/
 
 ---
 
@@ -58,19 +58,19 @@
 
 ### 1. 数据库初始化(使用phpstudy(小皮)来更轻松地数据库)
 ![示例图](image/image.png)
-1. 启动本地 MySQL 服务。
+1. 启动本地 MySQL 服务。(这里指启动小皮)
 2. 在小皮创建名为 `ai_interview_ds` 的数据库实例。
-3. 导入项目提供的 `/backend/src/main/resources/schema.sql` 脚本，它会自动创建 `user` 表与 `interview_record` 表，并写入一个测试 admin 用户。
+3. 导入项目提供的 `/backend/src/main/resources/schema.sql` 脚本，它会自动创建 `user` 表与 `interview_record` 表，并写入一个测试 admin 用户。ps::默认用户名：admin ， 密码：123456
 
-### 2. 后端服务端启动 (Spring Boot) ps::前端后端分开运行，建议只在idea中打开backened，即后端文件夹，可以直接运行
+### 2. 后端服务端启动 (Spring Boot) ps::前端后端分开运行，建议在idea中只打开backened，即后端文件夹，idea会自动识别maven框架，直接把interview文件打开可能不行
 1. 使用 IntelliJ IDEA 或其他 IDE 打开 `backend` 目录。
 2. 修改 `/backend/src/main/resources/application.yml` 配置文件：
    - 将 `spring.datasource.password` 修改为你的本机 MySQL 密码。
-   - 填入你申请好的 **DeepSeek API 密钥** (替换 `langchain4j.open-ai.chat-model.api-key` 的值)。（可以去官网申请）(现在默认是我的)
+   - 填入你申请好的 **DeepSeek API 密钥** (替换 `langchain4j.open-ai.chat-model.api-key` 的值)。（可以去官网申请）(现在默认是我的，可以不改)
 3. 直接运行，成功会出现（====== AI Interview Backend Started ======）
 
-### 3. 前端客户端启动 (Vue 3)
-1. 打开一个新的终端窗口。
+### 3. 前端客户端启动 (Vue 3) ps::报错大概率是没做好配置或者进错文件夹
+1. 打开一个新的终端窗口cmd。
 2. 进入前端代码根目录：
    ```bash
    cd 你存放该文件的位置/frontend
@@ -83,7 +83,7 @@
    ```bash
    npm run dev
    ```
-5. 终端将会输出访问地址，通常为 `http://localhost:5174/`，在浏览器中打开即可进入这套系统！
+5. 终端将会输出访问地址，通常为 `http://localhost:5174/`，在浏览器中打开即可
 
 ---
 
