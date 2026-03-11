@@ -1,63 +1,68 @@
-### IntelliJ IDEA ###
-out/
+# ========== 通用IDE忽略规则 ==========
+# IntelliJ IDEA
+/out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+.idea/
+*.iml
 .kotlin
 
-### Eclipse ###
+# Eclipse
 .apt_generated
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
 .sts4-cache
-bin/
+/bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
 
-### VS Code ###
+# VS Code
 .vscode/
 
-### Mac OS ###
+# ========== 系统/环境忽略 ==========
+# Mac OS
 .DS_Store
 
-# ========== JavaEE 项目专属忽略规则 ==========
-# IDE配置（IDEA/Eclipse/Vscode）
-.idea/
-*.iml
-.settings/
-.project
-.classpath
-.vscode/
-
-# Java编译产物（最核心，必须忽略）
-target/
-bin/
-*.class
-*.jar
-*.war
-
-# 依赖包（Maven/Gradle自动下载）
-lib/
-node_modules/
-
-# 日志/临时文件
-*.log
+# Windows
+Thumbs.db
 *.tmp
-temp/
 
-# 敏感配置（数据库密码等，不要上传）
+# ========== JavaEE 项目核心忽略 ==========
+# 编译产物（优先级最高，避免重复）
+/target/
+*.class
+*.war
+*.ear
+# 注意：删除了全局的 *.jar 规则，避免覆盖 WEB-INF/lib 的例外
+
+# 依赖包（只忽略根目录lib，保留WEB-INF/lib）
+/lib/
+!**/WEB-INF/lib/
+# 补充：只忽略 WEB-INF/lib 之外的 jar 文件
+!**/WEB-INF/lib/*.jar
+*.jar
+
+# 日志文件
+*.log
+/logs/
+/temp/
+
+# 敏感配置文件（不上传）
 application.properties
 application.yml
+application-dev.yml
+application-prod.yml
 
-# 保留配置模板（方便协作）
+# 配置模板（保留，方便协作）
 !application-template.properties
 !application-template.yml
