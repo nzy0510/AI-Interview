@@ -24,7 +24,7 @@
 
 ## 🛠 技术栈与架构 (Tech Stack)
 
-项目采用经典的**前后端分离**架构，并且通过 Langchain4j 无缝集成了大语言模型能力。
+项目采用**前后端分离**架构，并且通过 Langchain4j 无缝集成了大语言模型能力。
 
 ### 核心后端 (Backend)
 - **核心框架**: Spring Boot 3 + Java 17
@@ -44,7 +44,7 @@
 
 ## 💻 运行环境要求 (Prerequisites)
 
-为了能够在本地成功跑起此项目，你需要安装以下环境：
+为了能够在本地成功运行此项目，你需要安装以下环境：
 - **JDK 17** 及以上版本
 - **Maven 3.6+**
 - **Node.js 18+** 与 **npm** (用于前端运行)
@@ -56,30 +56,26 @@
 
 ## 👨‍💻 本地开发与启动指南 (Setup Instructions)
 
-### 1. 数据库初始化(使用phpstudy来更好地管理数据库)
+### 1. 数据库初始化(使用phpstudy(小皮)来更轻松地数据库)
 ![示例图](image/image.png)
 1. 启动本地 MySQL 服务。
-2. 创建名为 `ai_interview_ds` 的数据库实例。
+2. 在小皮创建名为 `ai_interview_ds` 的数据库实例。
 3. 导入项目提供的 `/backend/src/main/resources/schema.sql` 脚本，它会自动创建 `user` 表与 `interview_record` 表，并写入一个测试 admin 用户。
 
-### 2. 后端服务端启动 (Spring Boot)
+### 2. 后端服务端启动 (Spring Boot) ps::前端后端分开运行，建议只在idea中打开backened，即后端文件夹，可以直接运行
 1. 使用 IntelliJ IDEA 或其他 IDE 打开 `backend` 目录。
 2. 修改 `/backend/src/main/resources/application.yml` 配置文件：
    - 将 `spring.datasource.password` 修改为你的本机 MySQL 密码。
-   - 填入你申请好的 **DeepSeek API 密钥** (替换 `langchain4j.open-ai.chat-model.api-key` 的值)。
-3. 在 backend 根目录运行以下 Maven 命令安装依赖：
-   ```bash
-   mvn clean install
-   ```
-4. 运行 `AiInterviewApplication.java` 主类，观察控制台确保 Tomcat 启动于 `8080` 端口。
+   - 填入你申请好的 **DeepSeek API 密钥** (替换 `langchain4j.open-ai.chat-model.api-key` 的值)。（可以去官网申请）(现在默认是我的)
+3. 直接运行
 
 ### 3. 前端客户端启动 (Vue 3)
 1. 打开一个新的终端窗口。
 2. 进入前端代码根目录：
    ```bash
-   cd frontend
+   cd 你存放该文件的位置/frontend
    ```
-3. 安装所有的 npm 层依赖包：
+3. 安装所有的 npm 层依赖包：( # 如果你没删过 node_modules 文件夹的话，这句可以跳过不跑)
    ```bash
    npm install
    ```
@@ -94,4 +90,3 @@
 ## 📝 二次开发说明与扩展点 (Future Enhancements)
 - **引入知识库 (RAG)**：目前的面试官是不带限定题库的自由发挥（Zero-Shot）。未来如果你想指定问某家大厂的真题，可以借助 Langchain4j 引入向量数据库 (VectorStore) 读取题库。
 - **添加录音功能 (STT/TTS)**：前端可调用 Web Audio API 收集用户的语音并转写成文字发给后端，后端回复可接入 TTS(文字转语音)，将其彻底变成真实的“仿真人视频面试系统”。
-- **完善账号体系**：由于是 MVP 原型，目前暂未实现完整的 JWT 登录态跨域鉴权，需要在后续逐步补齐 Spring Security。
