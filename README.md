@@ -67,7 +67,7 @@
 2. 修改 `/backend/src/main/resources/application.yml` 配置文件：
    - 将 `spring.datasource.password` 修改为你的本机 MySQL 密码。
    - 填入你申请好的 **DeepSeek API 密钥** (替换 `langchain4j.open-ai.chat-model.api-key` 的值)。（可以去官网申请）(现在默认是我的)
-3. 直接运行
+3. 直接运行，成功会出现（====== AI Interview Backend Started ======）
 
 ### 3. 前端客户端启动 (Vue 3)
 1. 打开一个新的终端窗口。
