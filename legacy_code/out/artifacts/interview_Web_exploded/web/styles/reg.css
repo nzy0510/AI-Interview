@@ -1,0 +1,108 @@
+/* E:/Java-web/interview/web/styles/reg.css */
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh; /* 确保页面至少占满视口高度 */
+}
+
+form {
+    width: 100%;
+    max-width: 400px; /* 限制表单最大宽度 */
+    padding: 30px; /* 增加内边距 */
+    background-color: #ffffff;
+    border-radius: 10px; /* 圆角边框 */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); /* 柔和的阴影 */
+    text-align: center; /* 居中表单内容 */
+}
+
+.form-title {
+    font-size: 28px; /* 增大标题字体 */
+    text-align: center;
+    margin-bottom: 30px; /* 增加标题下边距 */
+    color: #343a40;
+    font-weight: 600; /* 标题加粗 */
+}
+
+fieldset {
+    border: 1px solid #dee2e6; /* 边框 */
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    text-align: left; /* fieldset内部内容左对齐 */
+}
+
+legend {
+    font-size: 18px;
+    font-weight: bold;
+    color: #495057;
+    padding: 0 10px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block; /* 让label独占一行 */
+    margin-bottom: 8px;
+    font-size: 16px;
+    color: #555;
+    font-weight: bold;
+}
+
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group input[type="email"] {
+    width: calc(100% - 20px); /* 减去padding */
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    font-size: 16px;
+    box-sizing: border-box; /* 确保padding和border包含在width内 */
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="password"]:focus,
+.form-group input[type="email"]:focus {
+    border-color: #007bff; /* 聚焦时边框颜色 */
+    outline: none; /* 移除默认轮廓 */
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* 聚焦时阴影 */
+}
+
+.form-actions input[type="submit"] {
+    width: 100%;
+    padding: 12px;
+    background-color: #28a745; /* 注册按钮使用绿色 */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    transition: background-color 0.3s ease; /* 添加过渡效果 */
+}
+
+.form-actions input[type="submit"]:hover {
+    background-color: #218838;
+}
+
+.login-link {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.login-link a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+}
