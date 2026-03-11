@@ -1,7 +1,7 @@
 -- Create database if not exists
-CREATE DATABASE IF NOT EXISTS `面试题库` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS `ai_interview_ds` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE `面试题库`;
+USE `ai_interview_ds`;
 
 -- Users Table
 CREATE TABLE IF NOT EXISTS `user` (
