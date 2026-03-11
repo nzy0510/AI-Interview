@@ -1,0 +1,16 @@
+package com.interview.service;
+
+import com.interview.entity.InterviewRecord;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+public interface InterviewService {
+    
+    // Start an interview, initialize AI, save to db, return recordId
+    Long startInterview(Long userId, String position);
+    
+    // Send a message and get SSE stream for typing animation
+    SseEmitter chatStream(Long userId, Long recordId, String message);
+    
+    // End interview and generate evaluation report
+    InterviewRecord endInterview(Long recordId);
+}

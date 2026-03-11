@@ -1,0 +1,49 @@
+package com.interview.config;
+
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
+import java.time.Duration;
+
+@Configuration
+public class ChatConfig {
+
+    @Value("${langchain4j.open-ai.chat-model.api-key}")
+    private String apiKey;
+
+    @Value("${langchain4j.open-ai.chat-model.base-url}")
+    private String baseUrl;
+
+    @Value("${langchain4j.open-ai.chat-model.model-name}")
+    private String modelName;
+
+    @Value("${langchain4j.open-ai.chat-model.temperature}")
+    private Double temperature;
+
+    @Bean
+    public OpenAiStreamingChatModel streamingChatLanguageModel() {
+        return OpenAiStreamingChatModel.builder()
+                .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .modelName(modelName)
+                .temperature(temperature)
+                .timeout(Duration.ofSeconds(60))
+                .build();
+    }
+
+    @Bean
+    @Primary
+    public OpenAiChatModel chatLanguageModel() {
+        return OpenAiChatModel.builder()
+                .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .modelName(modelName)
+                .temperature(0.3) // Lower temperature for more objective evaluation
+                .timeout(Duration.ofSeconds(60))
+                .build();
+    }
+}
