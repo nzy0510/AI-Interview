@@ -8,42 +8,49 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
 
+/**
+ * 面试控制器：提供面试相关的三个核心 API 接口
+ * - POST /start 开始一场新面试
+ * - GET /chatStream SSE 流式对话（打字机效果）
+ * - POST /finish 结束面试并生成 AI 评价报告
+ */
 @RestController
 @RequestMapping("/api/interview")
-@CrossOrigin // Allows cross-origin requests from Vue
+@CrossOrigin // 允许跨域请求，便于 Vue 前端 (localhost:5174) 访问后端 (localhost:8080)
 public class InterviewController {
 
     @Autowired
     private InterviewService interviewService;
 
     /**
-     * Start a new interview session
+     * 开始新面试：创建数据库记录，初始化 AI 聊天记忆，返回面试记录 ID
+     * 前端会将返回的 recordId 用于后续的流式对话和结束面试接口
      */
     @PostMapping("/start")
     public Result<Long> startInterview(@RequestBody Map<String, Object> params) {
-        // In a real app, userId should come from JWT Token interceptor.
-        // For simplicity now, we can pass it or hardcode.
-        // Let's assume frontend passes a minimal payload.
-        Long userId = 1L; // Hardcoded for demo, normally we extract from token Context
-        String position = (String) params.get("position");
+        // TODO: 实际项目中 userId 应从 JWT Token 拦截器中提取，这里简化为硬编码
+        Long userId = 1L;
+        String position = (String) params.get("position"); // 岗位名称，如 "Java后端开发"
         Long recordId = interviewService.startInterview(userId, position);
         return Result.success(recordId);
     }
 
     /**
-     * SSE endpoint for chatting with AI
+     * SSE 流式对话接口：用户发送消息 → 后端 RAG 检索知识库 → AI 逐字流式回复
+     * 前端通过浏览器原生 EventSource API 接收此接口的数据流
+     * produces = "text/event-stream" 声明返回类型为 SSE 事件流
      */
     @GetMapping(value = "/chatStream", produces = "text/event-stream;charset=UTF-8")
     public SseEmitter chatStream(
             @RequestParam("recordId") Long recordId,
             @RequestParam("message") String message) {
-        
-        Long userId = 1L; // Mock userId
+        Long userId = 1L; // TODO: 从 JWT 中提取
         return interviewService.chatStream(userId, recordId, message);
     }
 
     /**
-     * Finish interview and generate report
+     * 结束面试：清理 AI 会话记忆，调用大模型生成综合评价报告（包含评分 + 反馈）
+     * 返回完整的 InterviewRecord 对象，前端用于展示报告弹窗
      */
     @PostMapping("/finish")
     public Result<?> finishInterview(@RequestBody Map<String, Object> params) {
