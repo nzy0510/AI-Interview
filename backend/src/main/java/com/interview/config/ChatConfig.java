@@ -1,7 +1,12 @@
 package com.interview.config;
 
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -45,5 +50,23 @@ public class ChatConfig {
                 .temperature(0.3) // Lower temperature for more objective evaluation
                 .timeout(Duration.ofSeconds(60))
                 .build();
+    }
+
+    /**
+     * Local Embedding Model for RAG
+     * // 本地嵌入模型 Bean（AllMiniLmL6V2，纯本地运算，不调用远程 API）
+     */
+    @Bean
+    public EmbeddingModel embeddingModel() {
+        return new AllMiniLmL6V2EmbeddingModel();
+    }
+
+    /**
+     * In-Memory Vector Store for RAG
+     * // 内存级向量数据库 Bean（InMemoryEmbeddingStore）
+     */
+    @Bean
+    public EmbeddingStore<TextSegment> embeddingStore() {
+        return new InMemoryEmbeddingStore<>();
     }
 }

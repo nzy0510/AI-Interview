@@ -5,10 +5,10 @@ com\interview\config\GlobalExceptionHandler.class
 com\interview\mapper\InterviewRecordMapper.class
 com\interview\AiInterviewApplication.class
 com\interview\entity\InterviewRecord.class
-com\interview\service\impl\InterviewServiceImpl$1.class
 com\interview\config\ChatConfig.class
 com\interview\service\InterviewService.class
 com\interview\service\UserService.class
+com\interview\service\DataLoadingService.class
 com\interview\controller\InterviewController.class
 com\interview\controller\UserController.class
 com\interview\service\impl\UserServiceImpl.class
