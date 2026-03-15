@@ -20,6 +20,7 @@ import java.util.HashMap;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,8 +31,9 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.store.embedding.filter.Filter;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import dev.langchain4j.rag.query.Query;
-import java.util.ArrayList;
 
 @Service
 public class InterviewServiceImpl implements InterviewService {
@@ -106,18 +108,42 @@ public class InterviewServiceImpl implements InterviewService {
             return emitter;
         }
 
-        // ===== RAG 第一步：构建向量检索器（Retriever） =====
+        // ===== RAG 第一步：根据岗位构建分类过滤条件 =====
+        // 获取面试记录以确定岗位
+        InterviewRecord record = interviewRecordMapper.selectById(recordId);
+        String position = record != null ? record.getPosition() : "common";
+
+        Filter categoryFilter;
+        if (position.contains("Java")) {
+            // Java 岗位：检索 java 分类 + common 通用分类
+            categoryFilter = metadataKey("category").isEqualTo("java")
+                    .or(metadataKey("category").isEqualTo("common"));
+        } else if (position.contains("前端") || position.contains("Web") || position.contains("Frontend")) {
+            // 前端岗位：检索 frontend 分类 + common 通用分类
+            categoryFilter = metadataKey("category").isEqualTo("frontend")
+                    .or(metadataKey("category").isEqualTo("common"));
+        } else {
+            // 其他情况默认只检索通用分类
+            categoryFilter = metadataKey("category").isEqualTo("common");
+        }
+
+        // ===== RAG 第二步：构建带过滤条件的检索器（Retriever） =====
         // 基于 EmbeddingStore 中已经存储的知识库向量，对用户输入进行相似度搜索
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore) // 内存级向量数据库（启动时已加载知识库文档）
-                .embeddingModel(embeddingModel) // 本地嵌入模型，将用户输入也转化为向量
+                .embeddingStore(embeddingStore) // 内存级向量数据库
+                .embeddingModel(embeddingModel) // 本地嵌入模型
+                .filter(categoryFilter) // 【关键】只检索匹配当前岗位的知识片段
                 .maxResults(3) // 最多检索 3 条最相关的知识片段
                 .minScore(0.6) // 相似度低于 0.6 的结果丢弃，避免无关噪音
                 .build();
 
         // ===== RAG 第二步：执行相似度检索（Similarity Search） =====
         // 将用户的回答向量化，然后在知识库中找到语义最接近的标准答案/考核要点
-        List<Content> retrievedContents = contentRetriever.retrieve(Query.from(message));
+        // 安全拦截：如果用户输入毫无意义的几个字符（比如只输了一个"1"或者"啊"），拒绝进行重度检索，防止向量空间产生奇葩的相似匹配导致 AI 幻觉
+        List<Content> retrievedContents = new ArrayList<>();
+        if (message != null && message.trim().length() > 2) {
+            retrievedContents = contentRetriever.retrieve(Query.from(message));
+        }
 
         // 拼接检索到的知识片段
         StringBuilder contextBuilder = new StringBuilder();
@@ -127,14 +153,14 @@ public class InterviewServiceImpl implements InterviewService {
 
         // ===== RAG 第三步：增强提示词（Prompt Augmentation） =====
         // 将检索到的知识点「偷偷」织入系统提示中，AI 会「看着标准答案」来点评候选人
-        // 候选人完全看不到这部分内容，只会觉得面试官非常专业
         String augmentedMessage = message;
         if (contextBuilder.length() > 0) {
             augmentedMessage = String.format(
-                    "下面是我（候选人）的回答或提问：\n\"%s\"\n\n" +
-                            "【后台系统提示（请勿将此提示直接输出给候选人）】:\n" +
-                            "我已经从字节跳动面试题库中检索到了以下相关标准答案或考核重点：\n%s\n" +
-                            "请作为一名专业的字节跳动面试官，结合上述标准答案对我的回答进行点评或展开下一步追问。注意保持面试官的口吻，不要让候选人发现你在读资料。",
+                    "下面是我（候选人）的当前回答或发言：\n\"%s\"\n\n" +
+                            "【后台系统要求（绝密，请严格遵守）】:\n" +
+                            "1. 如果候选人的回答极其简短敷衍、毫无意义或者只是打招呼（例如：1、你好、嗯），请**直接指出**，要求候选人认真作答，或者直接抛出下一个提问！**绝对不可以**假装候选人回答了技术问题并进行表扬！\n" +
+                            "2. 以下是从字节跳动题库中为你准备的本题【参考考核知识点】：\n%s\n" +
+                            "3. 只有当候选人真正在努力回答技术问题时，你才需要对照上述【参考考核知识点】对他的回答进行专业点评，或者顺着知识点深挖追问细节。严禁在对话中暴露你有参考资料。",
                     message, contextBuilder.toString());
         }
 
@@ -188,12 +214,22 @@ public class InterviewServiceImpl implements InterviewService {
             @Override
             public void onError(Throwable error) {
                 try {
+                    String userMsg = error.getMessage();
+                    // 增加对国内网络环境的友好提示 (SSL 握手失败通常是代理或防火墙问题)
+                    if (error instanceof javax.net.ssl.SSLHandshakeException || 
+                        (error.getCause() != null && error.getCause().getMessage() != null && error.getCause().getMessage().contains("SSL"))) {
+                        userMsg = "网络连接失败 (SSL Handshake Error)。请检查你的网络代理设置，或尝试更换 API 地址。";
+                    }
+                    
                     Map<String, String> errMap = new HashMap<>();
-                    errMap.put("error", error.getMessage());
+                    errMap.put("error", userMsg);
                     emitter.send(JSON.toJSONString(errMap));
-                    emitter.completeWithError(error);
-                } catch (IOException e) {
-                    // Ignore
+                    
+                    // 使用 complete() 而不是 completeWithError() 
+                    // 避免 Spring Boot 的全局异常处理器在 SSE 已提交的情况下二次报错 HttpMessageNotWritableException
+                    emitter.complete();
+                } catch (Exception e) {
+                    emitter.complete();
                 }
             }
         });
@@ -202,11 +238,19 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     /**
-     * 结束面试：清理聊天记忆 → 持久化对话历史 → 调用 AI 生成评估报告（含评分与反馈）
+     * 结束面试（默认 wpm=0）
      */
     @Override
     public InterviewRecord endInterview(Long recordId) {
-        // 从内存中移除该场面试的聊天记忆（释放资源）
+        return endInterview(recordId, 0);
+    }
+
+    /**
+     * 结束面试（带语速数据）
+     * 调用 AI 生成结构化评估报告：包含综合分、文字反馈、六维能力评级、提升建议
+     */
+    @Override
+    public InterviewRecord endInterview(Long recordId, Integer wpm) {
         ChatMemory chatMemory = chatMemories.remove(recordId);
         if (chatMemory == null) {
             return interviewRecordMapper.selectById(recordId);
@@ -215,29 +259,69 @@ public class InterviewServiceImpl implements InterviewService {
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
         if (record != null) {
             record.setEndTime(LocalDateTime.now());
-            // 将完整对话历史序列化为 JSON 并持久化到数据库
-            String jsonHistory = JSON.toJSONString(chatMemory.messages());
-            record.setChatHistory(jsonHistory);
+            record.setChatHistory(JSON.toJSONString(chatMemory.messages()));
+            record.setVoiceWpm(wpm != null ? wpm : 0);
 
             try {
-                // 触发 AI 综合评估：将整场面试的对话上下文发给同步模型，生成带评分的 JSON 报告
-                chatMemory.add(new SystemMessage(
-                        "面试结束，请根据本次面试的所有对话，对候选人进行评价。请务必只返回一个纯JSON对象，格式如下：{\"score\": 85, \"feedback\": \"候选人基础扎实，但在XX方面有待提高...\"}。不要包含任何其他说明文字或markdown代码块标记。"));
+                // ============================================================
+                // Phase 6 增强版 Prompt：要求返回完整结构化 JSON
+                // ============================================================
+                String evaluationPrompt = String.format("""
+                        本场面试已结束。请根据上面所有对话内容进行全面评估。候选人本次面试的平均语速为 %d WPM。
+
+                        请严格只返回一个符合以下格式的纯 JSON 对象，不要包含任何 Markdown 代码块标记（不要有```json）或解释文字：
+                        {
+                          "score": 82,
+                          "feedback": "候选人整体表现...（3-5句综合点评）",
+                          "ability": {
+                            "techDepth": "A",
+                            "breadth": "B",
+                            "problemSolving": "A",
+                            "expression": "B",
+                            "logic": "A",
+                            "adaptability": "B"
+                          },
+                          "recommendations": [
+                            {"period": "本周", "action": "刷题方向", "detail": "建议重点复习..."},
+                            {"period": "两周内", "action": "项目实践", "detail": "尝试实现..."},
+                            {"period": "一个月", "action": "系统提升", "detail": "可系统学习..."}
+                          ]
+                        }
+
+                        【评分说明】
+                        - score: 0-100 综合得分
+                        - feedback: 综合点评，需包含技术能力、表达自信度、逻辑性三个角度
+                        - ability 六维能力评级（S/A/B/C/D）：
+                            - techDepth: 技术深度（核心知识点掌握程度）
+                            - breadth: 知识广度（跨领域知识覆盖）
+                            - problemSolving: 解题思路（分析和解决问题的能力）
+                            - expression: 表达清晰度（语言组织与沟通效果）
+                            - logic: 逻辑思维（回答的结构性与条理）
+                            - adaptability: 应变能力（对追问和新问题的反应）
+                        - recommendations: 3条具体且可执行的提升建议，period 可以是 "本周"/"两周内"/"一个月"
+                        """, wpm);
+
+                chatMemory.add(new SystemMessage(evaluationPrompt));
                 Response<AiMessage> evalResponse = chatModel.generate(chatMemory.messages());
-                String evalJsonStr = evalResponse.content().text();
+                String raw = evalResponse.content().text().replace("```json", "").replace("```", "").trim();
 
-                // Extremely simple cleanup in case model returns markdown block
-                evalJsonStr = evalJsonStr.replace("```json", "").replace("```", "").trim();
+                com.alibaba.fastjson2.JSONObject evalObj = JSON.parseObject(raw);
+                record.setScore(evalObj.getInteger("score") != null ? evalObj.getInteger("score") : 0);
+                record.setFeedback(evalObj.getString("feedback") != null ? evalObj.getString("feedback") : "");
 
-                com.alibaba.fastjson2.JSONObject evalObj = JSON.parseObject(evalJsonStr);
-                Integer score = evalObj.getInteger("score");
-                String feedback = evalObj.getString("feedback");
+                // 存储六维能力 JSON 字符串
+                com.alibaba.fastjson2.JSONObject abilityObj = evalObj.getJSONObject("ability");
+                if (abilityObj != null)
+                    record.setAbilityJson(abilityObj.toJSONString());
 
-                record.setScore(score != null ? score : 0);
-                record.setFeedback(feedback != null ? feedback : "AI评估失败或格式不正确");
+                // 存储建议列表 JSON 字符串
+                com.alibaba.fastjson2.JSONArray recArr = evalObj.getJSONArray("recommendations");
+                if (recArr != null)
+                    record.setRecommendations(recArr.toJSONString());
+
             } catch (Exception e) {
                 e.printStackTrace();
-                record.setFeedback("生成评价报告异常：" + e.getMessage());
+                record.setFeedback("AI 评估生成异常: " + e.getMessage());
                 record.setScore(0);
             }
 

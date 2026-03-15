@@ -6,14 +6,14 @@
 
 ## 🚀 项目概览 (Project Overview)
 
-本项目旨在利用最新的人工智能技术，帮助求职者降低面试紧张感，提升技术表达能力。系统通过角色扮演 (Role-Playing) 技术，使大模型化身为严格但也循循善诱的面试官。候选人可以在模拟环境中不断试错，并在最后得到一份包含具体评分与改进建议的报告。
+本项目旨在利用 AI 技术帮助求职者降低面试紧张感，提升技术表达能力。系统通过角色扮演 (Role-Playing) 技术，使大模型化身为专业面试官。候选人可以在模拟环境中不断试错，并在最后得到一份包含具体评分、能力雷达图与改进建议的报告。
 
 ### 主要功能模块
-1. **用户认证体系**：基于 JWT/Session 的简单登录与注册功能。
-2. **多岗位面试大厅**：目前内置 Java 后端开发、前端开发岗位，可随时选择开考。
-3. **沉浸式 AI 对话流体验**：采用 `Server-Sent Events (SSE)` 流式技术，实现大模型逐字生成的真实“打字机”输出效果，响应迅速，互动感极强。
-4. **全方位评估报告**：面试结束后，AI 将对整场对话的上下文进行深度分析，出具带具体百分制分数、优缺点点评的最终总结报告。
-5. **历史数据沉淀**：自动持久化保存每一场面试对话的历史记录到数据库，方便追溯。
+1. **🎙️ 语音面试交互**：支持 Web Speech 实时转写 (STT)，具备自动停止感应与动态波形反馈。
+2. **🧠 岗位精准 RAG**：基于本地知识库的检索增强生成，实现不同岗位的题库隔离与专业问答。
+3. **💬 沉浸式流式对话**：采用 SSE 技术实现逐字生成的“打字机”效果，响应迅速。
+4. **📊 6A 全方位评估**：面试结束后，从专业深度、思考能力、知识储备等 6 个维度生成可视化雷达图。
+5. **📈 历程与历史记录**：自动持久化面试对话，并绘制账号专属的能力成长曲线。
 
 ### 适用受众 (Target Audience)
 - **高校应届生**：春招/秋招前用于克服面试恐惧，整理八股文表述结构。
@@ -24,21 +24,26 @@
 
 ## 🛠 技术栈与架构 (Tech Stack)
 
-项目采用**前后端分离**架构，并且通过 Langchain4j 无缝集成了大语言模型能力。
+### 核心架构图 (Conceptual Architecture)
+```mermaid
+graph LR
+    User(候选人) <--> Vue3[Vue 3 Frontend]
+    Vue3 <--> SSE[SSE Stream Channel]
+    SSE <--> SpringBoot[Spring Boot Service]
+    SpringBoot <--> LC4J[Langchain4j Orchestrator]
+    LC4J <--> LLM(DeepSeek AI)
+    LC4J <--> RAG[Vector Knowledge Base]
+```
 
-### 核心后端 (Backend)
-- **核心框架**: Spring Boot 3 + Java 17
-- **持久层框架**: MyBatis-Plus
-- **数据库**: MySQL 8+
-- **AI 编排框架**: [Langchain4j](https://docs.langchain4j.dev/) (用于模型接口调用、记忆管理 ChatMemory)
-- **流式传输**: Spring MVC `SseEmitter` + 高效的 Fastjson2 数据序列化
-- **构建工具**: Maven
-
-### 核心前端 (Frontend)
-- **核心框架**: Vue 3 (Composition API) + Vite
-- **UI 组件库**: Element Plus
-- **前端路由**: Vue Router (SPA单页应用)
-- **网络请求**: Axios + 浏览器原生 `EventSource` (用于接收 SSE 文本流)
+### 技术实现深度
+*   **后端 (Backend)**:
+    *   **AI 编排**: 使用 `Langchain4j` 封装 RAG 流程。通过 `Metadata Filter` 实现岗位级别的知识路由（java/frontend/common 隔离）。
+    *   **SSE 优化**: 针对 Spring Boot 的 `SseEmitter` 进行了 JSON 序列化转换，解决了原生字符串推送可能导致的 `HttpMessageNotWritableException`。
+    *   **自愈数据库**: 包含启动时的自动 Schema 修复逻辑，确保新字段自动同步。
+*   **前端 (Frontend)**:
+    *   **响应式流处理**: 使用 Vue 3 的 `Reactive Proxy` 直接管理 SSE 数据流，实现高性能的 DOM 实时更新。
+    *   **底层可视化**: 完全采用原生 `Canvas API` 渲染雷达图与音频波形，确保流畅的交互反馈体验。
+    *   **时序分析**: 引入 `Chart.js` 绘制能力成长曲线。
 
 ---
 
@@ -54,7 +59,7 @@
 
 ---
 
-## 👨‍💻 本地开发与启动指南 (Setup Instructions)
+## 👨‍💻 启动指南 (Setup Instructions)
 
 ### 1. 数据库初始化(使用phpstudy(小皮)来更轻松地数据库)
 ![示例图](image/image.png)
@@ -87,6 +92,6 @@
 
 ---
 
-## 📝 二次开发说明与扩展点 (Future Enhancements)
-- **引入知识库 (RAG)**：目前的面试官是不带限定题库的自由发挥（Zero-Shot）。未来如果你想指定问某家大厂的真题，可以借助 Langchain4j 引入向量数据库 (VectorStore) 读取题库。
-- **添加录音功能 (STT/TTS)**：前端可调用 Web Audio API 收集用户的语音并转写成文字发给后端，后端回复可接入 TTS(文字转语音)，将其彻底变成真实的“仿真人视频面试系统”。
+## 📝 扩展与二次开发
+- **动态知识库**: 只需在 `backend/src/main/resources/knowledge` 下添加岗位文件夹（如 `python`），系统会自动将其向量化并隔离检索。
+- **录音自适应**: 前端已在 `Interview.vue` 中封装了完整的 AudioContext 分析逻辑，可轻松扩展音频处理算法。

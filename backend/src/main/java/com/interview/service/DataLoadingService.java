@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.util.List;
-
 /**
  * RAG 知识库加载服务：Spring Boot 启动时自动执行
  * 职责：读取 resources/knowledge_base/ 下的所有文档 → 切块 → 向量化 → 存入内存向量数据库
@@ -46,39 +45,54 @@ public class DataLoadingService {
      */
     @PostConstruct
     public void init() {
-        log.info("🚀 开始初始化面试题库与 RAG 向量检索...");
+        log.info("🚀 开始进行岗位隔离的知识库初始化...");
 
         try {
-            // 定位 classpath 下的知识库目录
             Resource resourcePath = resourceLoader.getResource("classpath:knowledge_base");
             File knowledgeBaseDir = resourcePath.getFile();
 
             if (!knowledgeBaseDir.exists() || !knowledgeBaseDir.isDirectory()) {
-                log.warn("⚠️ 知识库目录不存在: {}", knowledgeBaseDir.getAbsolutePath());
+                log.warn("⚠️ 知识库根目录不存在: {}", knowledgeBaseDir.getAbsolutePath());
                 return;
             }
 
-            // 使用 Apache Tika 解析器加载目录下所有文档（支持 MD/TXT/PDF 等多种格式）
-            List<Document> documents = FileSystemDocumentLoader.loadDocuments(
-                    knowledgeBaseDir.toPath(),
-                    new ApacheTikaDocumentParser()
-            );     
+            // 遍历子目录：java, frontend, common
+            File[] subDirs = knowledgeBaseDir.listFiles(File::isDirectory);
+            if (subDirs == null || subDirs.length == 0) {
+                log.warn("⚠️ 知识库下无子目录，请检查结构。");
+                return;
+            }
 
-            log.info("📚 找到 {} 份知识库文档，准备进行向量化切分...", documents.size());
+            for (File subDir : subDirs) {
+                String category = subDir.getName(); // 文件夹名即为分类标签
+                log.info("📂 正在加载 [{}] 分类下的文档...", category);
 
-            // 构建文档摄取器：切块(500字符/块, 50字符重叠) → 向量化 → 存入内存库
-            EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                    .documentSplitter(DocumentSplitters.recursive(500, 50)) // 递归切分策略
-                    .embeddingModel(embeddingModel)   // 本地 AllMiniLmL6V2 模型计算向量
-                    .embeddingStore(embeddingStore)   // 存入 InMemoryEmbeddingStore
-                    .build();
+                List<Document> documents = FileSystemDocumentLoader.loadDocuments(
+                        subDir.toPath(),
+                        new ApacheTikaDocumentParser()
+                );
 
-            ingestor.ingest(documents); // 执行摄取！
+                if (documents.isEmpty()) continue;
 
-            log.info("✅ 知识库加载并向量化完成！系统已具备字节跳动底层原理考查能力。");
+                // 为该分类下的所有文本片段打上 metadata 标签
+                EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                        .documentSplitter(DocumentSplitters.recursive(500, 50))
+                        .textSegmentTransformer(textSegment -> {
+                            textSegment.metadata().put("category", category);
+                            return textSegment;
+                        })
+                        .embeddingModel(embeddingModel)
+                        .embeddingStore(embeddingStore)
+                        .build();
+
+                ingestor.ingest(documents);
+                log.info("✅ [{}] 分类加载完成，共 {} 份文档。", category, documents.size());
+            }
+
+            log.info("🎉 全量知识库流水线构建完毕，由于采用了 Metadata 隔离，不同岗位将不再‘串台’。");
 
         } catch (Exception e) {
-            log.error("❌ 知识库加载异常: {}", e.getMessage(), e);
+            log.error("❌ 岗位隔离初始化异常: {}", e.getMessage(), e);
         }
     }
 }
