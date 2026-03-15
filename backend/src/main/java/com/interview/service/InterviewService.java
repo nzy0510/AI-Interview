@@ -13,4 +13,7 @@ public interface InterviewService {
     
     // End interview and generate evaluation report
     InterviewRecord endInterview(Long recordId);
+
+    // End interview with voice behavioral metrics (wpm = words per minute)
+    InterviewRecord endInterview(Long recordId, Integer wpm);
 }

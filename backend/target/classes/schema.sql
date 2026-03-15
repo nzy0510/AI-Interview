@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS `interview_record` (
   `chat_history` JSON NOT NULL COMMENT 'Full Chat History (JSON)',
   `score` INT DEFAULT NULL COMMENT 'AI Evaluated Score (0-100)',
   `feedback` TEXT DEFAULT NULL COMMENT 'AI Evaluated Feedback',
+  `ability_json` JSON DEFAULT NULL COMMENT '六维能力评级 JSON {techDepth,breadth,problemSolving,expression,logic,adaptability}',
+  `recommendations` JSON DEFAULT NULL COMMENT 'AI 推荐的提升建议列表',
+  `voice_wpm` INT DEFAULT 0 COMMENT '平均语速 WPM',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Start Time',
   `end_time` DATETIME DEFAULT NULL COMMENT 'End Time'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Interview Records Table';

@@ -49,13 +49,14 @@ public class InterviewController {
     }
 
     /**
-     * 结束面试：清理 AI 会话记忆，调用大模型生成综合评价报告（包含评分 + 反馈）
-     * 返回完整的 InterviewRecord 对象，前端用于展示报告弹窗
+     * 结束面试：清理 AI 会话记忆，调用大模型生成综合评价报告
+     * 现支持接收前端传回的语音表现数据 (wpm, voiceRounds)
      */
     @PostMapping("/finish")
     public Result<?> finishInterview(@RequestBody Map<String, Object> params) {
         Long recordId = Long.valueOf(params.get("recordId").toString());
-        com.interview.entity.InterviewRecord record = interviewService.endInterview(recordId);
+        Integer wpm = params.get("wpm") != null ? Integer.valueOf(params.get("wpm").toString()) : 0;
+        com.interview.entity.InterviewRecord record = interviewService.endInterview(recordId, wpm);
         return Result.success(record);
     }
 }
