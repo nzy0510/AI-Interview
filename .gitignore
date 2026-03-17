@@ -59,7 +59,6 @@ Thumbs.db
 
 # 敏感配置文件（不上传）
 application.properties
-application.yml
 application-dev.yml
 application-prod.yml
 
