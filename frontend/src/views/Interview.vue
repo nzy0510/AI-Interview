@@ -530,6 +530,23 @@ const streamAiResponse = (msg) => {
 
     if (d.content !== undefined && d.content !== null) {
       aiMsg.content += d.content
+      
+      // Check for termination marker
+      if (aiMsg.content.includes('[TERMINATE]')) {
+        aiMsg.content = aiMsg.content.replace('[TERMINATE]', '').trim()
+        aiMsg.streaming = false
+        isStreaming.value = false
+        eventSource.close()
+        
+        // Auto trigger end interview
+        ElMessage.warning('检测到面试异常中断，正在生成记录...')
+        setTimeout(() => {
+          // Pass true to bypass confirmation dialog
+          performEndInterview(true)
+        }, 1500)
+        return
+      }
+      
       scrollToBottom()
     }
   }
@@ -545,11 +562,20 @@ const endInterview = async () => {
     })
   } catch { return }
 
+  performEndInterview()
+}
+
+const performEndInterview = async (isAuto = false) => {
   if (isRecording.value) stopRecording()
   isFinishing.value = true
   const wpm = calcAvgWpm()
 
-  const loadingMsg = ElMessage({ message: '🤖 正在深度分析，请稍候...', type: 'info', duration: 0 })
+  const loadingMsg = ElMessage({ 
+    message: isAuto ? '🚨 检测到异常中断，正在锁定评分...' : '🤖 正在深度分析，请稍候...', 
+    type: isAuto ? 'warning' : 'info', 
+    duration: 0 
+  })
+  
   try {
     const res = await finishInterviewAPI({ recordId: recordId.value, wpm, voiceRounds: voiceRoundCount })
     loadingMsg.close()
