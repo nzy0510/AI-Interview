@@ -46,15 +46,33 @@ graph LR
 
 ---
 
-## 💻 运行环境要求 (Prerequisites)
+---
 
-为了能够在本地成功运行此项目，你需要安装以下环境：
+## ⚡ 快速开始 (快速运行 - 推荐)
+
+如果你安装了 **Docker** 和 **Docker Desktop**，可以使用以下命令实现一键部署，无需手动安装 JDK、Maven、Node.js 或 MySQL：
+
+1. **准备配置文件**：
+   复制 `.env.example` 为 `.env` 并填入你的 `DEEPSEEK_API_KEY`。
+2. **启动项目**：
+   在项目根目录下运行：
+   ```bash
+   docker-compose up --build -d
+   ```
+3. **访问系统**：
+   - 前端：`http://localhost` (默认 80 端口)
+   - 后端 API：`http://localhost:8080`
+
+---
+
+## 💻 本地开发环境要求 (Manual Setup)
+
+如果你不使用 Docker，而是在本地直接运行，你需要：
 - **JDK 17** 及以上版本
-- **Maven 3.6+** 官网链接:https://maven.apache.org/
-- **Node.js 18+** 与 **npm** (用于前端运行) 链接:https://nodejs.org/en/download/
-- **MySQL 8.0+** (用于数据存储)
-- **phpstudy** (用于管理数据库,里面集成了mysql) 链接:https://www.xp.cn/download.html
-- **DeepSeek API Key**  链接:https://platform.deepseek.com/
+- **Maven 3.6+**
+- **Node.js 20+** (推荐使用 Docker 以避免版本冲突)
+- **MySQL 5.7/8.0** (推荐使用 phpstudy 或小皮面板)
+- **DeepSeek API Key**
 
 ---
 

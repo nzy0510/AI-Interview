@@ -1,0 +1,26 @@
+# 强制所有文本文件在检出时使用 LF 并在提交时转换为 LF (适合跨平台协作)
+* text=auto
+
+# 明确指定常见文本文件的处理方式
+*.java text
+*.xml text
+*.yml text
+*.yaml text
+*.sql text
+*.html text
+*.css text
+*.js text
+*.vue text
+*.json text
+*.md text
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# 二进制文件
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.war binary
