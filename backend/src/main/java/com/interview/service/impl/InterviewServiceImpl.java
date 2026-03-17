@@ -158,8 +158,9 @@ public class InterviewServiceImpl implements InterviewService {
             augmentedMessage = String.format(
                     "下面是我（候选人）的当前回答或发言：\n\"%s\"\n\n" +
                             "【后台系统要求（绝密，请严格遵守）】:\n" +
-                            "1. 如果候选人的回答极其简短敷衍、毫无意义或者只是打招呼（例如：1、你好、嗯），请**直接指出**，要求候选人认真作答，或者直接抛出下一个提问！**绝对不可以**假装候选人回答了技术问题并进行表扬！\n" +
-                            "2. 以下是从字节跳动题库中为你准备的本题【参考考核知识点】：\n%s\n" +
+                            "1. 如果候选人的回答极其简短敷衍、毫无意义或者只是打招呼（例如：1、你好、嗯），请**直接指出**，要求候选人认真作答，或者直接抛出下一个提问！**绝对不可以**假装候选人回答了技术问题并进行表扬！\n"
+                            +
+                            "2. 以下是从题库中为你准备的本题【参考考核知识点】：\n%s\n" +
                             "3. 只有当候选人真正在努力回答技术问题时，你才需要对照上述【参考考核知识点】对他的回答进行专业点评，或者顺着知识点深挖追问细节。严禁在对话中暴露你有参考资料。",
                     message, contextBuilder.toString());
         }
@@ -216,16 +217,17 @@ public class InterviewServiceImpl implements InterviewService {
                 try {
                     String userMsg = error.getMessage();
                     // 增加对国内网络环境的友好提示 (SSL 握手失败通常是代理或防火墙问题)
-                    if (error instanceof javax.net.ssl.SSLHandshakeException || 
-                        (error.getCause() != null && error.getCause().getMessage() != null && error.getCause().getMessage().contains("SSL"))) {
+                    if (error instanceof javax.net.ssl.SSLHandshakeException ||
+                            (error.getCause() != null && error.getCause().getMessage() != null
+                                    && error.getCause().getMessage().contains("SSL"))) {
                         userMsg = "网络连接失败 (SSL Handshake Error)。请检查你的网络代理设置，或尝试更换 API 地址。";
                     }
-                    
+
                     Map<String, String> errMap = new HashMap<>();
                     errMap.put("error", userMsg);
                     emitter.send(JSON.toJSONString(errMap));
-                    
-                    // 使用 complete() 而不是 completeWithError() 
+
+                    // 使用 complete() 而不是 completeWithError()
                     // 避免 Spring Boot 的全局异常处理器在 SSE 已提交的情况下二次报错 HttpMessageNotWritableException
                     emitter.complete();
                 } catch (Exception e) {

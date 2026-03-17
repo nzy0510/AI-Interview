@@ -39,7 +39,6 @@ graph LR
 *   **后端 (Backend)**:
     *   **AI 编排**: 使用 `Langchain4j` 封装 RAG 流程。通过 `Metadata Filter` 实现岗位级别的知识路由（java/frontend/common 隔离）。
     *   **SSE 优化**: 针对 Spring Boot 的 `SseEmitter` 进行了 JSON 序列化转换，解决了原生字符串推送可能导致的 `HttpMessageNotWritableException`。
-    *   **自愈数据库**: 包含启动时的自动 Schema 修复逻辑，确保新字段自动同步。
 *   **前端 (Frontend)**:
     *   **响应式流处理**: 使用 Vue 3 的 `Reactive Proxy` 直接管理 SSE 数据流，实现高性能的 DOM 实时更新。
     *   **底层可视化**: 完全采用原生 `Canvas API` 渲染雷达图与音频波形，确保流畅的交互反馈体验。
@@ -61,11 +60,12 @@ graph LR
 
 ## 👨‍💻 启动指南 (Setup Instructions)
 
-### 1. 数据库初始化(使用phpstudy(小皮)来更轻松地数据库)
+### 1. 数据库初始化 (使用小皮管理)
 ![示例图](image/image.png)
-1. 启动本地 MySQL 服务。(这里指启动小皮)
-2. 在小皮创建名为 `ai_interview_ds` 的数据库实例。
-3. 导入项目提供的 `/backend/src/main/resources/schema.sql` 脚本，它会自动创建 `user` 表与 `interview_record` 表，并写入一个测试 admin 用户。ps::默认用户名：admin ， 密码：123456
+1. 启动本地 MySQL 服务 (在小皮面板点击启动)。
+2. 在小皮创建一个名为 `ai_interview_ds` 的数据库实例。
+3. **导入 SQL 文件**：在小皮的数据库管理工具（phpMyAdmin）中，将项目目录下的 `backend/src/main/resources/schema.sql` 内容粘贴到 SQL 窗口执行，或者使用“导入”功能选中该文件。
+   - 默认管理员账号：`admin` / 密码：`123456`
 
 ### 2. 后端服务端启动 (Spring Boot) ps::前端后端分开运行，建议在idea中只打开backened，即后端文件夹，idea会自动识别maven框架，直接把interview文件打开可能不行
 1. 使用 IntelliJ IDEA 或其他 IDE 打开 `backend` 目录。
