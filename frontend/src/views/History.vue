@@ -181,101 +181,89 @@ const drawGrowthChart = () => {
 
   const W = canvas.parentElement.offsetWidth || 720
   canvas.width = W
-  canvas.height = 220
+  canvas.height = 240
   const ctx = canvas.getContext('2d')
   ctx.clearRect(0, 0, W, canvas.height)
 
   const H = canvas.height
-  const pad = { top: 20, right: 30, bottom: 40, left: 50 }
+  const pad = { top: 30, right: 30, bottom: 40, left: 50 }
   const plotW = W - pad.left - pad.right
   const plotH = H - pad.top - pad.bottom
   const data = chartData.value
 
   if (chartMode.value === 'score') {
-    // ── Single score line ──
     const scores = data.map(r => r.score || 0)
     const minV = Math.max(0, Math.min(...scores) - 10)
     const maxV = Math.min(100, Math.max(...scores) + 10)
     const range = maxV - minV || 1
 
-    // Grid lines
+    // Horizontal grid
+    ctx.setLineDash([5, 5])
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)'
     for (let i = 0; i <= 4; i++) {
       const y = pad.top + plotH - (i / 4) * plotH
-      const val = Math.round(minV + (range * i) / 4)
-      ctx.strokeStyle = 'rgba(0,0,0,0.06)'
-      ctx.setLineDash([4, 4])
       ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + plotW, y); ctx.stroke()
-      ctx.setLineDash([])
-      ctx.fillStyle = '#909399'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right'
-      ctx.fillText(val, pad.left - 6, y + 4)
+      ctx.fillStyle = '#475569'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'
+      ctx.fillText(Math.round(minV + (range * i) / 4), pad.left - 10, y + 4)
     }
+    ctx.setLineDash([])
 
-    // Points
     const pts = data.map((r, i) => ({
       x: pad.left + (i / Math.max(data.length - 1, 1)) * plotW,
       y: pad.top + plotH - ((r.score || 0) - minV) / range * plotH
     }))
 
-    // Gradient fill
+    // Area Gradient
     const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH)
-    grad.addColorStop(0, 'rgba(64,158,255,0.25)')
-    grad.addColorStop(1, 'rgba(64,158,255,0)')
+    grad.addColorStop(0, 'rgba(96, 165, 250, 0.2)')
+    grad.addColorStop(1, 'rgba(96, 165, 250, 0)')
     ctx.beginPath()
     ctx.moveTo(pts[0].x, pad.top + plotH)
     pts.forEach(p => ctx.lineTo(p.x, p.y))
     ctx.lineTo(pts[pts.length - 1].x, pad.top + plotH)
     ctx.closePath(); ctx.fillStyle = grad; ctx.fill()
 
-    // Line
+    // Main Line
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y)
     pts.forEach(p => ctx.lineTo(p.x, p.y))
-    ctx.strokeStyle = '#409eff'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke()
+    ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke()
 
-    // Dots + score labels
+    // Dots
     pts.forEach((p, i) => {
-      ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI * 2)
-      ctx.fillStyle = '#409eff'; ctx.fill()
-      ctx.fillStyle = '#303133'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'
-      ctx.fillText(data[i].score, p.x, p.y - 10)
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2)
+      ctx.fillStyle = '#60a5fa'; ctx.fill()
+      ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke()
+      
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'
+      ctx.fillText(data[i].score, p.x, p.y - 12)
     })
 
-    // X axis labels (date)
+    // X axis labels
     data.forEach((r, i) => {
       const x = pad.left + (i / Math.max(data.length - 1, 1)) * plotW
-      ctx.fillStyle = '#909399'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'
-      ctx.fillText(formatDate(r.createTime), x, H - 8)
+      ctx.fillStyle = '#64748b'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'
+      ctx.fillText(formatDate(r.createTime).split(' ')[0], x, H - 10)
     })
 
   } else {
-    // ── Multi-line: one line per dimension ──
+    // Multi-line dimensions
     const dimKeys = Object.keys(abilityDimensions)
-    const dimColors = Object.values(abilityDimensions).map(d => d.color)
-
     dimKeys.forEach((key, di) => {
       const vals = data.map(r => {
         try { const ab = JSON.parse(r.abilityJson || '{}'); return gradeScore[ab[key]] || 0.2 }
         catch { return 0.2 }
       })
+      const color = Object.values(abilityDimensions)[di].color
       const pts = data.map((_, i) => ({
         x: pad.left + (i / Math.max(data.length - 1, 1)) * plotW,
         y: pad.top + plotH - vals[i] * plotH
       }))
       ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y)
       pts.forEach(p => ctx.lineTo(p.x, p.y))
-      ctx.strokeStyle = dimColors[di]; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke()
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke()
       pts.forEach(p => {
-        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2)
-        ctx.fillStyle = dimColors[di]; ctx.fill()
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill()
       })
-    })
-
-    // Legend
-    dimKeys.forEach((key, di) => {
-      const lx = pad.left + di * (plotW / dimKeys.length)
-      ctx.fillStyle = dimColors[di]
-      ctx.fillRect(lx, H - 14, 12, 10)
-      ctx.fillStyle = '#606266'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left'
-      ctx.fillText(abilityDimensions[key].label, lx + 14, H - 5)
     })
   }
 }
@@ -334,31 +322,74 @@ const drawMiniRadar = () => {
 </script>
 
 <style scoped>
-.history-page { min-height: 100vh; background: #f0f4f8; display: flex; flex-direction: column; }
-.page-header { display: flex; align-items: center; gap: 16px; padding: 16px 28px; background: #fff; border-bottom: 1px solid #ebeef5; flex-shrink: 0; }
-.page-title { margin: 0; font-size: 20px; font-weight: 700; color: #1d2129; }
-.header-spacer { flex: 1; }
-.page-body { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; max-width: 1100px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-.chart-card, .list-card { border-radius: 12px; border: 1px solid #ebeef5; }
-.chart-header { display: flex; justify-content: space-between; align-items: center; }
-.growth-canvas { width: 100%; display: block; }
-.table-row { cursor: pointer; transition: background .15s; }
-.table-row:hover { background: #f0f6ff !important; }
-.wpm-val { color: #303133; font-weight: 600; }
-.feedback-excerpt { color: #606266; font-size: 13px; }
+.history-page { min-height: 100vh; background: #0f172a; display: flex; flex-direction: column; color: #f8fafc; }
+
+.page-header { 
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+  padding: 16px 40px; 
+  background: rgba(255,255,255,0.03); 
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.08); 
+  flex-shrink: 0; 
+}
+.page-title { margin: 0; font-size: 20px; font-weight: 800; background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+.page-body { 
+  flex: 1; 
+  padding: 32px 40px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 24px; 
+  max-width: 1200px; 
+  margin: 0 auto; 
+  width: 100%; 
+  box-sizing: border-box; 
+}
+
+.chart-card, .list-card { 
+  background: rgba(255,255,255,0.03) !important; 
+  border: 1px solid rgba(255,255,255,0.08) !important; 
+  border-radius: 20px !important; 
+}
+.chart-card :deep(.el-card__header), .list-card :deep(.el-card__header) { 
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.growth-canvas { width: 100%; display: block; filter: drop-shadow(0 0 10px rgba(96,165,250,0.1)); }
+:deep(.el-table) { background: transparent !important; --el-table-tr-bg-color: transparent; --el-table-header-bg-color: rgba(255,255,255,0.02); --el-table-row-hover-bg-color: rgba(255,255,255,0.05); color: #cbd5e1; }
+:deep(.el-table th) { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
+:deep(.el-table td) { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
+
+.table-row { cursor: pointer; }
+.wpm-val { color: #f8fafc; font-weight: 700; }
+.feedback-excerpt { color: #64748b; font-size: 13px; font-style: italic; }
 
 /* Drawer */
-.drawer-body { padding: 0 4px; }
-.detail-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.detail-date { color: #909399; font-size: 13px; margin-left: auto; }
-.mini-radar-wrap { display: flex; align-items: center; gap: 20px; padding: 8px 0; flex-wrap: wrap; }
-.mini-radar { flex-shrink: 0; }
-.mini-legend { display: flex; flex-direction: column; gap: 10px; }
-.legend-row { display: flex; align-items: center; gap: 8px; }
-.l-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
-.l-name { font-size: 13px; color: #303133; flex: 1; }
-.feedback-box { background: #fafbfc; border-radius: 8px; padding: 14px; margin-bottom: 8px; }
-.feedback-text { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.8; color: #303133; font-family: inherit; }
-.rec-action { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
-.rec-detail { font-size: 13px; color: #606266; line-height: 1.6; }
+:deep(.el-drawer) { background: #0f172a; color: #f8fafc; border-left: 1px solid rgba(255,255,255,0.1); }
+:deep(.el-drawer__header) { margin-bottom: 0; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+:deep(.el-drawer__title) { color: #60a5fa; font-weight: 800; }
+
+.drawer-body { padding: 20px 0; }
+.detail-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding: 0 4px; }
+.detail-date { color: #475569; font-size: 12px; margin-left: auto; }
+
+.mini-radar-wrap { display: flex; align-items: center; gap: 32px; padding: 16px 0; justify-content: center; }
+.mini-legend { display: flex; flex-direction: column; gap: 12px; }
+.legend-row { display: flex; align-items: center; gap: 10px; width: 150px; }
+.l-dot { width: 10px; height: 10px; border-radius: 50%; }
+.l-name { font-size: 13px; color: #94a3b8; flex: 1; }
+
+.feedback-box { background: rgba(255,255,255,0.02); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); }
+.feedback-text { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.8; color: #cbd5e1; font-family: inherit; }
+
+.rec-action { font-weight: 700; font-size: 14px; color: #60a5fa; margin-bottom: 4px; }
+.rec-detail { font-size: 13px; color: #64748b; line-height: 1.6; }
+
+:deep(.el-divider__text) { background: #0f172a; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+:deep(.el-timeline-item__content) { color: #cbd5e1; }
 </style>

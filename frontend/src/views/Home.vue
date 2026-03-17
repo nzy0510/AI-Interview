@@ -1,42 +1,56 @@
 <template>
   <div class="home-container">
-    <el-container>
-      <el-header>
-        <div class="logo">🤖 AI 模拟面试平台</div>
-        <div class="header-right">
-          <el-button plain size="small" @click="router.push('/history')">📊 面试历史</el-button>
-          <el-button type="danger" size="small" @click="handleLogout">退出登录</el-button>
+    <!-- Dynamic Background Canvas -->
+    <canvas ref="bgCanvas" class="bg-canvas"></canvas>
+
+    <el-container class="main-layout">
+      <el-header class="glass-header">
+        <div class="logo-wrap">
+          <span class="logo-icon">🤖</span>
+          <span class="logo-text">AI Interview Master</span>
+        </div>
+        <div class="header-actions">
+          <el-button class="glass-btn" @click="router.push('/history')">
+            <el-icon><Histogram /></el-icon> 面试历史
+          </el-button>
+          <el-button type="danger" size="small" @click="handleLogout" circle title="退出登录">
+            <el-icon><SwitchButton /></el-icon>
+          </el-button>
         </div>
       </el-header>
 
-      <el-main>
-        <div class="hero-section">
-          <div class="hero-text">
-            <h1>欢迎来到 AI 面试工坊</h1>
-            <p>由大语言模型驱动，支持 RAG 知识库检索、语音交互和多维能力评估</p>
+      <el-main class="hero-main">
+        <div class="hero-content">
+          <div class="badge">Next-Gen Interview Prep</div>
+          <h1 class="hero-title">
+            打破传统，开启 <span class="gradient-text">AI 模拟面试</span> 新时代
+          </h1>
+          <p class="hero-subtitle">
+            融合深度语义检索 (RAG) 与大语言模型，为您提供最真实的岗位实战演练与精准的能力画像评估。
+          </p>
+
+          <div class="role-grid">
+            <div class="role-glass-card" @click="startInterview('Java后端开发')">
+              <div class="card-glow"></div>
+              <div class="role-icon-box java">☕</div>
+              <h3>Java 后端开发</h3>
+              <p>精通 Spring Cloud, JVM, 性能调优</p>
+              <div class="card-footer">立即开始 <el-icon><ArrowRight /></el-icon></div>
+            </div>
+
+            <div class="role-glass-card" @click="startInterview('Web前端开发')">
+              <div class="card-glow"></div>
+              <div class="role-icon-box web">⚡</div>
+              <h3>Web 前端开发</h3>
+              <p>深挖 Vue/React 架构与现代 Web 性能</p>
+              <div class="card-footer">立即开始 <el-icon><ArrowRight /></el-icon></div>
+            </div>
           </div>
 
-          <el-card class="role-card" shadow="hover">
-            <div class="card-title">选择面试岗位</div>
-            <div class="role-btns">
-              <div class="role-btn-wrap" @click="startInterview('Java后端开发')">
-                <div class="role-icon">☕</div>
-                <div class="role-name">Java 后端开发</div>
-                <div class="role-desc">Spring Boot · JVM · 分布式 · 数据库</div>
-              </div>
-              <div class="role-btn-wrap" @click="startInterview('Web前端开发')">
-                <div class="role-icon">⚡</div>
-                <div class="role-name">Web 前端开发</div>
-                <div class="role-desc">Vue · React · 性能优化 · 计算机网络</div>
-              </div>
-            </div>
-          </el-card>
-
-          <div class="feature-grid">
-            <div class="feat">🎙️ 语音识别</div>
-            <div class="feat">📊 六维能力雷达</div>
-            <div class="feat">🤖 RAG 知识检索</div>
-            <div class="feat">📈 成长曲线追踪</div>
+          <div class="feature-pills">
+            <span class="pill"><el-icon><Microphone /></el-icon> 语音实时交互</span>
+            <span class="pill"><el-icon><PieChart /></el-icon> 六维能力画像</span>
+            <span class="pill"><el-icon><Connection /></el-icon> RAG 专业题库</span>
           </div>
         </div>
       </el-main>
@@ -45,14 +59,107 @@
 </template>
 
 <script setup>
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+// import { Histogram, SwitchButton, ArrowRight, Microphone, PieChart, Connection } from '@element-plus/icons-vue'
+import { Histogram, SwitchButton, ArrowRight, Microphone, PieChart, Connection } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const bgCanvas = ref(null)
+
+// --- Particle Background Logic ---
+let ctx, width, height, particles = []
+const PARTICLE_COUNT = 80
+const MOUSE_RADIUS = 150
+let mouse = { x: -1000, y: -1000 }
+
+class Particle {
+  constructor() {
+    this.init()
+  }
+  init() {
+    this.x = Math.random() * width
+    this.y = Math.random() * height
+    this.vx = (Math.random() - 0.5) * 0.5
+    this.vy = (Math.random() - 0.5) * 0.5
+    this.radius = Math.random() * 2 + 1
+  }
+  update() {
+    this.x += this.vx
+    this.y += this.vy
+    if (this.x < 0 || this.x > width) this.vx *= -1
+    if (this.y < 0 || this.y > height) this.vy *= -1
+
+    // Interaction
+    const dx = mouse.x - this.x
+    const dy = mouse.y - this.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist < MOUSE_RADIUS) {
+      const force = (MOUSE_RADIUS - dist) / MOUSE_RADIUS
+      this.x -= dx * force * 0.03
+      this.y -= dy * force * 0.03
+    }
+  }
+  draw() {
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(96, 165, 250, 0.4)'
+    ctx.fill()
+  }
+}
+
+const resize = () => {
+  width = bgCanvas.value.width = window.innerWidth
+  height = bgCanvas.value.height = window.innerHeight
+}
+
+const animate = () => {
+  ctx.clearRect(0, 0, width, height)
+  particles.forEach(p => {
+    p.update()
+    p.draw()
+  })
+
+  // Draw lines
+  ctx.strokeStyle = 'rgba(96, 165, 250, 0.08)'
+  ctx.lineWidth = 1
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x
+      const dy = particles[i].y - particles[j].y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist < 150) {
+        ctx.beginPath()
+        ctx.moveTo(particles[i].x, particles[i].y)
+        ctx.lineTo(particles[j].x, particles[j].y)
+        ctx.stroke()
+      }
+    }
+  }
+  requestAnimationFrame(animate)
+}
+
+onMounted(() => {
+  ctx = bgCanvas.value.getContext('2d')
+  resize()
+  window.addEventListener('resize', resize)
+  window.addEventListener('mousemove', e => {
+    mouse.x = e.clientX
+    mouse.y = e.clientY
+  })
+
+  for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle())
+  animate()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', resize)
+})
 
 const handleLogout = () => {
   localStorage.removeItem('token')
-  ElMessage.success('已退出登录')
+  ElMessage.success('已安全退出')
   router.push('/login')
 }
 
@@ -62,59 +169,214 @@ const startInterview = (role) => {
 </script>
 
 <style scoped>
-.home-container { height: 100vh; background: linear-gradient(145deg, #0f172a, #1e3a5f); display: flex; }
-.el-container { width: 100%; display: flex; flex-direction: column; }
+.home-container {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #020617; /* Very deep dark navy */
+}
 
-.el-header {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  color: white;
+.bg-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.main-layout {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+}
+
+.glass-header {
+  height: 70px !important;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 28px;
-  flex-shrink: 0;
+  padding: 0 40px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.logo { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
-.header-right { display: flex; gap: 10px; }
-
-.el-main { display: flex; justify-content: center; align-items: center; flex: 1; }
-
-.hero-section {
+.logo-wrap {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 32px;
-  max-width: 700px;
-  width: 100%;
-  padding: 0 20px;
+  gap: 12px;
+}
+.logo-icon { font-size: 24px; }
+.logo-text {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.hero-text { text-align: center; color: white; }
-.hero-text h1 { font-size: 34px; font-weight: 800; margin: 0 0 10px; background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.hero-text p { margin: 0; color: rgba(255,255,255,0.65); font-size: 15px; }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
 
-.role-card { border-radius: 20px; width: 100%; padding: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); backdrop-filter: blur(12px); }
-.card-title { color: rgba(255,255,255,0.8); font-size: 13px; text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
-.role-btns { display: flex; gap: 16px; }
-.role-btn-wrap {
-  flex: 1;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 14px;
-  padding: 24px 20px;
+.glass-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+  backdrop-filter: blur(4px);
+  transition: all 0.3s;
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: #60a5fa !important;
+  color: #fff !important;
+}
+
+.hero-main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: 50px;
+}
+
+.hero-content {
   text-align: center;
-  cursor: pointer;
-  transition: all .25s ease;
-  color: white;
+  max-width: 840px;
 }
-.role-btn-wrap:hover { background: rgba(255,255,255,0.16); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-.role-icon { font-size: 36px; margin-bottom: 10px; }
-.role-name { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
-.role-desc { font-size: 12px; color: rgba(255,255,255,0.55); }
 
-.feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; }
-.feat { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px; text-align: center; color: rgba(255,255,255,0.7); font-size: 13px; }
+.badge {
+  display: inline-block;
+  padding: 6px 14px;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 99px;
+  color: #60a5fa;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.hero-title {
+  font-size: 48px;
+  font-weight: 850;
+  color: #fff;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  letter-spacing: -1px;
+}
+.gradient-text {
+  background: linear-gradient(90deg, #60a5fa, #c084fc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 18px;
+  color: #94a3b8;
+  max-width: 600px;
+  margin: 0 auto 48px;
+  line-height: 1.6;
+}
+
+.role-grid {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.role-glass-card {
+  position: relative;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 36px 28px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  backdrop-filter: blur(12px);
+}
+
+.role-glass-card:hover {
+  transform: translateY(-8px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(96, 165, 250, 0.4);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.card-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(96, 165, 250, 0.1) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.role-glass-card:hover .card-glow { opacity: 1; }
+
+.role-icon-box {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  margin-bottom: 24px;
+}
+.java { background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(234, 88, 12, 0.1)); border: 1px solid rgba(249, 115, 22, 0.3); }
+.web { background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1)); border: 1px solid rgba(59, 130, 246, 0.3); }
+
+.role-glass-card h3 {
+  color: #f8fafc;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.role-glass-card p {
+  color: #64748b;
+  font-size: 14px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #60a5fa;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.8;
+  transition: transform 0.3s;
+}
+.role-glass-card:hover .card-footer { transform: translateX(4px); opacity: 1; }
+
+.feature-pills {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 14px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+}
+.pill .el-icon { color: #475569; }
 </style>
