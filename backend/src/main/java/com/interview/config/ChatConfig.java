@@ -31,6 +31,9 @@ public class ChatConfig {
 
     @Bean
     public OpenAiStreamingChatModel streamingChatLanguageModel() {
+        if ("your_api_key_here".equals(apiKey) || apiKey == null || apiKey.isEmpty()) {
+            System.err.println("CRITICAL: DeepSeek API Key is missing! Please set 'langchain4j.open-ai.chat-model.api-key' in application.yml");
+        }
         return OpenAiStreamingChatModel.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)

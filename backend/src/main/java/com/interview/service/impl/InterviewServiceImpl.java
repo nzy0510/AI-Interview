@@ -78,7 +78,8 @@ public class InterviewServiceImpl implements InterviewService {
                         "1. 你的语气要专业、严肃但有礼貌。\n" +
                         "2. 每次只问一个问题。刚开始请让候选人做个简短的自我介绍。\n" +
                         "3. 根据候选人的回答深入追问技术细节或八股文知识。\n" +
-                        "4. 尽量口语化，像真实的面试对话，不要长篇大论。",
+                        "4. 尽量口语化，像真实的面试对话，不要长篇大论。\n" +
+                        "5. 【态度监控】：如果候选人表现出不耐烦、言语辱骂、回答极其敷衍（如连续多次只发1个字符）或拒绝回答，请先给予一次严肃警告。若警告后行为仍无改善，请在回复的最末尾加上标记序列：`[TERMINATE]`，表示建议由于态度问题强制结束面试。",
                 position);
         chatMemory.add(new SystemMessage(systemPrompt));
         chatMemories.put(record.getId(), chatMemory);
@@ -158,9 +159,11 @@ public class InterviewServiceImpl implements InterviewService {
             augmentedMessage = String.format(
                     "下面是我（候选人）的当前回答或发言：\n\"%s\"\n\n" +
                             "【后台系统要求（绝密，请严格遵守）】:\n" +
-                            "1. 如果候选人的回答极其简短敷衍、毫无意义或者只是打招呼（例如：1、你好、嗯），请**直接指出**，要求候选人认真作答，或者直接抛出下一个提问！**绝对不可以**假装候选人回答了技术问题并进行表扬！\n" +
-                            "2. 以下是从字节跳动题库中为你准备的本题【参考考核知识点】：\n%s\n" +
-                            "3. 只有当候选人真正在努力回答技术问题时，你才需要对照上述【参考考核知识点】对他的回答进行专业点评，或者顺着知识点深挖追问细节。严禁在对话中暴露你有参考资料。",
+                            "1. 如果候选人的回答极其简短敷衍、毫无意义或者只是打招呼（例如：1、你好、嗯），请**直接指出**，要求候选人认真作答，或者直接抛出下一个提问！**绝对不可以**假装候选人回答了技术问题并进行表扬！\n"
+                            +
+                            "2. 以下是从题库中为你准备的本题【参考考核知识点】：\n%s\n" +
+                            "3. 只有当候选人真正在努力回答技术问题时，你才需要对照上述【参考考核知识点】对他的回答进行专业点评，或者顺着知识点深挖追问细节。严禁在对话中暴露你有参考资料。\n" +
+                            "4. 重要：如果你认为候选人态度极其恶劣且无法沟通，请在回复内容的最后输出 `[TERMINATE]`。",
                     message, contextBuilder.toString());
         }
 
@@ -216,16 +219,17 @@ public class InterviewServiceImpl implements InterviewService {
                 try {
                     String userMsg = error.getMessage();
                     // 增加对国内网络环境的友好提示 (SSL 握手失败通常是代理或防火墙问题)
-                    if (error instanceof javax.net.ssl.SSLHandshakeException || 
-                        (error.getCause() != null && error.getCause().getMessage() != null && error.getCause().getMessage().contains("SSL"))) {
+                    if (error instanceof javax.net.ssl.SSLHandshakeException ||
+                            (error.getCause() != null && error.getCause().getMessage() != null
+                                    && error.getCause().getMessage().contains("SSL"))) {
                         userMsg = "网络连接失败 (SSL Handshake Error)。请检查你的网络代理设置，或尝试更换 API 地址。";
                     }
-                    
+
                     Map<String, String> errMap = new HashMap<>();
                     errMap.put("error", userMsg);
                     emitter.send(JSON.toJSONString(errMap));
-                    
-                    // 使用 complete() 而不是 completeWithError() 
+
+                    // 使用 complete() 而不是 completeWithError()
                     // 避免 Spring Boot 的全局异常处理器在 SSE 已提交的情况下二次报错 HttpMessageNotWritableException
                     emitter.complete();
                 } catch (Exception e) {
@@ -269,6 +273,10 @@ public class InterviewServiceImpl implements InterviewService {
                 String evaluationPrompt = String.format("""
                         本场面试已结束。请根据上面所有对话内容进行全面评估。候选人本次面试的平均语速为 %d WPM。
 
+                        特别注意（高优先级）：
+                        - 请仔细检查对话内容，如果发现对话中出现了 [TERMINATE] 标记，或者发现候选人有明显的辱骂、极度敷衍、调戏 AI 或拒不配合的态度，请务必在 feedback 中严厉指出，并将综合评估分 score 判定在 0-40 分之间。
+                        - 如果面试因态度问题提前结束，六维能力评级 ability 请锁定在 D 或 E。
+
                         请严格只返回一个符合以下格式的纯 JSON 对象，不要包含任何 Markdown 代码块标记（不要有```json）或解释文字：
                         {
                           "score": 82,
@@ -282,16 +290,16 @@ public class InterviewServiceImpl implements InterviewService {
                             "adaptability": "B"
                           },
                           "recommendations": [
-                            {"period": "本周", "action": "刷题方向", "detail": "建议重点复习..."},
-                            {"period": "两周内", "action": "项目实践", "detail": "尝试实现..."},
-                            {"period": "一个月", "action": "系统提升", "detail": "可系统学习..."}
+                            {"period": "本周", "action": "职场素养", "detail": "建议学习基本面试礼仪..."},
+                            {"period": "两周内", "action": "话术练习", "detail": "尝试练习结构化表达..."},
+                            {"period": "一个月", "action": "心态调整", "detail": "参加模拟面试提高抗压能力..."}
                           ]
                         }
 
                         【评分说明】
                         - score: 0-100 综合得分
                         - feedback: 综合点评，需包含技术能力、表达自信度、逻辑性三个角度
-                        - ability 六维能力评级（S/A/B/C/D）：
+                        - ability 六维能力评级（A/B/C/D/E）：
                             - techDepth: 技术深度（核心知识点掌握程度）
                             - breadth: 知识广度（跨领域知识覆盖）
                             - problemSolving: 解题思路（分析和解决问题的能力）

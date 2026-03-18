@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-interview-backend
+    
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # Update with your MySQL credentials later
+    url: ${DB_URL:jdbc:mysql://localhost:3306/ai_interview_ds?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:nzy333}
+    password: ${DB_PASSWORD:NZY@0510}
+
+# MyBatis-Plus Configuration
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # Print SQL to console
+    map-underscore-to-camel-case: true
+# DeepSeek Configuration (Langchain4j OpenAI Format)
+langchain4j:
+  open-ai:
+    chat-model:
+      # DeepSeek base URL compatible with OpenAI format
+      base-url: https://api.deepseek.com/v1
+      # Note: Leave this blank during initialization. Replace with user's actual token.
+      api-key: ${DEEPSEEK_API_KEY:sk-4b4d8849b9234412a4f7e740e53f6f67}
+      # Model choice: deepseek-chat or deepseek-reasoner
+      model-name: deepseek-chat
+      temperature: 0.7
+      max-tokens: 2000

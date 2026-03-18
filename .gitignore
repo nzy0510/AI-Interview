@@ -59,10 +59,10 @@ Thumbs.db
 
 # 敏感配置文件（不上传）
 application.properties
-application.yml
 application-dev.yml
 application-prod.yml
 
 # 配置模板（保留，方便协作）
 !application-template.properties
-!application-template.yml
+# ========== 数据库数据 (重要：绝不提交) ==========
+/mysql_data/
