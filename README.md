@@ -39,7 +39,6 @@ graph LR
 *   **后端 (Backend)**:
     *   **AI 编排**: 使用 `Langchain4j` 封装 RAG 流程。通过 `Metadata Filter` 实现岗位级别的知识路由（java/frontend/common 隔离）。
     *   **SSE 优化**: 针对 Spring Boot 的 `SseEmitter` 进行了 JSON 序列化转换，解决了原生字符串推送可能导致的 `HttpMessageNotWritableException`。
-    *   **自愈数据库**: 包含启动时的自动 Schema 修复逻辑，确保新字段自动同步。
 *   **前端 (Frontend)**:
     *   **响应式流处理**: 使用 Vue 3 的 `Reactive Proxy` 直接管理 SSE 数据流，实现高性能的 DOM 实时更新。
     *   **底层可视化**: 完全采用原生 `Canvas API` 渲染雷达图与音频波形，确保流畅的交互反馈体验。
@@ -47,51 +46,77 @@ graph LR
 
 ---
 
-## 💻 运行环境要求 (Prerequisites)
-
-为了能够在本地成功运行此项目，你需要安装以下环境：
-- **JDK 17** 及以上版本
-- **Maven 3.6+** 官网链接:https://maven.apache.org/
-- **Node.js 18+** 与 **npm** (用于前端运行) 链接:https://nodejs.org/en/download/
-- **MySQL 8.0+** (用于数据存储)
-- **phpstudy** (用于管理数据库,里面集成了mysql) 链接:https://www.xp.cn/download.html
-- **DeepSeek API Key**  链接:https://platform.deepseek.com/
+---
 
 ---
 
-## 👨‍💻 启动指南 (Setup Instructions)
+## ⚡ 快速开始 (推荐使用 Docker)
 
-### 1. 数据库初始化(使用phpstudy(小皮)来更轻松地数据库)
-![示例图](image/image.png)
-1. 启动本地 MySQL 服务。(这里指启动小皮)
-2. 在小皮创建名为 `ai_interview_ds` 的数据库实例。
-3. 导入项目提供的 `/backend/src/main/resources/schema.sql` 脚本，它会自动创建 `user` 表与 `interview_record` 表，并写入一个测试 admin 用户。ps::默认用户名：admin ， 密码：123456
+如果你安装了 **Docker** 和 **Docker Desktop**，可以使用以下命令实现“秒级”部署，无需手动配置复杂的开发环境。
 
-### 2. 后端服务端启动 (Spring Boot) ps::前端后端分开运行，建议在idea中只打开backened，即后端文件夹，idea会自动识别maven框架，直接把interview文件打开可能不行
-1. 使用 IntelliJ IDEA 或其他 IDE 打开 `backend` 目录。
-2. 修改 `/backend/src/main/resources/application.yml` 配置文件：
-   - 将 `spring.datasource.password` 修改为你的本机 MySQL 密码。
-   - 填入你申请好的 **DeepSeek API 密钥** (替换 `langchain4j.open-ai.chat-model.api-key` 的值)。（可以去官网申请）(现在默认是我的，可以不改)
-3. 直接运行，成功会出现（====== AI Interview Backend Started ======）
+### 1. 准备配置文件
+在项目根目录下，将 `.env.example` 复制并重命名为 `.env`：
+```bash
+cp .env.example .env
+```
+打开 `.env` 文件，填入你的 **DEEPSEEK_API_KEY**。
 
-### 3. 前端客户端启动 (Vue 3) ps::报错大概率是没做好配置或者进错文件夹
-1. 打开一个新的终端窗口cmd。
-2. 进入前端代码根目录：
-   ```bash
-   cd 你存放该文件的位置/frontend
-   ```
-3. 安装所有的 npm 层依赖包：( # 如果你没删过 node_modules 文件夹的话，这句可以跳过不跑)
-   ```bash
-   npm install
-   ```
-4. 启动前端 Vite 开发服务器：
-   ```bash
-   npm run dev
-   ```
-5. 终端将会输出访问地址，通常为 `http://localhost:5174/`，在浏览器中打开即可
+### 2. 一键启动
+在终端执行以下命令：
+```bash
+docker-compose up -d
+```
+> [!TIP]
+> 如果你是第一次运行或修改了代码，建议使用 `docker-compose up --build -d` 强制重新构建。
+
+### 3. 开始使用
+- **访问地址**: `http://localhost`
+- **默认管理员账号**: `admin`
+- **默认初始密码**: `123456`
 
 ---
 
-## 📝 扩展与二次开发
-- **动态知识库**: 只需在 `backend/src/main/resources/knowledge` 下添加岗位文件夹（如 `python`），系统会自动将其向量化并隔离检索。
-- **录音自适应**: 前端已在 `Interview.vue` 中封装了完整的 AudioContext 分析逻辑，可轻松扩展音频处理算法。
+## 💻 本地手动开发环境 (Manual Setup)
+
+如果您需要修改代码并进行本地调试，可以参考以下步骤：
+
+### 1. 环境依赖
+- **JDK 17+** | **Maven 3.6+**
+- **Node.js 20+** | **NPM**
+- **MySQL 5.7+** (推荐使用 Docker 内部数据库或小皮面板)
+
+### 2. 数据库准备
+1. 创建数据库 `ai_interview_ds`。
+2. 导入初始化脚本：`mysql/init/init.sql`。
+
+### 3. 后端启动 (Spring Boot)
+1. 用 IDE 打开 `backend` 目录。
+2. 配置 `application.yml` 或在环境变量中设置 `DEEPSEEK_API_KEY`。
+3. 运行主类，成功后看到 `====== AI Interview Backend Started ======`。
+
+### 4. 前端启动 (Vue 3)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## 📂 项目结构
+```text
+.
+├── backend          # Spring Boot 后端工程
+├── frontend         # Vue 3 前端工程
+├── mysql            # 数据库初始化脚本
+├── docker-compose.yml
+└── .env.example     # 环境配置模板
+```
+
+---
+
+## 📝 扩展说明
+- **岗位扩展**: 在 `backend/src/main/resources/knowledge` 下添加文件夹（如 `python`）并放入文档，系统会自动向量化。
+- **背景定制**: 前端 `Login.vue` 和 `Home.vue` 采用了高性能 Canvas 动画，可灵活调整粒子效果。
+
+---

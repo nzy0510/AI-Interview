@@ -4,7 +4,7 @@ import router from '@/router';
 
 // Create Axios Instance
 const request = axios.create({
-    baseURL: 'http://localhost:8080/api', // Backend base URL
+    baseURL: import.meta.env.VITE_API_BASE_URL || '/api', // Backend base URL
     timeout: 30000 // 30s timeout
 });
 

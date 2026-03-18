@@ -30,7 +30,7 @@
         >
           <el-avatar v-if="msg.role === 'ai'" class="avatar ai-avatar">AI</el-avatar>
           <div class="message-content">
-            <pre class="text">{{ msg.content }}</pre>
+            <div class="text" v-html="renderMarkdown(msg.content)"></div>
             <span v-if="msg.streaming" class="blinking-cursor">▍</span>
           </div>
           <el-avatar v-if="msg.role === 'user'" class="avatar user-avatar" :icon="UserFilled" />
@@ -91,7 +91,7 @@
             <div class="rpt-header">
               <span class="rpt-title">📋 面试评估报告</span>
               <el-tag type="success" effect="dark" size="large" round>
-                综合得分 {{ reportData.score }} / 100
+                综合得分 {{ displayScore }} / 100
               </el-tag>
             </div>
           </template>
@@ -173,8 +173,9 @@
 import { ref, reactive, computed, onMounted, nextTick, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Microphone, ArrowLeft, UserFilled } from '@element-plus/icons-vue'
+import { Microphone, ArrowLeft, UserFilled, PieChart } from '@element-plus/icons-vue'
 import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
+import { marked } from 'marked'
 
 const route = useRoute()
 const router = useRouter()
@@ -234,6 +235,12 @@ let voiceTurns = []
 let turnStart = 0
 let voiceRoundCount = 0
 
+// --- Markdown Rendering ---
+const renderMarkdown = (text) => {
+  if (!text) return ''
+  return marked.parse(text)
+}
+
 // ─── Lifecycle ───────────────────────────────────────────────────────────────
 onMounted(async () => {
   isSpeechSupported.value = !!(window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -255,7 +262,7 @@ onBeforeUnmount(() => {
 
 // Draw radar after tab switches to radar
 watch(activeTab, (tab) => {
-  if (tab === 'radar') nextTick(() => drawRadarChart())
+  if (tab === 'radar') nextTick(() => animateRadar())
 })
 
 // ─── Voice ────────────────────────────────────────────────────────────────────
@@ -356,7 +363,7 @@ const cleanupAudio = () => {
   }
 }
 
-// ─── Waveform Canvas ──────────────────────────────────────────────────────────
+// ─── Waveform Canvas (Siri Style) ───────────────────────────────────────────
 const drawWave = () => {
   if (!analyserNode || !canvasRef.value) return
   animFrameId = requestAnimationFrame(drawWave)
@@ -364,21 +371,39 @@ const drawWave = () => {
 
   const c = canvasRef.value, ctx = c.getContext('2d'), W = c.width, H = c.height
   ctx.clearRect(0, 0, W, H)
-  const bars = 50, bw = W / bars - 1, step = Math.floor(dataArray.length / bars)
-  for (let i = 0; i < bars; i++) {
-    const v = dataArray[i * step] / 255
-    const bh = Math.max(3, v * H)
-    const r = Math.round(v * 220), g = Math.round((1 - v) * 194 + 58)
-    ctx.fillStyle = `rgb(${r},${g},58)`
+
+  const time = Date.now() / 1000
+  const layers = [
+    { color: 'rgba(96, 165, 250, 0.4)', speed: 2, amp: 0.6 },
+    { color: 'rgba(192, 132, 252, 0.3)', speed: 1.5, amp: 0.4 },
+    { color: 'rgba(45, 212, 191, 0.2)', speed: 2.5, amp: 0.5 }
+  ]
+
+  // Calculate average volume for pulse
+  let sum = 0
+  for(let i=0; i<32; i++) sum += dataArray[i]
+  const vol = sum / 32 / 255 // 0-1
+
+  layers.forEach(layer => {
     ctx.beginPath()
-    if (ctx.roundRect) ctx.roundRect(i * (bw + 1), H - bh, bw, bh, 2)
-    else ctx.rect(i * (bw + 1), H - bh, bw, bh)
-    ctx.fill()
-  }
+    ctx.lineWidth = 2
+    ctx.strokeStyle = layer.color
+    
+    for (let x = 0; x <= W; x += 5) {
+      const normX = x / W
+      const sinBase = Math.sin(normX * Math.PI * 2 + time * layer.speed)
+      const noise = (Math.random() - 0.5) * 0.1 // subtle jitter
+      const y = H/2 + (sinBase + noise) * (H/3) * layer.amp * (vol + 0.2)
+      
+      if (x === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.stroke()
+  })
 }
 
-// ─── Radar Chart ─────────────────────────────────────────────────────────────
-const drawRadarChart = () => {
+// ─── Radar Chart (Animated) ──────────────────────────────────────────────────
+const drawRadarChart = (progress = 1.0) => {
   const canvas = radarRef.value
   if (!canvas) return
   const ctx = canvas.getContext('2d')
@@ -404,62 +429,76 @@ const drawRadarChart = () => {
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
     }
     ctx.closePath()
-    ctx.strokeStyle = gi === grades.length - 1 ? 'rgba(64,158,255,0.3)' : 'rgba(0,0,0,0.08)'
-    ctx.lineWidth = gi === grades.length - 1 ? 2 : 1
-    ctx.stroke()
-    // Grade label near the first axis
-    const labelA = -Math.PI / 2
-    ctx.fillStyle = '#909399'
-    ctx.font = '11px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(g, cx + r * Math.cos(labelA) - 14, cy + r * Math.sin(labelA) + 4)
-  })
-
-  // Draw axes (lines from center to each vertex)
-  for (let i = 0; i < n; i++) {
-    const a = angle * i - Math.PI / 2
-    ctx.beginPath()
-    ctx.moveTo(cx, cy)
-    ctx.lineTo(cx + maxR * Math.cos(a), cy + maxR * Math.sin(a))
-    ctx.strokeStyle = 'rgba(0,0,0,0.1)'
+    ctx.strokeStyle = gi === grades.length - 1 ? 'rgba(96,165,250,0.3)' : 'rgba(0,0,0,0.08)'
     ctx.lineWidth = 1
     ctx.stroke()
+  })
+
+  // Draw axes
+  for (let i = 0; i < n; i++) {
+    const a = angle * i - Math.PI / 2
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR * Math.cos(a), cy + maxR * Math.sin(a))
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.stroke()
   }
 
-  // Draw ability polygon with animation support via requestAnimationFrame
-  const scores = keys.map(k => gradeScore[reportData.ability[k]] || 0.2)
+  // Draw animated polygon
+  const scores = keys.map(k => (gradeScore[reportData.ability[k]] || 0.2) * progress)
   ctx.beginPath()
   for (let i = 0; i < n; i++) {
     const a = angle * i - Math.PI / 2
     const r = maxR * scores[i]
-    i === 0 ? ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a))
-             : ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a))
+    i === 0 ? ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a)) : ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a))
   }
   ctx.closePath()
-  ctx.fillStyle = 'rgba(64,158,255,0.18)'
+  ctx.fillStyle = 'rgba(96, 165, 250, 0.15)'
   ctx.fill()
-  ctx.strokeStyle = '#409eff'
+  ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)'
   ctx.lineWidth = 2.5
   ctx.stroke()
 
-  // Draw vertex dots and labels
+  // Labels & dots
   for (let i = 0; i < n; i++) {
     const a = angle * i - Math.PI / 2
     const r = maxR * scores[i]
-    // Dot on polygon
-    ctx.beginPath()
-    ctx.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 5, 0, Math.PI * 2)
-    ctx.fillStyle = colors[i]
-    ctx.fill()
-    // Label at outer ring
-    const la = angle * i - Math.PI / 2
-    const lr = maxR + 36
-    ctx.fillStyle = '#303133'
-    ctx.font = 'bold 13px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(labels[i], cx + lr * Math.cos(la), cy + lr * Math.sin(la))
+    ctx.beginPath(); ctx.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 5, 0, Math.PI * 2)
+    ctx.fillStyle = colors[i]; ctx.fill()
+
+    if (progress === 1.0) { // Labels only on final frame
+      const la = angle * i - Math.PI / 2, lr = maxR + 36
+      ctx.fillStyle = '#1e293b'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'
+      ctx.fillText(labels[i], cx + lr * Math.cos(la), cy + lr * Math.sin(la))
+    }
   }
+}
+
+const animateRadar = () => {
+  let startTime = null
+  const duration = 800
+  const step = (now) => {
+    if (!startTime) startTime = now
+    const elapsed = now - startTime
+    const progress = Math.min(elapsed / duration, 1.0)
+    const eased = 1 - Math.pow(1 - progress, 3) // easeOutCubic
+    drawRadarChart(eased)
+    if (progress < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
+
+const displayScore = ref(0)
+const animateScore = (finalScore) => {
+  displayScore.value = 0
+  let startTime = null
+  const duration = 1500
+  const step = (now) => {
+    if (!startTime) startTime = now
+    const elapsed = now - startTime
+    const progress = Math.min(elapsed / duration, 1.0)
+    const eased = 1 - Math.pow(1 - progress, 4) // easeOutQuart
+    displayScore.value = Math.floor(eased * finalScore)
+    if (progress < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
 }
 
 // ─── WPM Calculation ──────────────────────────────────────────────────────────
@@ -530,6 +569,23 @@ const streamAiResponse = (msg) => {
 
     if (d.content !== undefined && d.content !== null) {
       aiMsg.content += d.content
+      
+      // Check for termination marker
+      if (aiMsg.content.includes('[TERMINATE]')) {
+        aiMsg.content = aiMsg.content.replace('[TERMINATE]', '').trim()
+        aiMsg.streaming = false
+        isStreaming.value = false
+        eventSource.close()
+        
+        // Auto trigger end interview
+        ElMessage.warning('检测到面试异常中断，正在生成记录...')
+        setTimeout(() => {
+          // Pass true to bypass confirmation dialog
+          performEndInterview(true)
+        }, 1500)
+        return
+      }
+      
       scrollToBottom()
     }
   }
@@ -545,11 +601,20 @@ const endInterview = async () => {
     })
   } catch { return }
 
+  performEndInterview()
+}
+
+const performEndInterview = async (isAuto = false) => {
   if (isRecording.value) stopRecording()
   isFinishing.value = true
   const wpm = calcAvgWpm()
 
-  const loadingMsg = ElMessage({ message: '🤖 正在深度分析，请稍候...', type: 'info', duration: 0 })
+  const loadingMsg = ElMessage({ 
+    message: isAuto ? '🚨 检测到异常中断，正在锁定评分...' : '🤖 正在深度分析，请稍候...', 
+    type: isAuto ? 'warning' : 'info', 
+    duration: 0 
+  })
+  
   try {
     const res = await finishInterviewAPI({ recordId: recordId.value, wpm, voiceRounds: voiceRoundCount })
     loadingMsg.close()
@@ -570,8 +635,11 @@ const endInterview = async () => {
 
       showReport.value = true
       activeTab.value = 'radar'
-      // Draw radar after DOM renders
-      nextTick(() => drawRadarChart())
+      // Trigger animations
+      nextTick(() => {
+        animateScore(reportData.score)
+        animateRadar()
+      })
     }
   } catch (err) {
     loadingMsg.close()
@@ -594,17 +662,51 @@ const endInterview = async () => {
 .header-right { display: flex; align-items: center; }
 
 /* ── Chat ── */
-.chat-main { flex: 1; overflow-y: auto; padding: 24px 20px; background: #fafbfc; }
-.message-row { display: flex; margin-bottom: 20px; align-items: flex-start; }
+.chat-main { flex: 1; overflow-y: auto; padding: 24px 20px; background: radial-gradient(circle at top right, #f8fafc, #f1f5f9); }
+.message-row { display: flex; margin-bottom: 24px; align-items: flex-start; animation: msgSlideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .message-row.user { flex-direction: row-reverse; }
-.avatar { flex-shrink: 0; }
-.ai-avatar { background: linear-gradient(135deg, #52c41a, #237804); color: #fff; }
-.user-avatar { background: linear-gradient(135deg, #1890ff, #005cbf); }
-.message-content { max-width: 75%; padding: 12px 16px; border-radius: 12px; margin: 0 12px; font-size: 15px; line-height: 1.75; }
-.message-row.ai .message-content { background: #fff; border: 1px solid #e8ecf2; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-radius: 4px 12px 12px 12px; }
-.message-row.user .message-content { background: linear-gradient(135deg, #e6f4ff, #d0e9ff); border: 1px solid #91caff; color: #003a8c; border-radius: 12px 4px 12px 12px; }
-.text { margin: 0; white-space: pre-wrap; font-family: inherit; word-break: break-word; }
-.blinking-cursor { animation: blink .8s step-end infinite; color: #52c41a; font-size: 18px; }
+
+@keyframes msgSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.avatar { flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 2px solid #fff; }
+.ai-avatar { background: linear-gradient(135deg, #60a5fa, #3b82f6); color: #fff; }
+.user-avatar { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+
+.message-content { 
+  max-width: 78%; 
+  padding: 14px 18px; 
+  margin: 0 14px; 
+  font-size: 15px; 
+  line-height: 1.7; 
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.03);
+}
+
+.message-row.ai .message-content { 
+  background: rgba(255, 255, 255, 0.7); 
+  border: 1px solid rgba(255,255,255,0.4); 
+  border-radius: 4px 16px 16px 16px; 
+  color: #1e293b;
+}
+
+.message-row.user .message-content { 
+  background: rgba(99, 102, 241, 0.08); 
+  border: 1px solid rgba(99, 102, 241, 0.15); 
+  color: #3730a3; 
+  border-radius: 16px 4px 16px 16px; 
+}
+
+.text { margin: 0; word-break: break-word; }
+.text :deep(p) { margin: 0 0 8px 0; }
+.text :deep(p:last-child) { margin-bottom: 0; }
+.text :deep(strong) { color: #2563eb; }
+.text :deep(ul), .text :deep(ol) { padding-left: 20px; margin: 8px 0; }
+.text :deep(code) { background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+
+.blinking-cursor { animation: blink .8s step-end infinite; color: #3b82f6; font-size: 18px; margin-left: 2px; }
 @keyframes blink { 50% { opacity: 0; } }
 
 /* ── Footer ── */
