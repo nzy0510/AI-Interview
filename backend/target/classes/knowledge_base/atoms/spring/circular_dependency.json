@@ -1,0 +1,20 @@
+{
+  "id": "spring-002",
+  "subject": "Spring 循环依赖解决",
+  "category": "spring",
+  "difficulty": "P7",
+  "tags": ["Spring", "IOC", "Source Code"],
+  "content": {
+    "principles": "1. 三级缓存机制：singletonObjects (一级, 成品), earlySingletonObjects (二级, 半成品), singletonFactories (三级, 生成工厂)。2. 三级缓存存储 ObjectFactory，用于提前暴露 AOP 代理对象向。3. 仅解决单例模式下的 Setter 循环依赖。",
+    "pitfalls": [
+      "Constructor Dependency: 构造函数循环依赖无法解决 (抛出 BeanCurrentlyInCreationException)。",
+      "Prototype Beans: 非单例 Bean 的循环依赖不支持。",
+      "@Async Conflict: @Async 产生的代理对象在二级缓存中被提前获取时，可能引发类型不匹配错误。"
+    ],
+    "follow_up_paths": [
+      "@Lazy 延迟加载解决构造器依赖",
+      "DefaultSingletonBeanRegistry 源码分析",
+      "三级缓存中 AOP 代理的提前创建细节"
+    ]
+  }
+}

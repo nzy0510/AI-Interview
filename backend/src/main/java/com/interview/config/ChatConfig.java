@@ -1,10 +1,15 @@
 package com.interview.config;
 
+import com.interview.agent.CoordinatorAgent;
+import com.interview.agent.HrAgent;
+import com.interview.agent.TechnicalAgent;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,9 +36,6 @@ public class ChatConfig {
 
     @Bean
     public OpenAiStreamingChatModel streamingChatLanguageModel() {
-        if ("your_api_key_here".equals(apiKey) || apiKey == null || apiKey.isEmpty()) {
-            System.err.println("CRITICAL: DeepSeek API Key is missing! Please set 'langchain4j.open-ai.chat-model.api-key' in application.yml");
-        }
         return OpenAiStreamingChatModel.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
@@ -50,24 +52,44 @@ public class ChatConfig {
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
                 .modelName(modelName)
-                .temperature(0.3) // Lower temperature for more objective evaluation
+                .temperature(0.3)
                 .timeout(Duration.ofSeconds(60))
                 .build();
     }
 
-    /**
-     * Local Embedding Model for RAG
-     * // 本地嵌入模型 Bean（AllMiniLmL6V2，纯本地运算，不调用远程 API）
-     */
+    // ========== 多智能体 AI Services 注册 ==========
+
+    @Bean
+    public TechnicalAgent technicalAgent(OpenAiStreamingChatModel model) {
+        return AiServices.builder(TechnicalAgent.class)
+                .streamingChatLanguageModel(model)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
+                .build();
+    }
+
+    @Bean
+    public HrAgent hrAgent(OpenAiStreamingChatModel model) {
+        return AiServices.builder(HrAgent.class)
+                .streamingChatLanguageModel(model)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
+                .build();
+    }
+
+    @Bean
+    public CoordinatorAgent coordinatorAgent(OpenAiStreamingChatModel model) {
+        return AiServices.builder(CoordinatorAgent.class)
+                .streamingChatLanguageModel(model)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
+                .build();
+    }
+
+    // =============================================
+
     @Bean
     public EmbeddingModel embeddingModel() {
         return new AllMiniLmL6V2EmbeddingModel();
     }
 
-    /**
-     * In-Memory Vector Store for RAG
-     * // 内存级向量数据库 Bean（InMemoryEmbeddingStore）
-     */
     @Bean
     public EmbeddingStore<TextSegment> embeddingStore() {
         return new InMemoryEmbeddingStore<>();

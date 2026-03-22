@@ -1,0 +1,20 @@
+{
+  "id": "frontend-006",
+  "subject": "Webpack vs Vite Principles",
+  "category": "frontend",
+  "difficulty": "P7",
+  "tags": ["Webpack", "Vite", "Build Tools"],
+  "content": {
+    "principles": "1. Webpack: Bundler-based. Builds a complete dependency graph and bundles all modules before serving. Cold start is slow for large apps. 2. Vite: ESM-based. Uses native ES Modules in development, serving modules on demand via browser requests. Uses Esbuild (Go-based) for pre-bundling dependencies. 3. Production: Both use bundling (Webpack's own vs Vite's Rollup) for optimized assets.",
+    "pitfalls": [
+      "Vite's slow initial page load when there are hundreds of small ESM requests.",
+      "Compatibility issues when using non-ESM-compliant legacy libraries in Vite.",
+      "Complex Webpack configurations becoming 'black boxes' that are hard to maintain."
+    ],
+    "follow_up_paths": [
+      "Rollup vs Esbuild architecture",
+      "HMR (Hot Module Replacement) implementation details",
+      "Module Federation in Webpack 5"
+    ]
+  }
+}

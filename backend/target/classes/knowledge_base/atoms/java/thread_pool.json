@@ -1,0 +1,12 @@
+{
+  "id": "java-003",
+  "subject": "线程池参数",
+  "category": "java",
+  "difficulty": "P6",
+  "tags": ["Java", "Concurrency", "ThreadPool"],
+  "content": {
+    "principles": "7 Core parameters: corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler. Workflow: core -> queue -> max -> reject.",
+    "pitfalls": "Using Unbounded queues (like LinkedBlockingQueue without size) leading to OOM. Incorrect core/max ratio causing high latency or resource waste. Not handling rejection properly.",
+    "follow_up_paths": ["Different BlockingQueues", "Custom RejectionPolicies", "Dynamic thread pool adjustment"]
+  }
+}

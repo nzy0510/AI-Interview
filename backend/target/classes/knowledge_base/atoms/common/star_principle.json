@@ -1,0 +1,12 @@
+{
+  "id": "common-002",
+  "subject": "STAR原则与项目深挖",
+  "category": "common",
+  "difficulty": "P6",
+  "tags": ["Interview", "Behavioral"],
+  "content": {
+    "principles": "STAR: Situation, Task, Action, Result. Focus on personal contribution, technical choices (why Kafka/Redis?), and quantifiable results. Be ready for 'drill-down' questions on architecture and tradeoffs.",
+    "pitfalls": "Vague descriptions. Overstating individual impact. Unable to explain technical tradeoffs or architecture details.",
+    "follow_up_paths": ["Project retrospective", "Refactoring stories", "Failure analysis"]
+  }
+}

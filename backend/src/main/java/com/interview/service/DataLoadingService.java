@@ -1,13 +1,15 @@
 package com.interview.service;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
-import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser;
-import dev.langchain4j.data.document.splitter.DocumentSplitters;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,83 +18,135 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
+
 /**
  * RAG 知识库加载服务：Spring Boot 启动时自动执行
- * 职责：读取 resources/knowledge_base/ 下的所有文档 → 切块 → 向量化 → 存入内存向量数据库
+ * 职责：读取 resources/knowledge_base/atoms/ 下的结构化 JSON 原子 → 拼装文本与元数据 → 向量化 → 存入内存向量数据库
  */
 @Service
 @Slf4j
 public class DataLoadingService {
 
     @Autowired
-    private EmbeddingModel embeddingModel; // 本地嵌入模型，将文档片段转化为多维向量
+    private EmbeddingModel embeddingModel;
 
     @Autowired
-    private EmbeddingStore<TextSegment> embeddingStore; // 内存级向量数据库，存储向量化后的文档
+    private EmbeddingStore<TextSegment> embeddingStore;
 
     @Autowired
-    private ResourceLoader resourceLoader; // Spring 资源加载器，用于读取 classpath 下的文件
+    private ResourceLoader resourceLoader;
 
-    /**
-     * @PostConstruct 注解：Spring 完成依赖注入后自动调用此方法
-     * 整个 RAG 知识库的加载流程：
-     * 1. 定位 knowledge_base 目录
-     * 2. 读取目录下所有文档（MD/TXT/PDF 等）
-     * 3. 将文档切分为 500 字符的小块（每块重叠 50 字符确保上下文连贯）
-     * 4. 将每个小块通过 AllMiniLmL6V2 模型算出向量
-     * 5. 将向量存入 InMemoryEmbeddingStore，供后续检索使用
-     */
     @PostConstruct
     public void init() {
-        log.info("🚀 开始进行岗位隔离的知识库初始化...");
+        log.info("🚀 开始进行基于结构化知识原子(Knowledge Atoms)的知识库初始化...");
 
         try {
-            Resource resourcePath = resourceLoader.getResource("classpath:knowledge_base");
-            File knowledgeBaseDir = resourcePath.getFile();
+            Resource resourcePath = resourceLoader.getResource("classpath:knowledge_base/atoms");
+            File atomsDir = resourcePath.getFile();
 
-            if (!knowledgeBaseDir.exists() || !knowledgeBaseDir.isDirectory()) {
-                log.warn("⚠️ 知识库根目录不存在: {}", knowledgeBaseDir.getAbsolutePath());
+            if (!atomsDir.exists() || !atomsDir.isDirectory()) {
+                log.warn("⚠️ 知识原子目录不存在: {}", atomsDir.getAbsolutePath());
                 return;
             }
 
-            // 遍历子目录：java, frontend, common
-            File[] subDirs = knowledgeBaseDir.listFiles(File::isDirectory);
-            if (subDirs == null || subDirs.length == 0) {
-                log.warn("⚠️ 知识库下无子目录，请检查结构。");
+            List<Document> documents = new ArrayList<>();
+
+            try (Stream<Path> paths = Files.walk(Paths.get(atomsDir.toURI()))) {
+                paths.filter(Files::isRegularFile)
+                     .filter(p -> p.toString().endsWith(".json"))
+                     .forEach(path -> {
+                         try {
+                             String content = Files.readString(path);
+                             JSONObject atom = JSON.parseObject(content);
+                             
+                             String subject = atom.getString("subject");
+                             log.info("🔍 正在解析原子: {}", subject);
+                             
+                             String id = atom.getString("id");
+                             String category = atom.getString("category");
+                             String difficulty = atom.getString("difficulty");
+                             
+                             JSONObject contentObj = atom.getJSONObject("content");
+                             if (contentObj == null) {
+                                 log.warn("⚠️ 原子 [{}] 内容区(content)为空，跳过", subject);
+                                 return;
+                             }
+                             
+                             String principles = contentObj.getString("principles");
+                             
+                             // 构建送入向量库的纯文本
+                             StringBuilder textBuilder = new StringBuilder();
+                             textBuilder.append("考核点: ").append(subject).append("\n");
+                             textBuilder.append("核心原理与标准答案: ").append(principles).append("\n");
+                             
+                             // 【增强修复】兼容处理 pitfalls (可能是 String 或 Array)
+                             Object pitfallsObj = contentObj.get("pitfalls");
+                             if (pitfallsObj instanceof JSONArray) {
+                                 JSONArray array = (JSONArray) pitfallsObj;
+                                 if (!array.isEmpty()) {
+                                     textBuilder.append("面试常见陷阱与候选人易错点:\n");
+                                     for (int i = 0; i < array.size(); i++) {
+                                         textBuilder.append("- ").append(array.getString(i)).append("\n");
+                                     }
+                                 }
+                             } else if (pitfallsObj instanceof String && !((String) pitfallsObj).isEmpty()) {
+                                 textBuilder.append("面试常见陷阱与候选人易错点: ").append(pitfallsObj).append("\n");
+                             }
+                             
+                             // 【增强修复】兼容处理 follow_up_paths (可能是 String 或 Array)
+                             Object followUpsObj = contentObj.get("follow_up_paths");
+                             if (followUpsObj instanceof JSONArray) {
+                                 JSONArray array = (JSONArray) followUpsObj;
+                                 if (!array.isEmpty()) {
+                                     textBuilder.append("推荐的深度追问路径:\n");
+                                     for (int i = 0; i < array.size(); i++) {
+                                         textBuilder.append("- ").append(array.getString(i)).append("\n");
+                                     }
+                                 }
+                             } else if (followUpsObj instanceof String && !((String) followUpsObj).isEmpty()) {
+                                 textBuilder.append("推荐的深度追问路径: ").append(followUpsObj).append("\n");
+                             }
+                             
+                             // 提取 Metadata 元数据
+                             Metadata metadata = new Metadata();
+                             if (id != null) metadata.put("id", id);
+                             if (category != null) metadata.put("category", category);
+                             if (difficulty != null) metadata.put("difficulty", difficulty);
+                             
+                             Object tagsObj = atom.get("tags");
+                             if (tagsObj instanceof JSONArray) {
+                                 metadata.put("tags", String.join(",", ((JSONArray) tagsObj).toList(String.class)));
+                             }
+                             
+                             documents.add(Document.from(textBuilder.toString(), metadata));
+                         } catch (Exception e) {
+                             log.error("❌ 解析 JSON 知识原子失败 [{}]: {}", path.getFileName(), e.getMessage());
+                         }
+                     });
+            }
+
+            if (documents.isEmpty()) {
+                log.warn("⚠️ 未找到任何有效的 JSON 知识原子。");
                 return;
             }
 
-            for (File subDir : subDirs) {
-                String category = subDir.getName(); // 文件夹名即为分类标签
-                log.info("📂 正在加载 [{}] 分类下的文档...", category);
+            EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                    .documentSplitter(DocumentSplitters.recursive(2000, 0))
+                    .embeddingModel(embeddingModel)
+                    .embeddingStore(embeddingStore)
+                    .build();
 
-                List<Document> documents = FileSystemDocumentLoader.loadDocuments(
-                        subDir.toPath(),
-                        new ApacheTikaDocumentParser()
-                );
-
-                if (documents.isEmpty()) continue;
-
-                // 为该分类下的所有文本片段打上 metadata 标签
-                EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                        .documentSplitter(DocumentSplitters.recursive(500, 50))
-                        .textSegmentTransformer(textSegment -> {
-                            textSegment.metadata().put("category", category);
-                            return textSegment;
-                        })
-                        .embeddingModel(embeddingModel)
-                        .embeddingStore(embeddingStore)
-                        .build();
-
-                ingestor.ingest(documents);
-                log.info("✅ [{}] 分类加载完成，共 {} 份文档。", category, documents.size());
-            }
-
-            log.info("🎉 全量知识库流水线构建完毕，由于采用了 Metadata 隔离，不同岗位将不再‘串台’。");
+            ingestor.ingest(documents);
+            log.info("✅ 全量结构化知识库加载完成，共 [{}] 个核心知识原子。", documents.size());
 
         } catch (Exception e) {
-            log.error("❌ 岗位隔离初始化异常: {}", e.getMessage(), e);
+            log.error("❌ 知识库初始化严重异常: {}", e.getMessage(), e);
         }
     }
 }

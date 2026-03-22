@@ -1,0 +1,22 @@
+{
+  "id": "java-102",
+  "subject": "GC 算法与垃圾收集器",
+  "category": "java",
+  "difficulty": "P7",
+  "tags": ["JVM", "GC", "Garbage Collection"],
+  "content": {
+    "principles": "1. CMS (Concurrent Mark Sweep): 并发标记清除，主打低延迟 (STW 短)。2. G1 (Garbage First): 划分 Region，混合 GC (Mixed GC)，目标可预测停顿。3. ZGC (Z Garbage Collector): 着色指针 (Colored Pointers) 与加载屏障 (Load Barrier)，在 TB 级堆上实现亚毫秒级停顿。",
+    "pitfalls": [
+      "CMS Concurrent Mode Failure: 预留空间不足导致 Full GC 退化为 Serial Old。",
+      "G1 Region Size Tuning: Region 太大或太小会影响分配效率与回收精度。",
+      "ZGC CPU Overhead: 使用读屏障换取低延迟会带来显著的吞吐量下降。",
+      "Memory Fragmentation: CMS 标记清除导致碎片化，需要定期整理。"
+    ],
+    "follow_up_paths": [
+      "Safe Points 与 Safe Regions",
+      "GC 日志分析工具 (GCEasy/VisualVM)",
+      "JVM 调优参数实战 (-XX:MaxGCPauseMillis)",
+      "ZGC 与 G1 的底层写屏障对比"
+    ]
+  }
+}

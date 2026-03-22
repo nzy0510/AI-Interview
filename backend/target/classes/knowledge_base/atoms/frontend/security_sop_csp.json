@@ -1,0 +1,20 @@
+{
+  "id": "frontend-102",
+  "subject": "前端同源策略与 CSP 安全策略",
+  "category": "frontend",
+  "difficulty": "P6",
+  "tags": ["Security", "Frontend", "Browser"],
+  "content": {
+    "principles": "1. 同源策略 (SOP): 协议、域名、端口必须完全一致，限制 Cookie、LocalStorage、DOM 以及 AJAX 跨域访问。2. CSP (Content Security Policy): 通过 HTTP 响应头 Content-Security-Policy 告知浏览器哪些外部资源可以执行，预防 XSS 和数据注入。3. 跨域手段: CORS, JSONP, Proxy, postMessage。",
+    "pitfalls": [
+      "CORS Over-wildcard: Access-Control-Allow-Origin: * 导致敏感接口暴露。",
+      "CSP Bypass: 利用白名单域下的 JSONP 接口或不安全的 URL 重定向绕过 CSP 限制。",
+      "Preflight Request overhead: 复杂请求触发 OPTIONS 预检，影响接口首屏耗时。"
+    ],
+    "follow_up_paths": [
+      "CSRF 攻击原理与 SameSite 属性",
+      "XSS 过滤与 HTML 转义细节",
+      "OAuth2 中的安全回调机制"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "frontend-007",
+  "subject": "CORS and Web Security (XSS/CSRF)",
+  "category": "frontend",
+  "difficulty": "P6",
+  "tags": ["Security", "CORS", "XSS", "CSRF"],
+  "content": {
+    "principles": "1. CORS: Browser-side mechanism using HTTP headers (Access-Control-Allow-Origin) to allow cross-origin requests. Pre-flight (OPTIONS) for non-simple requests. 2. XSS: Injecting malicious scripts. Mitigation: Content Security Policy (CSP), escaping HTML, HttpOnly cookies. 3. CSRF: Forcing authenticated users to execute unwanted actions. Mitigation: Anti-CSRF tokens, SameSite cookie attribute.",
+    "pitfalls": [
+      "Setting Access-Control-Allow-Origin: '*' when credentials (cookies) are required.",
+      "Trusting user-generated content without proper sanitization (XSS risk).",
+      "Exposing sensitive tokens in localStorage where XSS can steal them."
+    ],
+    "follow_up_paths": [
+      "OAuth2 and JWT security best practices",
+      "CSP (Content Security Policy) directives",
+      "HTTPS and HSTS for secure transport"
+    ]
+  }
+}

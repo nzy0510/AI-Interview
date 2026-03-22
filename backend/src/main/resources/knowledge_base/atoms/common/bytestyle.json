@@ -1,0 +1,12 @@
+{
+  "id": "common-001",
+  "subject": "字节跳动价值观 (ByteStyle)",
+  "category": "common",
+  "difficulty": "P6",
+  "tags": ["Culture", "Behavioral"],
+  "content": {
+    "principles": "1. Always Push the Limits (追求极致). 2. Be Grounded & Courageous (务实敢为). 3. Be Candid & Clear (坦诚清晰). 4. Always Day 1 (始终创业).",
+    "pitfalls": "Being satisfied with mediocrity. Lack of ownership. Poor communication or hiding mistakes.",
+    "follow_up_paths": ["ByteStyle examples in projects", "Personal growth alignment", "Handling conflicts with values"]
+  }
+}

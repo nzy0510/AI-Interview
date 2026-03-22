@@ -1,0 +1,12 @@
+{
+  "id": "java-004",
+  "subject": "AQS原理",
+  "category": "java",
+  "difficulty": "P7",
+  "tags": ["Java", "Concurrency", "AQS"],
+  "content": {
+    "principles": "AbstractQueuedSynchronizer uses a volatile 'state' and a FIFO double-linked queue (CLH variant) to manage thread waiting. Supports exclusive (ReentrantLock) and shared (CountDownLatch, Semaphore) modes.",
+    "pitfalls": "Improper state management in custom synchronizers. Deadlocks if not careful with acquisition order. Performance overhead of queue management in extremely high contention.",
+    "follow_up_paths": ["ReentrantLock fair vs non-fair", "Condition queue in AQS", "ReadWriteLock implementation"]
+  }
+}

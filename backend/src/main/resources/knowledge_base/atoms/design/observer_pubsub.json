@@ -1,0 +1,20 @@
+{
+  "id": "design-002",
+  "subject": "Observer vs Publish-Subscribe Patterns",
+  "category": "design",
+  "difficulty": "P6",
+  "tags": ["Design Patterns", "Clean Code", "Architecture"],
+  "content": {
+    "principles": "1. Observer: Subject maintains a list of observers. Direct coupling (Subject knows about Observers). Synchronous usually. 2. Pub-Sub: Uses a Message Broker/Event Bus. Producers and Consumers are decoupled. Asynchronous often. 3. Difference: In Pub-Sub, components don't know each other; in Observer, they typically do.",
+    "pitfalls": [
+      "Memory leaks: Observers not being removed when they are no longer needed.",
+      "Circular dependencies in complex Observer chains.",
+      "Debugging difficulty in Pub-Sub due to loose coupling and async execution."
+    ],
+    "follow_up_paths": [
+      "Reactive Programming (RxJS/Project Reactor)",
+      "Vue/React event systems",
+      "Event-driven architecture at scale"
+    ]
+  }
+}
