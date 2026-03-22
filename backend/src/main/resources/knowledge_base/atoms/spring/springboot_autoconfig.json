@@ -1,0 +1,20 @@
+{
+  "id": "spring-005",
+  "subject": "Spring Boot 自动装配原理",
+  "category": "spring",
+  "difficulty": "P6",
+  "tags": ["SpringBoot", "AutoConfig", "Source Code"],
+  "content": {
+    "principles": "1. @SpringBootApplication 组合注解中的 @EnableAutoConfiguration 开启功能。2. AutoConfigurationImportSelector 通过 SpringFactoriesLoader 扫描 META-INF/spring.factories (新版为 spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports)。3. 条件注解 (@ConditionalOnClass, @ConditionalOnMissingBean) 决定是否加载特定 Bean。",
+    "pitfalls": [
+      "Dependency Missing: 引入 Starter 后未生效，通常是 classpath 缺少关键类触发条件失败。",
+      "Conflicting Beans: 自定义 Bean 与自动配置 Bean 冲突，需通过 @Primary 或 @Order 调整优先顺序。",
+      "Scan Range: 启动类包路径配置错误，导致 AutoConfiguration 扫不到自定义配置。"
+    ],
+    "follow_up_paths": [
+      "自定义 Spring Boot Starter 实现步骤",
+      "DeferredImportSelector 接口执行时机",
+      "Spring Boot 3.0 中的自动装配迁移变化"
+    ]
+  }
+}

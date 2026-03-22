@@ -1,0 +1,20 @@
+{
+  "id": "frontend-005",
+  "subject": "Frontend Performance Optimization",
+  "category": "frontend",
+  "difficulty": "P6",
+  "tags": ["Performance", "Optimization", "Web"],
+  "content": {
+    "principles": "1. Network: HTTP/2, Caching (Cache-Control), CDN, Compression (Gzip/Brotli). 2. Bundle: Code splitting (dynamic import), Tree-shaking, Image lazy loading. 3. Rendering: Debounce/Throttle, Virtual lists for large data, avoiding layout thrashing. 4. Core Web Vitals: LCP (Largest Contentful Paint), FID (First Input Delay), CLS (Cumulative Layout Shift).",
+    "pitfalls": [
+      "Over-optimization without measuring (Premature optimization).",
+      "Large 3rd party libraries bloating the bundle (e.g., Moment.js).",
+      "Forced synchronous layout (Read/Write DOM cycles in a loop)."
+    ],
+    "follow_up_paths": [
+      "Web Performance APIs (PerformanceObserver)",
+      "Server-Side Rendering (SSR) vs Static Site Generation (SSG)",
+      "Image optimization techniques (WebP, srcset)"
+    ]
+  }
+}

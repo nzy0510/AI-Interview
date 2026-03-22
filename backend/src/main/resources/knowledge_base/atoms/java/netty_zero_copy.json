@@ -1,0 +1,12 @@
+{
+  "id": "java-005",
+  "subject": "Netty零拷贝",
+  "category": "java",
+  "difficulty": "P7",
+  "tags": ["Netty", "NIO", "Zero-Copy"],
+  "content": {
+    "principles": "1. Direct Buffer (off-heap memory) to avoid copying between kernel and user space. 2. CompositeByteBuf (logical combination of buffers). 3. FileRegion/transferTo (OS level zero-copy). 4. Wrap existing byte arrays without copying.",
+    "pitfalls": "Direct memory leaks if not properly released. Complexity in managing direct buffer lifecycles. transferTo might not work for all file systems/OS.",
+    "follow_up_paths": ["Direct memory management in JVM", "Linux mmap vs sendfile", "Netty ByteBuf pool"]
+  }
+}

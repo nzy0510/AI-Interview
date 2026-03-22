@@ -1,0 +1,12 @@
+{
+  "id": "java-002",
+  "subject": "JVM内存模型 (JMM)",
+  "category": "java",
+  "difficulty": "P6",
+  "tags": ["JVM", "Concurrency", "Memory"],
+  "content": {
+    "principles": "JMM defines how threads interact with memory. Key concepts: Visibility, Atomicity, and Ordering. Happens-before rules ensure memory consistency. Volatile keyword uses memory barriers to prevent reordering and ensure visibility.",
+    "pitfalls": "Instruction reordering by compiler/CPU can lead to unexpected results. False sharing due to cache line alignment. Overuse of volatile can impact performance.",
+    "follow_up_paths": ["Volatile implementation details", "Instruction reordering examples", "Java memory areas (Heap, Stack, etc.)"]
+  }
+}

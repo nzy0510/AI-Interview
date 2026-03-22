@@ -1,0 +1,20 @@
+{
+  "id": "network-002",
+  "subject": "HTTP 2.0/3.0 Evolution",
+  "category": "network_os",
+  "difficulty": "P6",
+  "tags": ["HTTP", "Network", "Protocol"],
+  "content": {
+    "principles": "1. HTTP/1.1: Persistent connections but suffers from Head-of-Line (HOL) blocking. 2. HTTP/2: Binary protocol, multiplexing (multiple streams over one TCP connection), header compression (HPACK), server push. 3. HTTP/3: Based on QUIC (UDP). Solves TCP HOL blocking at the transport layer, 0-RTT/1-RTT connection setup, connection migration.",
+    "pitfalls": [
+      "HTTP/2 HOL blocking: If one TCP packet is lost, all streams are blocked.",
+      "Over-using Server Push leading to bandwidth waste.",
+      "UDP being blocked by restrictive corporate firewalls (HTTP/3 fallback)."
+    ],
+    "follow_up_paths": [
+      "QUIC protocol implementation details",
+      "HPACK vs QPACK header compression",
+      "TLS 1.3 features and performance"
+    ]
+  }
+}

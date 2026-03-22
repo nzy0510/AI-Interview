@@ -316,6 +316,8 @@ const startRecording = async () => {
       if (silenceTimer) clearTimeout(silenceTimer)
       silenceTimer = setTimeout(() => {
         if (inputMsg.value.trim()) {
+          // 先禁用 onend 自动重启，防止 recognition 在 stop 后又被重新启动
+          if (recognition) recognition.onend = null
           stopRecording()
           sendMessage()
         }
