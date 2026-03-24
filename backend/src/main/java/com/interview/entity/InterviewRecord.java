@@ -46,6 +46,15 @@ public class InterviewRecord {
     /** 平均语速 (WPM - Words Per Minutes，实际用每分钟字符数估算) */
     private Integer voiceWpm;
 
+    /**
+     * 视频面试情感分析数据 JSON，格式如：
+     * {"avgConfidence":0.72,"dominantEmotion":"neutral","emotionDistribution":{"neutral":0.6,"happy":0.2,...},"timeline":[...]}
+     */
+    private String emotionJson;
+
+    /** 面试模式: text=文字模式, video=视频模式 */
+    private String interviewMode;
+
     private LocalDateTime createTime;
 
     private LocalDateTime endTime;

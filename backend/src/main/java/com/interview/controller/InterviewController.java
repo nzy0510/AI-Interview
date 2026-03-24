@@ -31,7 +31,8 @@ public class InterviewController {
         // TODO: 实际项目中 userId 应从 JWT Token 拦截器中提取，这里简化为硬编码
         Long userId = 1L;
         String position = (String) params.get("position"); // 岗位名称，如 "Java后端开发"
-        Long recordId = interviewService.startInterview(userId, position);
+        String mode = params.get("mode") != null ? params.get("mode").toString() : "text";
+        Long recordId = interviewService.startInterview(userId, position, mode);
         return Result.success(recordId);
     }
 
@@ -56,7 +57,8 @@ public class InterviewController {
     public Result<?> finishInterview(@RequestBody Map<String, Object> params) {
         Long recordId = Long.valueOf(params.get("recordId").toString());
         Integer wpm = params.get("wpm") != null ? Integer.valueOf(params.get("wpm").toString()) : 0;
-        com.interview.entity.InterviewRecord record = interviewService.endInterview(recordId, wpm);
+        String emotionJson = params.get("emotionJson") != null ? params.get("emotionJson").toString() : null;
+        com.interview.entity.InterviewRecord record = interviewService.endInterview(recordId, wpm, emotionJson);
         return Result.success(record);
     }
 }

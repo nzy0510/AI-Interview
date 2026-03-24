@@ -69,7 +69,17 @@ public class InterviewServiceImpl implements InterviewService {
 
     private static final String PROMPT_COORDINATOR = "你是面试组长。负责主持流程：开场致辞、引导候选人、在技术官和HR之间切换话题。语气稳重、礼貌。每次只问一个问题。" + ATTITUDE_RULE;
 
-    private static final String PROMPT_TECHNICAL = "你是【严厉的技术官】。职责是深挖技术底层原理。如果候选人回答含糊或踩中陷阱，请犀利指出。语气专业且富有压迫感。每次只问一个问题。" + ATTITUDE_RULE;
+    private static final String PROMPT_TECHNICAL = """
+            你是一位资深技术面试官。职责是考察候选人的技术能力。
+            【面试风格】：
+            - 语气专业、平和、有引导性。绝对不要批评或指责候选人，即使回答不理想也要保持鼓励和尊重。
+            - 如果候选人回答不够完善，用追问来引导，例如"那你能再说说…的部分吗？"，而不是直接否定。
+            - 每次回复简短（2-3句话），只问一个问题，不要长篇大论。
+            【自适应难度】：
+            - 第一个问题从基础概念入手（如"请简单介绍一下…"）。
+            - 如果候选人回答流畅准确，后续问题逐步加深难度，深入底层原理或实战场景。
+            - 如果候选人回答吃力或不够准确，保持当前难度或适当降低，换一个相近的知识点提问。
+            """ + ATTITUDE_RULE;
 
     private static final String PROMPT_HR = "你是【资深 HR BP】。职责是考察候选人的沟通能力、价值观和稳定性。语气专业、温和但有洞察力。每次只问一个问题。" + ATTITUDE_RULE;
 
@@ -78,9 +88,15 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     public Long startInterview(Long userId, String position) {
+        return startInterview(userId, position, "text");
+    }
+
+    @Override
+    public Long startInterview(Long userId, String position, String mode) {
         InterviewRecord record = new InterviewRecord();
         record.setUserId(userId);
         record.setPosition(position);
+        record.setInterviewMode(mode != null ? mode : "text");
         record.setCreateTime(LocalDateTime.now());
         record.setChatHistory("[]");
         interviewRecordMapper.insert(record);
@@ -178,11 +194,16 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     public InterviewRecord endInterview(Long recordId) {
-        return endInterview(recordId, 0);
+        return endInterview(recordId, 0, null);
     }
 
     @Override
     public InterviewRecord endInterview(Long recordId, Integer wpm) {
+        return endInterview(recordId, wpm, null);
+    }
+
+    @Override
+    public InterviewRecord endInterview(Long recordId, Integer wpm, String emotionJson) {
         ChatMemory chatMemory = chatMemories.remove(recordId);
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
 
@@ -193,6 +214,10 @@ public class InterviewServiceImpl implements InterviewService {
 
         record.setEndTime(LocalDateTime.now());
         record.setVoiceWpm(wpm != null ? wpm : 0);
+        // 保存视频面试的情感分析数据
+        if (emotionJson != null && !emotionJson.isEmpty()) {
+            record.setEmotionJson(emotionJson);
+        }
 
         // ========== 构建评估用的对话历史 ==========
         // 优先使用内存中的 chatMemory；如果为 null（页面刷新等场景），则从数据库恢复
@@ -271,7 +296,7 @@ public class InterviewServiceImpl implements InterviewService {
 
                 评分说明：
                 - score: 0-100 综合得分
-                - ability 六维能力评级（S/A/B/C/D）
+                - ability 六维能力评级（A/B/C/D/E）
                 - recommendations: 3条具体的提升建议
                 """, wpm);
 

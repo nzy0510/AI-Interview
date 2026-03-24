@@ -20,6 +20,11 @@ const routes = [
     path: '/history',
     name: 'History',
     component: () => import('@/views/History.vue')
+  },
+  {
+    path: '/video-interview',
+    name: 'VideoInterview',
+    component: () => import('@/views/VideoInterview.vue')
   }
 ]
 
