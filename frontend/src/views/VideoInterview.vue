@@ -225,9 +225,16 @@ watch(currentAgent, (v) => {
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  // 1. Open camera + microphone
+  // 1. Open camera + microphone (Requesting 720p/1080p high resolution)
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true })
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'user',
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: true
+    })
     if (videoRef.value) {
       videoRef.value.srcObject = mediaStream
     }
