@@ -30,6 +30,8 @@ CREATE TABLE `interview_record` (
   `ability_json` JSON DEFAULT NULL COMMENT '六维能力评分 (包含：技术深度、解题思路、知识广度、表达、逻辑、应变)',
   `recommendations` JSON DEFAULT NULL COMMENT 'AI提供的职场或技术提升建议列表',
   `voice_wpm` INT DEFAULT 0 COMMENT '面试平均语速 (Words Per Minute)',
+  `emotion_json` TEXT DEFAULT NULL COMMENT '视频面试情感分析数据 (JSON格式，含情绪分布、自信指数等)',
+  `interview_mode` VARCHAR(16) DEFAULT 'text' COMMENT '面试模式: text=文字模式, video=视频模式',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '面试开始时间',
   `end_time` DATETIME DEFAULT NULL COMMENT '面试结束时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='面试记录表';

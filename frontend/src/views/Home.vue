@@ -51,10 +51,29 @@
             <span class="pill"><el-icon><Microphone /></el-icon> 语音实时交互</span>
             <span class="pill"><el-icon><PieChart /></el-icon> 六维能力画像</span>
             <span class="pill"><el-icon><Connection /></el-icon> RAG 专业题库</span>
+            <span class="pill"><el-icon><VideoCamera /></el-icon> 视频面试</span>
           </div>
         </div>
       </el-main>
     </el-container>
+
+    <!-- Mode Selection Dialog -->
+    <el-dialog v-model="showModeDialog" title="选择面试模式" width="480" center :close-on-click-modal="false">
+      <div class="mode-options">
+        <div class="mode-card" @click="confirmMode('text')">
+          <div class="mode-icon">📝</div>
+          <h3>文字模式</h3>
+          <p>通过文字/语音转文字与 AI 交流，适合安静环境</p>
+          <el-tag type="info" size="small">经典模式</el-tag>
+        </div>
+        <div class="mode-card video" @click="confirmMode('video')">
+          <div class="mode-icon">📹</div>
+          <h3>视频模式</h3>
+          <p>开启摄像头面对面交流，AI 语音对话 + 情感分析</p>
+          <el-tag type="success" size="small">✨ 新功能</el-tag>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -63,7 +82,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 // import { Histogram, SwitchButton, ArrowRight, Microphone, PieChart, Connection } from '@element-plus/icons-vue'
-import { Histogram, SwitchButton, ArrowRight, Microphone, PieChart, Connection } from '@element-plus/icons-vue'
+import { Histogram, SwitchButton, ArrowRight, Microphone, PieChart, Connection, VideoCamera } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const bgCanvas = ref(null)
@@ -163,8 +182,21 @@ const handleLogout = () => {
   router.push('/login')
 }
 
+const showModeDialog = ref(false)
+const selectedRole = ref('')
+
 const startInterview = (role) => {
-  router.push({ path: '/interview', query: { role } })
+  selectedRole.value = role
+  showModeDialog.value = true
+}
+
+const confirmMode = (mode) => {
+  showModeDialog.value = false
+  if (mode === 'video') {
+    router.push({ path: '/video-interview', query: { role: selectedRole.value } })
+  } else {
+    router.push({ path: '/interview', query: { role: selectedRole.value } })
+  }
 }
 </script>
 
@@ -379,4 +411,50 @@ const startInterview = (role) => {
   border-radius: 12px;
 }
 .pill .el-icon { color: #475569; }
+
+/* Mode Selection Dialog */
+.mode-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 10px 0;
+}
+.mode-card {
+  padding: 28px 20px;
+  text-align: center;
+  border-radius: 16px;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #f9fafb;
+}
+.mode-card:hover {
+  border-color: #409EFF;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(64, 158, 255, 0.15);
+}
+.mode-card.video {
+  border-color: #d1fae5;
+  background: #f0fdf4;
+}
+.mode-card.video:hover {
+  border-color: #67C23A;
+  box-shadow: 0 8px 24px rgba(103, 194, 58, 0.15);
+}
+.mode-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+.mode-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+.mode-card p {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
 </style>

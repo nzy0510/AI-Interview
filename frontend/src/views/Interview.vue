@@ -212,8 +212,8 @@ const abilityDimensions = {
   adaptability:   { label: '应变能力', color: '#c71585' }
 }
 
-const gradeScore = { S: 1.0, A: 0.8, B: 0.6, C: 0.4, D: 0.2 }
-const getGradeType = (g) => ({ S: 'danger', A: 'success', B: 'primary', C: 'warning' }[g] || 'info')
+const gradeScore = { A: 1.0, B: 0.8, C: 0.6, D: 0.4, E: 0.2 }
+const getGradeType = (g) => ({ A: 'danger', B: 'success', C: 'primary', D: 'warning' }[g] || 'info')
 const getWpmText = (w) => w === 0 ? '未使用语音' : w < 80 ? '节奏较慢' : w > 220 ? '语速偏快' : '语速适中'
 const getWpmTagType = (w) => w === 0 ? 'info' : (w < 80 || w > 220) ? 'warning' : 'success'
 

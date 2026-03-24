@@ -37,6 +37,13 @@
               </template>
             </el-table-column>
             <el-table-column prop="position" label="面试岗位" width="160" />
+            <el-table-column label="模式" width="90" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.interviewMode === 'video' ? 'success' : 'info'" size="small" effect="plain">
+                  {{ row.interviewMode === 'video' ? '📹 视频' : '📝 文字' }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column label="综合得分" width="120" align="center">
               <template #default="{ row }">
                 <el-tag :type="getScoreType(row.score)" effect="dark">{{ row.score }} 分</el-tag>
@@ -90,6 +97,39 @@
         <el-divider content-position="left">AI 综合反馈</el-divider>
         <div class="feedback-box"><pre class="feedback-text">{{ selected.feedback }}</pre></div>
 
+        <!-- Emotion Analysis (video interview only) -->
+        <template v-if="selectedEmotion && Object.keys(selectedEmotion).length > 0">
+          <el-divider content-position="left">
+            📹 情感分析
+            <el-tag size="small" type="success" effect="plain" style="margin-left: 8px">视频模式</el-tag>
+          </el-divider>
+          <div class="emotion-section">
+            <div class="emotion-metrics">
+              <div class="em-metric">
+                <span class="em-val green">{{ (selectedEmotion.avgConfidence * 100).toFixed(0) }}%</span>
+                <span class="em-label">自信指数</span>
+              </div>
+              <div class="em-metric">
+                <span class="em-val orange">{{ emotionLabel(selectedEmotion.dominantEmotion) }}</span>
+                <span class="em-label">主导情绪</span>
+              </div>
+              <div class="em-metric">
+                <span class="em-val blue">{{ selectedEmotion.sampleCount || 0 }}</span>
+                <span class="em-label">采样次数</span>
+              </div>
+            </div>
+            <div v-if="selectedEmotion.emotionDistribution" class="emotion-bars">
+              <div v-for="(val, key) in selectedEmotion.emotionDistribution" :key="key" class="em-bar-row">
+                <span class="em-name">{{ emotionLabel(key) }}</span>
+                <div class="em-bar-bg">
+                  <div class="em-bar-fill" :style="{ width: (val * 100) + '%', background: emotionColor(key) }"></div>
+                </div>
+                <span class="em-pct">{{ (val * 100).toFixed(0) }}%</span>
+              </div>
+            </div>
+          </div>
+        </template>
+
         <!-- Recommendations -->
         <el-divider content-position="left">提升建议</el-divider>
         <el-timeline v-if="selectedRecs.length">
@@ -134,8 +174,8 @@ const abilityDimensions = {
   adaptability:   { label: '应变能力', color: '#c71585' }
 }
 
-const gradeScore = { S: 1.0, A: 0.8, B: 0.6, C: 0.4, D: 0.2 }
-const getGradeType = g => ({ S: 'danger', A: 'success', B: 'primary', C: 'warning' }[g] || 'info')
+const gradeScore = { A: 1.0, B: 0.8, C: 0.6, D: 0.4, E: 0.2 }
+const getGradeType = g => ({ A: 'danger', B: 'success', C: 'primary', D: 'warning' }[g] || 'info')
 const getScoreType = s => s >= 85 ? 'success' : s >= 70 ? 'primary' : s >= 55 ? 'warning' : 'danger'
 
 const selectedAbility = computed(() => {
@@ -146,6 +186,14 @@ const selectedRecs = computed(() => {
   try { return selected.value?.recommendations ? JSON.parse(selected.value.recommendations) : [] }
   catch { return [] }
 })
+const selectedEmotion = computed(() => {
+  try { return selected.value?.emotionJson ? JSON.parse(selected.value.emotionJson) : null }
+  catch { return null }
+})
+
+const EMOTION_LABELS = { neutral: '平静', happy: '积极', sad: '低落', angry: '紧张', fearful: '焦虑', disgusted: '不适', surprised: '惊讶' }
+const emotionLabel = (key) => EMOTION_LABELS[key] || key
+const emotionColor = (key) => ({ neutral: '#909399', happy: '#67C23A', sad: '#5B9BD5', angry: '#F56C6C', fearful: '#E6A23C', disgusted: '#C71585', surprised: '#409EFF' }[key] || '#909399')
 
 // Chronological order for chart (oldest → newest = left → right)
 const chartData = computed(() => [...historyList.value].reverse())
@@ -246,23 +294,74 @@ const drawGrowthChart = () => {
     })
 
   } else {
-    // Multi-line dimensions
+    // Heatmap: rows = dimensions, columns = sessions
     const dimKeys = Object.keys(abilityDimensions)
-    dimKeys.forEach((key, di) => {
-      const vals = data.map(r => {
-        try { const ab = JSON.parse(r.abilityJson || '{}'); return gradeScore[ab[key]] || 0.2 }
-        catch { return 0.2 }
-      })
-      const color = Object.values(abilityDimensions)[di].color
-      const pts = data.map((_, i) => ({
-        x: pad.left + (i / Math.max(data.length - 1, 1)) * plotW,
-        y: pad.top + plotH - vals[i] * plotH
-      }))
-      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y)
-      pts.forEach(p => ctx.lineTo(p.x, p.y))
-      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke()
-      pts.forEach(p => {
-        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill()
+    const dimLabels = Object.values(abilityDimensions).map(d => d.label)
+    const n = dimKeys.length
+    const sessions = data.length
+
+    // Layout
+    const labelW = 70
+    const cellW = Math.min(60, (plotW - labelW) / Math.max(sessions, 1))
+    const cellH = Math.min(28, plotH / n)
+    const startX = pad.left + labelW
+    const startY = pad.top + 20
+
+    // Grade color mapping (A=deep blue, E=very light)
+    const gradeColors = {
+      A: 'rgba(64, 158, 255, 1.0)',
+      B: 'rgba(64, 158, 255, 0.7)',
+      C: 'rgba(64, 158, 255, 0.45)',
+      D: 'rgba(64, 158, 255, 0.25)',
+      E: 'rgba(64, 158, 255, 0.10)'
+    }
+
+    // Row labels (dimension names)
+    dimLabels.forEach((label, ri) => {
+      const y = startY + ri * cellH + cellH / 2
+      ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'
+      ctx.fillText(label, pad.left + labelW - 10, y)
+    })
+
+    // Column headers (dates)
+    data.forEach((r, ci) => {
+      const x = startX + ci * cellW + cellW / 2
+      ctx.fillStyle = '#64748b'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
+      ctx.fillText(formatDate(r.createTime).split(' ')[0], x, startY - 4)
+    })
+
+    // Draw cells
+    dimKeys.forEach((key, ri) => {
+      data.forEach((r, ci) => {
+        let grade = 'E'
+        try {
+          const ab = JSON.parse(r.abilityJson || '{}')
+          grade = ab[key] || 'E'
+        } catch { /* default E */ }
+
+        const x = startX + ci * cellW
+        const y = startY + ri * cellH
+
+        // Cell background
+        ctx.fillStyle = gradeColors[grade] || gradeColors.E
+        const radius = 4
+        ctx.beginPath()
+        ctx.moveTo(x + radius, y + 1)
+        ctx.lineTo(x + cellW - 1 - radius, y + 1)
+        ctx.quadraticCurveTo(x + cellW - 1, y + 1, x + cellW - 1, y + 1 + radius)
+        ctx.lineTo(x + cellW - 1, y + cellH - 1 - radius)
+        ctx.quadraticCurveTo(x + cellW - 1, y + cellH - 1, x + cellW - 1 - radius, y + cellH - 1)
+        ctx.lineTo(x + radius, y + cellH - 1)
+        ctx.quadraticCurveTo(x, y + cellH - 1, x, y + cellH - 1 - radius)
+        ctx.lineTo(x, y + 1 + radius)
+        ctx.quadraticCurveTo(x, y + 1, x + radius, y + 1)
+        ctx.closePath()
+        ctx.fill()
+
+        // Grade letter
+        ctx.fillStyle = grade === 'E' || grade === 'D' ? '#64748b' : '#fff'
+        ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText(grade, x + cellW / 2, y + cellH / 2)
       })
     })
   }
@@ -392,4 +491,20 @@ const drawMiniRadar = () => {
 
 :deep(.el-divider__text) { background: #0f172a; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
 :deep(.el-timeline-item__content) { color: #cbd5e1; }
+
+/* Emotion Section in Drawer */
+.emotion-section { padding: 12px 0; }
+.emotion-metrics { display: flex; gap: 16px; margin-bottom: 16px; }
+.em-metric { flex: 1; text-align: center; padding: 14px 8px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); }
+.em-val { display: block; font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+.em-val.green { color: #67C23A; }
+.em-val.orange { color: #E6A23C; }
+.em-val.blue { color: #409EFF; }
+.em-label { font-size: 11px; color: #64748b; }
+.emotion-bars { padding: 12px 16px; background: rgba(255,255,255,0.02); border-radius: 12px; }
+.em-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.em-name { min-width: 40px; font-size: 12px; color: #94a3b8; text-align: right; }
+.em-bar-bg { flex: 1; height: 14px; background: rgba(255,255,255,0.06); border-radius: 7px; overflow: hidden; }
+.em-bar-fill { height: 100%; border-radius: 7px; transition: width 0.6s ease; }
+.em-pct { min-width: 35px; font-size: 12px; color: #64748b; }
 </style>

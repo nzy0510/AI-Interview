@@ -1,0 +1,20 @@
+# .geminiignore
+
+# IDE and environment files
+.idea/
+.vscode/
+.env
+.env.example
+*.uml
+
+# Git directory
+.git/
+
+# Build outputs and dependencies
+**/node_modules/
+**/dist/
+**/target/
+
+# Data directory
+mysql_data/
+

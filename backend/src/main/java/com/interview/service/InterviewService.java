@@ -7,6 +7,9 @@ public interface InterviewService {
     
     // Start an interview, initialize AI, save to db, return recordId
     Long startInterview(Long userId, String position);
+
+    // Start an interview with mode (text/video)
+    Long startInterview(Long userId, String position, String mode);
     
     // Send a message and get SSE stream for typing animation
     SseEmitter chatStream(Long userId, Long recordId, String message);
@@ -16,4 +19,7 @@ public interface InterviewService {
 
     // End interview with voice behavioral metrics (wpm = words per minute)
     InterviewRecord endInterview(Long recordId, Integer wpm);
+
+    // End interview with voice metrics and emotion analysis data
+    InterviewRecord endInterview(Long recordId, Integer wpm, String emotionJson);
 }
