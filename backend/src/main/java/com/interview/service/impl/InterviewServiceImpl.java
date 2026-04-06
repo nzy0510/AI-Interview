@@ -62,12 +62,13 @@ public class InterviewServiceImpl implements InterviewService {
     // ========== 多智能体人设提示词定义 ==========
     // 通用态度监控规则（注入到每个 Agent 的提示词末尾）
     private static final String ATTITUDE_RULE = """
-            
+
             【态度监控规则（所有角色必须遵守）】：
             - 如果候选人表现出不耐烦、言语辱骂、回答极其敷衍（如连续多次只发1个字符）或拒绝回答，请先给予一次严肃警告。
             - 若警告后行为仍无改善，请在回复的最末尾加上标记：[TERMINATE]""";
 
-    private static final String PROMPT_COORDINATOR = "你是面试组长。负责主持流程：开场致辞、引导候选人、在技术官和HR之间切换话题。语气稳重、礼貌。每次只问一个问题。" + ATTITUDE_RULE;
+    private static final String PROMPT_COORDINATOR = "你是面试组长。负责主持流程：开场致辞、引导候选人、在技术官和HR之间切换话题。语气稳重、礼貌。每次只问一个问题。"
+            + ATTITUDE_RULE;
 
     private static final String PROMPT_TECHNICAL = """
             你是一位资深技术面试官。职责是考察候选人的技术能力。
@@ -79,6 +80,9 @@ public class InterviewServiceImpl implements InterviewService {
             - 第一个问题从基础概念入手（如"请简单介绍一下…"）。
             - 如果候选人回答流畅准确，后续问题逐步加深难度，深入底层原理或实战场景。
             - 如果候选人回答吃力或不够准确，保持当前难度或适当降低，换一个相近的知识点提问。
+            【灵活提问】
+            - 若候选人对某一方面不是很了解，换另一个知识点提问。
+            - 提问做到覆盖多方面的知识。
             """ + ATTITUDE_RULE;
 
     private static final String PROMPT_HR = "你是【资深 HR BP】。职责是考察候选人的沟通能力、价值观和稳定性。语气专业、温和但有洞察力。每次只问一个问题。" + ATTITUDE_RULE;
@@ -109,28 +113,35 @@ public class InterviewServiceImpl implements InterviewService {
     public SseEmitter chatStream(Long userId, Long recordId, String message) {
         SseEmitter emitter = new SseEmitter(0L);
         ChatMemory chatMemory = chatMemories.get(recordId);
-        
+
         if (chatMemory == null) {
             try {
                 emitter.send(JSON.toJSONString(Map.of("error", "session_expired")));
                 emitter.complete();
-            } catch (IOException e) {}
+            } catch (IOException e) {
+            }
             return emitter;
         }
 
         // 1. RAG 检索
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
         String position = record != null ? record.getPosition() : "common";
-        Filter categoryFilter = position.contains("Java") ? metadataKey("category").isEqualTo("java").or(metadataKey("category").isEqualTo("common")) 
-                               : position.contains("前端") ? metadataKey("category").isEqualTo("frontend").or(metadataKey("category").isEqualTo("common"))
-                               : metadataKey("category").isEqualTo("common");
+        Filter categoryFilter = position.contains("Java")
+                ? metadataKey("category").isEqualTo("java").or(metadataKey("category").isEqualTo("common"))
+                : position.contains("前端")
+                        ? metadataKey("category").isEqualTo("frontend").or(metadataKey("category").isEqualTo("common"))
+                        : metadataKey("category").isEqualTo("common");
 
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore).embeddingModel(embeddingModel).filter(categoryFilter).maxResults(3).minScore(0.6).build();
+                .embeddingStore(embeddingStore).embeddingModel(embeddingModel).filter(categoryFilter).maxResults(3)
+                .minScore(0.6).build();
 
-        List<Content> retrievedContents = (message != null && message.trim().length() > 2) ? contentRetriever.retrieve(Query.from(message)) : new ArrayList<>();
+        List<Content> retrievedContents = (message != null && message.trim().length() > 2)
+                ? contentRetriever.retrieve(Query.from(message))
+                : new ArrayList<>();
         StringBuilder contextBuilder = new StringBuilder();
-        for (Content content : retrievedContents) contextBuilder.append("- ").append(content.textSegment().text()).append("\n");
+        for (Content content : retrievedContents)
+            contextBuilder.append("- ").append(content.textSegment().text()).append("\n");
 
         // 2. 动态决定当前 Agent 人设
         int round = chatMemory.messages().size();
@@ -145,7 +156,6 @@ public class InterviewServiceImpl implements InterviewService {
             // HR 阶段结束后，进入收尾阶段，AI 道别后自动触发 [TERMINATE]
             currentSystemPrompt = PROMPT_CLOSING;
         }
-
 
         // 3. 构造消息列表 (必须包含当前 Agent 的 SystemMessage)
         List<ChatMessage> messages = new ArrayList<>();
@@ -185,7 +195,8 @@ public class InterviewServiceImpl implements InterviewService {
                 try {
                     emitter.send(JSON.toJSONString(Map.of("error", error.getMessage())));
                     emitter.complete();
-                } catch (IOException e) {}
+                } catch (IOException e) {
+                }
             }
         });
 
@@ -245,9 +256,12 @@ public class InterviewServiceImpl implements InterviewService {
                             }
                         }
                         if (text != null) {
-                            if ("AI".equals(type)) historyMessages.add(new AiMessage(text));
-                            else if ("USER".equals(type)) historyMessages.add(new UserMessage(text));
-                            else if ("SYSTEM".equals(type)) historyMessages.add(new SystemMessage(text));
+                            if ("AI".equals(type))
+                                historyMessages.add(new AiMessage(text));
+                            else if ("USER".equals(type))
+                                historyMessages.add(new UserMessage(text));
+                            else if ("SYSTEM".equals(type))
+                                historyMessages.add(new SystemMessage(text));
                         }
                     }
                     log.info("从数据库恢复了 {} 条对话消息", historyMessages.size());
@@ -269,36 +283,43 @@ public class InterviewServiceImpl implements InterviewService {
         // ========== AI 评估：生成结构化 JSON 报告 ==========
         // 【关键修复】过滤掉对话历史中的 SystemMessage（角色扮演提示词），
         // 防止评估模型继续沉浸在"面试官"角色中，导致返回角色扮演文本而非 JSON
-        String evaluationPrompt = String.format("""
-                你现在是一个【面试评估分析师】，不是面试官。你的任务是根据以下面试对话记录，输出一个结构化的 JSON 评估报告。
-                候选人本次面试的平均语速为 %d WPM。
+        String evaluationPrompt = String.format(
+                """
+                        你现在是一个【面试评估分析师】，不是面试官。你的任务是根据以下面试对话记录，输出一个结构化的 JSON 评估报告。
+                        候选人本次面试的平均语速为 %d WPM。
 
-                【最高优先级指令】你必须且只能返回一个纯 JSON 对象。禁止返回任何其他格式的文本、对话、角色扮演内容或 Markdown 标记。
+                        【最高优先级指令】你必须且只能返回一个纯 JSON 对象。禁止返回任何其他格式的文本、对话、角色扮演内容或 Markdown 标记。
 
-                严格按照以下 JSON 格式返回：
-                {
-                  "score": 82,
-                  "feedback": "候选人整体表现...（3-5句综合点评）",
-                  "ability": {
-                    "techDepth": "A",
-                    "breadth": "B",
-                    "problemSolving": "A",
-                    "expression": "B",
-                    "logic": "A",
-                    "adaptability": "B"
-                  },
-                  "recommendations": [
-                    {"period": "本周", "action": "职场素养", "detail": "建议学习基本面试礼仪..."},
-                    {"period": "两周内", "action": "话术练习", "detail": "尝试练习结构化表达..."},
-                    {"period": "一个月", "action": "能力提升", "detail": "深入学习并发编程底层原理..."}
-                  ]
-                }
+                        严格按照以下 JSON 格式返回：
+                        {
+                          "score": 82,
+                          "feedback": "候选人整体表现...（3-5句综合点评）",
+                          "ability": {
+                            "techDepth": "A",
+                            "breadth": "B",
+                            "problemSolving": "A",
+                            "expression": "B",
+                            "logic": "A",
+                            "adaptability": "B"
+                          },
+                          "recommendations": [
+                            {"period": "本周", "action": "职场素养", "detail": "建议学习基本面试礼仪..."},
+                            {"period": "两周内", "action": "话术练习", "detail": "尝试练习结构化表达..."},
+                            {"period": "一个月", "action": "能力提升", "detail": "深入学习并发编程底层原理..."}
+                          ],
+                          "knowledgePoints": [
+                            {"concept": "微服务架构", "mastery": 0.8, "category": "架构设计"},
+                            {"concept": "Java多线程", "mastery": 0.3, "category": "底层原理"}
+                          ]
+                        }
 
-                评分说明：
-                - score: 0-100 综合得分
-                - ability 六维能力评级（A/B/C/D/E）
-                - recommendations: 3条具体的提升建议
-                """, wpm);
+                        评分说明：
+                        - score: 0-100 综合得分
+                        - ability 六维能力评级（A/B/C/D/E）
+                        - recommendations: 3条具体的提升建议
+                        - knowledgePoints: 请提取本场面试中暴露或考察到的所有核心底层实体概念（如生命周期、并发锁、响应式等，不少于 3 个）。mastery是 0.0-1.0 的浮点熟练度，category所属技术大类。
+                        """,
+                wpm);
 
         // 构建评估消息列表：用全新的 SystemMessage 确立"评估分析师"角色
         List<ChatMessage> evalMessages = new ArrayList<>();
@@ -312,7 +333,6 @@ public class InterviewServiceImpl implements InterviewService {
         // 追加一条 UserMessage 强化 JSON 输出要求
         evalMessages.add(new UserMessage("面试已结束。请立即输出 JSON 格式的评估报告，不要输出任何其他内容。"));
 
-
         try {
             log.info("开始生成 AI 评估报告 (recordId={}, 对话轮数={})", recordId, historyMessages.size());
             Response<AiMessage> evalResponse = chatModel.generate(evalMessages);
@@ -322,8 +342,12 @@ public class InterviewServiceImpl implements InterviewService {
             com.alibaba.fastjson2.JSONObject evalObj = JSON.parseObject(raw);
             record.setScore(evalObj.getInteger("score") != null ? evalObj.getInteger("score") : 0);
             record.setFeedback(evalObj.getString("feedback") != null ? evalObj.getString("feedback") : "评估内容生成异常");
-            if (evalObj.get("ability") != null) record.setAbilityJson(evalObj.getJSONObject("ability").toJSONString());
-            if (evalObj.get("recommendations") != null) record.setRecommendations(evalObj.getJSONArray("recommendations").toJSONString());
+            if (evalObj.get("ability") != null)
+                record.setAbilityJson(evalObj.getJSONObject("ability").toJSONString());
+            if (evalObj.get("recommendations") != null)
+                record.setRecommendations(evalObj.getJSONArray("recommendations").toJSONString());
+            if (evalObj.get("knowledgePoints") != null)
+                record.setKnowledgeJson(evalObj.getJSONArray("knowledgePoints").toJSONString());
         } catch (Exception e) {
             log.error("评估生成失败 (recordId={})", recordId, e);
             record.setScore(0);

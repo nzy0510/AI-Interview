@@ -23,7 +23,7 @@
         <div class="hero-content">
           <div class="badge">Next-Gen Interview Prep</div>
           <h1 class="hero-title">
-            打破传统，开启 <span class="gradient-text">AI 模拟面试</span> 新时代
+            打破传统，开启 <span class="gradient-text">AI-Interview</span> 新时代
           </h1>
           <p class="hero-subtitle">
             融合深度语义检索 (RAG) 与大语言模型，为您提供最真实的岗位实战演练与精准的能力画像评估。
@@ -123,7 +123,7 @@ class Particle {
   draw() {
     ctx.beginPath()
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2)
-    ctx.fillStyle = 'rgba(96, 165, 250, 0.4)'
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.4)' // Emerald particles
     ctx.fill()
   }
 }
@@ -141,7 +141,7 @@ const animate = () => {
   })
 
   // Draw lines
-  ctx.strokeStyle = 'rgba(96, 165, 250, 0.08)'
+  ctx.strokeStyle = 'rgba(16, 185, 129, 0.08)' // Emerald lines
   ctx.lineWidth = 1
   for (let i = 0; i < particles.length; i++) {
     for (let j = i + 1; j < particles.length; j++) {
@@ -265,7 +265,7 @@ const confirmMode = (mode) => {
 }
 .glass-btn:hover {
   background: rgba(255, 255, 255, 0.1) !important;
-  border-color: #60a5fa !important;
+  border-color: #10b981 !important; /* Emerald */
   color: #fff !important;
 }
 
@@ -284,10 +284,10 @@ const confirmMode = (mode) => {
 .badge {
   display: inline-block;
   padding: 6px 14px;
-  background: rgba(96, 165, 250, 0.1);
-  border: 1px solid rgba(96, 165, 250, 0.2);
+  background: rgba(16, 185, 129, 0.1); /* Emerald */
+  border: 1px solid rgba(16, 185, 129, 0.2);
   border-radius: 99px;
-  color: #60a5fa;
+  color: #10b981;
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 24px;
@@ -304,7 +304,7 @@ const confirmMode = (mode) => {
   letter-spacing: -1px;
 }
 .gradient-text {
-  background: linear-gradient(90deg, #60a5fa, #c084fc);
+  background: linear-gradient(90deg, #10b981, #0ea5e9, #f59e0b); /* Emerald -> Cyan -> Amber */
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -341,7 +341,7 @@ const confirmMode = (mode) => {
 .role-glass-card:hover {
   transform: translateY(-8px);
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(96, 165, 250, 0.4);
+  border-color: rgba(16, 185, 129, 0.4);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
@@ -351,7 +351,7 @@ const confirmMode = (mode) => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(96, 165, 250, 0.1) 0%, transparent 60%);
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(16, 185, 129, 0.1) 0%, transparent 60%);
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -367,8 +367,8 @@ const confirmMode = (mode) => {
   font-size: 32px;
   margin-bottom: 24px;
 }
-.java { background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(234, 88, 12, 0.1)); border: 1px solid rgba(249, 115, 22, 0.3); }
-.web { background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1)); border: 1px solid rgba(59, 130, 246, 0.3); }
+.java { background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1)); border: 1px solid rgba(245, 158, 11, 0.3); } /* Amber */
+.web { background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(8, 145, 178, 0.1)); border: 1px solid rgba(6, 182, 212, 0.3); } /* Cyan */
 
 .role-glass-card h3 {
   color: #f8fafc;
@@ -387,7 +387,7 @@ const confirmMode = (mode) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #60a5fa;
+  color: #10b981; /* Emerald */
   font-size: 14px;
   font-weight: 600;
   opacity: 0.8;

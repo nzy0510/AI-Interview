@@ -39,110 +39,110 @@
       </div>
     </main>
 
-    <!-- Report Overlay (reuse style from Interview.vue) -->
-    <div v-if="showReport" class="report-overlay">
-      <el-card class="report-card">
-        <template #header>
-          <div class="rpt-header">
-            <span class="rpt-title">📋 面试评估报告</span>
-            <el-tag type="success" effect="dark" size="large" round>综合得分 {{ displayScore }} / 100</el-tag>
-          </div>
-        </template>
-
-        <div class="report-body">
-          <el-tabs v-model="activeTab" class="rpt-tabs">
-            <!-- Tab 1: Radar -->
-            <el-tab-pane label="🎯 能力雷达图" name="radar">
-              <div class="radar-section">
-                <canvas ref="radarRef" width="360" height="360" class="radar-canvas" />
-                <div class="radar-legend">
-                  <div v-for="(dim, key) in abilityDimensions" :key="key" class="legend-item">
-                    <span class="legend-dot" :style="{ background: dim.color }"></span>
-                    <span class="legend-label">{{ dim.label }}</span>
-                    <el-tag :type="getGradeType(reportData.ability[key])" size="small">
-                      {{ reportData.ability[key] || '—' }}
-                    </el-tag>
-                  </div>
-                </div>
-              </div>
-            </el-tab-pane>
-
-            <!-- Tab 2: Feedback + Emotion -->
-            <el-tab-pane label="📝 面试反馈" name="feedback">
-              <div class="feedback-section">
-                <div class="metric-cards">
-                  <div class="metric-card">
-                    <div class="metric-value blue">{{ reportData.wpm || '—' }}</div>
-                    <div class="metric-label">平均语速 (WPM)</div>
-                  </div>
-                  <div class="metric-card" v-if="emotionSummary">
-                    <div class="metric-value green">{{ (emotionSummary.avgConfidence * 100).toFixed(0) }}%</div>
-                    <div class="metric-label">自信指数</div>
-                  </div>
-                  <div class="metric-card" v-if="emotionSummary">
-                    <div class="metric-value orange">{{ emotionLabel(emotionSummary.dominantEmotion) }}</div>
-                    <div class="metric-label">主导情绪</div>
-                  </div>
-                  <div class="metric-card">
-                    <div class="metric-value red">{{ totalRounds }}</div>
-                    <div class="metric-label">对话轮次</div>
-                  </div>
-                </div>
-
-                <!-- Emotion distribution bar (only in report) -->
-                <div v-if="emotionSummary" class="emotion-chart">
-                  <h4>📊 情绪分布</h4>
-                  <div v-for="(val, key) in emotionSummary.emotionDistribution" :key="key" class="emotion-bar-row">
-                    <span class="emotion-name">{{ emotionLabel(key) }}</span>
-                    <div class="emotion-bar-bg">
-                      <div class="emotion-bar-fill" :style="{ width: (val * 100) + '%', background: emotionColor(key) }"></div>
-                    </div>
-                    <span class="emotion-pct">{{ (val * 100).toFixed(0) }}%</span>
-                  </div>
-                </div>
-
-                <h4 style="margin-top: 20px">AI 综合点评</h4>
-                <p class="feedback-text">{{ reportData.feedback || '暂无反馈' }}</p>
-              </div>
-            </el-tab-pane>
-
-            <!-- Tab 3: Recommendations -->
-            <el-tab-pane label="🚀 提升计划" name="plan">
-              <div v-if="reportData.recommendations?.length" class="recommendations">
-                <el-timeline>
-                  <el-timeline-item
-                    v-for="(rec, i) in reportData.recommendations" :key="i"
-                    :timestamp="rec.period"
-                    placement="top"
-                    :color="['#409EFF', '#E6A23C', '#67C23A'][i % 3]"
-                  >
-                    <el-card shadow="hover">
-                      <h4>{{ rec.action }}</h4>
-                      <p>{{ rec.detail }}</p>
-                    </el-card>
-                  </el-timeline-item>
-                </el-timeline>
-              </div>
-              <el-empty v-else description="暂无建议数据" />
-            </el-tab-pane>
-          </el-tabs>
-
-          <div class="report-actions">
-            <el-button @click="router.push('/history')">查看历史</el-button>
+    <!-- Dashboard Overlay -->
+    <div v-if="showReport" class="dashboard-overlay">
+      <div class="dashboard-container">
+        <div class="dash-header">
+          <span class="dash-title">📋 智能面试深度体检报告</span>
+          <div class="dash-actions">
+            <el-button @click="router.push('/history')" plain>查看历史</el-button>
             <el-button type="primary" @click="router.push('/')">返回大厅</el-button>
           </div>
         </div>
-      </el-card>
+
+        <div class="bento-grid">
+          <!-- Top Left: Score -->
+          <div class="bento-card bento-score">
+            <h3 class="bento-card-title">综合能力评定</h3>
+            <div class="score-display">
+              <el-progress type="dashboard" :percentage="displayScore" :color="scoreColor" :width="160" :stroke-width="12">
+                <template #default="{ percentage }">
+                  <div class="score-val">{{ percentage }}</div>
+                  <div class="score-lbl">总分</div>
+                </template>
+              </el-progress>
+              <div class="grade-badge" :style="{ color: scoreColor }">评级: {{ reportData.score >= 90 ? '卓越 (A)' : reportData.score >= 75 ? '良好 (B)' : '及格 (C)' }}</div>
+            </div>
+          </div>
+
+          <!-- Top Right: Radar Diagram -->
+          <div class="bento-card bento-radar">
+            <h3 class="bento-card-title">六维能力图谱</h3>
+            <div ref="radarRef" class="echarts-container"></div>
+          </div>
+
+          <!-- Middle: KPIs -->
+          <div class="bento-card bento-kpis">
+            <div class="kpi-item">
+              <div class="kpi-icon">🎤</div>
+              <div class="kpi-data">
+                <div class="kpi-val">{{ reportData.wpm || '—' }} <span class="unit">WPM</span></div>
+                <div class="kpi-lbl">平均语速</div>
+              </div>
+            </div>
+            <div class="kpi-item">
+              <div class="kpi-icon">🗣️</div>
+              <div class="kpi-data">
+                <div class="kpi-val">{{ totalRounds }}</div>
+                <div class="kpi-lbl">交流轮次</div>
+              </div>
+            </div>
+            <div class="kpi-item" v-if="emotionSummary">
+              <div class="kpi-icon">✨</div>
+              <div class="kpi-data">
+                <div class="kpi-val">{{ (emotionSummary.avgConfidence * 100).toFixed(0) }}<span class="unit">%</span></div>
+                <div class="kpi-lbl">表现自信指数</div>
+              </div>
+            </div>
+            <div class="kpi-item" v-if="emotionSummary">
+              <div class="kpi-icon">🎭</div>
+              <div class="kpi-data">
+                <div class="kpi-val highlight">{{ emotionLabel(emotionSummary.dominantEmotion) }}</div>
+                <div class="kpi-lbl">主导情绪</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Left: AI Eval -->
+          <div class="bento-card bento-feedback">
+            <h3 class="bento-card-title">🤖 面试官综合评价</h3>
+            <div class="markdown-body custom-md" v-html="renderMarkdown(reportData.feedback || '暂无反馈')"></div>
+          </div>
+
+          <!-- Bottom Right: Roadmap -->
+          <div class="bento-card bento-roadmap">
+            <h3 class="bento-card-title">🚀 定制化提升路线</h3>
+            <div v-if="reportData.recommendations?.length" class="timeline-wrapper">
+              <el-timeline>
+                <el-timeline-item
+                  v-for="(rec, i) in reportData.recommendations" :key="i"
+                  :timestamp="rec.period"
+                  placement="top"
+                  :type="i === 0 ? 'success' : 'primary'"
+                  :hollow="i !== 0"
+                >
+                  <div class="roadmap-item">
+                    <h4>{{ rec.action }}</h4>
+                    <p>{{ rec.detail }}</p>
+                  </div>
+                </el-timeline-item>
+              </el-timeline>
+            </div>
+            <el-empty v-else description="暂无针对性建议" />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { marked } from 'marked'
+import * as echarts from 'echarts'
 import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
 import { initModels, analyzeFrame, getEmotionSummary, EMOTION_LABELS } from '@/utils/emotionAnalyzer'
 
@@ -163,8 +163,15 @@ const currentAiText = ref('')
 const totalRounds = ref(0)
 const currentAgent = ref('面试组长')
 const ttsEnabled = ref(false) // TTS 默认关闭
-const activeTab = ref('radar')
 const displayScore = ref(0)
+let radarChartInstance = null
+
+const scoreColor = computed(() => {
+  if (displayScore.value >= 90) return '#10b981'
+  if (displayScore.value >= 75) return '#f59e0b'
+  if (displayScore.value >= 60) return '#0ea5e9'
+  return '#ef4444'
+})
 
 const reportData = reactive({
   score: 0, feedback: '', wpm: 0,
@@ -469,6 +476,10 @@ function startListening() {
 
   recognition.onerror = (e) => {
     if (e.error !== 'no-speech') console.warn('[SR] Error:', e.error)
+    if (e.error === 'aborted' || e.error === 'not-allowed') {
+      stopListening()
+      ElMessage.warning('录音被系统中断或无权限，请检查麦克风设置')
+    }
   }
 
   turnStart = Date.now()
@@ -525,7 +536,6 @@ const performEndInterview = async () => {
       catch { reportData.recommendations = [] }
 
       showReport.value = true
-      activeTab.value = 'radar'
       nextTick(() => {
         animateScore(reportData.score)
         animateRadar()
@@ -546,14 +556,10 @@ function calcAvgWpm() {
   return totalSec > 0 ? Math.round((totalChars / totalSec) * 60) : 0
 }
 
-// ─── Radar Chart (same logic as Interview.vue) ───────────────────────────────
-watch(activeTab, (tab) => {
-  if (tab === 'radar') nextTick(() => animateRadar())
-})
-
+// ─── ECharts Radar ─────────────────────────────────────────────────────────────────
 function animateScore(target) {
   let current = 0
-  const step = Math.ceil(target / 40)
+  const step = Math.ceil(target / 40) || 1
   const timer = setInterval(() => {
     current += step
     if (current >= target) { current = target; clearInterval(timer) }
@@ -562,67 +568,62 @@ function animateScore(target) {
 }
 
 function animateRadar() {
-  const canvas = radarRef.value
-  if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  const W = canvas.width, H = canvas.height, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 40
-  const dims = Object.keys(abilityDimensions)
-  const n = dims.length
-  const gradeMap = { A: 1.0, B: 0.8, C: 0.6, D: 0.4, E: 0.2 }
-
-  ctx.clearRect(0, 0, W, H)
-
-  // Grid
-  for (let lv = 1; lv <= 5; lv++) {
-    ctx.beginPath()
-    const r = R * lv / 5
-    for (let i = 0; i <= n; i++) {
-      const angle = (Math.PI * 2 * i) / n - Math.PI / 2
-      const x = cx + r * Math.cos(angle)
-      const y = cy + r * Math.sin(angle)
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
-    }
-    ctx.closePath()
-    ctx.strokeStyle = 'rgba(200,200,200,0.3)'
-    ctx.stroke()
+  if (!radarRef.value) return
+  if (!radarChartInstance) radarChartInstance = echarts.init(radarRef.value)
+  
+  const rec = reportData
+  if (!rec) return
+  
+  const gradeToNum = (grade) => {
+    const map = { A: 95, B: 80, C: 65, D: 45, E: 20 }
+    return map[grade] || 45
   }
 
-  // Axes + labels
-  for (let i = 0; i < n; i++) {
-    const angle = (Math.PI * 2 * i) / n - Math.PI / 2
-    ctx.beginPath(); ctx.moveTo(cx, cy)
-    ctx.lineTo(cx + R * Math.cos(angle), cy + R * Math.sin(angle))
-    ctx.strokeStyle = 'rgba(200,200,200,0.2)'; ctx.stroke()
-    const lx = cx + (R + 24) * Math.cos(angle)
-    const ly = cy + (R + 24) * Math.sin(angle)
-    ctx.fillStyle = '#606266'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    ctx.fillText(abilityDimensions[dims[i]].label, lx, ly)
-  }
+  const scores = [
+    gradeToNum(rec.ability.techDepth),
+    gradeToNum(rec.ability.breadth),
+    gradeToNum(rec.ability.logic),
+    gradeToNum(rec.ability.expression),
+    gradeToNum(rec.ability.adaptability),
+    gradeToNum(rec.ability.problemSolving)
+  ]
 
-  // Data polygon
-  ctx.beginPath()
-  for (let i = 0; i <= n; i++) {
-    const idx = i % n
-    const angle = (Math.PI * 2 * idx) / n - Math.PI / 2
-    const grade = reportData.ability[dims[idx]] || 'D'
-    const val = gradeMap[grade] || 0.2
-    const x = cx + R * val * Math.cos(angle)
-    const y = cy + R * val * Math.sin(angle)
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+  const option = {
+    radar: {
+      indicator: [
+        { name: '技术深度', max: 100 },
+        { name: '知识广度', max: 100 },
+        { name: '逻辑思维', max: 100 },
+        { name: '表达清晰', max: 100 },
+        { name: '应变能力', max: 100 },
+        { name: '解题思路', max: 100 }
+      ],
+      shape: 'polygon',
+      axisName: { color: '#cbd5e1', fontSize: 13, fontWeight: 600 },
+      splitNumber: 5,
+      splitArea: { areaStyle: { color: ['rgba(16,185,129,0.06)', 'rgba(16,185,129,0.02)', 'transparent', 'transparent', 'transparent'] } },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } }
+    },
+    tooltip: { trigger: 'item' },
+    series: [{
+      type: 'radar',
+      data: [{
+        value: scores,
+        name: '综合评估',
+        symbolSize: 6,
+        itemStyle: { color: '#10b981', borderColor: '#fff', borderWidth: 2 },
+        lineStyle: { color: '#10b981', width: 2 },
+        areaStyle: { 
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(16,185,129,0.6)' },
+            { offset: 1, color: 'rgba(16,185,129,0.1)' }
+          ])
+        }
+      }]
+    }]
   }
-  ctx.closePath()
-  ctx.fillStyle = 'rgba(64, 158, 255, 0.25)'; ctx.fill()
-  ctx.strokeStyle = '#409EFF'; ctx.lineWidth = 2; ctx.stroke()
-
-  // Data points
-  for (let i = 0; i < n; i++) {
-    const angle = (Math.PI * 2 * i) / n - Math.PI / 2
-    const grade = reportData.ability[dims[i]] || 'D'
-    const val = gradeMap[grade] || 0.2
-    ctx.beginPath()
-    ctx.arc(cx + R * val * Math.cos(angle), cy + R * val * Math.sin(angle), 4, 0, Math.PI * 2)
-    ctx.fillStyle = abilityDimensions[dims[i]].color; ctx.fill()
-  }
+  radarChartInstance.setOption(option)
 }
 </script>
 
@@ -683,7 +684,7 @@ function animateRadar() {
   backdrop-filter: blur(10px);
   animation: fadeInDown 0.3s ease;
 }
-.status-badge.speaking { background: rgba(64, 158, 255, 0.7); }
+.status-badge.speaking { background: rgba(16, 185, 129, 0.7); } /* Emerald */
 .status-badge.listening { background: rgba(103, 194, 58, 0.7); }
 .status-badge.thinking { background: rgba(230, 162, 60, 0.7); }
 
@@ -710,9 +711,9 @@ function animateRadar() {
   white-space: nowrap;
   transition: background 0.3s;
 }
-.ai-label.coordinator { background: rgba(64, 158, 255, 0.8); }
+.ai-label.coordinator { background: rgba(16, 185, 129, 0.8); } /* Emerald */
 .ai-label.technical { background: rgba(245, 108, 108, 0.8); }
-.ai-label.hr { background: rgba(103, 194, 58, 0.8); }
+.ai-label.hr { background: rgba(245, 158, 11, 0.8); } /* Amber */
 .subtitle-text {
   font-size: 15px;
   line-height: 1.6;
@@ -721,65 +722,71 @@ function animateRadar() {
   overflow-y: auto;
 }
 .subtitle-text :deep(p) { margin: 0; }
-.blinking-cursor { animation: blink 0.8s infinite; color: #409EFF; }
+.blinking-cursor { animation: blink 0.8s infinite; color: #10b981; }
 
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 @keyframes fadeInDown { from { opacity: 0; transform: translateX(-50%) translateY(-10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
-/* Report */
-.report-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 20px;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(8px);
+/* Dashboard Overlay / Bento Grid */
+.dashboard-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: 30px 20px;
+  background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px);
   overflow-y: auto;
 }
-.report-card {
-  width: 780px;
-  max-width: 95vw;
-  border-radius: 16px;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+.dashboard-container {
+  width: 1100px; max-width: 98vw;
+  display: flex; flex-direction: column; gap: 20px;
 }
-.rpt-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.dash-header { display: flex; justify-content: space-between; align-items: center; }
+.dash-title { font-size: 24px; font-weight: 800; color: #f8fafc; text-shadow: 0 2px 10px rgba(16,185,129,0.5); }
+.dash-actions { display: flex; gap: 12px; }
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 20px;
 }
-.rpt-title { font-size: 20px; font-weight: 700; }
+.bento-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex; flex-direction: column;
+}
+.bento-card-title { margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #cbd5e1; display: flex; align-items: center; gap: 8px; }
 
-.radar-section { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; align-items: center; padding: 10px; }
-.radar-canvas { border: 1px solid #eee; border-radius: 12px; }
-.radar-legend { display: flex; flex-direction: column; gap: 12px; }
-.legend-item { display: flex; align-items: center; gap: 8px; }
-.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-.legend-label { font-size: 14px; color: #606266; min-width: 70px; }
+.bento-score { grid-column: 1 / 2; grid-row: 1 / 3; align-items: center; text-align: center; justify-content: center; }
+.score-display { display: flex; flex-direction: column; align-items: center; gap: 12px; height: 100%; justify-content: center; }
+.score-val { font-size: 38px; font-weight: 800; line-height: 1; }
+.score-lbl { font-size: 13px; color: #94a3b8; }
+.grade-badge { font-size: 18px; font-weight: 800; margin-top: 10px; padding: 6px 16px; background: rgba(255,255,255,0.05); border-radius: 12px; }
 
-.feedback-section { padding: 10px; }
-.metric-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
-.metric-card { text-align: center; padding: 16px 10px; background: #f5f7fa; border-radius: 12px; }
-.metric-value { font-size: 28px; font-weight: 700; }
-.metric-value.blue { color: #409EFF; }
-.metric-value.green { color: #67C23A; }
-.metric-value.orange { color: #E6A23C; }
-.metric-value.red { color: #F56C6C; }
-.metric-label { font-size: 12px; color: #909399; margin-top: 4px; }
-.feedback-text { font-size: 15px; line-height: 1.8; color: #303133; background: #fafafa; padding: 16px; border-radius: 12px; }
+.bento-radar { grid-column: 2 / 4; grid-row: 1 / 2; min-height: 340px; }
+.echarts-container { width: 100%; height: 100%; min-height: 300px; flex: 1; }
 
-.emotion-chart { margin-top: 16px; padding: 16px; background: #fafafa; border-radius: 12px; }
-.emotion-chart h4 { margin: 0 0 12px; font-size: 15px; }
-.emotion-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.emotion-name { min-width: 50px; font-size: 13px; color: #606266; text-align: right; }
-.emotion-bar-bg { flex: 1; height: 16px; background: #ebeef5; border-radius: 8px; overflow: hidden; }
-.emotion-bar-fill { height: 100%; border-radius: 8px; transition: width 0.6s ease; }
-.emotion-pct { min-width: 40px; font-size: 13px; color: #909399; }
+.bento-kpis { 
+  grid-column: 2 / 4; grid-row: 2 / 3; 
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 16px; 
+  align-items: center; justify-content: center; background: rgba(30, 41, 59, 0.4); 
+}
+.kpi-item { display: flex; align-items: center; gap: 12px; }
+.kpi-icon { font-size: 28px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px; line-height: 1;}
+.kpi-val { font-size: 20px; font-weight: 800; color: #f8fafc; }
+.kpi-val.highlight { color: #f59e0b; }
+.kpi-lbl { font-size: 12px; color: #94a3b8; }
+.unit { font-size: 12px; font-weight: normal; color: #64748b; margin-left: 2px; }
 
-.recommendations { padding: 10px; }
-.report-actions { display: flex; justify-content: center; gap: 16px; margin-top: 20px; }
+.bento-feedback { grid-column: 1 / 3; grid-row: 3 / 4; min-height: 300px; max-height: 500px; overflow-y: auto; }
+.bento-roadmap { grid-column: 3 / 4; grid-row: 3 / 4; min-height: 300px; max-height: 500px; overflow-y: auto; }
 
-.rpt-tabs :deep(.el-tabs__header) { padding: 0 16px; }
+.custom-md { color: #e2e8f0; font-size: 15px; line-height: 1.7; }
+.custom-md :deep(h1), .custom-md :deep(h2), .custom-md :deep(h3) { color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.1); margin-top: 0; padding-bottom: 8px; }
+.custom-md :deep(strong) { color: #10b981; }
+
+.roadmap-item h4 { margin: 0 0 6px 0; color: #f8fafc; font-size: 15px; }
+.roadmap-item p { margin: 0; color: #cbd5e1; font-size: 13.5px; line-height: 1.6; }
+:deep(.el-timeline-item__content) { padding-bottom: 16px; }
 </style>
