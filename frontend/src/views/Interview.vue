@@ -260,8 +260,20 @@ const renderMarkdown = (text) => {
 // ─── Lifecycle ───────────────────────────────────────────────────────────────
 onMounted(async () => {
   isSpeechSupported.value = !!(window.SpeechRecognition || window.webkitSpeechRecognition)
+  
+  const isTailored = route.query.isTailored === 'true'
+  let resumeQuestions = undefined
+  if (isTailored) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem('resume_analysis'))
+      if (parsed && parsed.tailoredQuestions) {
+        resumeQuestions = parsed.tailoredQuestions
+      }
+    } catch {}
+  }
+
   try {
-    const id = await startInterviewAPI({ position: position.value })
+    const id = await startInterviewAPI({ position: position.value, resumeQuestions })
     recordId.value = id
     triggerAiStart()
   } catch {
@@ -556,6 +568,10 @@ const streamAiResponse = (msg) => {
     if (d.content !== undefined && d.content !== null) {
       aiMsg.content += d.content
       
+      if (aiMsg.content.includes('[SWITCH_TO_HR]')) {
+        aiMsg.content = aiMsg.content.replace('[SWITCH_TO_HR]', '').trim()
+      }
+
       // Check for termination marker
       if (aiMsg.content.includes('[TERMINATE]')) {
         aiMsg.content = aiMsg.content.replace('[TERMINATE]', '').trim()

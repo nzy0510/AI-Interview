@@ -74,6 +74,13 @@
             <version>${fastjson2.version}</version>
         </dependency>
 
+        <!-- Apache PDFBox for Resume Parsing -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.29</version>
+        </dependency>
+
         <!-- JWT 认证 -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

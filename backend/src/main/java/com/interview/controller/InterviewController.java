@@ -32,7 +32,8 @@ public class InterviewController {
         Long userId = 1L;
         String position = (String) params.get("position"); // 岗位名称，如 "Java后端开发"
         String mode = params.get("mode") != null ? params.get("mode").toString() : "text";
-        Long recordId = interviewService.startInterview(userId, position, mode);
+        java.util.List<String> resumeQuestions = (java.util.List<String>) params.get("resumeQuestions");
+        Long recordId = interviewService.startInterview(userId, position, mode, resumeQuestions);
         return Result.success(recordId);
     }
 
