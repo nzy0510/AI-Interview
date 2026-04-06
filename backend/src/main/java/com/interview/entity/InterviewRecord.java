@@ -55,6 +55,12 @@ public class InterviewRecord {
     /** 面试模式: text=文字模式, video=视频模式 */
     private String interviewMode;
 
+    /**
+     * 星系知识图谱数据 JSON，格式如：
+     * [{"concept":"微服务架构","mastery":0.8,"category":"架构设计"},...]
+     */
+    private String knowledgeJson;
+
     private LocalDateTime createTime;
 
     private LocalDateTime endTime;

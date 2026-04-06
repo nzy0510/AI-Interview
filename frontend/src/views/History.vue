@@ -20,11 +20,12 @@
               <span>📈 能力成长曲线（综合得分趋势）</span>
               <el-radio-group v-model="chartMode" size="small" @change="drawGrowthChart">
                 <el-radio-button value="score">综合得分</el-radio-button>
-                <el-radio-button value="radar">六维能力</el-radio-button>
+                <el-radio-button value="radar">能力热力图</el-radio-button>
+                <el-radio-button value="graph">🪐 知识星图</el-radio-button>
               </el-radio-group>
             </div>
           </template>
-          <canvas ref="growthCanvasRef" class="growth-canvas" />
+          <div ref="growthChartRef" class="echarts-growth-container"></div>
         </el-card>
 
         <!-- ══ History List ══ -->
@@ -83,7 +84,7 @@
         <!-- Mini Radar -->
         <el-divider content-position="left">六维能力评级</el-divider>
         <div class="mini-radar-wrap">
-          <canvas ref="miniRadarRef" width="280" height="280" class="mini-radar" />
+          <div ref="miniRadarRef" class="echarts-mini-radar"></div>
           <div class="mini-legend">
             <div v-for="(dim, key) in abilityDimensions" :key="key" class="legend-row">
               <span class="l-dot" :style="{ background: dim.color }"></span>
@@ -151,17 +152,20 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { getHistoryListAPI } from '@/api/interview'
+import * as echarts from 'echarts'
 
 const router = useRouter()
 const loading = ref(true)
 const historyList = ref([])      // Sorted newest-first for table
 const chartMode = ref('score')
-const growthCanvasRef = ref(null)
+const growthChartRef = ref(null)
 const miniRadarRef = ref(null)
+let growthChartInstance = null
+let miniRadarInstance = null
 const drawerOpen = ref(false)
 const selected = ref(null)
 
@@ -205,9 +209,23 @@ onMounted(async () => {
     historyList.value = []
   } finally {
     loading.value = false
-    nextTick(() => drawGrowthChart())
+    nextTick(() => {
+      drawGrowthChart()
+      window.addEventListener('resize', handleResize)
+    })
   }
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  if (growthChartInstance) growthChartInstance.dispose()
+  if (miniRadarInstance) miniRadarInstance.dispose()
+})
+
+const handleResize = () => {
+  if (growthChartInstance) growthChartInstance.resize()
+  if (miniRadarInstance) miniRadarInstance.resize()
+}
 
 watch(drawerOpen, (v) => {
   if (v) nextTick(() => drawMiniRadar())
@@ -224,199 +242,286 @@ const openDetail = (row) => {
 
 // ─── Growth Trend Chart ───────────────────────────────────────────────────────
 const drawGrowthChart = () => {
-  const canvas = growthCanvasRef.value
-  if (!canvas || chartData.value.length === 0) return
+  const container = growthChartRef.value
+  if (!container || chartData.value.length === 0) return
 
-  const W = canvas.parentElement.offsetWidth || 720
-  canvas.width = W
-  canvas.height = 240
-  const ctx = canvas.getContext('2d')
-  ctx.clearRect(0, 0, W, canvas.height)
+  if (!growthChartInstance) {
+    growthChartInstance = echarts.init(container)
+  }
 
-  const H = canvas.height
-  const pad = { top: 30, right: 30, bottom: 40, left: 50 }
-  const plotW = W - pad.left - pad.right
-  const plotH = H - pad.top - pad.bottom
   const data = chartData.value
+  const xAxisData = data.map(r => formatDate(r.createTime).split(' ')[0])
 
   if (chartMode.value === 'score') {
     const scores = data.map(r => r.score || 0)
-    const minV = Math.max(0, Math.min(...scores) - 10)
-    const maxV = Math.min(100, Math.max(...scores) + 10)
-    const range = maxV - minV || 1
-
-    // Horizontal grid
-    ctx.setLineDash([5, 5])
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)'
-    for (let i = 0; i <= 4; i++) {
-      const y = pad.top + plotH - (i / 4) * plotH
-      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + plotW, y); ctx.stroke()
-      ctx.fillStyle = '#475569'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'
-      ctx.fillText(Math.round(minV + (range * i) / 4), pad.left - 10, y + 4)
+    
+    const option = {
+      grid: { top: 40, right: 30, bottom: 40, left: 50 },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: '#10b981', textStyle: { color: '#f8fafc' } },
+      xAxis: {
+        type: 'category',
+        data: xAxisData,
+        axisLine: { lineStyle: { color: '#475569' } },
+        axisLabel: { color: '#94a3b8' }
+      },
+      yAxis: {
+        type: 'value',
+        min: 'dataMin',
+        max: 'dataMax',
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)', type: 'dashed' } },
+        axisLabel: { color: '#94a3b8' }
+      },
+      series: [
+        {
+          name: '综合得分',
+          data: scores,
+          type: 'line',
+          smooth: true,
+          symbolSize: 8,
+          itemStyle: { color: '#10b981' },
+          lineStyle: { color: '#10b981', width: 3 },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(16, 185, 129, 0.4)' },
+              { offset: 1, color: 'rgba(16, 185, 129, 0.0)' }
+            ])
+          }
+        }
+      ]
     }
-    ctx.setLineDash([])
-
-    const pts = data.map((r, i) => ({
-      x: pad.left + (i / Math.max(data.length - 1, 1)) * plotW,
-      y: pad.top + plotH - ((r.score || 0) - minV) / range * plotH
-    }))
-
-    // Area Gradient
-    const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH)
-    grad.addColorStop(0, 'rgba(96, 165, 250, 0.2)')
-    grad.addColorStop(1, 'rgba(96, 165, 250, 0)')
-    ctx.beginPath()
-    ctx.moveTo(pts[0].x, pad.top + plotH)
-    pts.forEach(p => ctx.lineTo(p.x, p.y))
-    ctx.lineTo(pts[pts.length - 1].x, pad.top + plotH)
-    ctx.closePath(); ctx.fillStyle = grad; ctx.fill()
-
-    // Main Line
-    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y)
-    pts.forEach(p => ctx.lineTo(p.x, p.y))
-    ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke()
-
-    // Dots
-    pts.forEach((p, i) => {
-      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2)
-      ctx.fillStyle = '#60a5fa'; ctx.fill()
-      ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke()
-      
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'
-      ctx.fillText(data[i].score, p.x, p.y - 12)
-    })
-
-    // X axis labels
-    data.forEach((r, i) => {
-      const x = pad.left + (i / Math.max(data.length - 1, 1)) * plotW
-      ctx.fillStyle = '#64748b'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'
-      ctx.fillText(formatDate(r.createTime).split(' ')[0], x, H - 10)
-    })
-
-  } else {
-    // Heatmap: rows = dimensions, columns = sessions
+    growthChartInstance.setOption(option, true)
+  } else if (chartMode.value === 'radar') {
+    // Heatmap mode
     const dimKeys = Object.keys(abilityDimensions)
     const dimLabels = Object.values(abilityDimensions).map(d => d.label)
-    const n = dimKeys.length
-    const sessions = data.length
+    const yAxisData = dimLabels.reverse() // Reverse so top is first dimension
 
-    // Layout
-    const labelW = 70
-    const cellW = Math.min(60, (plotW - labelW) / Math.max(sessions, 1))
-    const cellH = Math.min(28, plotH / n)
-    const startX = pad.left + labelW
-    const startY = pad.top + 20
-
-    // Grade color mapping (A=deep blue, E=very light)
-    const gradeColors = {
-      A: 'rgba(64, 158, 255, 1.0)',
-      B: 'rgba(64, 158, 255, 0.7)',
-      C: 'rgba(64, 158, 255, 0.45)',
-      D: 'rgba(64, 158, 255, 0.25)',
-      E: 'rgba(64, 158, 255, 0.10)'
-    }
-
-    // Row labels (dimension names)
-    dimLabels.forEach((label, ri) => {
-      const y = startY + ri * cellH + cellH / 2
-      ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'
-      ctx.fillText(label, pad.left + labelW - 10, y)
-    })
-
-    // Column headers (dates)
-    data.forEach((r, ci) => {
-      const x = startX + ci * cellW + cellW / 2
-      ctx.fillStyle = '#64748b'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
-      ctx.fillText(formatDate(r.createTime).split(' ')[0], x, startY - 4)
-    })
-
-    // Draw cells
-    dimKeys.forEach((key, ri) => {
-      data.forEach((r, ci) => {
-        let grade = 'E'
-        try {
-          const ab = JSON.parse(r.abilityJson || '{}')
-          grade = ab[key] || 'E'
-        } catch { /* default E */ }
-
-        const x = startX + ci * cellW
-        const y = startY + ri * cellH
-
-        // Cell background
-        ctx.fillStyle = gradeColors[grade] || gradeColors.E
-        const radius = 4
-        ctx.beginPath()
-        ctx.moveTo(x + radius, y + 1)
-        ctx.lineTo(x + cellW - 1 - radius, y + 1)
-        ctx.quadraticCurveTo(x + cellW - 1, y + 1, x + cellW - 1, y + 1 + radius)
-        ctx.lineTo(x + cellW - 1, y + cellH - 1 - radius)
-        ctx.quadraticCurveTo(x + cellW - 1, y + cellH - 1, x + cellW - 1 - radius, y + cellH - 1)
-        ctx.lineTo(x + radius, y + cellH - 1)
-        ctx.quadraticCurveTo(x, y + cellH - 1, x, y + cellH - 1 - radius)
-        ctx.lineTo(x, y + 1 + radius)
-        ctx.quadraticCurveTo(x, y + 1, x + radius, y + 1)
-        ctx.closePath()
-        ctx.fill()
-
-        // Grade letter
-        ctx.fillStyle = grade === 'E' || grade === 'D' ? '#64748b' : '#fff'
-        ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText(grade, x + cellW / 2, y + cellH / 2)
+    const gradeVal = { A: 4, B: 3, C: 2, D: 1, E: 0 }
+    const heatmapData = []
+    
+    const revKeys = [...dimKeys].reverse()
+    
+    data.forEach((r, xIndex) => {
+      let ab = {}
+      try { ab = JSON.parse(r.abilityJson || '{}') } catch {}
+      revKeys.forEach((key, yIndex) => {
+        const grade = ab[key] || 'E'
+        heatmapData.push([xIndex, yIndex, gradeVal[grade], grade])
       })
     })
+
+    const option = {
+      grid: { top: 30, right: 30, bottom: 40, left: 80 },
+      tooltip: {
+        position: 'top',
+        backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: '#10b981', textStyle: { color: '#f8fafc' },
+        formatter: (params) => `${params.name} <br/> 维度: <b>${yAxisData[params.value[1]]}</b> <br/> 评级: <b>${params.value[3]}</b>`
+      },
+      xAxis: {
+        type: 'category',
+        data: xAxisData,
+        axisLine: { lineStyle: { color: '#475569' } },
+        axisLabel: { color: '#94a3b8' },
+        splitArea: { show: true, areaStyle: { color: ['rgba(255,255,255,0.02)', 'transparent'] } }
+      },
+      yAxis: {
+        type: 'category',
+        data: yAxisData,
+        axisLine: { lineStyle: { color: '#475569' } },
+        axisLabel: { color: '#94a3b8' }
+      },
+      visualMap: {
+        min: 0, max: 4,
+        calculable: true,
+        orient: 'horizontal',
+        left: 'center',
+        bottom: 0,
+        show: false,
+        inRange: {
+          color: ['rgba(16,185,129,0.05)', 'rgba(16,185,129,0.3)', 'rgba(16,185,129,0.5)', 'rgba(16,185,129,0.8)', 'rgba(16,185,129,1.0)']
+        }
+      },
+      series: [{
+        name: '能力评级',
+        type: 'heatmap',
+        data: heatmapData,
+        label: {
+          show: true,
+          formatter: (p) => p.data[3],
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 'bold'
+        },
+        itemStyle: {
+          borderColor: '#0f172a',
+          borderWidth: 2,
+          borderRadius: 4
+        }
+      }]
+    }
+    growthChartInstance.setOption(option, true)
+  } else if (chartMode.value === 'graph') {
+    // 🌌 Knowledge Graph Force Directed
+    const nodeMap = new Map()
+    const edges = []
+    
+    data.forEach(r => {
+      let kPoints = []
+      try { kPoints = JSON.parse(r.knowledgeJson || '[]') } catch {}
+      
+      if (kPoints && kPoints.length > 0) {
+        for (let i = 0; i < kPoints.length; i++) {
+          const p = kPoints[i]
+          const name = p.concept || '未知知识点'
+          const mastery = p.mastery != null ? parseFloat(p.mastery) : 0.5
+          const cat = p.category || '综合'
+          
+          if (nodeMap.has(name)) {
+            const nd = nodeMap.get(name)
+            nd.masterySum += mastery
+            nd.count += 1
+          } else {
+            nodeMap.set(name, { name, masterySum: mastery, count: 1, category: cat })
+          }
+          
+          // Connect to subsequent concepts in the SAME interview session
+          for (let j = i + 1; j < kPoints.length; j++) {
+            const TargetName = kPoints[j].concept || '未知知识点'
+            edges.push({ source: name, target: TargetName })
+          }
+        }
+      }
+    })
+
+    const nodes = []
+    const categories = []
+    const categoryMap = new Map()
+
+    nodeMap.forEach((val, key) => {
+      const avg = val.masterySum / val.count
+      if (!categoryMap.has(val.category)) {
+        categoryMap.set(val.category, categories.length)
+        categories.push({ name: val.category })
+      }
+
+      let color = '#5B9BD5' 
+      if (avg >= 0.8) color = '#10b981' // Green (Good mastery)
+      else if (avg >= 0.6) color = '#E6A23C' // Yellow (Avg)
+      else color = '#F56C6C' // Red (Poor)
+
+      nodes.push({
+        name: key,
+        value: (avg * 100).toFixed(1),
+        symbolSize: Math.min(80, 20 + val.count * 12),
+        category: categoryMap.get(val.category),
+        itemStyle: {
+          color: color,
+          shadowBlur: 20,
+          shadowColor: color
+        },
+        label: { show: true, formatter: '{b}', textStyle: { color: '#e2e8f0', textBorderColor: '#0f172a', textBorderWidth: 2 } }
+      })
+    })
+
+    // If completely empty across all history, show dummy data so user isn't bored
+    if (nodes.length === 0) {
+      nodes.push({ name: '暂无知识点', value: 0, symbolSize: 50, itemStyle: { color: '#94a3b8' } })
+    }
+
+    const option = {
+      grid: { top: 30, right: 30, bottom: 50, left: 30 },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.95)', borderColor: '#10b981', textStyle: { color: '#f8fafc' },
+        formatter: (params) => {
+          if (params.dataType === 'node') {
+            const catStr = categories.length > 0 && params.data.category != null ? categories[params.data.category].name : '无'
+            return `<div style="font-weight:bold;font-size:16px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.2)">${params.name}</div>
+                    领域类别: <span style="color:#60a5fa">${catStr}</span> <br/> 
+                    评估熟练度: <span style="color:${params.color};font-weight:bold">${params.value}%</span>`
+          }
+          return ''
+        }
+      },
+      legend: [{
+        data: categories.map(a => a.name),
+        textStyle: { color: '#94a3b8' },
+        bottom: 10
+      }],
+      animationDuration: 1500,
+      animationEasingUpdate: 'quinticInOut',
+      series: [
+        {
+          name: '星系知识图谱',
+          type: 'graph',
+          layout: 'force',
+          data: nodes,
+          links: edges,
+          categories: categories,
+          roam: true,
+          label: { position: 'right' },
+          force: { repulsion: 300, edgeLength: 120, layoutAnimation: true },
+          lineStyle: { color: 'source', curveness: 0.2, opacity: 0.2, width: 1.5 }
+        }
+      ]
+    }
+    growthChartInstance.setOption(option, true)
   }
 }
 
 // ─── Mini Radar ───────────────────────────────────────────────────────────────
 const drawMiniRadar = () => {
-  const canvas = miniRadarRef.value
-  if (!canvas || !selected.value) return
-  const ability = selectedAbility.value
-  const keys = Object.keys(abilityDimensions)
-  const colors = Object.values(abilityDimensions).map(d => d.color)
-  const labels = Object.values(abilityDimensions).map(d => d.label)
-  const n = keys.length, W = canvas.width, H = canvas.height
-  const cx = W / 2, cy = H / 2, maxR = Math.min(cx, cy) - 38
-  const angle = (Math.PI * 2) / n
-  const ctx = canvas.getContext('2d')
-  ctx.clearRect(0, 0, W, H)
+  const container = miniRadarRef.value
+  if (!container || !selected.value) return
+  if (!miniRadarInstance) miniRadarInstance = echarts.init(container)
 
-  // Grid
-  for (let ring = 1; ring <= 5; ring++) {
-    const r = maxR * (ring / 5)
-    ctx.beginPath()
-    for (let i = 0; i < n; i++) {
-      const a = angle * i - Math.PI / 2
-      i === 0 ? ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a))
-               : ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a))
-    }
-    ctx.closePath(); ctx.strokeStyle = ring === 5 ? 'rgba(64,158,255,.3)' : 'rgba(0,0,0,.07)'; ctx.lineWidth = 1; ctx.stroke()
+  const ability = selectedAbility.value
+  const gradeToNum = (grade) => {
+    const map = { A: 95, B: 80, C: 65, D: 45, E: 20 }
+    return map[grade] || 20
   }
-  // Axes
-  for (let i = 0; i < n; i++) {
-    const a = angle * i - Math.PI / 2
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR * Math.cos(a), cy + maxR * Math.sin(a))
-    ctx.strokeStyle = 'rgba(0,0,0,.1)'; ctx.stroke()
+  const scores = [
+    gradeToNum(ability.techDepth),
+    gradeToNum(ability.breadth),
+    gradeToNum(ability.logic),
+    gradeToNum(ability.expression),
+    gradeToNum(ability.adaptability),
+    gradeToNum(ability.problemSolving)
+  ]
+
+  const option = {
+    radar: {
+      indicator: [
+        { name: '技术深度', max: 100 },
+        { name: '知识广度', max: 100 },
+        { name: '逻辑思维', max: 100 },
+        { name: '表达清晰', max: 100 },
+        { name: '应变能力', max: 100 },
+        { name: '解题思路', max: 100 }
+      ],
+      shape: 'polygon',
+      axisName: { color: '#94a3b8', fontSize: 12 },
+      splitNumber: 4,
+      splitArea: { areaStyle: { color: ['rgba(16,185,129,0.05)', 'transparent'] } },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+    },
+    series: [{
+      type: 'radar',
+      data: [{
+        value: scores,
+        symbolSize: 4,
+        itemStyle: { color: '#10b981' },
+        lineStyle: { width: 2 },
+        areaStyle: { 
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(16,185,129,0.5)' },
+            { offset: 1, color: 'rgba(16,185,129,0.1)' }
+          ])
+        }
+      }]
+    }]
   }
-  // Polygon
-  const scores = keys.map(k => gradeScore[ability[k]] || 0.2)
-  ctx.beginPath()
-  for (let i = 0; i < n; i++) {
-    const a = angle * i - Math.PI / 2, r = maxR * scores[i]
-    i === 0 ? ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a))
-             : ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a))
-  }
-  ctx.closePath(); ctx.fillStyle = 'rgba(64,158,255,.18)'; ctx.fill()
-  ctx.strokeStyle = '#409eff'; ctx.lineWidth = 2; ctx.stroke()
-  // Labels & dots
-  for (let i = 0; i < n; i++) {
-    const a = angle * i - Math.PI / 2, r = maxR * scores[i]
-    ctx.beginPath(); ctx.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 4, 0, Math.PI * 2)
-    ctx.fillStyle = colors[i]; ctx.fill()
-    const lr = maxR + 28
-    ctx.fillStyle = '#303133'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    ctx.fillText(labels[i], cx + lr * Math.cos(a), cy + lr * Math.sin(a))
-  }
+  miniRadarInstance.setOption(option)
 }
 </script>
 
@@ -433,7 +538,7 @@ const drawMiniRadar = () => {
   border-bottom: 1px solid rgba(255,255,255,0.08); 
   flex-shrink: 0; 
 }
-.page-title { margin: 0; font-size: 20px; font-weight: 800; background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.page-title { margin: 0; font-size: 20px; font-weight: 800; background: linear-gradient(90deg, #10b981, #0ea5e9); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 
 .page-body { 
   flex: 1; 
@@ -458,8 +563,9 @@ const drawMiniRadar = () => {
   font-weight: 600;
   font-size: 14px;
 }
-
-.growth-canvas { width: 100%; display: block; filter: drop-shadow(0 0 10px rgba(96,165,250,0.1)); }
+.chart-header { display: flex; justify-content: space-between; align-items: center; }
+.echarts-growth-container { width: 100%; height: 320px; }
+.echarts-mini-radar { width: 280px; height: 280px; flex-shrink: 0; }
 :deep(.el-table) { background: transparent !important; --el-table-tr-bg-color: transparent; --el-table-header-bg-color: rgba(255,255,255,0.02); --el-table-row-hover-bg-color: rgba(255,255,255,0.05); color: #cbd5e1; }
 :deep(.el-table th) { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
 :deep(.el-table td) { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
@@ -471,7 +577,7 @@ const drawMiniRadar = () => {
 /* Drawer */
 :deep(.el-drawer) { background: #0f172a; color: #f8fafc; border-left: 1px solid rgba(255,255,255,0.1); }
 :deep(.el-drawer__header) { margin-bottom: 0; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-:deep(.el-drawer__title) { color: #60a5fa; font-weight: 800; }
+:deep(.el-drawer__title) { color: #10b981; font-weight: 800; }
 
 .drawer-body { padding: 20px 0; }
 .detail-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding: 0 4px; }

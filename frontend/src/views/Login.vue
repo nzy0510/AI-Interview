@@ -120,7 +120,7 @@ const handleRegister = async () => {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  background: linear-gradient(135deg, #e0f2fe 0%, #ccfbf1 50%, #fef3c7 100%); /* Diverse fresh gradient */
 }
 
 .login-card {

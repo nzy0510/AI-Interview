@@ -84,85 +84,92 @@
         </div>
       </el-footer>
 
-      <!-- =================== Report Overlay =================== -->
-      <div v-if="showReport" class="report-overlay">
-        <el-card class="report-card">
-          <template #header>
-            <div class="rpt-header">
-              <span class="rpt-title">📋 面试评估报告</span>
-              <el-tag type="success" effect="dark" size="large" round>
-                综合得分 {{ displayScore }} / 100
-              </el-tag>
+      <!-- =================== Report Overlay (Bento Grid) =================== -->
+      <div v-if="showReport" class="dashboard-overlay">
+        <div class="dashboard-container">
+          <div class="dash-header">
+            <span class="dash-title">📋 智能面试深度体检报告</span>
+            <div class="dash-actions">
+              <el-button @click="router.push('/history')" plain>查看历史</el-button>
+              <el-button type="primary" @click="router.push('/')">返回大厅</el-button>
             </div>
-          </template>
+          </div>
 
-          <div class="report-body">
-            <!-- Tab navigation for sections -->
-            <el-tabs v-model="activeTab" class="rpt-tabs">
+          <div class="bento-grid">
+            <!-- Top Left: Score -->
+            <div class="bento-card bento-score">
+              <h3 class="bento-card-title">综合能力评定</h3>
+              <div class="score-display">
+                <el-progress type="dashboard" :percentage="displayScore" :color="scoreColor" :width="160" :stroke-width="12">
+                  <template #default="{ percentage }">
+                    <div class="score-val">{{ percentage }}</div>
+                    <div class="score-lbl">总分</div>
+                  </template>
+                </el-progress>
+                <div class="grade-badge" :style="{ color: scoreColor }">评级: {{ reportData.score >= 90 ? '卓越 (A)' : reportData.score >= 75 ? '良好 (B)' : '及格 (C)' }}</div>
+              </div>
+            </div>
 
-              <!-- Tab 1: Ability Radar Chart -->
-              <el-tab-pane label="🎯 能力雷达图" name="radar">
-                <div class="radar-section">
-                  <canvas ref="radarRef" width="360" height="360" class="radar-canvas" />
-                  <div class="radar-legend">
-                    <div v-for="(dim, key) in abilityDimensions" :key="key" class="legend-item">
-                      <span class="legend-dot" :style="{ background: dim.color }"></span>
-                      <span class="legend-label">{{ dim.label }}</span>
-                      <el-tag :type="getGradeType(reportData.ability[key])" size="small">
-                        {{ reportData.ability[key] || '—' }}
-                      </el-tag>
-                    </div>
-                  </div>
+            <!-- Top Right: Radar Diagram -->
+            <div class="bento-card bento-radar">
+              <h3 class="bento-card-title">六维能力图谱</h3>
+              <div ref="radarRef" class="echarts-container"></div>
+            </div>
+
+            <!-- Middle: KPIs -->
+            <div class="bento-card bento-kpis">
+              <div class="kpi-item">
+                <div class="kpi-icon">🎤</div>
+                <div class="kpi-data">
+                  <div class="kpi-val">{{ reportData.wpm || '—' }} <span class="unit">WPM</span></div>
+                  <div class="kpi-lbl">平均语速</div>
                 </div>
-              </el-tab-pane>
-
-              <!-- Tab 2: Feedback + Behavioral -->
-              <el-tab-pane label="📝 面试反馈" name="feedback">
-                <div class="behavioral-row">
-                  <div class="beh-card">
-                    <div class="beh-val">{{ reportData.wpm > 0 ? reportData.wpm : '—' }}</div>
-                    <div class="beh-lbl">平均语速 (WPM)</div>
-                    <el-tag :type="getWpmTagType(reportData.wpm)" size="small">{{ getWpmText(reportData.wpm) }}</el-tag>
-                  </div>
-                  <div class="beh-card">
-                    <div class="beh-val">{{ reportData.voiceRounds }}</div>
-                    <div class="beh-lbl">语音作答轮次</div>
-                    <el-tag type="info" size="small">共 {{ totalUserRounds }} 轮</el-tag>
-                  </div>
+              </div>
+              <div class="kpi-item">
+                <div class="kpi-icon">🗣️</div>
+                <div class="kpi-data">
+                  <div class="kpi-val">{{ reportData.voiceRounds }}</div>
+                  <div class="kpi-lbl">语音互动轮次</div>
                 </div>
-                <el-divider content-position="left">AI 综合点评</el-divider>
-                <div class="feedback-box">
-                  <pre class="feedback-text">{{ reportData.feedback }}</pre>
+              </div>
+              <div class="kpi-item">
+                <div class="kpi-icon">⌨️</div>
+                <div class="kpi-data">
+                  <div class="kpi-val">{{ totalUserRounds }}</div>
+                  <div class="kpi-lbl">总发信轮次</div>
                 </div>
-              </el-tab-pane>
+              </div>
+            </div>
 
-              <!-- Tab 3: Recommendations -->
-              <el-tab-pane label="🚀 提升计划" name="plan">
-                <el-timeline v-if="reportData.recommendations.length">
+            <!-- Bottom Left: AI Eval -->
+            <div class="bento-card bento-feedback">
+              <h3 class="bento-card-title">🤖 面试官综合评价</h3>
+              <div class="markdown-body custom-md" v-html="renderMarkdown(reportData.feedback || '暂无反馈')"></div>
+            </div>
+
+            <!-- Bottom Right: Roadmap -->
+            <div class="bento-card bento-roadmap">
+              <h3 class="bento-card-title">🚀 定制化提升路线</h3>
+              <div v-if="reportData.recommendations?.length" class="timeline-wrapper">
+                <el-timeline>
                   <el-timeline-item
-                    v-for="(rec, i) in reportData.recommendations"
-                    :key="i"
+                    v-for="(rec, i) in reportData.recommendations" :key="i"
                     :timestamp="rec.period"
                     placement="top"
-                    :type="['primary', 'success', 'warning'][i % 3]"
+                    :type="i === 0 ? 'success' : 'primary'"
+                    :hollow="i !== 0"
                   >
-                    <el-card class="rec-card" shadow="never">
-                      <div class="rec-action">{{ rec.action }}</div>
-                      <div class="rec-detail">{{ rec.detail }}</div>
-                    </el-card>
+                    <div class="roadmap-item">
+                      <h4>{{ rec.action }}</h4>
+                      <p>{{ rec.detail }}</p>
+                    </div>
                   </el-timeline-item>
                 </el-timeline>
-                <el-empty v-else description="暂无建议数据" />
-              </el-tab-pane>
-
-            </el-tabs>
+              </div>
+              <el-empty v-else description="暂无针对性建议" />
+            </div>
           </div>
-
-          <div class="rpt-footer">
-            <el-button @click="router.push('/history')" plain>查看历史</el-button>
-            <el-button type="primary" @click="router.push('/')">返回大厅</el-button>
-          </div>
-        </el-card>
+        </div>
       </div>
 
     </el-container>
@@ -175,6 +182,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Microphone, ArrowLeft, UserFilled, PieChart } from '@element-plus/icons-vue'
 import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
+import * as echarts from 'echarts'
 import { marked } from 'marked'
 
 const route = useRoute()
@@ -188,8 +196,16 @@ const isStreaming = ref(false)
 const chatMainRef = ref(null)
 const isFinishing = ref(false)
 const showReport = ref(false)
-const activeTab = ref('radar')
 const autoSend = ref(true) // auto-send on silence toggle
+const displayScore = ref(0)
+let radarChartInstance = null
+
+const scoreColor = computed(() => {
+  if (displayScore.value >= 90) return '#10b981'
+  if (displayScore.value >= 75) return '#f59e0b'
+  if (displayScore.value >= 60) return '#0ea5e9'
+  return '#ef4444'
+})
 
 // ─── Report data ──────────────────────────────────────────────────────────────
 const reportData = reactive({
@@ -260,10 +276,7 @@ onBeforeUnmount(() => {
   if (silenceTimer) clearTimeout(silenceTimer)
 })
 
-// Draw radar after tab switches to radar
-watch(activeTab, (tab) => {
-  if (tab === 'radar') nextTick(() => animateRadar())
-})
+// Remove watch(activeTab)
 
 // ─── Voice ────────────────────────────────────────────────────────────────────
 const toggleRecording = async () => {
@@ -376,9 +389,9 @@ const drawWave = () => {
 
   const time = Date.now() / 1000
   const layers = [
-    { color: 'rgba(96, 165, 250, 0.4)', speed: 2, amp: 0.6 },
-    { color: 'rgba(192, 132, 252, 0.3)', speed: 1.5, amp: 0.4 },
-    { color: 'rgba(45, 212, 191, 0.2)', speed: 2.5, amp: 0.5 }
+    { color: 'rgba(16, 185, 129, 0.4)', speed: 2, amp: 0.6 }, /* Emerald */
+    { color: 'rgba(245, 158, 11, 0.3)', speed: 1.5, amp: 0.4 }, /* Amber */
+    { color: 'rgba(6, 182, 212, 0.2)', speed: 2.5, amp: 0.5 } /* Cyan */
   ]
 
   // Calculate average volume for pulse
@@ -404,103 +417,74 @@ const drawWave = () => {
   })
 }
 
-// ─── Radar Chart (Animated) ──────────────────────────────────────────────────
-const drawRadarChart = (progress = 1.0) => {
-  const canvas = radarRef.value
-  if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  const W = canvas.width, H = canvas.height
-  const cx = W / 2, cy = H / 2, maxR = Math.min(cx, cy) - 50
-  const keys = Object.keys(abilityDimensions)
-  const labels = Object.values(abilityDimensions).map(d => d.label)
-  const colors = Object.values(abilityDimensions).map(d => d.color)
-  const n = keys.length
-  const angle = (Math.PI * 2) / n
-
-  ctx.clearRect(0, 0, W, H)
-
-  // Draw background grid rings (S/A/B/C/D)
-  const grades = ['D', 'C', 'B', 'A', 'S']
-  grades.forEach((g, gi) => {
-    const r = maxR * ((gi + 1) / grades.length)
-    ctx.beginPath()
-    for (let i = 0; i < n; i++) {
-      const a = angle * i - Math.PI / 2
-      const x = cx + r * Math.cos(a)
-      const y = cy + r * Math.sin(a)
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
-    }
-    ctx.closePath()
-    ctx.strokeStyle = gi === grades.length - 1 ? 'rgba(96,165,250,0.3)' : 'rgba(0,0,0,0.08)'
-    ctx.lineWidth = 1
-    ctx.stroke()
-  })
-
-  // Draw axes
-  for (let i = 0; i < n; i++) {
-    const a = angle * i - Math.PI / 2
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR * Math.cos(a), cy + maxR * Math.sin(a))
-    ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.stroke()
-  }
-
-  // Draw animated polygon
-  const scores = keys.map(k => (gradeScore[reportData.ability[k]] || 0.2) * progress)
-  ctx.beginPath()
-  for (let i = 0; i < n; i++) {
-    const a = angle * i - Math.PI / 2
-    const r = maxR * scores[i]
-    i === 0 ? ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a)) : ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a))
-  }
-  ctx.closePath()
-  ctx.fillStyle = 'rgba(96, 165, 250, 0.15)'
-  ctx.fill()
-  ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)'
-  ctx.lineWidth = 2.5
-  ctx.stroke()
-
-  // Labels & dots
-  for (let i = 0; i < n; i++) {
-    const a = angle * i - Math.PI / 2
-    const r = maxR * scores[i]
-    ctx.beginPath(); ctx.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 5, 0, Math.PI * 2)
-    ctx.fillStyle = colors[i]; ctx.fill()
-
-    if (progress === 1.0) { // Labels only on final frame
-      const la = angle * i - Math.PI / 2, lr = maxR + 36
-      ctx.fillStyle = '#1e293b'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'
-      ctx.fillText(labels[i], cx + lr * Math.cos(la), cy + lr * Math.sin(la))
-    }
-  }
+// ─── ECharts Radar ─────────────────────────────────────────────────────────────────
+function animateScore(target) {
+  let current = 0
+  const step = Math.ceil(target / 40) || 1
+  const timer = setInterval(() => {
+    current += step
+    if (current >= target) { current = target; clearInterval(timer) }
+    displayScore.value = current
+  }, 25)
 }
 
-const animateRadar = () => {
-  let startTime = null
-  const duration = 800
-  const step = (now) => {
-    if (!startTime) startTime = now
-    const elapsed = now - startTime
-    const progress = Math.min(elapsed / duration, 1.0)
-    const eased = 1 - Math.pow(1 - progress, 3) // easeOutCubic
-    drawRadarChart(eased)
-    if (progress < 1) requestAnimationFrame(step)
+function animateRadar() {
+  if (!radarRef.value) return
+  if (!radarChartInstance) radarChartInstance = echarts.init(radarRef.value)
+  
+  const rec = reportData
+  if (!rec) return
+  
+  const gradeToNum = (grade) => {
+    const map = { A: 95, B: 80, C: 65, D: 45, E: 20 }
+    return map[grade] || 45
   }
-  requestAnimationFrame(step)
-}
 
-const displayScore = ref(0)
-const animateScore = (finalScore) => {
-  displayScore.value = 0
-  let startTime = null
-  const duration = 1500
-  const step = (now) => {
-    if (!startTime) startTime = now
-    const elapsed = now - startTime
-    const progress = Math.min(elapsed / duration, 1.0)
-    const eased = 1 - Math.pow(1 - progress, 4) // easeOutQuart
-    displayScore.value = Math.floor(eased * finalScore)
-    if (progress < 1) requestAnimationFrame(step)
+  const scores = [
+    gradeToNum(rec.ability.techDepth),
+    gradeToNum(rec.ability.breadth),
+    gradeToNum(rec.ability.logic),
+    gradeToNum(rec.ability.expression),
+    gradeToNum(rec.ability.adaptability),
+    gradeToNum(rec.ability.problemSolving)
+  ]
+
+  const option = {
+    radar: {
+      indicator: [
+        { name: '技术深度', max: 100 },
+        { name: '知识广度', max: 100 },
+        { name: '逻辑思维', max: 100 },
+        { name: '表达清晰', max: 100 },
+        { name: '应变能力', max: 100 },
+        { name: '解题思路', max: 100 }
+      ],
+      shape: 'polygon',
+      axisName: { color: '#cbd5e1', fontSize: 13, fontWeight: 600 },
+      splitNumber: 5,
+      splitArea: { areaStyle: { color: ['rgba(16,185,129,0.06)', 'rgba(16,185,129,0.02)', 'transparent', 'transparent', 'transparent'] } },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } }
+    },
+    tooltip: { trigger: 'item' },
+    series: [{
+      type: 'radar',
+      data: [{
+        value: scores,
+        name: '综合评估',
+        symbolSize: 6,
+        itemStyle: { color: '#10b981', borderColor: '#fff', borderWidth: 2 },
+        lineStyle: { color: '#10b981', width: 2 },
+        areaStyle: { 
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(16,185,129,0.6)' },
+            { offset: 1, color: 'rgba(16,185,129,0.1)' }
+          ])
+        }
+      }]
+    }]
   }
-  requestAnimationFrame(step)
+  radarChartInstance.setOption(option)
 }
 
 // ─── WPM Calculation ──────────────────────────────────────────────────────────
@@ -636,7 +620,6 @@ const performEndInterview = async (isAuto = false) => {
       catch { reportData.recommendations = [] }
 
       showReport.value = true
-      activeTab.value = 'radar'
       // Trigger animations
       nextTick(() => {
         animateScore(reportData.score)
@@ -674,8 +657,8 @@ const performEndInterview = async (isAuto = false) => {
 }
 
 .avatar { flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 2px solid #fff; }
-.ai-avatar { background: linear-gradient(135deg, #60a5fa, #3b82f6); color: #fff; }
-.user-avatar { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+.ai-avatar { background: linear-gradient(135deg, #10b981, #059669); color: #fff; } /* Emerald */
+.user-avatar { background: linear-gradient(135deg, #f59e0b, #d97706); } /* Amber */
 
 .message-content { 
   max-width: 78%; 
@@ -695,20 +678,20 @@ const performEndInterview = async (isAuto = false) => {
 }
 
 .message-row.user .message-content { 
-  background: rgba(99, 102, 241, 0.08); 
-  border: 1px solid rgba(99, 102, 241, 0.15); 
-  color: #3730a3; 
+  background: rgba(245, 158, 11, 0.08); /* Amber tinted bg */
+  border: 1px solid rgba(245, 158, 11, 0.15); 
+  color: #b45309; /* Warm dark orange */
   border-radius: 16px 4px 16px 16px; 
 }
 
 .text { margin: 0; word-break: break-word; }
 .text :deep(p) { margin: 0 0 8px 0; }
 .text :deep(p:last-child) { margin-bottom: 0; }
-.text :deep(strong) { color: #2563eb; }
+.text :deep(strong) { color: #0ea5e9; } /* Cyan */
 .text :deep(ul), .text :deep(ol) { padding-left: 20px; margin: 8px 0; }
 .text :deep(code) { background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
 
-.blinking-cursor { animation: blink .8s step-end infinite; color: #3b82f6; font-size: 18px; margin-left: 2px; }
+.blinking-cursor { animation: blink .8s step-end infinite; color: #10b981; font-size: 18px; margin-left: 2px; }
 @keyframes blink { 50% { opacity: 0; } }
 
 /* ── Footer ── */
@@ -724,37 +707,65 @@ const performEndInterview = async (isAuto = false) => {
 .input-row { display: flex; gap: 12px; align-items: flex-end; }
 .send-btn { height: 80px; width: 88px; font-size: 15px; flex-shrink: 0; }
 
-/* ── Report Overlay ── */
-.report-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(6px); }
-.report-card { width: 760px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; animation: slideUp .35s cubic-bezier(.34,1.56,.64,1); }
-@keyframes slideUp { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
-.rpt-header { display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: 700; }
-.report-body { flex: 1; overflow-y: auto; padding: 4px 0; }
-.rpt-tabs :deep(.el-tabs__nav-wrap) { padding: 0 16px; }
+/* Dashboard Overlay / Bento Grid */
+.dashboard-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: 30px 20px;
+  background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px);
+  overflow-y: auto;
+}
+.dashboard-container {
+  width: 1100px; max-width: 98vw;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.dash-header { display: flex; justify-content: space-between; align-items: center; }
+.dash-title { font-size: 24px; font-weight: 800; color: #f8fafc; text-shadow: 0 2px 10px rgba(16,185,129,0.5); }
+.dash-actions { display: flex; gap: 12px; }
 
-/* Radar */
-.radar-section { display: flex; align-items: center; gap: 24px; padding: 16px; flex-wrap: wrap; justify-content: center; }
-.radar-canvas { flex-shrink: 0; }
-.radar-legend { display: flex; flex-direction: column; gap: 10px; min-width: 160px; }
-.legend-item { display: flex; align-items: center; gap: 8px; }
-.legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-.legend-label { font-size: 13px; color: #303133; flex: 1; }
+.bento-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 20px;
+}
+.bento-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex; flex-direction: column;
+}
+.bento-card-title { margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #cbd5e1; display: flex; align-items: center; gap: 8px; }
 
-/* Behavioral metrics */
-.behavioral-row { display: flex; gap: 16px; margin-bottom: 16px; }
-.beh-card { flex: 1; background: linear-gradient(135deg, #f6ffed, #d9f7be); border: 1px solid #b7eb8f; border-radius: 12px; padding: 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.beh-val { font-size: 30px; font-weight: 700; color: #237804; }
-.beh-lbl { font-size: 12px; color: #606266; }
+.bento-score { grid-column: 1 / 2; grid-row: 1 / 3; align-items: center; text-align: center; justify-content: center; }
+.score-display { display: flex; flex-direction: column; align-items: center; gap: 12px; height: 100%; justify-content: center; }
+.score-val { font-size: 38px; font-weight: 800; line-height: 1; }
+.score-lbl { font-size: 13px; color: #94a3b8; }
+.grade-badge { font-size: 18px; font-weight: 800; margin-top: 10px; padding: 6px 16px; background: rgba(255,255,255,0.05); border-radius: 12px; }
 
-/* Feedback */
-.feedback-box { background: #fafbfc; border-radius: 8px; padding: 16px; }
-.feedback-text { margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 15px; line-height: 1.8; color: #1d2129; }
+.bento-radar { grid-column: 2 / 4; grid-row: 1 / 2; min-height: 340px; }
+.echarts-container { width: 100%; height: 100%; min-height: 300px; flex: 1; }
 
-/* Recommendations */
-.rec-card { border: none; background: #fafbfc; }
-.rec-action { font-weight: 700; font-size: 14px; color: #1d2129; margin-bottom: 4px; }
-.rec-detail { font-size: 13px; color: #606266; line-height: 1.6; }
+.bento-kpis { 
+  grid-column: 2 / 4; grid-row: 2 / 3; 
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 16px; 
+  align-items: center; justify-content: center; background: rgba(30, 41, 59, 0.4); 
+}
+.kpi-item { display: flex; align-items: center; gap: 12px; }
+.kpi-icon { font-size: 28px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px; line-height: 1;}
+.kpi-val { font-size: 20px; font-weight: 800; color: #f8fafc; }
+.kpi-lbl { font-size: 12px; color: #94a3b8; }
+.unit { font-size: 12px; font-weight: normal; color: #64748b; margin-left: 2px; }
 
-/* Footer */
-.rpt-footer { display: flex; justify-content: flex-end; gap: 12px; padding-top: 12px; }
+.bento-feedback { grid-column: 1 / 3; grid-row: 3 / 4; min-height: 300px; max-height: 500px; overflow-y: auto; }
+.bento-roadmap { grid-column: 3 / 4; grid-row: 3 / 4; min-height: 300px; max-height: 500px; overflow-y: auto; }
+
+.custom-md { color: #e2e8f0; font-size: 15px; line-height: 1.7; }
+.custom-md :deep(h1), .custom-md :deep(h2), .custom-md :deep(h3) { color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.1); margin-top: 0; padding-bottom: 8px; }
+.custom-md :deep(strong) { color: #10b981; }
+
+.roadmap-item h4 { margin: 0 0 6px 0; color: #f8fafc; font-size: 15px; }
+.roadmap-item p { margin: 0; color: #cbd5e1; font-size: 13.5px; line-height: 1.6; }
+:deep(.el-timeline-item__content) { padding-bottom: 16px; }
 </style>
