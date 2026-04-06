@@ -57,6 +57,42 @@
       </el-main>
     </el-container>
 
+    <!-- Resume Ask Dialog -->
+    <el-dialog v-model="showResumeDialog" title="面试准备" width="480" center :close-on-click-modal="false">
+      <div class="resume-ask-content">
+        <el-icon class="resume-icon"><Document /></el-icon>
+        <h3 class="resume-title">是否提供个人简历？</h3>
+        <p class="resume-desc">系统将使用 AI 解析您的简历，为您生成**专属画像**并对准您的项目发起**定制化深度提问**，极大还原真实大厂面试场景。</p>
+        
+        <!-- Upload Component -->
+        <el-upload
+          class="resume-upload"
+          drag
+          action="http://localhost:8080/api/resume/parse"
+          :show-file-list="false"
+          :on-success="handleResumeSuccess"
+          :on-error="handleResumeError"
+          :before-upload="beforeResumeUpload"
+          accept=".pdf"
+        >
+          <div class="el-upload__text" v-if="!isParsing">
+            <em>点击上传 PDF 简历</em>，生成定制化拷问
+          </div>
+          <div class="el-upload__text" v-else>
+            <el-icon class="is-loading"><Loading /></el-icon> 正在深度解析简历，请稍候...
+          </div>
+        </el-upload>
+
+        <div class="resume-divider">
+          <span>或</span>
+        </div>
+
+        <el-button class="skip-btn" plain @click="skipResumeAndSelectMode">
+          暂无简历，体验文字 or 视频模式
+        </el-button>
+      </div>
+    </el-dialog>
+
     <!-- Mode Selection Dialog -->
     <el-dialog v-model="showModeDialog" title="选择面试模式" width="480" center :close-on-click-modal="false">
       <div class="mode-options">
@@ -70,7 +106,7 @@
           <div class="mode-icon">📹</div>
           <h3>视频模式</h3>
           <p>开启摄像头面对面交流，AI 语音对话 + 情感分析</p>
-          <el-tag type="success" size="small">✨ 新功能</el-tag>
+          <el-tag type="success" size="small">进阶模式</el-tag>
         </div>
       </div>
     </el-dialog>
@@ -81,8 +117,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-// import { Histogram, SwitchButton, ArrowRight, Microphone, PieChart, Connection } from '@element-plus/icons-vue'
-import { Histogram, SwitchButton, ArrowRight, Microphone, PieChart, Connection, VideoCamera } from '@element-plus/icons-vue'
+import { Histogram, SwitchButton, ArrowRight, Microphone, PieChart, Connection, VideoCamera, Document, Loading } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const bgCanvas = ref(null)
@@ -183,10 +218,42 @@ const handleLogout = () => {
 }
 
 const showModeDialog = ref(false)
+const showResumeDialog = ref(false)
+const isParsing = ref(false)
 const selectedRole = ref('')
 
 const startInterview = (role) => {
   selectedRole.value = role
+  showResumeDialog.value = true
+}
+
+const beforeResumeUpload = (file) => {
+  const isPdf = file.type === 'application/pdf'
+  if (!isPdf) {
+    ElMessage.error('只能上传 PDF 格式的简历！')
+    return false
+  }
+  isParsing.value = true
+  return true
+}
+
+const handleResumeSuccess = (response) => {
+  isParsing.value = false
+  showResumeDialog.value = false
+  // 将解析得到的 AI 定制结果缓存到 localStorage
+  localStorage.setItem('resume_analysis', JSON.stringify(response))
+  ElMessage.success('简历专属画像生成完毕！')
+  // 跳转到简历可视化页面
+  router.push({ path: '/resume', query: { role: selectedRole.value } })
+}
+
+const handleResumeError = (err) => {
+  isParsing.value = false
+  ElMessage.error('简历解析失败，请检查文件后重试！')
+}
+
+const skipResumeAndSelectMode = () => {
+  showResumeDialog.value = false
   showModeDialog.value = true
 }
 
@@ -456,5 +523,62 @@ const confirmMode = (mode) => {
   color: #6b7280;
   line-height: 1.5;
   margin-bottom: 12px;
+}
+
+/* Resume Ask Dialog CSS */
+.resume-ask-content {
+  text-align: center;
+  padding: 10px 20px 20px;
+}
+.resume-icon {
+  font-size: 48px;
+  color: #10b981;
+  margin-bottom: 16px;
+}
+.resume-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 12px;
+}
+.resume-desc {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+.resume-upload {
+  margin-bottom: 20px;
+}
+.resume-upload :deep(.el-upload-dragger) {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: #f0fdf4;
+  transition: all 0.3s;
+}
+.resume-upload :deep(.el-upload-dragger:hover) {
+  border-color: #10b981;
+  background: #d1fae5;
+}
+.resume-divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+.resume-divider::before, .resume-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+.resume-divider span {
+  padding: 0 10px;
+}
+.skip-btn {
+  width: 100%;
+  padding: 20px;
+  border-radius: 12px;
+  font-weight: 600;
 }
 </style>

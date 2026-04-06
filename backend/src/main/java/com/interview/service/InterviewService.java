@@ -11,6 +11,9 @@ public interface InterviewService {
     // Start an interview with mode (text/video)
     Long startInterview(Long userId, String position, String mode);
     
+    // Start an interview with mode and tailored resume questions
+    Long startInterview(Long userId, String position, String mode, java.util.List<String> resumeQuestions);
+    
     // Send a message and get SSE stream for typing animation
     SseEmitter chatStream(Long userId, Long recordId, String message);
     

@@ -161,6 +161,7 @@ const isSpeaking = ref(false)
 const showReport = ref(false)
 const currentAiText = ref('')
 const totalRounds = ref(0)
+const hrOverridden = ref(false)
 const currentAgent = ref('面试组长')
 const ttsEnabled = ref(false) // TTS 默认关闭
 const displayScore = ref(0)
@@ -258,8 +259,19 @@ onMounted(async () => {
   })
 
   // 3. Start interview session
+  const isTailored = route.query.isTailored === 'true'
+  let resumeQuestions = undefined
+  if (isTailored) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem('resume_analysis'))
+      if (parsed && parsed.tailoredQuestions) {
+        resumeQuestions = parsed.tailoredQuestions
+      }
+    } catch {}
+  }
+
   try {
-    const id = await startInterviewAPI({ position: position.value, mode: 'video' })
+    const id = await startInterviewAPI({ position: position.value, mode: 'video', resumeQuestions })
     recordId.value = id
     // 4. AI starts first — trigger opening
     triggerAiTurn()
@@ -308,9 +320,9 @@ function sendToAI(message) {
 
   // Determine current agent based on round count
   if (totalRounds.value === 0) currentAgent.value = '面试组长'
-  else if (totalRounds.value < 5) currentAgent.value = '技术面试官'
-  else if (totalRounds.value < 7) currentAgent.value = 'HR 面试官'
-  else currentAgent.value = '面试组长'
+  else if (totalRounds.value >= 12) currentAgent.value = '面试组长'
+  else if (hrOverridden.value || totalRounds.value >= 9) currentAgent.value = 'HR 面试官'
+  else currentAgent.value = '技术面试官'
 
   const url = `/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(message)}`
   const eventSource = new EventSource(url)
@@ -340,6 +352,15 @@ function sendToAI(message) {
 
     if (d.content !== undefined && d.content !== null) {
       fullText += d.content
+
+      // Check for [SWITCH_TO_HR]
+      if (fullText.includes('[SWITCH_TO_HR]')) {
+        fullText = fullText.replace('[SWITCH_TO_HR]', '')
+        hrOverridden.value = true
+        // Switch immediately visually
+        currentAgent.value = 'HR 面试官'
+      }
+
       currentAiText.value = fullText
 
       // Check for [TERMINATE]

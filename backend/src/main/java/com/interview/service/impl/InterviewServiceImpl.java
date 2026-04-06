@@ -58,6 +58,9 @@ public class InterviewServiceImpl implements InterviewService {
 
     // 活跃会话记忆
     private final Map<Long, ChatMemory> chatMemories = new ConcurrentHashMap<>();
+    
+    // 简历独家定制题库缓存
+    private final Map<Long, List<String>> tailoredQuestionsCache = new ConcurrentHashMap<>();
 
     // ========== 多智能体人设提示词定义 ==========
     // 通用态度监控规则（注入到每个 Agent 的提示词末尾）
@@ -85,7 +88,7 @@ public class InterviewServiceImpl implements InterviewService {
             - 提问做到覆盖多方面的知识。
             """ + ATTITUDE_RULE;
 
-    private static final String PROMPT_HR = "你是【资深 HR BP】。职责是考察候选人的沟通能力、价值观和稳定性。语气专业、温和但有洞察力。每次只问一个问题。" + ATTITUDE_RULE;
+    private static final String PROMPT_HR = "你是【资深 HR BP】。职责是考察候选人的沟通能力、价值观和稳定性。语气专业、温和但有洞察力。每次只问一个问题。如果在考察后感到非常满意或没有需要了解的了，可以直接告诉候选人面试结束，并在结尾加上标记：[TERMINATE]。" + ATTITUDE_RULE;
 
     private static final String PROMPT_CLOSING = "你是面试组长。面试已经进入尾声。请对候选人的整体表现做一个简短的总结性发言（2-3句话），礼貌地与候选人道别。" +
             "你必须在回复的最末尾加上标记：[TERMINATE]，表示面试正式结束。";
@@ -97,6 +100,11 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     public Long startInterview(Long userId, String position, String mode) {
+        return startInterview(userId, position, mode, null);
+    }
+    
+    @Override
+    public Long startInterview(Long userId, String position, String mode, List<String> resumeQuestions) {
         InterviewRecord record = new InterviewRecord();
         record.setUserId(userId);
         record.setPosition(position);
@@ -105,7 +113,12 @@ public class InterviewServiceImpl implements InterviewService {
         record.setChatHistory("[]");
         interviewRecordMapper.insert(record);
 
-        chatMemories.put(record.getId(), MessageWindowChatMemory.withMaxMessages(20));
+        chatMemories.put(record.getId(), MessageWindowChatMemory.withMaxMessages(40));
+        
+        if (resumeQuestions != null && !resumeQuestions.isEmpty()) {
+            tailoredQuestionsCache.put(record.getId(), resumeQuestions);
+        }
+        
         return record.getId();
     }
 
@@ -143,14 +156,38 @@ public class InterviewServiceImpl implements InterviewService {
         for (Content content : retrievedContents)
             contextBuilder.append("- ").append(content.textSegment().text()).append("\n");
 
-        // 2. 动态决定当前 Agent 人设
-        int round = chatMemory.messages().size();
+        // 2. 动态决定当前 Agent 人设 (基于对话回合数计算)
+        int turn = chatMemory.messages().size() / 2;
         String currentSystemPrompt;
-        if (round == 0) {
+        
+        boolean earlySwitchToHr = false;
+        for (ChatMessage m : chatMemory.messages()) {
+            if (m instanceof AiMessage && m.text().contains("[SWITCH_TO_HR]")) {
+                earlySwitchToHr = true;
+                break;
+            }
+        }
+
+        if (turn == 0) {
             currentSystemPrompt = PROMPT_COORDINATOR + "\n请先让候选人做个简短的自我介绍。";
-        } else if (round < 10) {
+        } else if (turn <= 8 && !earlySwitchToHr) {
             currentSystemPrompt = PROMPT_TECHNICAL + "\n以下是本题考核参考点：\n" + contextBuilder.toString();
-        } else if (round < 14) {
+            
+            // 如果该求职者上传了简历，将专属问题库塞入提示词
+            List<String> tailoredQuestions = tailoredQuestionsCache.get(recordId);
+            if (tailoredQuestions != null && !tailoredQuestions.isEmpty()) {
+                StringBuilder qb = new StringBuilder("\n【重要指令：你的问题池已结合候选人简历更新，请**优先**依照以下量身定做题库向候选人发问】：\n");
+                for (String q : tailoredQuestions) {
+                    qb.append("- ").append(q).append("\n");
+                }
+                qb.append("\n要求：如果在充分考察完上述定制题后，或者候选人在某点回答极其完善完美，**请务必主动发散到其他核心甚至进阶领域**，确保深挖候选人的知识广度。\n");
+                qb.append("如果在极其满意的状况下认为无需进行任何技术面试了，你可以提前结束技术部分，并把话题抛给HR同事，此时在这个回答的最末尾追加标记：[SWITCH_TO_HR]\n");
+                currentSystemPrompt += qb.toString();
+            } else {
+                // 如果没有定制题，也是普通的面试官，我们同样给它跳过权利
+                currentSystemPrompt += "\n如果在极其满意的状况下认为无可挑剔且无需再问，你可以提前结束技术部分，并把话题抛给HR同事，此时在这个回答的最末尾追加标记：[SWITCH_TO_HR]\n";
+            }
+        } else if (turn <= 11) {
             currentSystemPrompt = PROMPT_HR;
         } else {
             // HR 阶段结束后，进入收尾阶段，AI 道别后自动触发 [TERMINATE]
@@ -216,6 +253,7 @@ public class InterviewServiceImpl implements InterviewService {
     @Override
     public InterviewRecord endInterview(Long recordId, Integer wpm, String emotionJson) {
         ChatMemory chatMemory = chatMemories.remove(recordId);
+        tailoredQuestionsCache.remove(recordId);
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
 
         if (record == null) {
