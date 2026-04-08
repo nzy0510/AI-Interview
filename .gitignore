@@ -4,6 +4,7 @@
 !**/src/main/**/out/
 !**/src/test/**/out/
 .idea/
+**/.idea/
 *.iml
 .kotlin
 
@@ -37,24 +38,35 @@
 Thumbs.db
 *.tmp
 
+# ========== 环境变量与敏感配置 (重要：绝不提交) ==========
+.env
+!.env.example
+docker-compose.yml
+!docker-compose.example.yml
+**/application.yml
+!**/application.yml.example
+
 # ========== JavaEE 项目核心忽略 ==========
-# 编译产物（优先级最高，避免重复）
-/target/
+# 编译产物
+**/target/
 *.class
 *.war
 *.ear
-# 注意：删除了全局的 *.jar 规则，避免覆盖 WEB-INF/lib 的例外
+*.jar
+!**/WEB-INF/lib/*.jar
 
-# 依赖包（只忽略根目录lib，保留WEB-INF/lib）
+# 依赖包
 /lib/
 !**/WEB-INF/lib/
-# 补充：只忽略 WEB-INF/lib 之外的 jar 文件
-!**/WEB-INF/lib/*.jar
-*.jar
+node_modules/
+
+# 构建输出
+dist/
+build_err.txt
 
 # 日志文件
 *.log
-/logs/  
+/logs/
 /temp/
 
 # 敏感配置文件（不上传）
@@ -64,6 +76,15 @@ application-prod.yml
 
 # 配置模板（保留，方便协作）
 !application-template.properties
-# ========== 数据库数据 (重要：绝不提交) ==========
+
+# ========== 数据库与持久化数据 (重要：绝不提交) ==========
 /mysql_data/
+/redis_data/
 /document/
+
+# ========== 临时/测试文件 ==========
+测试简历.pdf
+docker使用说明.txt
+branches.txt
+conflicts.txt
+conflicts_render.txt

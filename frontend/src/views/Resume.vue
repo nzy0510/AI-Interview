@@ -99,6 +99,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { ArrowLeft, DataAnalysis, Star, Warning, Briefcase } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import 'echarts-wordcloud'
+import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
+import { userKey } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -110,15 +113,38 @@ const showModeDialog = ref(false)
 let gaugeChartInstance = null
 let cloudChartInstance = null
 
-onMounted(() => {
-  const cached = localStorage.getItem('resume_analysis')
-  if (cached) {
-    try {
-      analysis.value = JSON.parse(cached)
-    } catch {}
+onMounted(async () => {
+  let profileData = null
+  try {
+    // 静默请求：用原生 axios 避免触发拦截器的 ElMessage.error
+    const token = localStorage.getItem('token')
+    const resp = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/resume/profile', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (resp.ok) {
+      const result = await resp.json()
+      if (result.code === 200 && result.data) {
+        profileData = result.data
+      }
+    }
+  } catch (error) {
+    console.log('暂无简历画像:', error.message)
   }
 
-  if (analysis.value) {
+  // 后端无数据时，尝试从 localStorage 读取
+  if (!profileData) {
+    try {
+      const cached = localStorage.getItem(userKey('resume_analysis'))
+      if (cached) {
+        profileData = JSON.parse(cached)
+      }
+    } catch (e) {
+      console.log('本地缓存解析失败:', e.message)
+    }
+  }
+
+  if (profileData) {
+    analysis.value = profileData
     setTimeout(() => {
       initGaugeChart()
       initWordCloud()
@@ -155,6 +181,8 @@ const initGaugeChart = () => {
         type: 'gauge',
         startAngle: 180,
         endAngle: 0,
+        center: ['50%', '78%'],
+        radius: '95%',
         min: 0,
         max: 100,
         splitNumber: 10,
@@ -187,8 +215,8 @@ const initGaugeChart = () => {
         title: { show: false },
         detail: {
           valueAnimation: true,
-          offsetCenter: [0, '0%'],
-          fontSize: 60,
+          offsetCenter: [0, '-8%'],
+          fontSize: 52,
           fontWeight: 'bolder',
           formatter: '{value}',
           color: '#f8fafc'
@@ -373,19 +401,29 @@ const confirmStart = (mode) => {
 }
 
 .chart-container {
-  flex: 1;
+  flex: 0 0 220px;
   width: 100%;
+  min-height: 220px;
 }
 
 /* Grid Layout Assignments */
-.gauge-box { grid-column: span 4; }
+.gauge-box {
+  grid-column: span 4;
+  overflow-y: auto;
+  padding-right: 16px;
+}
+.gauge-box::-webkit-scrollbar { width: 6px; }
+.gauge-box::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+}
 .cloud-box { grid-column: span 8; }
 .questions-box { grid-column: span 8; grid-row: span 2; }
 .projects-box { grid-column: span 4; grid-row: span 2; }
 
 /* Specific Inner Styling */
 .evaluation-text {
-  margin-top: -20px;
+  margin-top: 8px;
   padding: 12px;
   background: rgba(0,0,0,0.2);
   border-radius: 12px;
