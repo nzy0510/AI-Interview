@@ -8,8 +8,8 @@ export const finishInterviewAPI = (data) => {
     return request({ url: '/interview/finish', method: 'post', data });
 };
 
-export const getHistoryListAPI = (userId = 1) => {
-    return request({ url: `/history/list?userId=${userId}`, method: 'get' });
+export const getHistoryListAPI = () => {
+    return request({ url: '/history/list', method: 'get' });
 };
 
 export const getHistoryDetailAPI = (id) => {

@@ -10,6 +10,11 @@
           <span class="logo-text">AI Interview Master</span>
         </div>
         <div class="header-actions">
+          <!-- 简历管理入口 -->
+          <el-button class="glass-btn resume-btn" @click="openResumeManager">
+            <el-icon><Document /></el-icon>
+            {{ hasResume ? '📄 简历已就绪' : '上传简历' }}
+          </el-button>
           <el-button class="glass-btn" @click="router.push('/history')">
             <el-icon><Histogram /></el-icon> 面试历史
           </el-button>
@@ -57,39 +62,109 @@
       </el-main>
     </el-container>
 
-    <!-- Resume Ask Dialog -->
+    <!-- Resume Ask Dialog (选岗后弹出) -->
     <el-dialog v-model="showResumeDialog" title="面试准备" width="480" center :close-on-click-modal="false">
       <div class="resume-ask-content">
         <el-icon class="resume-icon"><Document /></el-icon>
-        <h3 class="resume-title">是否提供个人简历？</h3>
-        <p class="resume-desc">系统将使用 AI 解析您的简历，为您生成**专属画像**并对准您的项目发起**定制化深度提问**，极大还原真实大厂面试场景。</p>
-        
-        <!-- Upload Component -->
+
+        <!-- 已有简历时 -->
+        <template v-if="hasResume">
+          <h3 class="resume-title">检测到已有简历画像 ✅</h3>
+          <p class="resume-desc">系统将自动使用您上次上传的简历进行定制化面试，无需重复上传。</p>
+          <el-button class="use-existing-btn" type="success" @click="useExistingResume">
+            🚀 使用已有简历，选择面试模式
+          </el-button>
+          <div class="resume-divider"><span>或</span></div>
+          <el-upload
+            class="resume-upload"
+            drag
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :show-file-list="false"
+            :on-success="handleResumeSuccess"
+            :on-error="handleResumeError"
+            :before-upload="beforeResumeUpload"
+            accept=".pdf"
+          >
+            <div class="el-upload__text" v-if="!isParsing">
+              <em>重新上传新简历</em>，覆盖旧画像
+            </div>
+            <div class="el-upload__text" v-else>
+              <el-icon class="is-loading"><Loading /></el-icon> 正在深度解析简历，请稍候...
+            </div>
+          </el-upload>
+        </template>
+
+        <!-- 无简历时 -->
+        <template v-else>
+          <h3 class="resume-title">是否提供个人简历？</h3>
+          <p class="resume-desc">系统将使用 AI 解析您的简历，为您生成**专属画像**并对准您的项目发起**定制化深度提问**，极大还原真实大厂面试场景。</p>
+          <el-upload
+            class="resume-upload"
+            drag
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :show-file-list="false"
+            :on-success="handleResumeSuccess"
+            :on-error="handleResumeError"
+            :before-upload="beforeResumeUpload"
+            accept=".pdf"
+          >
+            <div class="el-upload__text" v-if="!isParsing">
+              <em>点击上传 PDF 简历</em>，生成定制化拷问
+            </div>
+            <div class="el-upload__text" v-else>
+              <el-icon class="is-loading"><Loading /></el-icon> 正在深度解析简历，请稍候...
+            </div>
+          </el-upload>
+        </template>
+
+        <div class="resume-divider" v-if="!hasResume">
+          <span>或</span>
+        </div>
+
+        <el-button class="skip-btn" plain @click="skipResumeAndSelectMode" v-if="!hasResume">
+          暂无简历，体验文字 or 视频模式
+        </el-button>
+      </div>
+    </el-dialog>
+
+    <!-- Resume Manager Dialog (右上角管理入口) -->
+    <el-dialog v-model="showResumeManager" title="简历管理" width="480" center>
+      <div class="resume-ask-content">
+        <el-icon class="resume-icon"><Document /></el-icon>
+        <template v-if="hasResume">
+          <h3 class="resume-title">当前简历画像 ✅</h3>
+          <p class="resume-desc">您已有简历画像，开始面试时将自动使用。您也可以上传新简历覆盖。</p>
+          <div class="resume-manager-actions">
+            <el-button type="primary" @click="showResumeManager = false; router.push({ path: '/resume' })">
+              📊 查看画像详情
+            </el-button>
+          </div>
+          <div class="resume-divider"><span>更新简历</span></div>
+        </template>
+        <template v-else>
+          <h3 class="resume-title">尚未上传简历</h3>
+          <p class="resume-desc">上传简历后，面试时将自动使用 AI 定制化提问。</p>
+        </template>
         <el-upload
           class="resume-upload"
           drag
-          action="http://localhost:8080/api/resume/parse"
+          :action="uploadUrl"
+          :headers="uploadHeaders"
           :show-file-list="false"
-          :on-success="handleResumeSuccess"
+          :on-success="handleResumeManagerSuccess"
           :on-error="handleResumeError"
           :before-upload="beforeResumeUpload"
           accept=".pdf"
         >
           <div class="el-upload__text" v-if="!isParsing">
-            <em>点击上传 PDF 简历</em>，生成定制化拷问
+            <em>{{ hasResume ? '上传新简历覆盖' : '点击上传 PDF 简历' }}</em>
           </div>
           <div class="el-upload__text" v-else>
             <el-icon class="is-loading"><Loading /></el-icon> 正在深度解析简历，请稍候...
           </div>
         </el-upload>
-
-        <div class="resume-divider">
-          <span>或</span>
-        </div>
-
-        <el-button class="skip-btn" plain @click="skipResumeAndSelectMode">
-          暂无简历，体验文字 or 视频模式
-        </el-button>
       </div>
     </el-dialog>
 
@@ -118,6 +193,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Histogram, SwitchButton, ArrowRight, Microphone, PieChart, Connection, VideoCamera, Document, Loading } from '@element-plus/icons-vue'
+import { userKey } from '@/utils/auth'
 
 const router = useRouter()
 const bgCanvas = ref(null)
@@ -194,19 +270,6 @@ const animate = () => {
   requestAnimationFrame(animate)
 }
 
-onMounted(() => {
-  ctx = bgCanvas.value.getContext('2d')
-  resize()
-  window.addEventListener('resize', resize)
-  window.addEventListener('mousemove', e => {
-    mouse.x = e.clientX
-    mouse.y = e.clientY
-  })
-
-  for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle())
-  animate()
-})
-
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resize)
 })
@@ -219,12 +282,67 @@ const handleLogout = () => {
 
 const showModeDialog = ref(false)
 const showResumeDialog = ref(false)
+const showResumeManager = ref(false)
 const isParsing = ref(false)
 const selectedRole = ref('')
+const hasResume = ref(false)
+
+const uploadUrl = (import.meta.env.VITE_API_BASE_URL || '') + '/api/resume/parse'
+
+const uploadHeaders = ref({
+  Authorization: `Bearer ${localStorage.getItem('token') || ''}`
+})
+
+// 页面加载时检查是否已有简历
+onMounted(() => {
+  ctx = bgCanvas.value.getContext('2d')
+  resize()
+  window.addEventListener('resize', resize)
+  window.addEventListener('mousemove', e => {
+    mouse.x = e.clientX
+    mouse.y = e.clientY
+  })
+
+  for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle())
+  animate()
+
+  checkExistingResume()
+})
+
+const checkExistingResume = async () => {
+  // 先检查 localStorage（按用户隔离）
+  if (localStorage.getItem(userKey('resume_analysis'))) {
+    hasResume.value = true
+    return
+  }
+  // 再静默检查后端
+  try {
+    const token = localStorage.getItem('token')
+    const resp = await fetch(uploadUrl.replace('/parse', '/profile'), {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (resp.ok) {
+      const result = await resp.json()
+      if (result.code === 200 && result.data) {
+        localStorage.setItem(userKey('resume_analysis'), JSON.stringify(result.data))
+        hasResume.value = true
+      }
+    }
+  } catch {}
+}
 
 const startInterview = (role) => {
   selectedRole.value = role
   showResumeDialog.value = true
+}
+
+const useExistingResume = () => {
+  showResumeDialog.value = false
+  showModeDialog.value = true
+}
+
+const openResumeManager = () => {
+  showResumeManager.value = true
 }
 
 const beforeResumeUpload = (file) => {
@@ -234,17 +352,38 @@ const beforeResumeUpload = (file) => {
     return false
   }
   isParsing.value = true
+  uploadHeaders.value = { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
   return true
 }
 
 const handleResumeSuccess = (response) => {
   isParsing.value = false
   showResumeDialog.value = false
-  // 将解析得到的 AI 定制结果缓存到 localStorage
-  localStorage.setItem('resume_analysis', JSON.stringify(response))
-  ElMessage.success('简历专属画像生成完毕！')
-  // 跳转到简历可视化页面
-  router.push({ path: '/resume', query: { role: selectedRole.value } })
+  if (response && response.code === 200) {
+    if (response.data) {
+      localStorage.setItem(userKey('resume_analysis'), JSON.stringify(response.data))
+      hasResume.value = true
+    }
+    ElMessage.success('简历专属画像生成完毕！')
+    router.push({ path: '/resume', query: { role: selectedRole.value } })
+  } else {
+    ElMessage.error('简历解析异常：' + (response?.msg || '未知错误'))
+  }
+}
+
+const handleResumeManagerSuccess = (response) => {
+  isParsing.value = false
+  if (response && response.code === 200) {
+    if (response.data) {
+      localStorage.setItem(userKey('resume_analysis'), JSON.stringify(response.data))
+      hasResume.value = true
+    }
+    showResumeManager.value = false
+    ElMessage.success('简历画像已更新！')
+    router.push({ path: '/resume' })
+  } else {
+    ElMessage.error('简历解析异常：' + (response?.msg || '未知错误'))
+  }
 }
 
 const handleResumeError = (err) => {
@@ -259,10 +398,11 @@ const skipResumeAndSelectMode = () => {
 
 const confirmMode = (mode) => {
   showModeDialog.value = false
+  const isTailored = hasResume.value ? 'true' : 'false'
   if (mode === 'video') {
-    router.push({ path: '/video-interview', query: { role: selectedRole.value } })
+    router.push({ path: '/video-interview', query: { role: selectedRole.value, isTailored } })
   } else {
-    router.push({ path: '/interview', query: { role: selectedRole.value } })
+    router.push({ path: '/interview', query: { role: selectedRole.value, isTailored } })
   }
 }
 </script>
@@ -580,5 +720,25 @@ const confirmMode = (mode) => {
   padding: 20px;
   border-radius: 12px;
   font-weight: 600;
+}
+
+.resume-btn.glass-btn {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.use-existing-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.resume-manager-actions {
+  margin-bottom: 16px;
+}
+.resume-manager-actions .el-button {
+  border-radius: 10px;
+  padding: 12px 24px;
 }
 </style>

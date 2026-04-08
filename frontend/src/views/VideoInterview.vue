@@ -145,6 +145,7 @@ import { marked } from 'marked'
 import * as echarts from 'echarts'
 import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
 import { initModels, analyzeFrame, getEmotionSummary, EMOTION_LABELS } from '@/utils/emotionAnalyzer'
+import { userKey } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -263,11 +264,29 @@ onMounted(async () => {
   let resumeQuestions = undefined
   if (isTailored) {
     try {
-      const parsed = JSON.parse(localStorage.getItem('resume_analysis'))
-      if (parsed && parsed.tailoredQuestions) {
-        resumeQuestions = parsed.tailoredQuestions
+      const cached = localStorage.getItem(userKey('resume_analysis'))
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (parsed && parsed.tailoredQuestions) {
+          resumeQuestions = parsed.tailoredQuestions
+        }
       }
     } catch {}
+    // localStorage 无数据时，静默尝试从后端获取
+    if (!resumeQuestions) {
+      try {
+        const token = localStorage.getItem('token')
+        const resp = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/resume/profile', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (resp.ok) {
+          const result = await resp.json()
+          if (result.code === 200 && result.data && result.data.tailoredQuestions) {
+            resumeQuestions = result.data.tailoredQuestions
+          }
+        }
+      } catch {}
+    }
   }
 
   try {
@@ -324,7 +343,8 @@ function sendToAI(message) {
   else if (hrOverridden.value || totalRounds.value >= 9) currentAgent.value = 'HR 面试官'
   else currentAgent.value = '技术面试官'
 
-  const url = `/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(message)}`
+  const token = localStorage.getItem('token') || ''
+  const url = `/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(message)}&token=${token}`
   const eventSource = new EventSource(url)
 
   let fullText = ''

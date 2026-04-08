@@ -11,6 +11,7 @@ CREATE TABLE `user` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `username` VARCHAR(64) NOT NULL UNIQUE COMMENT '用户名',
   `password` VARCHAR(255) NOT NULL COMMENT '哈希加密后的密码',
+  `email` VARCHAR(128) DEFAULT NULL COMMENT '绑定邮箱',
   `nickname` VARCHAR(64) DEFAULT NULL COMMENT '用户昵称',
   `avatar` VARCHAR(255) DEFAULT NULL COMMENT '头像链接',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
@@ -40,3 +41,15 @@ CREATE TABLE `interview_record` (
 -- 注入默认管理员数据
 -- 默认用户名：admin ， 密码：123456
 INSERT IGNORE INTO `user` (`id`, `username`, `password`, `nickname`) VALUES (1, 'admin', '123456', '系统管理员');
+
+-- 3. 简历画像表
+-- 存储用户上传简历后AI解析的画像数据
+CREATE TABLE IF NOT EXISTS `resume_profile` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` BIGINT NOT NULL COMMENT '所属用户',
+  `position` VARCHAR(100) DEFAULT '软件开发' COMMENT '目标岗位',
+  `analysis_json` LONGTEXT COMMENT 'AI解析后的完整JSON画像',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户简历画像';

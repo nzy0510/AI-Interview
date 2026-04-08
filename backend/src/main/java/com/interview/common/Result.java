@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class Result<T> {
-    private Integer code; // 200: Success, 500: Error
+    private Integer code; // 200: Success, 401: Unauthorized, 500: Error
     private String msg;
     private T data;
 
@@ -26,6 +26,13 @@ public class Result<T> {
     public static <T> Result<T> error(String msg) {
         Result<T> result = new Result<>();
         result.code = 500;
+        result.msg = msg;
+        return result;
+    }
+
+    public static <T> Result<T> error(int code, String msg) {
+        Result<T> result = new Result<>();
+        result.code = code;
         result.msg = msg;
         return result;
     }

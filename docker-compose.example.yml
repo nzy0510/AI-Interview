@@ -1,0 +1,66 @@
+services:
+  db:
+    image: mysql:5.7
+    container_name: interview-db
+    environment:
+      MYSQL_DATABASE: ai_interview_ds
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - interview-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: interview-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis_data:/data
+    networks:
+      - interview-network
+
+  backend:
+    build:
+      context: ./backend
+    container_name: interview-backend
+    depends_on:
+      - db
+      - redis
+    environment:
+      DB_URL: jdbc:mysql://${DB_HOST:-db}:3306/${DB_NAME:-ai_interview_ds}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MAIL_HOST: ${MAIL_HOST:-smtp.qq.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8080:8080"
+    networks:
+      - interview-network
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: interview-frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - interview-network
+
+networks:
+  interview-network:
+    driver: bridge

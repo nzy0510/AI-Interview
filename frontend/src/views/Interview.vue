@@ -184,6 +184,7 @@ import { Microphone, ArrowLeft, UserFilled, PieChart } from '@element-plus/icons
 import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
 import * as echarts from 'echarts'
 import { marked } from 'marked'
+import { userKey } from '@/utils/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -265,11 +266,29 @@ onMounted(async () => {
   let resumeQuestions = undefined
   if (isTailored) {
     try {
-      const parsed = JSON.parse(localStorage.getItem('resume_analysis'))
-      if (parsed && parsed.tailoredQuestions) {
-        resumeQuestions = parsed.tailoredQuestions
+      const cached = localStorage.getItem(userKey('resume_analysis'))
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (parsed && parsed.tailoredQuestions) {
+          resumeQuestions = parsed.tailoredQuestions
+        }
       }
     } catch {}
+    // localStorage 无数据时，静默尝试从后端获取
+    if (!resumeQuestions) {
+      try {
+        const token = localStorage.getItem('token')
+        const resp = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/resume/profile', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (resp.ok) {
+          const result = await resp.json()
+          if (result.code === 200 && result.data && result.data.tailoredQuestions) {
+            resumeQuestions = result.data.tailoredQuestions
+          }
+        }
+      } catch {}
+    }
   }
 
   try {
@@ -534,7 +553,8 @@ const streamAiResponse = (msg) => {
   const aiMsg = reactive({ role: 'ai', content: '', streaming: true })
   messageList.value.push(aiMsg)
 
-  const url = `http://localhost:8080/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(msg)}`
+  const token = localStorage.getItem('token') || ''
+  const url = `http://localhost:8080/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(msg)}&token=${token}`
   if (eventSource) eventSource.close()
   eventSource = new EventSource(url)
 

@@ -8,14 +8,14 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
@@ -56,14 +57,20 @@ public class InterviewServiceImpl implements InterviewService {
     @Autowired
     private EmbeddingModel embeddingModel;
 
-    // 活跃会话记忆
-    private final Map<Long, ChatMemory> chatMemories = new ConcurrentHashMap<>();
-    
-    // 简历独家定制题库缓存
-    private final Map<Long, List<String>> tailoredQuestionsCache = new ConcurrentHashMap<>();
+    @Autowired(required = false)
+    private RedisTemplate<String, Object> redisTemplate;
+
+    // Redis key 前缀
+    private static final String CHAT_KEY_PREFIX = "interview:chat:";
+    private static final String TAILORED_KEY_PREFIX = "interview:tailored:";
+    private static final long SESSION_TTL_HOURS = 2;
+
+    // 本地兜底缓存（Redis 不可用时自动降级到内存）
+    private final Map<Long, List<ChatMessage>> localChatCache = new ConcurrentHashMap<>();
+    private final Map<Long, List<String>> localTailoredCache = new ConcurrentHashMap<>();
+    private volatile boolean redisAvailable = true; // 标记 Redis 是否可连通
 
     // ========== 多智能体人设提示词定义 ==========
-    // 通用态度监控规则（注入到每个 Agent 的提示词末尾）
     private static final String ATTITUDE_RULE = """
 
             【态度监控规则（所有角色必须遵守）】：
@@ -93,6 +100,118 @@ public class InterviewServiceImpl implements InterviewService {
     private static final String PROMPT_CLOSING = "你是面试组长。面试已经进入尾声。请对候选人的整体表现做一个简短的总结性发言（2-3句话），礼貌地与候选人道别。" +
             "你必须在回复的最末尾加上标记：[TERMINATE]，表示面试正式结束。";
 
+    // ========== 双模式会话存储工具（Redis 优先，内存兜底） ==========
+
+    private boolean isRedisReady() {
+        if (redisTemplate == null) return false;
+        if (!redisAvailable) return false;
+        try {
+            redisTemplate.opsForValue().get("__ping__");
+            return true;
+        } catch (Exception e) {
+            if (redisAvailable) {
+                log.warn("⚠️ Redis 不可用，已自动降级到内存缓存模式: {}", e.getMessage());
+                redisAvailable = false;
+            }
+            return false;
+        }
+    }
+
+    private void saveChatMessages(Long recordId, List<ChatMessage> messages) {
+        // 始终保留内存副本
+        localChatCache.put(recordId, new ArrayList<>(messages));
+        // 尝试同步到 Redis
+        if (isRedisReady()) {
+            try {
+                List<Map<String, String>> serialized = new ArrayList<>();
+                for (ChatMessage msg : messages) {
+                    Map<String, String> m = new HashMap<>();
+                    if (msg instanceof UserMessage) {
+                        m.put("type", "USER");
+                        m.put("text", ((UserMessage) msg).singleText());
+                    } else if (msg instanceof AiMessage) {
+                        m.put("type", "AI");
+                        m.put("text", ((AiMessage) msg).text());
+                    } else if (msg instanceof SystemMessage) {
+                        m.put("type", "SYSTEM");
+                        m.put("text", ((SystemMessage) msg).text());
+                    }
+                    serialized.add(m);
+                }
+                redisTemplate.opsForValue().set(CHAT_KEY_PREFIX + recordId, JSON.toJSONString(serialized), SESSION_TTL_HOURS, TimeUnit.HOURS);
+            } catch (Exception e) {
+                log.trace("Redis 写入跳过: {}", e.getMessage());
+            }
+        }
+    }
+
+    private List<ChatMessage> loadChatMessages(Long recordId) {
+        // 优先从 Redis 读
+        if (isRedisReady()) {
+            try {
+                Object raw = redisTemplate.opsForValue().get(CHAT_KEY_PREFIX + recordId);
+                if (raw != null) {
+                    String json = raw instanceof String ? (String) raw : JSON.toJSONString(raw);
+                    com.alibaba.fastjson2.JSONArray arr = JSON.parseArray(json);
+                    List<ChatMessage> messages = new ArrayList<>();
+                    for (int i = 0; i < arr.size(); i++) {
+                        com.alibaba.fastjson2.JSONObject obj = arr.getJSONObject(i);
+                        String type = obj.getString("type");
+                        String text = obj.getString("text");
+                        if (text == null) continue;
+                        switch (type) {
+                            case "USER" -> messages.add(new UserMessage(text));
+                            case "AI" -> messages.add(new AiMessage(text));
+                            case "SYSTEM" -> messages.add(new SystemMessage(text));
+                        }
+                    }
+                    localChatCache.put(recordId, new ArrayList<>(messages));
+                    return messages;
+                }
+            } catch (Exception e) {
+                log.trace("Redis 读取跳过: {}", e.getMessage());
+            }
+        }
+        // 降级从内存取
+        List<ChatMessage> cached = localChatCache.get(recordId);
+        return cached != null ? new ArrayList<>(cached) : null;
+    }
+
+    private void deleteChatSession(Long recordId) {
+        localChatCache.remove(recordId);
+        localTailoredCache.remove(recordId);
+        if (isRedisReady()) {
+            try {
+                redisTemplate.delete(CHAT_KEY_PREFIX + recordId);
+                redisTemplate.delete(TAILORED_KEY_PREFIX + recordId);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void saveTailoredQuestions(Long recordId, List<String> questions) {
+        localTailoredCache.put(recordId, questions);
+        if (isRedisReady()) {
+            try {
+                redisTemplate.opsForValue().set(TAILORED_KEY_PREFIX + recordId, JSON.toJSONString(questions), SESSION_TTL_HOURS, TimeUnit.HOURS);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private List<String> loadTailoredQuestions(Long recordId) {
+        if (isRedisReady()) {
+            try {
+                Object raw = redisTemplate.opsForValue().get(TAILORED_KEY_PREFIX + recordId);
+                if (raw != null) {
+                    String json = raw instanceof String ? (String) raw : JSON.toJSONString(raw);
+                    return JSON.parseArray(json, String.class);
+                }
+            } catch (Exception ignored) {}
+        }
+        return localTailoredCache.get(recordId);
+    }
+
+    // ========== 业务方法 ==========
+
     @Override
     public Long startInterview(Long userId, String position) {
         return startInterview(userId, position, "text");
@@ -113,10 +232,10 @@ public class InterviewServiceImpl implements InterviewService {
         record.setChatHistory("[]");
         interviewRecordMapper.insert(record);
 
-        chatMemories.put(record.getId(), MessageWindowChatMemory.withMaxMessages(40));
+        saveChatMessages(record.getId(), new ArrayList<>());
         
         if (resumeQuestions != null && !resumeQuestions.isEmpty()) {
-            tailoredQuestionsCache.put(record.getId(), resumeQuestions);
+            saveTailoredQuestions(record.getId(), resumeQuestions);
         }
         
         return record.getId();
@@ -125,9 +244,10 @@ public class InterviewServiceImpl implements InterviewService {
     @Override
     public SseEmitter chatStream(Long userId, Long recordId, String message) {
         SseEmitter emitter = new SseEmitter(0L);
-        ChatMemory chatMemory = chatMemories.get(recordId);
+        
+        List<ChatMessage> chatHistory = loadChatMessages(recordId);
 
-        if (chatMemory == null) {
+        if (chatHistory == null) {
             try {
                 emitter.send(JSON.toJSONString(Map.of("error", "session_expired")));
                 emitter.complete();
@@ -156,12 +276,12 @@ public class InterviewServiceImpl implements InterviewService {
         for (Content content : retrievedContents)
             contextBuilder.append("- ").append(content.textSegment().text()).append("\n");
 
-        // 2. 动态决定当前 Agent 人设 (基于对话回合数计算)
-        int turn = chatMemory.messages().size() / 2;
+        // 2. 动态决定当前 Agent 人设
+        int turn = chatHistory.size() / 2;
         String currentSystemPrompt;
         
         boolean earlySwitchToHr = false;
-        for (ChatMessage m : chatMemory.messages()) {
+        for (ChatMessage m : chatHistory) {
             if (m instanceof AiMessage && m.text().contains("[SWITCH_TO_HR]")) {
                 earlySwitchToHr = true;
                 break;
@@ -173,8 +293,8 @@ public class InterviewServiceImpl implements InterviewService {
         } else if (turn <= 8 && !earlySwitchToHr) {
             currentSystemPrompt = PROMPT_TECHNICAL + "\n以下是本题考核参考点：\n" + contextBuilder.toString();
             
-            // 如果该求职者上传了简历，将专属问题库塞入提示词
-            List<String> tailoredQuestions = tailoredQuestionsCache.get(recordId);
+            List<String> tailoredQuestions = loadTailoredQuestions(recordId);
+            
             if (tailoredQuestions != null && !tailoredQuestions.isEmpty()) {
                 StringBuilder qb = new StringBuilder("\n【重要指令：你的问题池已结合候选人简历更新，请**优先**依照以下量身定做题库向候选人发问】：\n");
                 for (String q : tailoredQuestions) {
@@ -184,23 +304,22 @@ public class InterviewServiceImpl implements InterviewService {
                 qb.append("如果在极其满意的状况下认为无需进行任何技术面试了，你可以提前结束技术部分，并把话题抛给HR同事，此时在这个回答的最末尾追加标记：[SWITCH_TO_HR]\n");
                 currentSystemPrompt += qb.toString();
             } else {
-                // 如果没有定制题，也是普通的面试官，我们同样给它跳过权利
                 currentSystemPrompt += "\n如果在极其满意的状况下认为无可挑剔且无需再问，你可以提前结束技术部分，并把话题抛给HR同事，此时在这个回答的最末尾追加标记：[SWITCH_TO_HR]\n";
             }
         } else if (turn <= 11) {
             currentSystemPrompt = PROMPT_HR;
         } else {
-            // HR 阶段结束后，进入收尾阶段，AI 道别后自动触发 [TERMINATE]
             currentSystemPrompt = PROMPT_CLOSING;
         }
 
-        // 3. 构造消息列表 (必须包含当前 Agent 的 SystemMessage)
+        // 3. 构造消息列表
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new SystemMessage(currentSystemPrompt));
-        messages.addAll(chatMemory.messages());
+        messages.addAll(chatHistory);
         messages.add(new UserMessage(message));
 
-        // 4. SSE 流式输出处理 (底层调用，规避 Usage 解析 Bug)
+        // 4. SSE 流式输出
+        final List<ChatMessage> currentHistory = chatHistory;
         StringBuilder aiResponseBuilder = new StringBuilder();
         streamingChatModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
             @Override
@@ -216,9 +335,10 @@ public class InterviewServiceImpl implements InterviewService {
             @Override
             public void onComplete(Response<AiMessage> response) {
                 try {
-                    // 即使 response 对象中的统计信息为空，我们也只用它的内容或自己拼接的内容
-                    chatMemory.add(new UserMessage(message));
-                    chatMemory.add(new AiMessage(aiResponseBuilder.toString()));
+                    currentHistory.add(new UserMessage(message));
+                    currentHistory.add(new AiMessage(aiResponseBuilder.toString()));
+                    saveChatMessages(recordId, currentHistory);
+
                     emitter.send(JSON.toJSONString(Map.of("done", "true")));
                     emitter.complete();
                 } catch (IOException e) {
@@ -252,8 +372,9 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     public InterviewRecord endInterview(Long recordId, Integer wpm, String emotionJson) {
-        ChatMemory chatMemory = chatMemories.remove(recordId);
-        tailoredQuestionsCache.remove(recordId);
+        List<ChatMessage> historyMessages = loadChatMessages(recordId);
+        deleteChatSession(recordId);
+        
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
 
         if (record == null) {
@@ -263,21 +384,18 @@ public class InterviewServiceImpl implements InterviewService {
 
         record.setEndTime(LocalDateTime.now());
         record.setVoiceWpm(wpm != null ? wpm : 0);
-        // 保存视频面试的情感分析数据
         if (emotionJson != null && !emotionJson.isEmpty()) {
             record.setEmotionJson(emotionJson);
         }
 
-        // ========== 构建评估用的对话历史 ==========
-        // 优先使用内存中的 chatMemory；如果为 null（页面刷新等场景），则从数据库恢复
-        List<ChatMessage> historyMessages = new ArrayList<>();
-        if (chatMemory != null) {
-            historyMessages.addAll(chatMemory.messages());
-            // 同步对话历史到数据库
-            record.setChatHistory(JSON.toJSONString(chatMemory.messages()));
+        if (historyMessages == null) {
+            historyMessages = new ArrayList<>();
+        }
+        
+        if (!historyMessages.isEmpty()) {
+            record.setChatHistory(JSON.toJSONString(historyMessages));
         } else {
-            log.warn("chatMemory 为空 (recordId={})，尝试从数据库恢复对话历史", recordId);
-            // 从数据库中的 chatHistory JSON 恢复对话
+            log.warn("缓存中无会话 (recordId={})，尝试从数据库恢复", recordId);
             String savedHistory = record.getChatHistory();
             if (savedHistory != null && !savedHistory.equals("[]")) {
                 try {
@@ -287,19 +405,15 @@ public class InterviewServiceImpl implements InterviewService {
                         String type = msgObj.getString("type");
                         String text = msgObj.getString("text");
                         if (text == null) {
-                            // langchain4j 序列化格式可能是 "contents" 或嵌套结构
                             com.alibaba.fastjson2.JSONArray contents = msgObj.getJSONArray("contents");
                             if (contents != null && !contents.isEmpty()) {
                                 text = contents.getJSONObject(0).getString("text");
                             }
                         }
                         if (text != null) {
-                            if ("AI".equals(type))
-                                historyMessages.add(new AiMessage(text));
-                            else if ("USER".equals(type))
-                                historyMessages.add(new UserMessage(text));
-                            else if ("SYSTEM".equals(type))
-                                historyMessages.add(new SystemMessage(text));
+                            if ("AI".equals(type)) historyMessages.add(new AiMessage(text));
+                            else if ("USER".equals(type)) historyMessages.add(new UserMessage(text));
+                            else if ("SYSTEM".equals(type)) historyMessages.add(new SystemMessage(text));
                         }
                     }
                     log.info("从数据库恢复了 {} 条对话消息", historyMessages.size());
@@ -309,7 +423,6 @@ public class InterviewServiceImpl implements InterviewService {
             }
         }
 
-        // 如果对话历史为空，无法进行评估
         if (historyMessages.isEmpty()) {
             log.warn("对话历史为空，跳过 AI 评估 (recordId={})", recordId);
             record.setScore(0);
@@ -318,9 +431,7 @@ public class InterviewServiceImpl implements InterviewService {
             return record;
         }
 
-        // ========== AI 评估：生成结构化 JSON 报告 ==========
-        // 【关键修复】过滤掉对话历史中的 SystemMessage（角色扮演提示词），
-        // 防止评估模型继续沉浸在"面试官"角色中，导致返回角色扮演文本而非 JSON
+        // ========== AI 评估 ==========
         String evaluationPrompt = String.format(
                 """
                         你现在是一个【面试评估分析师】，不是面试官。你的任务是根据以下面试对话记录，输出一个结构化的 JSON 评估报告。
@@ -359,16 +470,13 @@ public class InterviewServiceImpl implements InterviewService {
                         """,
                 wpm);
 
-        // 构建评估消息列表：用全新的 SystemMessage 确立"评估分析师"角色
         List<ChatMessage> evalMessages = new ArrayList<>();
         evalMessages.add(new SystemMessage(evaluationPrompt));
-        // 只保留 UserMessage 和 AiMessage，过滤掉之前的角色扮演 SystemMessage
         for (ChatMessage msg : historyMessages) {
             if (!(msg instanceof SystemMessage)) {
                 evalMessages.add(msg);
             }
         }
-        // 追加一条 UserMessage 强化 JSON 输出要求
         evalMessages.add(new UserMessage("面试已结束。请立即输出 JSON 格式的评估报告，不要输出任何其他内容。"));
 
         try {
@@ -395,5 +503,4 @@ public class InterviewServiceImpl implements InterviewService {
         interviewRecordMapper.updateById(record);
         return record;
     }
-
 }

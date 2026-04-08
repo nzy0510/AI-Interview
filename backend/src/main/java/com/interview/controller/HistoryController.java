@@ -6,6 +6,7 @@ import com.interview.entity.InterviewRecord;
 import com.interview.mapper.InterviewRecordMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
@@ -22,23 +23,22 @@ public class HistoryController {
     private InterviewRecordMapper interviewRecordMapper;
 
     /**
-     * 查询指定用户的所有面试历史记录（按时间倒序）
-     * 注意：实际项目应从 JWT 中获取 userId，此处简化为固定用户
+     * 查询当前登录用户的所有面试历史记录（按时间倒序）
      */
     @GetMapping("/list")
-    public Result<List<InterviewRecord>> listHistory(
-            @RequestParam(value = "userId", defaultValue = "1") Long userId) {
+    public Result<List<InterviewRecord>> listHistory(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
         QueryWrapper<InterviewRecord> query = new QueryWrapper<>();
         query.eq("user_id", userId)
-             .isNotNull("score")          // 只查已完成（有评分）的面试
+             .isNotNull("score")
              .orderByDesc("create_time")
-             .last("LIMIT 50");           // 最多返回最近50场
+             .last("LIMIT 50");
         List<InterviewRecord> records = interviewRecordMapper.selectList(query);
         return Result.success(records);
     }
 
     /**
-     * 查看单场面试的完整报告（供历史页面点击查看详情）
+     * 查看单场面试的完整报告
      */
     @GetMapping("/detail/{id}")
     public Result<InterviewRecord> detail(@PathVariable Long id) {
