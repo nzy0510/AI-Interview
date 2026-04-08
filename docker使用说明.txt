@@ -1,8 +1,0 @@
-docker-compose up --build -d 代码修改或者第一次运行都要使用该指令构建；
-docker-compose up -d 直接启动；(直接在桌面版docker操作也可)
-docker-compose stop 停止运行(同上，也可在docker中操作)
-
-如果你改了 SQL 脚本（比如加了个字段），直接重启是不生效的。
-正确操作：docker-compose down(停止并清理容器) -> 删除 mysql_data 文件夹 -> docker-compose up -d。
-
-现在只需配置.env.example文件即可，参照.env文件中的内容更改。
