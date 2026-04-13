@@ -95,10 +95,10 @@ public class InterviewServiceImpl implements InterviewService {
             - 提问做到覆盖多方面的知识。
             """ + ATTITUDE_RULE;
 
-    private static final String PROMPT_HR = "你是【资深 HR BP】。职责是考察候选人的沟通能力、价值观和稳定性。语气专业、温和但有洞察力。每次只问一个问题。如果在考察后感到非常满意或没有需要了解的了，可以直接告诉候选人面试结束，并在结尾加上标记：[TERMINATE]。" + ATTITUDE_RULE;
+    private static final String PROMPT_HR = "你是【资深 HR BP】。职责是考察候选人的沟通能力、价值观和稳定性。语气专业、温和但有洞察力。每次只问一个问题。如果在考察后感到非常满意或没有需要了解的了，可以直接告诉候选人面试结束，并在结尾加上标记：[AUTO_FINISH]。" + ATTITUDE_RULE;
 
     private static final String PROMPT_CLOSING = "你是面试组长。面试已经进入尾声。请对候选人的整体表现做一个简短的总结性发言（2-3句话），礼貌地与候选人道别。" +
-            "你必须在回复的最末尾加上标记：[TERMINATE]，表示面试正式结束。";
+            "你必须在回复的最末尾加上标记：[AUTO_FINISH]，表示面试正式结束。";
 
     // ========== 双模式会话存储工具（Redis 优先，内存兜底） ==========
 
@@ -459,7 +459,19 @@ public class InterviewServiceImpl implements InterviewService {
                           "knowledgePoints": [
                             {"concept": "微服务架构", "mastery": 0.8, "category": "架构设计"},
                             {"concept": "Java多线程", "mastery": 0.3, "category": "底层原理"}
-                          ]
+                          ],
+                          "sentimentAnalysis": {
+                            "avgConfidence": 0.72,
+                            "dominantEmotion": "neutral",
+                            "emotionDistribution": {
+                              "neutral": 0.5,
+                              "happy": 0.2,
+                              "sad": 0.05,
+                              "angry": 0.1,
+                              "fearful": 0.15
+                            },
+                            "summary": "候选人整体情绪稳定，在技术深挖阶段略有紧张..."
+                          }
                         }
 
                         评分说明：
@@ -467,6 +479,7 @@ public class InterviewServiceImpl implements InterviewService {
                         - ability 六维能力评级（A/B/C/D/E）
                         - recommendations: 3条具体的提升建议
                         - knowledgePoints: 请提取本场面试中暴露或考察到的所有核心底层实体概念（如生命周期、并发锁、响应式等，不少于 3 个）。mastery是 0.0-1.0 的浮点熟练度，category所属技术大类。
+                        - sentimentAnalysis: 基于对话文本分析候选人的情感状态。avgConfidence 为 0.0-1.0 的自信指数，dominantEmotion 为主导情绪（neutral/happy/sad/angry/fearful），emotionDistribution 为各情绪占比（总和为1.0），summary 为1-2句情感分析总结。请从候选人的用词、语气、回答犹豫程度、逻辑流畅度等维度综合判断。
                         """,
                 wpm);
 
@@ -494,6 +507,23 @@ public class InterviewServiceImpl implements InterviewService {
                 record.setRecommendations(evalObj.getJSONArray("recommendations").toJSONString());
             if (evalObj.get("knowledgePoints") != null)
                 record.setKnowledgeJson(evalObj.getJSONArray("knowledgePoints").toJSONString());
+            // 文本情感分析：如果没有视频情感数据，使用 AI 基于对话文本的情感分析
+            if ((record.getEmotionJson() == null || record.getEmotionJson().isEmpty())
+                    && evalObj.get("sentimentAnalysis") != null) {
+                com.alibaba.fastjson2.JSONObject sentiment = evalObj.getJSONObject("sentimentAnalysis");
+                sentiment.put("source", "text");
+                record.setEmotionJson(sentiment.toJSONString());
+            } else if (record.getEmotionJson() != null && !record.getEmotionJson().isEmpty()
+                    && evalObj.get("sentimentAnalysis") != null) {
+                // 视频模式：将 AI 的文本情感总结追加到已有的视频情感数据中
+                try {
+                    com.alibaba.fastjson2.JSONObject existing = JSON.parseObject(record.getEmotionJson());
+                    existing.put("source", "video");
+                    String summary = evalObj.getJSONObject("sentimentAnalysis").getString("summary");
+                    if (summary != null) existing.put("summary", summary);
+                    record.setEmotionJson(existing.toJSONString());
+                } catch (Exception ignored) {}
+            }
         } catch (Exception e) {
             log.error("评估生成失败 (recordId={})", recordId, e);
             record.setScore(0);
