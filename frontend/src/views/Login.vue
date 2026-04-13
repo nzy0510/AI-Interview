@@ -10,8 +10,8 @@
             <el-form-item prop="username">
               <el-input 
                 v-model="loginForm.username" 
-                placeholder="请输入用户名" 
-                prefix-icon="User" />
+                placeholder="请输入邮箱或用户名" 
+                prefix-icon="Message" />
             </el-form-item>
             <el-form-item prop="password">
               <el-input 
@@ -160,7 +160,7 @@ const startCooldown = (type) => {
 }
 
 const loginRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 

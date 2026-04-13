@@ -83,6 +83,11 @@ cp docker-compose.example.yml docker-compose.yml
 DB_USERNAME=root                              # 数据库用户名
 DB_PASSWORD=your_password_here                # 设置你的数据库密码
 DEEPSEEK_API_KEY=your_deepseek_api_key_here   # DeepSeek API Key (必填，申请地址: https://platform.deepseek.com/)
+
+MAIL_HOST=smtp.qq.com                         
+MAIL_PORT=587
+MAIL_USERNAME=your_email@qq.com               #qq邮箱
+MAIL_PASSWORD=your_smtp_authorization_code    #授权码
 ```
 
 ### 3. 一键启动

@@ -7,7 +7,7 @@
       <el-header class="glass-header">
         <div class="logo-wrap">
           <span class="logo-icon">🤖</span>
-          <span class="logo-text">AI Interview Master</span>
+          <span class="logo-text">InterWise</span>
         </div>
         <div class="header-actions">
           <!-- 简历管理入口 -->
