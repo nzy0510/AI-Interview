@@ -103,6 +103,27 @@
             </div>
           </div>
 
+          <!-- Sentiment Analysis Card -->
+          <div v-if="emotionSummary || reportData.emotionFromAI" class="bento-card bento-sentiment">
+            <h3 class="bento-card-title">🧠 情感分析
+              <el-tag size="small" type="success" effect="plain" style="margin-left: 8px">视频模式</el-tag>
+            </h3>
+            <div class="sentiment-content">
+              <div v-if="(emotionSummary || reportData.emotionFromAI)?.emotionDistribution" class="emotion-bars">
+                <div v-for="(val, key) in (emotionSummary || reportData.emotionFromAI).emotionDistribution" :key="key" class="em-bar-row">
+                  <span class="em-name">{{ emotionLabel(key) }}</span>
+                  <div class="em-bar-bg">
+                    <div class="em-bar-fill" :style="{ width: (val * 100) + '%', background: emotionColor(key) }"></div>
+                  </div>
+                  <span class="em-pct">{{ (val * 100).toFixed(0) }}%</span>
+                </div>
+              </div>
+              <div v-if="reportData.emotionSummaryText" class="sentiment-summary">
+                <p>{{ reportData.emotionSummaryText }}</p>
+              </div>
+            </div>
+          </div>
+
           <!-- Bottom Left: AI Eval -->
           <div class="bento-card bento-feedback">
             <h3 class="bento-card-title">🤖 面试官综合评价</h3>
@@ -177,7 +198,8 @@ const scoreColor = computed(() => {
 
 const reportData = reactive({
   score: 0, feedback: '', wpm: 0,
-  ability: {}, recommendations: []
+  ability: {}, recommendations: [],
+  emotionFromAI: null, emotionSummaryText: ''
 })
 
 // Emotion data (collected in background, not displayed during interview)
@@ -193,6 +215,7 @@ const SILENCE_MS = 2500
 
 // TTS
 let currentUtterance = null
+let pendingEndType = null
 
 // WPM tracking
 let voiceTurns = []
@@ -336,6 +359,7 @@ function sendToAI(message) {
   isStreaming.value = true
   isListening.value = false
   currentAiText.value = ''
+  pendingEndType = null
 
   // Determine current agent based on round count
   if (totalRounds.value === 0) currentAgent.value = '面试组长'
@@ -365,8 +389,20 @@ function sendToAI(message) {
       isStreaming.value = false
       eventSource.close()
       totalRounds.value++
-      // Speak the AI response
-      speakText(fullText)
+      if (pendingEndType) {
+        const endType = pendingEndType
+        const cleanedText = currentAiText.value || fullText
+        pendingEndType = null
+        ElMessage[endType === 'abnormal' ? 'warning' : 'info'](
+          endType === 'abnormal' ? '检测到面试异常中断，正在生成记录...' : '面试已正常结束，正在生成报告...'
+        )
+        speakText(cleanedText, () => {
+          performEndInterview(endType)
+        })
+      } else {
+        // Speak the AI response
+        speakText(fullText)
+      }
       return
     }
 
@@ -381,19 +417,18 @@ function sendToAI(message) {
         currentAgent.value = 'HR 面试官'
       }
 
+      if (fullText.includes('[AUTO_FINISH]')) {
+        fullText = fullText.replace('[AUTO_FINISH]', '').trim()
+        pendingEndType = 'normal'
+      }
+
       currentAiText.value = fullText
 
       // Check for [TERMINATE]
       if (fullText.includes('[TERMINATE]')) {
         currentAiText.value = fullText.replace('[TERMINATE]', '').trim()
-        isStreaming.value = false
-        eventSource.close()
-        totalRounds.value++
-        ElMessage.warning('面试即将结束，正在生成报告...')
-        speakText(currentAiText.value, () => {
-          performEndInterview()
-        })
-        return
+        fullText = currentAiText.value
+        pendingEndType = 'abnormal'
       }
     }
   }
@@ -544,7 +579,7 @@ const endInterview = async () => {
   performEndInterview()
 }
 
-const performEndInterview = async () => {
+const performEndInterview = async (endType = 'manual') => {
   stopListening()
   stopSpeaking()
   stopEmotionSampling()
@@ -555,7 +590,15 @@ const performEndInterview = async () => {
   // Generate emotion summary
   emotionSummary.value = getEmotionSummary(emotionTimeline.value)
 
-  const loadingMsg = ElMessage({ message: '🤖 正在深度分析，请稍候...', type: 'info', duration: 0 })
+  const loadingMsg = ElMessage({
+    message: endType === 'abnormal'
+      ? '🚨 检测到异常中断，正在生成报告...'
+      : endType === 'normal'
+        ? '✅ 面试已完成，正在生成报告...'
+        : '🤖 正在深度分析，请稍候...',
+    type: endType === 'abnormal' ? 'warning' : 'info',
+    duration: 0
+  })
 
   try {
     const res = await finishInterviewAPI({
@@ -575,6 +618,15 @@ const performEndInterview = async () => {
 
       try { reportData.recommendations = typeof res.recommendations === 'string' ? JSON.parse(res.recommendations) : (res.recommendations || []) }
       catch { reportData.recommendations = [] }
+
+      // Parse emotion data from backend (contains AI summary text)
+      try {
+        const emotionData = typeof res.emotionJson === 'string' ? JSON.parse(res.emotionJson) : (res.emotionJson || null)
+        if (emotionData) {
+          reportData.emotionFromAI = emotionData
+          reportData.emotionSummaryText = emotionData.summary || ''
+        }
+      } catch { reportData.emotionFromAI = null; reportData.emotionSummaryText = '' }
 
       showReport.value = true
       nextTick(() => {
@@ -820,8 +872,19 @@ function animateRadar() {
 .kpi-lbl { font-size: 12px; color: #94a3b8; }
 .unit { font-size: 12px; font-weight: normal; color: #64748b; margin-left: 2px; }
 
-.bento-feedback { grid-column: 1 / 3; grid-row: 3 / 4; min-height: 300px; max-height: 500px; overflow-y: auto; }
-.bento-roadmap { grid-column: 3 / 4; grid-row: 3 / 4; min-height: 300px; max-height: 500px; overflow-y: auto; }
+.bento-sentiment { grid-column: 1 / 4; grid-row: 3 / 4; }
+.sentiment-content { display: flex; gap: 24px; align-items: flex-start; }
+.emotion-bars { flex: 1; min-width: 280px; }
+.em-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.em-name { width: 40px; font-size: 13px; color: #94a3b8; text-align: right; flex-shrink: 0; }
+.em-bar-bg { flex: 1; height: 18px; background: rgba(255,255,255,0.06); border-radius: 9px; overflow: hidden; }
+.em-bar-fill { height: 100%; border-radius: 9px; transition: width 0.8s ease; }
+.em-pct { width: 40px; font-size: 13px; color: #cbd5e1; text-align: right; flex-shrink: 0; }
+.sentiment-summary { flex: 1; min-width: 200px; }
+.sentiment-summary p { color: #cbd5e1; font-size: 14px; line-height: 1.7; margin: 0; padding: 12px 16px; background: rgba(255,255,255,0.04); border-radius: 12px; border-left: 3px solid #67C23A; }
+
+.bento-feedback { grid-column: 1 / 3; grid-row: 4 / 5; min-height: 300px; max-height: 500px; overflow-y: auto; }
+.bento-roadmap { grid-column: 3 / 4; grid-row: 4 / 5; min-height: 300px; max-height: 500px; overflow-y: auto; }
 
 .custom-md { color: #e2e8f0; font-size: 15px; line-height: 1.7; }
 .custom-md :deep(h1), .custom-md :deep(h2), .custom-md :deep(h3) { color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.1); margin-top: 0; padding-bottom: 8px; }
