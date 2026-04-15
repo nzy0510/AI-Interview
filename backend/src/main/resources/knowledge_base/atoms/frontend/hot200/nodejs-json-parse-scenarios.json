@@ -1,0 +1,23 @@
+{
+  "id": "nodejs-json-parse-scenarios",
+  "subject": "Node.js 中 JSON 解析的场景与最佳实践",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Node.js",
+    "JSON",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "核心原理：Node.js 中处理 JSON 数据需根据数据量选择不同方案。1) 对于小数据，直接使用 `JSON.parse()` 配合 `fs.readFileSync` 同步读取文件。2) 对于大文件（如超过几十MB），必须使用流式处理配合 JSON 流式解析库（如 JSONStream 或 stream-json），以避免内存溢出。3) 在 Web 框架（如 Express）中，通常使用内置的 JSON 中间件自动解析请求体并挂载到 `req.body` 上，无需手动处理。关键在于根据场景选择正确的方法，避免在数据量大的情况下使用同步或一次性加载的方式。",
+    "pitfalls": [
+      "误用 `fs.readFileSync` 或 `JSON.parse()` 处理大文件，导致内存耗尽（OOM）。",
+      "不清楚 Express 等框架已内置 JSON 解析中间件，还在手动解析 `req.body`。",
+      "混淆了同步读取和流式解析的应用场景。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：流式 JSON 解析库（如 JSONStream）是如何分块解析、避免内存占用的？它与直接使用 `fs.createReadStream` 和 `JSON.parse` 有何本质区别？",
+      "如果候选人答得不好，可以引导：假设有一个 1GB 的 JSON 日志文件需要逐行处理，你会如何设计读取和解析流程？"
+    ]
+  }
+}

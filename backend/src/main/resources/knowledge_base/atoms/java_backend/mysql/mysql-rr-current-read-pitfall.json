@@ -1,0 +1,23 @@
+{
+  "id": "mysql-rr-current-read-pitfall",
+  "subject": "MySQL 可重复读隔离级别下 SELECT ... FOR UPDATE 的当前读行为",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "事务",
+    "隔离级别",
+    "锁"
+  ],
+  "content": {
+    "principles": "在 MySQL 的 REPEATABLE READ 隔离级别下，普通的 SELECT 语句是快照读，基于事务开始时的一致性视图，保证可重复读。但 SELECT ... FOR UPDATE 或 UPDATE 语句是当前读，会读取已提交的最新数据并加锁。这意味着在同一个事务中，先执行快照读，再执行当前读，可能会看到其他事务在快照之后提交的数据，破坏了快照读的‘可重复读’语义。这是由锁和 MVCC 机制共同决定的：当前读需要获取记录的最新提交版本并加锁，以保证后续更新的正确性。",
+    "pitfalls": [
+      "候选人可能认为 REPEATABLE READ 下所有读操作都是一致的，忽略了 FOR UPDATE 等语句的当前读特性。",
+      "在事务中混合使用快照读和当前读时，可能导致逻辑判断错误，例如基于快照读的结果做 FOR UPDATE 更新，但实际记录已被其他事务修改。"
+    ],
+    "follow_up_paths": [
+      "除了 FOR UPDATE，还有哪些语句是当前读？（如 UPDATE, DELETE, SELECT ... LOCK IN SHARE MODE）",
+      "当前读是如何解决幻读问题的？（通过间隙锁）",
+      "如果想让 FOR UPDATE 也基于快照读，有什么办法？（无法实现，这是设计使然，需调整业务逻辑顺序）"
+    ]
+  }
+}

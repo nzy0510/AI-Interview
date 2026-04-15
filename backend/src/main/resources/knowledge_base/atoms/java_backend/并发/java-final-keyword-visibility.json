@@ -1,0 +1,26 @@
+{
+  "id": "java-final-keyword-visibility",
+  "subject": "final 关键字对多线程可见性的保证",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "final",
+    "内存模型",
+    "可见性",
+    "JMM"
+  ],
+  "content": {
+    "principles": "在 Java 内存模型（JMM）中，正确使用 final 关键字可以保证多线程环境下的可见性。\n1. 对于 final 字段，JVM 禁止将其写操作重排序到构造函数之外。这意味着，当一个对象的引用对其他线程可见时（即对象构造完成并安全发布），其所有 final 字段的值也一定是初始化完成后的最终值，对其他线程立即可见。\n2. 这一特性常用于实现不可变对象和线程安全的单例模式，无需额外的同步即可安全共享。\n3. 对于非 final 字段，则没有此保证。即使对象引用已发布，其他线程仍可能看到其默认值（如 0、null）或部分构造的值。\n\n注意：final 保证的是引用不变和可见性，但不适用于后续修改。若字段需要后续修改且保持可见性，需使用 volatile 或同步机制。",
+    "pitfalls": [
+      "误以为 final 能保证所有字段（包括非 final 字段）的可见性。",
+      "误以为 final 可以替代 volatile 或 synchronized 来保证可变状态的并发安全。",
+      "在构造函数完成前让 this 引用逸出（escape），这会破坏 final 的可见性保证。"
+    ],
+    "follow_up_paths": [
+      "如果候选人理解了基本保证，可以追问：'从 JMM 规范角度，final 字段的'冻结'（freeze）发生在什么时刻？它与 happens-before 规则有什么关系？'",
+      "可以深入陷阱：'什么是'this引用逸出'？请写一个会导致final字段可见性失效的代码示例。'",
+      "如果候选人混淆了 final 和 volatile，可以引导：'比较一下 final 和 volatile 在保证可见性方面的异同。它们分别适用于什么场景？'"
+    ]
+  }
+}

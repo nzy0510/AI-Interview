@@ -1,0 +1,22 @@
+{
+  "id": "mysql-join-on-vs-where",
+  "subject": "MySQL JOIN 中 ON 与 WHERE 子句的执行顺序与区别",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "SQL",
+    "JOIN",
+    "查询优化"
+  ],
+  "content": {
+    "principles": "在 MySQL 的 JOIN 操作中，ON 子句和 WHERE 子句的执行顺序和作用不同。ON 子句在 JOIN 连接时进行过滤，用于决定左右表之间如何匹配行。WHERE 子句则在所有 JOIN 操作完成后，对最终的结果集进行过滤。对于 LEFT JOIN，如果将右表的条件放在 WHERE 子句中（例如 `WHERE o.amount > 100`），会过滤掉右表匹配为 NULL 的行，导致 LEFT JOIN 退化为事实上的 INNER JOIN。正确的做法是将右表的过滤条件也放在 ON 子句中，以保留左表的所有行。",
+    "pitfalls": [
+      "候选人容易混淆 ON 和 WHERE 的执行时机，误以为 WHERE 条件会先于 JOIN 执行。",
+      "在 LEFT JOIN 中使用 WHERE 过滤右表字段，导致丢失左表未匹配的行，是面试官常设的陷阱。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：MySQL 优化器是否会重排 ON 和 WHERE 的条件？这对执行计划有何影响？",
+      "如果候选人答得不好，可以引导：假设一个 LEFT JOIN 查询结果比预期少，可能是什么原因？如何排查？"
+    ]
+  }
+}

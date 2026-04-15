@@ -1,0 +1,24 @@
+{
+  "id": "innodb-redo-log-physical-content",
+  "subject": "InnoDB redo log 记录的内容与物理日志本质",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "日志系统",
+    "事务",
+    "崩溃恢复"
+  ],
+  "content": {
+    "principles": "redo log 是物理日志，记录的是数据页的物理修改内容，而非逻辑 SQL 语句。它记录的是“在某个表空间（tablespace）的某个页号（page no）上，从某个偏移量（offset）开始，将数据从旧值更新为新值”这样的字节级变化。这种设计是为了崩溃恢复时能快速、确定地重做（redo）修改，确保事务的持久性（Durability）。它是 WAL（Write-Ahead Logging）技术的核心：修改先写日志（顺序写，性能高），后写数据页（随机写）。日志写入 log buffer，根据 `innodb_flush_log_at_trx_commit` 配置决定刷盘策略，最终由后台线程写入循环使用的 ib_logfile 文件。",
+    "pitfalls": [
+      "误以为 redo log 记录的是 SQL 语句本身。",
+      "混淆 redo log（重做日志，保证持久性）和 undo log（回滚日志，保证原子性和 MVCC）。",
+      "不理解 redo log 顺序写对于提升数据库写入性能的关键作用。"
+    ],
+    "follow_up_paths": [
+      "redo log 和 binlog 有什么区别？（物理 vs 逻辑，引擎层 vs Server层，用途不同）",
+      "什么是 LSN（Log Sequence Number）？它在崩溃恢复中起什么作用？",
+      "checkpoint 机制是什么？它与 redo log 的循环写入有什么关系？"
+    ]
+  }
+}

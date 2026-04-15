@@ -1,0 +1,21 @@
+{
+  "id": "mysql-index-condition-pushdown",
+  "subject": "索引下推（ICP）",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "索引",
+    "查询优化"
+  ],
+  "content": {
+    "principles": "索引下推（Index Condition Pushdown, ICP）是MySQL 5.6引入的优化。在未使用ICP时，存储引擎根据索引条件定位到记录后，会立即回表取出整行数据，再由Server层根据WHERE中的其他条件进行过滤。使用ICP后，存储引擎层会将WHERE子句中可以使用索引的过滤条件（即使该条件不能完全用于索引查找，如范围查询后的列）在索引遍历过程中就进行判断，提前过滤掉不满足条件的记录，只将符合条件的记录进行回表操作。这大大减少了不必要的回表次数和随机IO。例如，对于联合索引 (name, age) 和查询 `SELECT * FROM users WHERE name LIKE '张%' AND age > 30`，ICP允许在索引遍历时直接过滤掉 age <= 30 的记录。ICP不适用于主键索引，也不适用于覆盖索引（因为无需回表）。",
+    "pitfalls": [
+      "不清楚ICP适用的场景（需要回表，且WHERE条件包含索引列但不能完全用于索引查找）。",
+      "误以为ICP可以优化所有类型的查询条件。"
+    ],
+    "follow_up_paths": [
+      "如何通过EXPLAIN判断ICP是否生效？（查看Extra字段是否包含'Using index condition'）",
+      "ICP对于`LIKE 'prefix%'`和`LIKE '%suffix'`这两种模式查询的优化效果有何不同？为什么？"
+    ]
+  }
+}

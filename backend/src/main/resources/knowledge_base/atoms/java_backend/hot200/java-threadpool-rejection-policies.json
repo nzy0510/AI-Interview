@@ -1,0 +1,24 @@
+{
+  "id": "java-threadpool-rejection-policies",
+  "subject": "Java线程池的四种内置拒绝策略及其应用场景",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "线程池",
+    "并发控制",
+    "JUC"
+  ],
+  "content": {
+    "principles": "当线程池的线程数达到`maximumPoolSize`且工作队列已满时，新提交的任务将由`RejectedExecutionHandler`处理。JDK内置了四种策略：\n\n1.  **AbortPolicy（默认）**：直接抛出`RejectedExecutionException`异常，阻止系统继续运行。\n    -   **适用场景**：关键业务，任务不允许丢失，且需要调用方立即感知失败（如支付交易）。\n\n2.  **CallerRunsPolicy**：不抛出异常，也不丢弃任务，而是将任务回退给调用者（提交任务的线程）执行。\n    -   **适用场景**：需要减缓任务提交速度，避免雪崩。常用于服务器端，能有效利用调用线程，形成负反馈。\n\n3.  **DiscardOldestPolicy**：丢弃队列中等待最久的一个任务（即队列头部的任务），然后尝试重新提交当前任务。\n    -   **适用场景**：实时性要求高，新任务比老任务价值更大的场景（如实时监控数据流）。要求队列有序。\n\n4.  **DiscardPolicy**：静默丢弃新提交的任务，不做任何处理。\n    -   **适用场景**：允许任务丢失的非关键场景（如日志上报、 metrics 采集）。\n\n开发者可通过实现`RejectedExecutionHandler`接口自定义拒绝策略，例如将拒绝的任务记录日志、存入死信队列或持久化，以便后续补偿处理。",
+    "pitfalls": [
+      "不了解默认拒绝策略是`AbortPolicy`，线上任务突增时导致大量异常，服务不可用。",
+      "错误地在所有场景使用同一种拒绝策略。",
+      "使用`DiscardOldestPolicy`时，未考虑被丢弃任务可能带来的业务影响（如订单丢失）。"
+    ],
+    "follow_up_paths": [
+      "在生产者-消费者模型中，如果使用`CallerRunsPolicy`，可能会产生什么效果？（生产者线程被占用执行任务，从而自然降低了生产速度，形成流量整形）",
+      "如何实现一个自定义拒绝策略，将拒绝的任务异步写入Redis或MQ？",
+      "`ScheduledThreadPoolExecutor`使用的延迟队列`DelayedWorkQueue`是无界的，那么它还需要拒绝策略吗？为什么？（需要，因为虽然队列无界，但资源（内存）有限，当任务提交速度远超执行速度时，仍可能耗尽内存，触发OOM前JVM可能会抛出`OutOfMemoryError`，但好的实践是设置合理的拒绝策略作为最后防线）"
+    ]
+  }
+}

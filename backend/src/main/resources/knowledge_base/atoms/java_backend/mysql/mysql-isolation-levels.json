@@ -1,0 +1,25 @@
+{
+  "id": "mysql-isolation-levels",
+  "subject": "MySQL 事务隔离级别：可重复读与串行化",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "事务",
+    "隔离级别",
+    "MVCC",
+    "锁"
+  ],
+  "content": {
+    "principles": "MySQL默认隔离级别为可重复读（Repeatable Read）。它通过MVCC（多版本并发控制）实现快照读，保证同一事务内多次读取同一数据结果一致，解决了不可重复读问题。InnoDB在此级别下通过间隙锁（Gap Lock）解决了大部分幻读场景。串行化（Serializable）是最高隔离级别，通过为读操作加共享锁、写操作加排他锁来强制事务串行执行，完全避免并发问题（脏读、不可重复读、幻读），但性能最差。实际业务中，读已提交（Read Committed）和可重复读（Repeatable Read）最常用，选择取决于场景（如金融系统倾向可重复读，高并发读多写少系统可能选读已提交）。",
+    "pitfalls": [
+      "误以为可重复读级别下完全不会出现幻读（InnoDB通过间隙锁解决了大部分，但并非所有场景）。",
+      "混淆MVCC和锁的实现机制，不清楚快照读和当前读的区别。",
+      "认为串行化只是简单的表锁，实际上InnoDB的串行化是通过Next-Key Locking实现的。"
+    ],
+    "follow_up_paths": [
+      "InnoDB的MVCC具体是如何实现的？Read View和undo log的作用是什么？",
+      "间隙锁和临键锁（Next-Key Lock）是如何解决幻读的？请举例说明一个间隙锁无法完全解决的幻读场景。",
+      "为什么读已提交隔离级别下，同一个事务内两次相同的查询可能看到不同的数据？"
+    ]
+  }
+}

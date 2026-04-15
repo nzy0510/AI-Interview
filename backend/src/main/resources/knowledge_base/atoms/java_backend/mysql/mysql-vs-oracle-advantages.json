@@ -1,0 +1,25 @@
+{
+  "id": "mysql-vs-oracle-advantages",
+  "subject": "MySQL相较于Oracle的优势",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "数据库选型",
+    "开源",
+    "性能",
+    "运维成本"
+  ],
+  "content": {
+    "principles": "MySQL相较于Oracle的主要优势在于其定位和设计哲学更贴合互联网及中小型应用场景：1) 开源免费：MySQL社区版完全免费，可显著降低软件授权成本。Oracle企业版授权费用高昂（按CPU核心计费）。2) 性能特点：在读多写少、高并发简单查询场景（如商品列表、用户评论）下响应更快，QPS可达上万。InnoDB引擎支持行级锁和MVCC，满足大部分OLTP需求。3) 轻量级与低运维成本：单实例资源占用小（如512MB内存可运行），部署简单。配合主从复制及MHA/Sentinel等工具，故障切换方案成熟，对DBA依赖度低于Oracle。4) 生态与云适配：与LAMP/LEMP栈天然集成，容器化部署便捷。云厂商（如阿里云RDS、AWS RDS）对MySQL的优化和支持非常完善。Oracle在复杂事务、强一致性报表、超大规模OLAP及高可用特性（如RAC, Data Guard）上更强，但多数Web应用无需这些重型功能。",
+    "pitfalls": [
+      "认为MySQL在所有场景下都优于Oracle。在需要极强一致性、复杂分析或企业级高可用特性的场景，Oracle仍是更优选择。",
+      "忽略MySQL不同存储引擎（如MyISAM vs InnoDB）的特性差异，错误选型导致问题。",
+      "低估Oracle在特定硬件和优化下的极致性能，以及其生态中高级工具的价值。"
+    ],
+    "follow_up_paths": [
+      "追问：在什么具体业务场景下，你会建议从MySQL迁移到Oracle或PostgreSQL？",
+      "引导：除了成本，MySQL在可扩展性（如分库分表）方面有哪些常见方案和挑战？",
+      "深入：谈谈MySQL 8.0引入了哪些重要特性（如CTE、窗口函数、JSON增强）来缩小与Oracle的功能差距？"
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "java-thread-pool-creation",
+  "subject": "Java线程池的创建方式与参数配置",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "线程池",
+    "ThreadPoolExecutor",
+    "Executors",
+    "资源管理"
+  ],
+  "content": {
+    "principles": "创建线程池的核心方式是直接使用ThreadPoolExecutor构造函数，它提供了完整的参数控制：核心线程数(corePoolSize)、最大线程数(maximumPoolSize)、空闲线程存活时间(keepAliveTime)、工作队列(workQueue)和拒绝策略(RejectedExecutionHandler)。Executors工厂类提供的快捷方法（如newFixedThreadPool, newCachedThreadPool, newSingleThreadExecutor）因使用无界队列或极大线程数上限，存在内存溢出或资源耗尽风险，生产环境不推荐使用。阿里规约禁止使用Executors创建线程池。标准做法是手动配置，例如使用有界队列（如ArrayBlockingQueue）和合适的拒绝策略（如CallerRunsPolicy）。",
+    "pitfalls": [
+      "使用Executors.newFixedThreadPool等快捷方法，因其内部使用无界LinkedBlockingQueue，可能导致任务堆积内存溢出。",
+      "使用Executors.newCachedThreadPool，其最大线程数为Integer.MAX_VALUE，高并发下可能创建海量线程导致系统崩溃。",
+      "核心参数（如队列容量、拒绝策略）设置不合理，未考虑实际业务负载和系统资源。",
+      "混淆核心线程数和最大线程数的作用，以及线程池扩容（从核心线程数增加到最大线程数）的触发条件（队列满）。"
+    ],
+    "follow_up_paths": [
+      "线程池中，任务提交后，从创建新线程到放入队列，再到执行拒绝策略的完整流程是怎样的？",
+      "除了CallerRunsPolicy，还有哪些内置拒绝策略？分别适用于什么业务场景？",
+      "如何实现一个自定义的线程池拒绝策略，比如将拒绝的任务异步持久化到数据库？",
+      "ScheduledThreadPoolExecutor与Timer相比有哪些优势？它的内部任务队列是什么结构？",
+      "在Spring中，如何为@Async注解配置一个自定义的ThreadPoolTaskExecutor？"
+    ]
+  }
+}

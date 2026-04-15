@@ -1,0 +1,23 @@
+{
+  "id": "redis-list-commands",
+  "subject": "Redis List 类型的常见操作命令与使用场景",
+  "category": "redis",
+  "difficulty": "简单",
+  "tags": [
+    "数据结构",
+    "list",
+    "命令"
+  ],
+  "content": {
+    "principles": "Redis List 底层由双向链表或压缩列表（旧版）实现，现主要由 Quicklist 实现。常用命令：\n1. 插入：LPUSH/RPUSH 从左侧/右侧插入元素。\n2. 弹出/读取：LPOP/RPOP 从左侧/右侧弹出并返回元素；LINDEX 按索引获取元素（不删除）。\n3. 阻塞操作：BLPOP/BRPOP 在指定 key 上阻塞等待并弹出元素，避免客户端轮询。\n4. 范围与修剪：LRANGE 获取指定索引范围的元素；LTRIM 修剪列表，只保留指定范围内的元素。\n使用场景：消息队列（LPUSH+BRPOP）、最新消息列表（LPUSH+LTRIM）。注意：List 的随机访问（LINDEX）性能随索引增大而变差，高频随机读场景应考虑 Sorted Set。",
+    "pitfalls": [
+      "误用 LINDEX 进行高频随机访问，导致性能问题。",
+      "不清楚 BLPOP 可以同时监听多个 key。",
+      "未使用 LTRIM 控制列表长度，导致内存无限增长。"
+    ],
+    "follow_up_paths": [
+      "如何用 List 实现一个可靠的、支持多消费者的消息队列？",
+      "Quicklist 是如何结合 ziplist 和双向链表来优化 List 性能的？"
+    ]
+  }
+}

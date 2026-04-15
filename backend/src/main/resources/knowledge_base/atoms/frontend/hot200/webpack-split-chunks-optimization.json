@@ -1,0 +1,24 @@
+{
+  "id": "webpack-split-chunks-optimization",
+  "subject": "Webpack高效分包优化策略",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Webpack",
+    "代码分割",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "Webpack分包的核心逻辑是按需加载和缓存复用。1. 入口级拆分：通过`entry`配置将不同功能完全分开（如管理后台和用户中心）。2. 第三方库分离：使用SplitChunksPlugin将node_modules中的依赖（如React、Lodash）单独打包成vendor chunk，利用浏览器长期缓存。配置示例：在`optimization.splitChunks.cacheGroups`中定义`vendor`组，`test: /[\\\\/]node_modules[\\\\/]/`，并设置`priority`决定抽取顺序。3. 路由级异步加载：结合动态`import()`实现，Webpack自动切割chunk，首屏只加载必要代码。4. 使用`[contenthash:8]`为chunk命名，确保文件内容变化时哈希才改变，避免缓存失效。注意`priority`字段的重要性，它控制多个cacheGroup的抽取优先级。",
+    "pitfalls": [
+      "未正确设置`splitChunks.chunks`为`'all'`，导致异步chunk中的公共模块未被提取。",
+      "忽略`priority`配置，导致优先级低的cacheGroup无法成功抽取代码。",
+      "未使用`contenthash`，仅使用`chunkhash`或`hash`，导致文件未变但哈希变化，缓存失效。"
+    ],
+    "follow_up_paths": [
+      "SplitChunksPlugin的`minSize`、`maxSize`、`minChunks`等参数分别对分包策略有什么影响？如何根据项目情况调整？",
+      "如何利用Webpack的`runtimeChunk`配置来优化长期缓存？它的原理是什么？",
+      "在多页面应用（MPA）中，如何配置Webpack以实现页面间的公共代码提取和缓存共享？"
+    ]
+  }
+}

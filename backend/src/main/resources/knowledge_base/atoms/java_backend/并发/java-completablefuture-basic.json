@@ -1,0 +1,27 @@
+{
+  "id": "java-completablefuture-basic",
+  "subject": "CompletableFuture 的核心特性与基本用法",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "并发编程",
+    "异步",
+    "CompletableFuture"
+  ],
+  "content": {
+    "principles": "CompletableFuture 是 Java 8 引入的类，实现了 Future 和 CompletionStage 接口，用于构建异步、非阻塞的应用程序。它解决了传统 Future 只能通过阻塞 get() 方法获取结果的局限性。核心特性包括：1. 链式调用：通过 thenApply、thenAccept、thenRun 等方法，可以在一个异步任务完成后自动触发后续操作，形成任务流水线。2. 异常处理：通过 exceptionally 方法可以指定任务执行失败时的降级值或恢复逻辑。3. 组合任务：通过 allOf 等待所有任务完成，或 anyOf 等待任意一个任务完成，实现任务的并行聚合。其典型用法是 CompletableFuture.supplyAsync(() -> {...}) 启动异步任务，然后链式调用处理方法。在实际场景中，如并行查询多个外部服务，可以显著减少总耗时。",
+    "pitfalls": [
+      "混淆 thenApply（转换结果）、thenAccept（消费结果）和 thenRun（执行动作，不关心结果）的用途。",
+      "默认使用 ForkJoinPool.commonPool() 执行异步任务，在 IO 密集型场景下可能导致线程饥饿，应自定义线程池。",
+      "链式调用中，如果前一个阶段发生异常且未被处理（如使用 exceptionally），异常会传播到后续阶段，导致整个链失败。",
+      "误以为 allOf 返回的 CompletableFuture 的结果是各个任务结果的集合，实际上它返回的是 Void，需要手动收集各任务结果。"
+    ],
+    "follow_up_paths": [
+      "CompletableFuture 的默认线程池是什么？在 IO 密集型场景下使用它有什么问题？如何自定义线程池？",
+      "thenApply 和 thenCompose 有什么区别？分别在什么场景下使用？",
+      "如何实现两个 CompletableFuture 结果的组合计算（例如，A任务和B任务都完成后，对它们的结果进行运算）？",
+      "CompletableFuture 的异步回调是在哪个线程执行的？如何控制回调任务的执行线程（例如，指定在某个特定线程池执行）？"
+    ]
+  }
+}

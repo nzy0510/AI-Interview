@@ -1,0 +1,26 @@
+{
+  "id": "threadlocal-memory-leak-pitfalls",
+  "subject": "ThreadLocal 的内存泄漏问题与使用陷阱",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "ThreadLocal",
+    "内存泄漏",
+    "线程池",
+    "最佳实践"
+  ],
+  "content": {
+    "principles": "ThreadLocal 的主要缺点是可能引起内存泄漏。其根本原因在于 ThreadLocalMap 中 Entry 的键（Key，即 ThreadLocal 实例）是弱引用，而值（Value）是强引用。当 ThreadLocal 实例被垃圾回收后，Key 变为 null，但 Value 仍被 Entry 强引用，导致 Value 无法被回收。在线程池场景下，工作线程长期存活，这些累积的“脏 Entry”可能导致内存溢出。此外，线程池复用线程时，若不手动 remove 清理，上一个任务的 ThreadLocal 数据可能被下一个任务读取，造成数据污染（如 Web 请求中的用户信息串扰）。大量使用 ThreadLocal 也会显著增加每个线程的内存开销。正确使用方式是在 try-finally 块中确保调用 remove() 进行清理。",
+    "pitfalls": [
+      "认为 ThreadLocal 变量用完会自动回收，不了解弱引用键与强引用值导致的内存泄漏机制。",
+      "在线程池中使用 ThreadLocal 后不调用 remove，导致数据交叉污染。",
+      "过度使用 ThreadLocal 存储大对象，忽视其对内存占用的放大效应。"
+    ],
+    "follow_up_paths": [
+      "从 GC Roots 引用链的角度，详细描述一个 ThreadLocal 值对象发生内存泄漏的完整路径。",
+      "除了手动 remove，还有哪些技术或工具（如 TransmittableThreadLocal）可以解决线程池下的 ThreadLocal 传递与清理问题？",
+      "如何设计一个 ThreadLocal 工具类来安全地管理如用户会话上下文？"
+    ]
+  }
+}

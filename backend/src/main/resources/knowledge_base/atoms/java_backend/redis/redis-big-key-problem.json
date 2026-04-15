@@ -1,0 +1,24 @@
+{
+  "id": "redis-big-key-problem",
+  "subject": "Redis Big Key 问题及其解决方案",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "性能",
+    "内存",
+    "最佳实践"
+  ],
+  "content": {
+    "principles": "Big Key 指的是 Redis 中单个 key 对应的 value 过大，例如一个 String 超过 10MB，或一个 Hash、ZSet 的成员数量超过几万。Big Key 会引发一系列问题：1) 网络传输：单次读取或写入 Big Key 可能占满网络带宽，阻塞其他请求。2) 主从复制：在 RDB 生成、AOF 重写或主从同步阶段，Big Key 的序列化/反序列化会显著拖慢整个过程，影响故障恢复和副本数据同步。3) 内存管理：Redis 是单线程处理命令，Big Key 的内存分配和释放（如删除大 Hash）可能导致主线程阻塞，进而引发服务延迟飙升甚至超时。4) 集群扩展：在 Redis Cluster 中，Big Key 无法被分片，必须存储于单个节点，可能导致数据倾斜和节点内存压力不均。解决方案包括：1) 拆分大 key：将一个大 Hash 拆分为多个小 Hash（通过 hash tag 确保相关数据在同一节点）；将大 List/ZSet 分片存储。2) 使用适合的数据结构：例如用 HyperLogLog 替代大 Set 进行基数统计。3) 监控与发现：使用 redis-cli --bigkeys 扫描，或通过内存分析工具定位。4) 优化业务逻辑：避免在单个 key 中存储过大数据集合，设置合理的过期时间。5) 渐进式删除：对于已存在的大 key，使用 UNLINK 命令（异步删除）或编写脚本分批删除，避免阻塞。",
+    "pitfalls": [
+      "在业务设计中无意中创建了 Big Key（如将整个用户列表存入一个 Hash）",
+      "直接使用 DEL 命令删除 Big Key，导致服务阻塞",
+      "忽略 Big Key 对 Redis 持久化和主从复制性能的影响"
+    ],
+    "follow_up_paths": [
+      "如何设计一个方案来监控和预警生产环境中的 Big Key？",
+      "在 Redis Cluster 中，如果遇到了无法拆分的 Big Key 应该如何处理？",
+      "除了 Big Key，还有哪些常见的 Redis 性能陷阱？"
+    ]
+  }
+}

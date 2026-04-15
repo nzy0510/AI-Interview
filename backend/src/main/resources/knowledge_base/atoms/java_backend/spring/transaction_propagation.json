@@ -1,0 +1,24 @@
+{
+  "id": "spring-003",
+  "subject": "Spring 事务传播机制",
+  "category": "spring",
+  "difficulty": "P6",
+  "tags": [
+    "Spring",
+    "AOP",
+    "Transaction"
+  ],
+  "content": {
+    "principles": "1. 7 种级别：REQUIRED (默认), REQUIRES_NEW (挂起当前事务并启动新事务), NESTED (保存点实现), SUPPORTS, MANDATORY, NOT_SUPPORTED, NEVER。2. 底层通过 TransactionInterceptor 和 AOP 增强实现线程绑定事务上下文 (ThreadLocal)。",
+    "pitfalls": [
+      "Self-Invocation Failure: 类内部方法自调用跳过 AOP 代理，导致事务失效。",
+      "Internal Catch-All: 业务代码吞掉异常，导致声明式事务不触发回滚。",
+      "Rollback Rules: 默认仅回滚 RuntimeException，Checked Exception 需显式配置 rollbackFor。"
+    ],
+    "follow_up_paths": [
+      "PlatformTransactionManager 多数据源实现",
+      "NESTED 事务在不同数据库驱动下的兼容性",
+      "编程式事务 TransactionTemplate 应用场景"
+    ]
+  }
+}

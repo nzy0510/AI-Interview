@@ -1,0 +1,23 @@
+{
+  "id": "mysql-explain-analysis",
+  "subject": "MySQL EXPLAIN 执行计划分析",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "索引",
+    "SQL"
+  ],
+  "content": {
+    "principles": "`EXPLAIN` 用于分析 SQL 语句的执行计划，输出结果中的每一行代表查询中一个表的访问方法。关键列包括：1. `type`: 访问类型，从优到劣依次为 system、const、eq_ref、ref、range、index、ALL。优化目标至少达到 `range`（范围扫描），`ALL` 表示全表扫描，通常需要优化。2. `key`: 实际使用的索引，`NULL` 表示未使用索引。`possible_keys` 表示可能用到的索引。3. `rows`: 预估需要扫描的行数，值越大性能越差。4. `Extra`: 额外信息，出现 `Using filesort`（无法利用索引完成排序）或 `Using temporary`（使用了临时表）通常意味着需要优化。出现 `Using index` 表示使用了覆盖索引，是理想情况。分析时需要结合 WHERE 条件、JOIN 顺序和索引设计综合判断。",
+    "pitfalls": [
+      "只关注 `type` 列，而忽略了 `rows` 和 `Extra` 列中可能隐藏的性能问题。",
+      "误以为 `possible_keys` 中出现的索引一定会被使用。",
+      "对 `Using filesort` 和 `Using temporary` 的成因理解不深，不知道如何通过索引优化来消除它们。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：对于一个 `SELECT * FROM users WHERE age > 20 ORDER BY name` 的查询，如果只在 `age` 上建有索引，`EXPLAIN` 结果中 `Extra` 列可能会显示什么？如何优化才能消除它？",
+      "如果候选人答得不好，可以引导：请解释 `type` 列中 `ref` 和 `eq_ref` 的区别，并各举一个查询例子。"
+    ]
+  }
+}

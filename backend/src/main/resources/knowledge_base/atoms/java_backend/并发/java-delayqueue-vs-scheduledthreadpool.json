@@ -1,0 +1,24 @@
+{
+  "id": "java-delayqueue-vs-scheduledthreadpool",
+  "subject": "DelayQueue 与 ScheduledThreadPoolExecutor 的对比与应用场景",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "定时任务",
+    "线程池",
+    "并发工具"
+  ],
+  "content": {
+    "principles": "DelayQueue 是一个无界阻塞队列，其元素必须实现 Delayed 接口，用于实现延迟获取。它本身只是一个数据结构，需要开发者自行实现消费者线程进行轮询和任务执行。ScheduledThreadPoolExecutor 是 ScheduledExecutorService 的实现类，内部封装了 DelayQueue 和线程池，提供了 schedule（固定延迟）、scheduleAtFixedRate（固定速率）等高级调度接口，支持多线程执行、任务取消和异常处理。DelayQueue 适合轻量级、简单的延迟队列场景（如单消费者处理订单超时）；ScheduledThreadPoolExecutor 适合系统级、复杂的定时任务调度（如周期性拉取配置）。",
+    "pitfalls": [
+      "混淆 fixed-delay 和 fixed-rate 的区别：fixed-delay 保证任务结束到下一次开始之间的间隔；fixed-rate 则尽量保证任务开始时间间隔的固定，可能追赶执行。",
+      "认为 DelayQueue 是完整的调度框架，忽略了其需要自行管理线程和异常。",
+      "在 ScheduledThreadPoolExecutor 中，如果任务执行时间超过周期，fixed-delay 和 fixed-rate 的行为差异显著。"
+    ],
+    "follow_up_paths": [
+      "ScheduledThreadPoolExecutor 内部是如何结合 DelayQueue 和线程池工作的？它的 schedule 方法返回的 ScheduledFuture 有什么作用？",
+      "如果使用 DelayQueue 实现一个多消费者的延迟任务系统，需要注意哪些并发问题？",
+      "Timer 与 ScheduledThreadPoolExecutor 相比，除了单线程和异常传播问题，在任务队列的优先级管理上有什么不同？"
+    ]
+  }
+}

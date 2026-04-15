@@ -1,0 +1,23 @@
+{
+  "id": "kafka-kraft-replace-zookeeper",
+  "subject": "Kafka为何及如何用KRaft协议取代Zookeeper",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Kafka",
+    "分布式共识",
+    "架构演进"
+  ],
+  "content": {
+    "principles": "Kafka从2.8版本开始引入KRaft（Kafka Raft）模式，旨在移除对Zookeeper的外部依赖，原因在于Zookeeper架构的局限性：1. 运维复杂：需独立部署和维护两套系统（Kafka和ZK），交互问题排查困难。2. 性能瓶颈：所有元数据变更需经Zookeeper的ZAB协议，写入延迟高，Watch机制在Topic数量巨大时成为瓶颈。3. 功能受限：通用协调服务无法针对Kafka语义（如分区状态机）进行优化。KRaft的核心改进：1. 内置Raft共识协议：Controller通过Raft算法自行选举，元数据存储在专属的MetadataLog（基于Kafka自身的日志）中。2. 配置变更：使用`process.roles`和`quorum.connect`配置，完全脱离`zookeeper.connect`。迁移后，集群启动更快，元数据操作延迟显著降低（官方称70%以上），单集群支持百万级分区成为可能。KRaft模式现已GA（生产可用），是官方推荐的新部署架构。",
+    "pitfalls": [
+      "只知道‘去ZK化’趋势，但说不清Zookeeper具体带来了哪些问题。",
+      "混淆KRaft和Zookeeper在元数据存储上的本质区别（KRaft用Kafka自身日志，ZK是外部存储）。",
+      "不了解KRaft模式下Controller选举和元数据复制的基本原理（基于Raft）。"
+    ],
+    "follow_up_paths": [
+      "KRaft协议下，元数据日志（MetadataLog）是如何保证高可用和数据一致性的？",
+      "从Zookeeper迁移到KRaft，在数据迁移和客户端兼容性方面可能遇到哪些挑战？"
+    ]
+  }
+}

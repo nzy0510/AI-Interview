@@ -1,0 +1,23 @@
+{
+  "id": "redis-pipeline-vs-mset",
+  "subject": "Redis Pipeline 与 MSET/MGET 的对比",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "pipeline",
+    "原子性",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "Pipeline 是客户端技术，用于将多个命令打包一次性发送给服务器，并一次性读取所有回复，主要目的是减少网络往返时间（RTT），提升吞吐量。服务端仍按顺序逐个处理命令，不保证原子性，执行期间可能被其他客户端的命令穿插。\nMSET/MGET 是服务端实现的单命令多键操作，具有原子性，即一组键的读写操作作为一个整体执行，不会被其他命令打断。MSET 有最大键数限制（如1024个）。\n选择依据：需要原子性批量读写小数据时用 MGET/MSET；追求吞吐量且操作间不要求原子性时（如缓存预热）用 Pipeline。",
+    "pitfalls": [
+      "混淆 Pipeline 的原子性，误以为一组 Pipeline 命令是原子执行的。",
+      "不清楚 MSET 有键数量限制，超限需要拆分。",
+      "Pipeline 缓冲区过大可能导致客户端内存溢出。"
+    ],
+    "follow_up_paths": [
+      "Pipeline 内部是如何实现命令打包和结果解析的？如何避免响应缓冲区溢出？",
+      "除了 MSET/MGET，Redis 还有哪些支持批量操作的原生命令？它们的原子性如何？"
+    ]
+  }
+}

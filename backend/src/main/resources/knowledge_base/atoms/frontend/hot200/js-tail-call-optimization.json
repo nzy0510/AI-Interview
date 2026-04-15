@@ -1,0 +1,24 @@
+{
+  "id": "js-tail-call-optimization",
+  "subject": "尾调用与尾调用优化（TCO）",
+  "category": "hot200",
+  "difficulty": "困难",
+  "tags": [
+    "JavaScript",
+    "函数",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "尾调用是指一个函数的最后一步是调用另一个函数（`return func()`）。尾调用优化（TCO）允许引擎在满足条件时重用当前函数的调用栈帧，而不是创建新的帧，从而避免调用栈溢出，尤其对递归算法有益。例如，将普通递归阶乘改写成尾递归形式：`function factorial(n, acc = 1) { if (n <= 1) return acc; return factorial(n - 1, n * acc); }`。ES6 规范中要求实现 TCO，但主流引擎（如 V8）出于调试和性能考虑并未默认启用。",
+    "pitfalls": [
+      "误以为所有递归调用都能被优化（必须是严格的尾调用形式）。",
+      "认为现代 JavaScript 引擎（如 V8）默认支持 TCO（实际上基本不支持）。",
+      "在需要尾递归优化的场景下，错误地使用了非尾调用的递归形式。"
+    ],
+    "follow_up_paths": [
+      "如何在不依赖 TCO 的情况下，将深度递归算法转换为迭代或使用蹦床函数（trampoline）？",
+      "除了递归，TCO 对哪些编程模式也有潜在好处？",
+      "为什么 V8 引擎最终选择不启用 TCO？这对开发者意味着什么？"
+    ]
+  }
+}

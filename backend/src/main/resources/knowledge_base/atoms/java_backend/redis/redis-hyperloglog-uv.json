@@ -1,0 +1,24 @@
+{
+  "id": "redis-hyperloglog-uv",
+  "subject": "使用 Redis HyperLogLog 进行海量 UV 统计",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "概率数据结构",
+    "统计",
+    "内存优化"
+  ],
+  "content": {
+    "principles": "HyperLogLog (HLL) 是一种用于基数估算（去重计数）的概率数据结构。其核心优势是占用空间极小（固定约12KB），且误差率可控（标准误差约0.81%）。原理：将元素通过哈希函数映射为二进制串，利用“前导零的最大数量”来估算数据集的基数分布，并使用调和平均数来修正误差。Redis 命令：PFADD 添加元素，PFCOUNT 获取估算值，PFMERGE 合并多个 HLL。适用于统计页面 UV、广告曝光用户数等对精确度要求不高的海量数据去重场景。",
+    "pitfalls": [
+      "误以为 HLL 可以获取精确值或取出具体元素。",
+      "在数据量很小（如几十个）时，HLL 的误差可能相对明显。",
+      "将 HLL 用于需要精确去重或实时精确统计的场景。"
+    ],
+    "follow_up_paths": [
+      "HyperLogLog 算法中‘前导零数量’与基数估算的数学原理是什么？",
+      "为什么 HLL 的内存占用是固定的12KB？这个大小和误差率的关系是什么？",
+      "如果需要精确的 UV 统计，且数据量巨大，有哪些替代方案？（如：Bitmap、Roaring Bitmap、Flink 实时计算）"
+    ]
+  }
+}

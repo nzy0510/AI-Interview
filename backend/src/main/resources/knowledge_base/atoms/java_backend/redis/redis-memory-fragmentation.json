@@ -1,0 +1,23 @@
+{
+  "id": "redis-memory-fragmentation",
+  "subject": "Redis内存碎⽚化成因与优化策略",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "内存管理",
+    "性能优化",
+    "jemalloc",
+    "activedefrag"
+  ],
+  "content": {
+    "principles": "内存碎⽚化指Redis已分配内存中因频繁增删改产⽣⼤量不连续的⼩块空闲内存，导致总空闲内存⾜够但⽆法满⾜新⼤对象分配请求。1. 成因：Redis默认使⽤jemalloc内存分配器，按不同⼤⼩的块管理内存。频繁创建和删除不同⼤⼩的对象（尤其是⼏KB⾄⼏⼗KB的中间尺⼨对象）后，释放的内存块分散，形成碎⽚。2. 指标：内存碎⽚率 = used_memory_rss / used_memory。接近1.0理想；>1.5可能存在严重碎⽚；<1.0说明部分内存被交换到磁盘。3. 优化⼿段：a) 启⽤内存碎⽚⾃动回收（Redis 4.0+）：配置`activedefrag yes`及相关阈值参数，后台进程逐步整理碎⽚，消耗额外CPU。b) 应⽤层控制：避免频繁创建删除⼤对象，保持键值⼤⼩⼀致性，使⽤pipeline批量操作减少⼩写⼊。c) 极端情况：通过重启（RDB/AOF重加载）或主从切换重建内存布局。",
+    "pitfalls": [
+      "仅关注used_memory，忽略mem_fragmentation_ratio指标，直到内存不⾜才发现问题。",
+      "不清楚activedefrag机制的⼯作原理和触发条件，配置不当可能导致CPU⾼负载。"
+    ],
+    "follow_up_paths": [
+      "activedefrag机制在后台是如何具体整理内存碎⽚的？它会移动数据吗？",
+      "除了jemalloc，Redis还可以使⽤哪些内存分配器？它们对碎⽚化的影响有何不同？"
+    ]
+  }
+}

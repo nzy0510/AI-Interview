@@ -1,0 +1,23 @@
+{
+  "id": "redisson-distributed-lock",
+  "subject": "Redisson分布式锁实现原理（可重⼊、看⻔狗）",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "分布式锁",
+    "Redisson",
+    "Lua脚本",
+    "看⻔狗"
+  ],
+  "content": {
+    "principles": "Redisson分布式锁基于Redis单线程执⾏Lua脚本的原⼦性，实现可重⼊、锁续期等特性。1. 加锁：通过Lua脚本向Redis写⼊⼀个Hash结构，Key为锁名，Field为客户端唯⼀标识（UUID + threadId），Value为重⼊次数。若Key不存在则设置并附加过期时间（防死锁）；若存在且Field匹配，则将Value加1（可重⼊）。2. 解锁：通过Lua脚本检查Field是否匹配，匹配则将重⼊次数减1，减⾄0时删除Key。3. 锁续期（看⻔狗Watchdog）：客户端成功加锁后，启动后台定时任务，默认每隔锁过期时间的1/3进⾏续期（重置TTL），确保业务执⾏期间锁不会过期。4. 优点：封装了⽹络通信、重试、续期等逻辑，API简单（`RLock.lock()`）。适⽤于订单、库存等强⼀致性场景。注意在⽹络分区下可能发⽣锁失效，极端场景可考虑RedLock模式（多实例）。",
+    "pitfalls": [
+      "误以为Redisson只是简单调⽤SETNX，不清楚其内部基于Hash结构和可重⼊计数。",
+      "不清楚看⻔狗机制的作⽤和触发条件，⼿动设置过期时间过短可能导致业务未完成锁已释放。"
+    ],
+    "follow_up_paths": [
+      "如果持有锁的客户端发⽣GC停顿或Full GC，导致看⻔狗线程也被挂起，锁过期被释放，会发⽣什么？如何规避？",
+      "Redisson的公平锁是如何实现的？与普通锁在Redis数据结构上有何不同？"
+    ]
+  }
+}

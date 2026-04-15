@@ -1,0 +1,26 @@
+{
+  "id": "java-synchronized-static-vs-instance",
+  "subject": "Synchronized修饰静态方法与实例方法的区别",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "synchronized",
+    "锁",
+    "类锁",
+    "实例锁"
+  ],
+  "content": {
+    "principles": "synchronized修饰实例方法时，锁对象是当前调用该方法的实例（即this）。不同实例调用此方法时，锁互不干扰。synchronized修饰静态方法时，锁对象是该类的Class对象（如MyClass.class）。所有该类的实例调用此静态方法时，竞争的是同一把类级别的锁。本质区别在于锁的粒度：实例方法锁保护实例级别的状态；静态方法锁保护类级别的共享资源（如静态变量、静态缓存）。",
+    "pitfalls": [
+      "误认为synchronized修饰的实例方法可以防止不同实例之间的并发访问。",
+      "在需要保护静态共享资源的场景中，错误地使用了synchronized实例方法。",
+      "混淆了‘对象锁’和‘类锁’的概念，认为它们是同一种锁。"
+    ],
+    "follow_up_paths": [
+      "如果一个类中同时有synchronized实例方法和synchronized静态方法，它们之间会互斥吗？为什么？",
+      "synchronized(this)代码块和synchronized实例方法在锁的获取上有何异同？",
+      "如何证明静态同步方法锁的是Class对象？请写出验证代码。",
+      "在单例模式的双重检查锁（DCL）实现中，为什么锁对象必须是类的Class对象或者一个静态变量？"
+    ]
+  }
+}

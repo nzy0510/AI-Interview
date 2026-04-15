@@ -1,0 +1,22 @@
+{
+  "id": "java-online-cpu-high-troubleshooting",
+  "subject": "线上Java应用CPU飙高排查思路",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "JVM",
+    "性能调优",
+    "Linux"
+  ],
+  "content": {
+    "principles": "CPU飙高排查核心是定位占用CPU的线程及代码堆栈。步骤：1) 系统层面：使用top命令查看整体CPU使用率，关注us（用户态）和sy（内核态）。2) 进程层面：在top中按CPU排序，找到目标Java进程PID。3) 线程层面：执行`top -H -p <PID>`查看该进程下所有线程的CPU占用，找出高消耗线程的TID。4) 线程分析：将TID转换为十六进制，然后使用`jstack <PID> | grep -A <行数> <十六进制TID>`或结合`jstack`输出文件查找对应线程堆栈，定位问题代码。",
+    "pitfalls": [
+      "只关注进程CPU高，不会定位到具体线程",
+      "忘记将线程ID（TID）转换为十六进制，导致在jstack中找不到对应线程"
+    ],
+    "follow_up_paths": [
+      "除了jstack，还有哪些工具（如arthas的thread命令）可以用于在线诊断CPU问题？",
+      "如果发现是GC线程导致CPU高，下一步该如何分析？"
+    ]
+  }
+}

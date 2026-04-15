@@ -1,0 +1,24 @@
+{
+  "id": "java-thread-state-lifecycle",
+  "subject": "Java线程状态与生命周期",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "线程",
+    "状态",
+    "JVM"
+  ],
+  "content": {
+    "principles": "Java线程有6种状态：NEW（新建）、RUNNABLE（可运行）、BLOCKED（阻塞）、WAITING（等待）、TIMED_WAITING（超时等待）、TERMINATED（终止）。状态流转：NEW -> RUNNABLE -> BLOCKED/WAITING/TIMED_WAITING -> RUNNABLE -> TERMINATED。WAITING状态由wait()、join()、LockSupport.park()触发；TIMED_WAITING由sleep(long)、wait(long)、join(long)、LockSupport.parkNanos()触发。线程执行完毕或抛出未捕获异常进入TERMINATED。Java线程状态是JVM对操作系统内核线程状态的抽象映射。",
+    "pitfalls": [
+      "混淆BLOCKED（等待监视器锁）和WAITING（等待其他线程显式唤醒）状态",
+      "认为sleep()或join()会让线程进入BLOCKED状态，实际是TIMED_WAITING",
+      "忽略JVM线程状态与操作系统内核线程状态的不一致性"
+    ],
+    "follow_up_paths": [
+      "调用Thread.start()两次会发生什么？为什么？",
+      "如何从WAITING状态唤醒一个线程？notify()和notifyAll()区别？",
+      "线程状态如何通过jstack等工具观测？"
+    ]
+  }
+}

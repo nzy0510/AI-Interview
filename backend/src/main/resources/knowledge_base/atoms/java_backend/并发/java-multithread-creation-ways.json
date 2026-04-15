@@ -1,0 +1,25 @@
+{
+  "id": "java-multithread-creation-ways",
+  "subject": "Java创建线程的两种核心方式",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "Thread",
+    "Runnable",
+    "线程创建"
+  ],
+  "content": {
+    "principles": "Java中创建线程最常用的两种方式是：1. 继承Thread类并重写run方法。这种方式简单，但Java不支持多继承，限制了类的扩展性。2. 实现Runnable接口，并将Runnable实例传递给Thread构造函数。这种方式更灵活，实现了任务（Runnable）与执行机制（Thread）的解耦，任务对象可以提交给Thread或任何ExecutorService（如线程池）执行。本质上，Thread类本身也实现了Runnable接口。推荐使用实现Runnable接口的方式，它更符合面向对象设计原则。",
+    "pitfalls": [
+      "错误地认为调用Thread对象的run()方法（而不是start()）可以启动新线程。",
+      "在需要复用任务或使用线程池的场景下，仍选择继承Thread类。",
+      "不了解通过实现Runnable接口可以使用Lambda表达式简化代码。"
+    ],
+    "follow_up_paths": [
+      "除了Thread和Runnable，Java 5之后还有什么创建异步任务的方式？（引出Callable和Future）",
+      "Thread类的start()方法内部是如何调用到run()方法的？请描述JVM创建本地线程的过程。",
+      "实现Runnable接口和实现Callable接口有什么区别？",
+      "为什么说通过继承Thread类来创建线程不利于资源管理？"
+    ]
+  }
+}

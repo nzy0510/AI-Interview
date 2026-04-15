@@ -1,0 +1,26 @@
+{
+  "id": "https-tls-ssl-principle",
+  "subject": "HTTPS、TLS/SSL 工作原理与安全机制",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "HTTP",
+    "网络安全",
+    "TLS",
+    "加密"
+  ],
+  "content": {
+    "principles": "HTTPS = HTTP + TLS/SSL。TLS（Transport Layer Security，前身是 SSL）在传输层之上为 HTTP 提供加密、身份认证和完整性校验。核心流程：1) **握手协商**：客户端发送 ClientHello（支持的 TLS 版本、密码套件等），服务器回应 ServerHello（选定版本和套件）并发送数字证书。客户端验证证书（由可信 CA 签发，且域名匹配、未过期）。2) **密钥交换**：基于非对称加密（如 RSA、ECDHE）协商出一个预备主密钥（Pre-Master Secret），双方据此独立推导出相同的对称会话密钥。3) **加密通信**：后续所有 HTTP 数据均使用该对称密钥加密传输（如 AES）。4) **完整性校验**：使用消息认证码（MAC，如 HMAC）防止数据篡改。TLS 1.3 简化了握手，默认要求前向安全（Forward Secrecy），并移除了不安全的加密套件。数字证书基于公钥基础设施（PKI），由证书颁发机构（CA）签名。",
+    "pitfalls": [
+      "误认为 HTTPS 只加密数据，忽略了其核心功能之一是服务器身份认证（防钓鱼）。",
+      "使用自签名证书或过期证书导致浏览器警告，或在代码中错误地禁用证书验证（`rejectUnauthorized: false`）引入安全风险。",
+      "不理解混合内容（HTTPS 页面加载 HTTP 资源）的安全隐患。",
+      "认为 HTTPS 性能开销巨大（现代硬件和 TLS 1.3 下开销已很小）。"
+    ],
+    "follow_up_paths": [
+      "详细描述一次完整的 TLS 1.2 握手过程（包括 RSA 和 ECDHE 密钥交换的区别），并说明为何 ECDHE 提供前向安全。",
+      "什么是证书链（Certificate Chain）？浏览器是如何逐级验证直到根证书的？",
+      "在 Node.js 中，如何创建自签名证书？在生产环境中，如何自动化管理证书的申请和续期（如使用 Let's Encrypt 和 certbot）？"
+    ]
+  }
+}

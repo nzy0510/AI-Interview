@@ -1,0 +1,24 @@
+{
+  "id": "springboot-2x-vs-1x",
+  "subject": "Spring Boot 2.x 与 1.x 的主要区别与改进",
+  "category": "springboot",
+  "difficulty": "中等",
+  "tags": [
+    "版本升级",
+    "WebFlux",
+    "自动配置"
+  ],
+  "content": {
+    "principles": "Spring Boot 2.x 是相对于 1.x 的重大升级，主要改进：1. **基础要求**：最低 JDK 版本要求为 8+，内嵌 Servlet 容器默认升级（如 Tomcat 8.5+，支持 Servlet 3.1+）。2. **自动配置与元数据**：条件化配置（如 `@ConditionalOnMissingBean`）更精确；配置属性元数据支持 IDE 智能提示（通过 `spring-configuration-processor`）。3. **响应式编程**：引入 Spring WebFlux 作为全栈响应式支持，基于 Reactor 库（`Mono`/`Flux`）和 Netty 运行时，提供函数式路由（`RouterFunction`）和注解式控制器两种编程模型。4. **Actuator**：端点路径统一前缀为 `/actuator`，默认仅暴露 `health` 和 `info` 端点，安全性提升；深度集成 Micrometer，提供 Prometheus 等监控系统标准指标输出。5. **依赖与框架**：默认使用 Spring Framework 5，核心响应式库为 Reactor；推荐使用 `WebClient` 替代阻塞式的 `RestTemplate`。",
+    "pitfalls": [
+      "升级兼容性：从 1.x 升级到 2.x 可能涉及配置属性变更（如 `server.port` 配置方式）、API 废弃和依赖冲突，需要仔细测试。",
+      "WebFlux 学习曲线：响应式编程范式与传统的命令式编程差异较大，开发者需要时间适应。",
+      "Actuator 端点暴露：默认安全策略更严格，若未正确配置可能导致监控端点无法访问。"
+    ],
+    "follow_up_paths": [
+      "在什么业务场景下，你会选择使用 WebFlux 而不是传统的 Spring MVC？",
+      "Spring Boot 2.x 的配置属性元数据是如何生成和工作的？",
+      "从 1.x 升级到 2.x 的具体步骤和常见问题有哪些？"
+    ]
+  }
+}

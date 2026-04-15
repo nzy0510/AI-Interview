@@ -1,0 +1,23 @@
+{
+  "id": "springboot-config-load-order",
+  "subject": "Spring Boot 配置文件加载优先级",
+  "category": "springboot",
+  "difficulty": "简单",
+  "tags": [
+    "配置",
+    "外部化配置"
+  ],
+  "content": {
+    "principles": "Spring Boot 支持从多个位置加载配置文件（如 application.properties/yml），并遵循特定的优先级顺序，后加载的配置会覆盖先加载的同名属性。优先级从高到低依次为：1. 命令行参数（如 `--server.port=8081`）。2. 项目根目录下的 `config/` 子目录。3. 项目根目录。4. Classpath 下的 `config/` 目录。5. Classpath 根路径。此外，Profile 特定的配置文件（如 `application-prod.yml`）优先级高于通用配置文件（`application.yml`），但仅在对应 Profile 激活时生效。在同一目录下，`.properties` 文件的优先级高于 `.yml` 文件。",
+    "pitfalls": [
+      "混淆内部配置和外部配置的优先级，误以为 jar 包内的配置会覆盖外部的。",
+      "不了解 Profile 特定文件的生效条件和优先级。",
+      "不清楚同目录下 `.properties` 和 `.yml` 文件的覆盖关系。"
+    ],
+    "follow_up_paths": [
+      "除了这些默认位置，Spring Boot 还支持哪些自定义配置源？",
+      "如何通过环境变量来覆盖配置文件中的属性？它的优先级是怎样的？",
+      "在 Kubernetes 环境中，通常如何管理 Spring Boot 应用的外部配置？"
+    ]
+  }
+}

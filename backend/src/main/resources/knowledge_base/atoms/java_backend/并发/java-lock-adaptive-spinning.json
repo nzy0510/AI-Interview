@@ -1,0 +1,24 @@
+{
+  "id": "java-lock-adaptive-spinning",
+  "subject": "Java锁的自适应自旋机制",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "synchronized",
+    "JVM优化",
+    "自旋锁"
+  ],
+  "content": {
+    "principles": "自适应自旋是JVM对synchronized重量级锁的优化机制。自旋次数和时间不再固定，而是根据同一把锁的历史表现动态调整：若之前自旋成功获取锁，则下次增加自旋次数；若经常失败，则减少甚至不自旋。这避免了线程频繁陷入内核态的挂起和恢复，在锁竞争不激烈、持有时间短的场景（如原子类操作、ConcurrentHashMap的桶级锁）下，能将开销从微秒级降至纳秒级。该优化由HotSpot虚拟机自动完成，无需代码干预，是synchronized轻量化的重要组成部分。",
+    "pitfalls": [
+      "误以为自旋锁是Java代码层面的API（如Thread.yield），实际是JVM底层行为。",
+      "认为自适应自旋适用于所有锁竞争场景，实际上在锁持有时间长或竞争极度激烈时，自旋仍会浪费CPU并最终导致线程挂起。",
+      "混淆了synchronized的自适应自旋与ReentrantLock中可配置的自旋策略。"
+    ],
+    "follow_up_paths": [
+      "自适应自旋的历史数据（如成功/失败次数）在JVM中是如何存储和更新的？",
+      "除了自适应自旋，synchronized还有哪些锁升级步骤（无锁->偏向锁->轻量级锁->重量级锁）？",
+      "在哪些高并发开源框架（如Disruptor）中看到了类似的自旋优化思想？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "mysql-sql-tuning-process",
+  "subject": "MySQL SQL性能调优的通用流程与核心方法",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "SQL优化",
+    "索引",
+    "慢查询"
+  ],
+  "content": {
+    "principles": "SQL调优应遵循系统化流程：1) 定位慢SQL：开启慢查询日志（slow query log），设置合理阈值（如1秒），捕获执行缓慢的语句。2) 分析执行计划：使用`EXPLAIN`工具，重点关注`type`（避免ALL全表扫描，争取达到ref/range）、`key`（实际使用的索引）、`rows`（扫描行数）和`Extra`列（避免Using filesort, Using temporary）。3) 优化索引设计：基于查询条件创建合适的索引，遵循最左前缀原则。对于多条件查询，联合索引往往更有效。避免对写多读少的表创建过多索引，大字段不宜建索引。4) 语句重写与架构调整：优化SQL写法，避免SELECT *，合理使用JOIN。单表数据量过大时，需考虑分库分表。5) 引入缓存：对热点读数据使用Redis等缓存，减轻数据库压力，并注意防范缓存穿透、击穿、雪崩问题。",
+    "pitfalls": [
+      "盲目添加索引，不考虑索引维护成本及其对写性能的影响。",
+      "过度依赖SQL层优化，对于数据量已达亿级的单表，未及时考虑分库分表等架构升级方案。"
+    ],
+    "follow_up_paths": [
+      "如何解读`EXPLAIN`输出中的`filtered`列？它对评估多表JOIN的性能有何意义？",
+      "什么是索引下推（Index Condition Pushdown, ICP）？它如何优化查询性能？在`EXPLAIN`的哪个字段可以体现？"
+    ]
+  }
+}

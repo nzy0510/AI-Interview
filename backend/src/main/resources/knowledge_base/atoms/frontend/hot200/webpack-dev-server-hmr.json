@@ -1,0 +1,24 @@
+{
+  "id": "webpack-dev-server-hmr",
+  "subject": "Webpack Dev Server 与 HMR 的工作原理",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Webpack",
+    "构建工具",
+    "前端工程化"
+  ],
+  "content": {
+    "principles": "Webpack Dev Server 是一个基于 Express 的开发服务器，它利用 webpack 的 watch mode 监听文件变化，并触发增量编译。编译结果不写入磁盘，而是通过 memory-fs 模块将资源存储在内存中，从而极大提升构建速度。服务器将路由请求指向内存中的资源。配合 Hot Module Replacement (HMR)，可以实现模块级别的热更新，无需刷新整个页面。配置上，需要在 webpack.config.js 中设置 devServer 选项，如 static 目录、watchFiles 监听路径，并启用 hot: true。启动时需确保 mode 为 development，并通过 npx webpack serve 命令启动。",
+    "pitfalls": [
+      "误以为 HMR 是自动的，实际上需要模块代码支持 HMR API 或由 loader（如 style-loader）处理。",
+      "文件监听失效，可能是 node_modules 被意外监听，或 watchOptions.ignored 配置错误。",
+      "混淆了 webpack-dev-server 与 webpack --watch，前者提供完整开发服务器和 HMR，后者仅重新打包。"
+    ],
+    "follow_up_paths": [
+      "HMR 的原理是什么？Webpack 运行时是如何替换模块的？",
+      "如果不使用 memory-fs，对开发体验和构建性能有什么影响？",
+      "除了 webpack-dev-server，还有哪些替代方案（如 Vite）？它们原理有何不同？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "mysql-multi-table-join-not-recommended",
+  "subject": "MySQL 中不推荐使用多表 JOIN 的原因与替代方案",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "查询优化",
+    "JOIN",
+    "架构"
+  ],
+  "content": {
+    "principles": "不推荐多表 JOIN 的主要原因：1. 执行计划复杂：优化器可能生成不理想的计划，尤其是表多、关联条件复杂或统计信息不准时，易导致全表扫描或笛卡尔积。2. 资源消耗大：JOIN 在数据库层进行，中间结果集可能非常大，消耗大量内存（Buffer Pool）和 CPU。3. 扩展性差：不利于数据库水平分片（Sharding），跨库 JOIN 性能极差，通常需要业务层拆解。\n替代方案：将多表 JOIN 拆分为多个单表查询，在应用层进行数据组装。例如，先查主表获取 ID 列表，再用 IN 查询批量获取关联表数据。虽然增加了网络往返，但每个查询都可以高效使用索引，更易于缓存和扩展。在表少、数据量小、索引良好的场景下，JOIN 仍是高效选择。",
+    "pitfalls": [
+      "盲目使用多表 JOIN 解决复杂查询，导致单条 SQL 难以理解和优化。",
+      "忽视 JOIN 对数据库连接线程和内存的长期占用，影响系统整体稳定性。",
+      "在分库分表架构中，仍然尝试使用数据库层的 JOIN。"
+    ],
+    "follow_up_paths": [
+      "什么情况下多表 JOIN 是合适的？（小表关联、Nested-Loop Join 效率高时）",
+      "应用层组装数据有哪些优缺点？（网络开销 vs 数据库负载、缓存友好性）",
+      "MySQL 优化器如何处理多表 JOIN？有哪些连接算法？（Nested-Loop Join, Hash Join, Sort-Merge Join）"
+    ]
+  }
+}

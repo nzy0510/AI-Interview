@@ -1,0 +1,26 @@
+{
+  "id": "spring-async-failure",
+  "subject": "Spring @Async 注解失效场景",
+  "category": "springboot",
+  "difficulty": "中等",
+  "tags": [
+    "异步",
+    "AOP",
+    "代理"
+  ],
+  "content": {
+    "principles": "@Async基于Spring AOP代理实现，失效的常见原因包括：1) 方法调用发生在同一个类内部（即this.method()），不经过代理对象。2) 被@Async标记的方法是private、static或final的，代理无法覆盖。3) 所在类未被Spring容器管理（如直接new创建）。4) 未在配置类或启动类上使用@EnableAsync开启异步支持。5) 异步方法抛出未捕获的异常，可能导致任务静默失败。正确的用法是确保调用方和被调用方是不同的Spring Bean，通过依赖注入获取代理对象进行调用。",
+    "pitfalls": [
+      "在同一个类的非异步方法中直接调用本类的@Async方法",
+      "将@Async用在private、static或final方法上",
+      "忘记添加@EnableAsync注解",
+      "忽略异步方法的异常处理，导致任务看似未执行",
+      "对@Async使用的默认线程池配置不了解，导致资源耗尽或性能问题"
+    ],
+    "follow_up_paths": [
+      "如何自定义@Async使用的线程池（Executor）？",
+      "除了@Async，Spring还提供了哪些异步编程模型（如CompletableFuture, @EventListener + Async）？",
+      "在微服务中，异步调用和消息队列（如RabbitMQ）在解耦和可靠性方面如何权衡？"
+    ]
+  }
+}

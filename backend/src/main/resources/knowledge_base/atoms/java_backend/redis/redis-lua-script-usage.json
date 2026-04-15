@@ -1,0 +1,24 @@
+{
+  "id": "redis-lua-script-usage",
+  "subject": "Redis Lua 脚本的功能与使用",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "Lua脚本",
+    "原子性",
+    "分布式锁"
+  ],
+  "content": {
+    "principles": "Redis 的 Lua 脚本功能允许将一组操作打包成一个原子执行的脚本，整个过程不会被其他命令打断，保证了多个 key 操作的一致性。这在需要强一致性的场景（如分布式锁、库存扣减）中特别有用。Lua 脚本通过 EVAL 或 EVALSHA 命令执行。EVAL 直接传递脚本内容；EVALSHA 使用脚本的 SHA1 哈希值调用，可避免重复传输代码，提升性能。脚本中通过 KEYS 和 ARGV 数组接收参数，Redis 会将这两个表映射成客户端传入的键和值。建议将频繁调用的脚本先用 SCRIPT LOAD 预加载到 Redis 中，再用 EVALSHA 触发。示例（库存扣减脚本）：`local num = redis.call('GET', KEYS[1]) if not num then return 0 end if tonumber(num) >= tonumber(ARGV[1]) then return redis.call('DECRBY', KEYS[1], ARGV[1]) else return -1 end`。使用 EVAL 执行：`EVAL \"脚本内容\" 1 stock_key 10`。注意事项：脚本应尽量高效，避免复杂循环或耗时操作，否则会阻塞主线程。单个脚本执行时间最好控制在几毫秒内，以免影响其他请求响应。Lua 脚本的主要优势包括原子性、减少网络往返开销、逻辑复用。但它不适合处理长时间任务，复杂业务逻辑仍需在服务端程序中实现。",
+    "pitfalls": [
+      "在 Lua 脚本中执行耗时操作（如循环遍历大数据集），导致 Redis 阻塞",
+      "混淆 EVAL 和 EVALSHA 的使用场景，不了解脚本缓存机制",
+      "脚本中未正确处理 nil 值或类型转换，导致运行时错误"
+    ],
+    "follow_up_paths": [
+      "Lua 脚本的原子性是如何实现的？在 Redis 集群模式下有什么限制？",
+      "如何确保 Lua 脚本的幂等性和安全性（防止注入）？",
+      "如果 Lua 脚本执行超时或被杀死，Redis 会如何处理？"
+    ]
+  }
+}

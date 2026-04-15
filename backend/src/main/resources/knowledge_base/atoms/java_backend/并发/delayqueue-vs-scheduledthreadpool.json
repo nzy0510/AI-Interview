@@ -1,0 +1,24 @@
+{
+  "id": "delayqueue-vs-scheduledthreadpool",
+  "subject": "DelayQueue与ScheduledThreadPool区别",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "延迟队列",
+    "定时任务",
+    "调度"
+  ],
+  "content": {
+    "principles": "DelayQueue是一个无界阻塞队列，元素需实现Delayed接口，只有延迟到期才能被取出。它本身不调度任务，需消费者线程主动take()。ScheduledThreadPoolExecutor是一个完整的定时调度线程池，内部使用DelayedWorkQueue（类似DelayQueue），但封装了线程管理和任务调度逻辑，提供schedule、scheduleAtFixedRate等方法。关键区别：DelayQueue是被动存储容器，需自行实现消费者线程；ScheduledThreadPool是主动调度服务，提供完整的定时任务执行框架。",
+    "pitfalls": [
+      "误以为DelayQueue能自动执行任务，实际它只负责存储和按延迟时间排序",
+      "混淆scheduleAtFixedRate（固定频率）和scheduleWithFixedDelay（固定延迟）的执行策略",
+      "在ScheduledThreadPool中提交大量长耗时任务，导致后续定时任务被延迟"
+    ],
+    "follow_up_paths": [
+      "DelayedWorkQueue和DelayQueue在实现上有什么异同？",
+      "如果ScheduledThreadPool中的一个定时任务抛出异常，会有什么影响？",
+      "如何基于DelayQueue实现一个简单的定时任务调度器？"
+    ]
+  }
+}

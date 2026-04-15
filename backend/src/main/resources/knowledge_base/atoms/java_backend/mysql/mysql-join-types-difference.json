@@ -1,0 +1,24 @@
+{
+  "id": "mysql-join-types-difference",
+  "subject": "INNER JOIN, LEFT JOIN, RIGHT JOIN 的区别与应用场景",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "多表连接",
+    "SQL语法",
+    "查询逻辑"
+  ],
+  "content": {
+    "principles": "1）`INNER JOIN`（内连接）：返回两个表中`连接条件完全匹配`的行。如果左表的某行在右表中没有匹配，则该行不会出现在结果中。它是默认且最常用的连接类型。2）`LEFT [OUTER] JOIN`（左外连接）：返回`左表的所有行`，即使右表中没有匹配的行。如果右表无匹配，则结果集中右表的所有列以 NULL 填充。常用于“查询主体及关联信息，主体必须全部展示”的场景。3）`RIGHT [OUTER] JOIN`（右外连接）：与左连接相反，返回`右表的所有行`，左表无匹配时填充 NULL。实践中较少使用，通常可以通过调整表顺序用 LEFT JOIN 替代，以保持代码一致性。连接的本质是基于 ON 后的条件，将驱动表（如 LEFT JOIN 的左表）的每一行与被驱动表进行匹配。NULL 值在连接条件中无法与任何值匹配（包括另一个NULL）。",
+    "pitfalls": [
+      "混淆 INNER JOIN 和 LEFT JOIN 的语义，导致查询结果集行数不符合预期。",
+      "在 LEFT JOIN 中，将右表的过滤条件错误地放在 ON 子句和 WHERE 子句中，导致结果不同。（ON 是连接前过滤，WHERE 是连接后过滤）",
+      "滥用 RIGHT JOIN，使 SQL 语句可读性变差。"
+    ],
+    "follow_up_paths": [
+      "LEFT JOIN 时，如何只取出左表有而右表没有的记录？（WHERE right_table.key IS NULL）",
+      "多个表进行 LEFT JOIN 时，顺序对结果和性能有何影响？",
+      "FULL OUTER JOIN 在 MySQL 中如何模拟实现？"
+    ]
+  }
+}

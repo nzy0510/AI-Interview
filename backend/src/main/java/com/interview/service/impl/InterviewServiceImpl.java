@@ -63,11 +63,13 @@ public class InterviewServiceImpl implements InterviewService {
     // Redis key 前缀
     private static final String CHAT_KEY_PREFIX = "interview:chat:";
     private static final String TAILORED_KEY_PREFIX = "interview:tailored:";
+    private static final String USED_ATOMS_KEY_PREFIX = "interview:used_atoms:"; // 已用知识原子黑名单
     private static final long SESSION_TTL_HOURS = 2;
 
     // 本地兜底缓存（Redis 不可用时自动降级到内存）
     private final Map<Long, List<ChatMessage>> localChatCache = new ConcurrentHashMap<>();
     private final Map<Long, List<String>> localTailoredCache = new ConcurrentHashMap<>();
+    private final Map<Long, List<String>> localUsedAtomsCache = new ConcurrentHashMap<>(); // 已用原子黑名单
     private volatile boolean redisAvailable = true; // 标记 Redis 是否可连通
 
     // ========== 多智能体人设提示词定义 ==========
@@ -95,7 +97,8 @@ public class InterviewServiceImpl implements InterviewService {
             - 提问做到覆盖多方面的知识。
             """ + ATTITUDE_RULE;
 
-    private static final String PROMPT_HR = "你是【资深 HR BP】。职责是考察候选人的沟通能力、价值观和稳定性。语气专业、温和但有洞察力。每次只问一个问题。如果在考察后感到非常满意或没有需要了解的了，可以直接告诉候选人面试结束，并在结尾加上标记：[TERMINATE]。" + ATTITUDE_RULE;
+    private static final String PROMPT_HR = "你是【资深 HR BP】。职责是考察候选人的沟通能力、价值观和稳定性。语气专业、温和但有洞察力。每次只问一个问题。如果在考察后感到非常满意或没有需要了解的了，可以直接告诉候选人面试结束，并在结尾加上标记：[TERMINATE]。"
+            + ATTITUDE_RULE;
 
     private static final String PROMPT_CLOSING = "你是面试组长。面试已经进入尾声。请对候选人的整体表现做一个简短的总结性发言（2-3句话），礼貌地与候选人道别。" +
             "你必须在回复的最末尾加上标记：[TERMINATE]，表示面试正式结束。";
@@ -103,8 +106,10 @@ public class InterviewServiceImpl implements InterviewService {
     // ========== 双模式会话存储工具（Redis 优先，内存兜底） ==========
 
     private boolean isRedisReady() {
-        if (redisTemplate == null) return false;
-        if (!redisAvailable) return false;
+        if (redisTemplate == null)
+            return false;
+        if (!redisAvailable)
+            return false;
         try {
             redisTemplate.opsForValue().get("__ping__");
             return true;
@@ -138,7 +143,8 @@ public class InterviewServiceImpl implements InterviewService {
                     }
                     serialized.add(m);
                 }
-                redisTemplate.opsForValue().set(CHAT_KEY_PREFIX + recordId, JSON.toJSONString(serialized), SESSION_TTL_HOURS, TimeUnit.HOURS);
+                redisTemplate.opsForValue().set(CHAT_KEY_PREFIX + recordId, JSON.toJSONString(serialized),
+                        SESSION_TTL_HOURS, TimeUnit.HOURS);
             } catch (Exception e) {
                 log.trace("Redis 写入跳过: {}", e.getMessage());
             }
@@ -158,7 +164,8 @@ public class InterviewServiceImpl implements InterviewService {
                         com.alibaba.fastjson2.JSONObject obj = arr.getJSONObject(i);
                         String type = obj.getString("type");
                         String text = obj.getString("text");
-                        if (text == null) continue;
+                        if (text == null)
+                            continue;
                         switch (type) {
                             case "USER" -> messages.add(new UserMessage(text));
                             case "AI" -> messages.add(new AiMessage(text));
@@ -180,11 +187,14 @@ public class InterviewServiceImpl implements InterviewService {
     private void deleteChatSession(Long recordId) {
         localChatCache.remove(recordId);
         localTailoredCache.remove(recordId);
+        localUsedAtomsCache.remove(recordId);
         if (isRedisReady()) {
             try {
                 redisTemplate.delete(CHAT_KEY_PREFIX + recordId);
                 redisTemplate.delete(TAILORED_KEY_PREFIX + recordId);
-            } catch (Exception ignored) {}
+                redisTemplate.delete(USED_ATOMS_KEY_PREFIX + recordId);
+            } catch (Exception ignored) {
+            }
         }
     }
 
@@ -192,8 +202,10 @@ public class InterviewServiceImpl implements InterviewService {
         localTailoredCache.put(recordId, questions);
         if (isRedisReady()) {
             try {
-                redisTemplate.opsForValue().set(TAILORED_KEY_PREFIX + recordId, JSON.toJSONString(questions), SESSION_TTL_HOURS, TimeUnit.HOURS);
-            } catch (Exception ignored) {}
+                redisTemplate.opsForValue().set(TAILORED_KEY_PREFIX + recordId, JSON.toJSONString(questions),
+                        SESSION_TTL_HOURS, TimeUnit.HOURS);
+            } catch (Exception ignored) {
+            }
         }
     }
 
@@ -205,9 +217,42 @@ public class InterviewServiceImpl implements InterviewService {
                     String json = raw instanceof String ? (String) raw : JSON.toJSONString(raw);
                     return JSON.parseArray(json, String.class);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         return localTailoredCache.get(recordId);
+    }
+
+    /** 保存本轮面试已使用的知识原子 ID 集合（双模缓存） */
+    private void saveUsedAtoms(Long recordId, List<String> usedIds) {
+        localUsedAtomsCache.put(recordId, new ArrayList<>(usedIds));
+        if (isRedisReady()) {
+            try {
+                redisTemplate.opsForValue().set(
+                        USED_ATOMS_KEY_PREFIX + recordId,
+                        JSON.toJSONString(usedIds),
+                        SESSION_TTL_HOURS, TimeUnit.HOURS);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    /** 读取本轮面试已使用的知识原子 ID 集合（双模缓存） */
+    private List<String> loadUsedAtoms(Long recordId) {
+        if (isRedisReady()) {
+            try {
+                Object raw = redisTemplate.opsForValue().get(USED_ATOMS_KEY_PREFIX + recordId);
+                if (raw != null) {
+                    String json = raw instanceof String ? (String) raw : JSON.toJSONString(raw);
+                    List<String> ids = JSON.parseArray(json, String.class);
+                    localUsedAtomsCache.put(recordId, ids);
+                    return ids;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        List<String> cached = localUsedAtomsCache.get(recordId);
+        return cached != null ? new ArrayList<>(cached) : new ArrayList<>();
     }
 
     // ========== 业务方法 ==========
@@ -221,7 +266,7 @@ public class InterviewServiceImpl implements InterviewService {
     public Long startInterview(Long userId, String position, String mode) {
         return startInterview(userId, position, mode, null);
     }
-    
+
     @Override
     public Long startInterview(Long userId, String position, String mode, List<String> resumeQuestions) {
         InterviewRecord record = new InterviewRecord();
@@ -233,18 +278,18 @@ public class InterviewServiceImpl implements InterviewService {
         interviewRecordMapper.insert(record);
 
         saveChatMessages(record.getId(), new ArrayList<>());
-        
+
         if (resumeQuestions != null && !resumeQuestions.isEmpty()) {
             saveTailoredQuestions(record.getId(), resumeQuestions);
         }
-        
+
         return record.getId();
     }
 
     @Override
     public SseEmitter chatStream(Long userId, Long recordId, String message) {
         SseEmitter emitter = new SseEmitter(0L);
-        
+
         List<ChatMessage> chatHistory = loadChatMessages(recordId);
 
         if (chatHistory == null) {
@@ -256,22 +301,48 @@ public class InterviewServiceImpl implements InterviewService {
             return emitter;
         }
 
-        // 1. RAG 检索
+        // 1. RAG 检索（含已用原子黑名单，避免重复提问同一知识点）
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
         String position = record != null ? record.getPosition() : "common";
+        // 岗位 → 知识库分类映射（新增子文件夹时同步维护此处）
+        // category 值 = 各 JSON 文件直接父目录名（子文件夹名）
         Filter categoryFilter = position.contains("Java")
-                ? metadataKey("category").isEqualTo("java").or(metadataKey("category").isEqualTo("common"))
+                ? metadataKey("category").isEqualTo("hot200")
+                        .or(metadataKey("category").isEqualTo("mysql"))
+                        .or(metadataKey("category").isEqualTo("redis"))
+                        .or(metadataKey("category").isEqualTo("spring"))
+                        .or(metadataKey("category").isEqualTo("springboot"))
+                        .or(metadataKey("category").isEqualTo("并发"))
+                        .or(metadataKey("category").isEqualTo("操作系统"))
+                        .or(metadataKey("category").isEqualTo("common"))
                 : position.contains("前端")
-                        ? metadataKey("category").isEqualTo("frontend").or(metadataKey("category").isEqualTo("common"))
+                        ? metadataKey("category").isEqualTo("hot200")
+                                .or(metadataKey("category").isEqualTo("common"))
                         : metadataKey("category").isEqualTo("common");
 
+        // 加载已用原子黑名单，构建排除 Filter（避免同一知识点被重复追问）
+        List<String> usedAtomIds = loadUsedAtoms(recordId);
+        Filter finalFilter = usedAtomIds.isEmpty()
+                ? categoryFilter
+                : categoryFilter.and(metadataKey("id").isNotIn(usedAtomIds));
+
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore).embeddingModel(embeddingModel).filter(categoryFilter).maxResults(3)
+                .embeddingStore(embeddingStore).embeddingModel(embeddingModel).filter(finalFilter).maxResults(3)
                 .minScore(0.6).build();
 
         List<Content> retrievedContents = (message != null && message.trim().length() > 2)
                 ? contentRetriever.retrieve(Query.from(message))
                 : new ArrayList<>();
+
+        // 将本轮检索到的原子 ID 记入黑名单
+        for (Content content : retrievedContents) {
+            String atomId = content.textSegment().metadata().getString("id");
+            if (atomId != null && !usedAtomIds.contains(atomId)) {
+                usedAtomIds.add(atomId);
+            }
+        }
+        saveUsedAtoms(recordId, usedAtomIds);
+
         StringBuilder contextBuilder = new StringBuilder();
         for (Content content : retrievedContents)
             contextBuilder.append("- ").append(content.textSegment().text()).append("\n");
@@ -279,7 +350,7 @@ public class InterviewServiceImpl implements InterviewService {
         // 2. 动态决定当前 Agent 人设
         int turn = chatHistory.size() / 2;
         String currentSystemPrompt;
-        
+
         boolean earlySwitchToHr = false;
         for (ChatMessage m : chatHistory) {
             if (m instanceof AiMessage && m.text().contains("[SWITCH_TO_HR]")) {
@@ -292,9 +363,9 @@ public class InterviewServiceImpl implements InterviewService {
             currentSystemPrompt = PROMPT_COORDINATOR + "\n请先让候选人做个简短的自我介绍。";
         } else if (turn <= 8 && !earlySwitchToHr) {
             currentSystemPrompt = PROMPT_TECHNICAL + "\n以下是本题考核参考点：\n" + contextBuilder.toString();
-            
+
             List<String> tailoredQuestions = loadTailoredQuestions(recordId);
-            
+
             if (tailoredQuestions != null && !tailoredQuestions.isEmpty()) {
                 StringBuilder qb = new StringBuilder("\n【重要指令：你的问题池已结合候选人简历更新，请**优先**依照以下量身定做题库向候选人发问】：\n");
                 for (String q : tailoredQuestions) {
@@ -374,7 +445,7 @@ public class InterviewServiceImpl implements InterviewService {
     public InterviewRecord endInterview(Long recordId, Integer wpm, String emotionJson) {
         List<ChatMessage> historyMessages = loadChatMessages(recordId);
         deleteChatSession(recordId);
-        
+
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
 
         if (record == null) {
@@ -391,7 +462,7 @@ public class InterviewServiceImpl implements InterviewService {
         if (historyMessages == null) {
             historyMessages = new ArrayList<>();
         }
-        
+
         if (!historyMessages.isEmpty()) {
             record.setChatHistory(JSON.toJSONString(historyMessages));
         } else {
@@ -411,9 +482,12 @@ public class InterviewServiceImpl implements InterviewService {
                             }
                         }
                         if (text != null) {
-                            if ("AI".equals(type)) historyMessages.add(new AiMessage(text));
-                            else if ("USER".equals(type)) historyMessages.add(new UserMessage(text));
-                            else if ("SYSTEM".equals(type)) historyMessages.add(new SystemMessage(text));
+                            if ("AI".equals(type))
+                                historyMessages.add(new AiMessage(text));
+                            else if ("USER".equals(type))
+                                historyMessages.add(new UserMessage(text));
+                            else if ("SYSTEM".equals(type))
+                                historyMessages.add(new SystemMessage(text));
                         }
                     }
                     log.info("从数据库恢复了 {} 条对话消息", historyMessages.size());
@@ -442,7 +516,7 @@ public class InterviewServiceImpl implements InterviewService {
                         严格按照以下 JSON 格式返回：
                         {
                           "score": 82,
-                          "feedback": "候选人整体表现...（3-5句综合点评）",
+                          "feedback": "候选人整体表现...（5-10句综合点评）",
                           "ability": {
                             "techDepth": "A",
                             "breadth": "B",

@@ -1,0 +1,25 @@
+{
+  "id": "java-concurrent-tools-overview",
+  "subject": "Java 并发工具类（JUC）的核心应用场景",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "线程池",
+    "锁",
+    "同步器",
+    "并发集合"
+  ],
+  "content": {
+    "principles": "Java 并发工具包（JUC）为高并发编程提供了核心组件：1) 线程池管理：使用 ThreadPoolExecutor 自定义线程池，根据任务类型（CPU密集型/IO密集型）设置核心线程数，选择合适的拒绝策略（如 CallerRunsPolicy 避免雪崩）。2) 并发控制：ReentrantReadWriteLock 适用于读多写少的场景（如缓存），允许多个读线程并发，提高性能。Semaphore 用于限流（如控制第三方接口QPS）。3) 线程协作：CountDownLatch 用于‘一等多’的场景（如主线程等待多个初始化任务完成）；CyclicBarrier 用于‘多等一’的场景（如并发测试统一发压）。4) 并发集合：ConcurrentHashMap 采用分段锁（JDK1.7）或 CAS + synchronized 桶节点（JDK1.8），提供高吞吐的线程安全映射。这些工具组合能应对大多数并发场景。",
+    "pitfalls": [
+      "混淆 CountDownLatch 和 CyclicBarrier 的使用场景：前者一次性，后者可循环使用。",
+      "在读写锁场景中，锁降级（写锁降级为读锁）的正确使用方式。",
+      "误用 Collections.synchronizedMap 代替 ConcurrentHashMap 在高并发场景。"
+    ],
+    "follow_up_paths": [
+      "ThreadPoolExecutor 的各个核心参数（corePoolSize, maximumPoolSize, workQueue）是如何协同工作的？",
+      "ReentrantReadWriteLock 的锁降级是如何实现的？为什么锁升级（读锁升级为写锁）不被允许？",
+      "ConcurrentHashMap 在 JDK1.8 中，如何利用 CAS 和 synchronized 来保证线程安全？它的 size() 方法是如何实现的？"
+    ]
+  }
+}

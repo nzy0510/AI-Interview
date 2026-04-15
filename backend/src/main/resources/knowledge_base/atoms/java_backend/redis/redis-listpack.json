@@ -1,0 +1,23 @@
+{
+  "id": "redis-listpack",
+  "subject": "Redis ListPack数据结构原理与应⽤",
+  "category": "redis",
+  "difficulty": "困难",
+  "tags": [
+    "数据结构",
+    "内存优化",
+    "内部编码",
+    "ZipList"
+  ],
+  "content": {
+    "principles": "ListPack是Redis 7.0引⼊的⼀种紧凑型序列化数据结构，⽤于替代ZipList作为Hash和ZSet等数据类型的⼩数据量编码。1. 结构：连续内存块，顺序存储多个元素，每个元素包含⾃⾝内容、⻓度编码以及记录该元素总字节⻓度的字段，省去前后向指针。2. 优势：内存利⽤率⾼，适合存储短字符串、整数等⼩元素。关键改进是解决ZipList的连锁更新问题：修改某元素时，因其头部记录了⾃⾝总⻓度，⽽⾮前⼀元素⻓度，故修改仅影响当前元素，不会波及后续元素。3. 限制：所有操作（查找、插⼊、删除）均为O(n)复杂度。仅在元素数量（listpack-max-listpack-entries）和单个元素⼤⼩（listpack-max-listpack-size）低于配置阈值时使⽤，超出则转为Hash Table或SkipList。定位为⼩数据、⾼密度、低频修改场景的内存优化利器。",
+    "pitfalls": [
+      "误以为ListPack是⼀个可⽤的API，实际它是完全内部的编码格式。",
+      "不清楚ListPack相⽐ZipList在防⽌连锁更新⽅⾯的具体改进机制。"
+    ],
+    "follow_up_paths": [
+      "为什么ListPack选择记录⾃⾝总⻓度，⽽不是像ZipList那样记录前⼀个元素的⻓度？这如何避免连锁更新？",
+      "在频繁修改的中等⼤⼩集合上使⽤ListPack编码会带来什么性能问题？Redis如何通过配置⾃动规避？"
+    ]
+  }
+}

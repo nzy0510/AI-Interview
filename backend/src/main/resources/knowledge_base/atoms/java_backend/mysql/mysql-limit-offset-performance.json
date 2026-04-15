@@ -1,0 +1,22 @@
+{
+  "id": "mysql-limit-offset-performance",
+  "subject": "MySQL LIMIT OFFSET 深度分页的性能问题与优化方案",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "分页",
+    "性能优化",
+    "索引"
+  ],
+  "content": {
+    "principles": "`LIMIT offset, size` 的执行机制是：MySQL 会先扫描 `offset + size` 行，然后丢弃前 `offset` 行，返回后面的 `size` 行。因此，`LIMIT 100000000, 10` 需要真实地跳过一亿行数据，即使最终只返回10行。这个过程涉及大量数据的扫描和丢弃，在没有覆盖索引时，每跳一行都可能需要回表，代价极高。而 `LIMIT 10` 只需找到前10条记录，扫描量极小。优化方案主要有两种：1) 使用游标分页（Cursor-based Pagination），基于上一页最后一条记录的唯一排序字段（如主键ID）查询下一页：`SELECT * FROM table WHERE id > last_seen_id ORDER BY id LIMIT 10;`。2) 如果必须使用 OFFSET，可以先通过覆盖索引查出主键，再关联原表以减少回表开销：`SELECT t.* FROM table t INNER JOIN (SELECT id FROM table ORDER BY id LIMIT 100000000, 10) AS tmp ON t.id = tmp.id;`。核心思路是避免全表扫描和大量数据跳过。",
+    "pitfalls": [
+      "候选人可能只知道 LIMIT OFFSET 语法，但不了解其背后的性能开销，认为翻到第1000页和第1页速度一样。",
+      "容易忽略游标分页的局限性，如无法直接跳转到任意页码。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：在分布式数据库（如 TiDB）中，深度分页问题有何不同？如何解决？",
+      "如果候选人答得不好，可以引导：如果一个分页查询越来越慢，除了数据库本身，从应用架构上可以如何优化？"
+    ]
+  }
+}

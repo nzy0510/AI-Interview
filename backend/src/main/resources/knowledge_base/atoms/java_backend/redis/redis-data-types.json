@@ -1,0 +1,26 @@
+{
+  "id": "redis-data-types",
+  "subject": "Redis核心数据类型及其使用场景",
+  "category": "redis",
+  "difficulty": "简单",
+  "tags": [
+    "数据结构",
+    "String",
+    "Hash",
+    "List",
+    "Set",
+    "ZSet"
+  ],
+  "content": {
+    "principles": "Redis支持多种核心数据结构，每种有明确场景：1. 字符串(String)：最基础类型，可存文本、序列化对象，常用作计数器（INCR）。2. 列表(List)：底层为双向链表，支持头尾插入删除(LPUSH/RPUSH, LPOP/RPOP)，适合做简单消息队列，随机访问慢。3. 集合(Set)：无序不重复字符串集合，底层哈希表实现，增删查O(1)，适用于用户标签管理、社交关系去重。4. 有序集合(Sorted Set/ZSet)：在Set基础上增加score排序，适用于排行榜，ZADD添加，ZRANGE按排名获取，score可重复，member唯一。5. 哈希(Hash)：适合存储对象字段，可单独更新某个field，节省带宽和内存。此外，Stream、Geo、Bitmap等为特定场景扩展类型。",
+    "pitfalls": [
+      "将List当作数组使用进行随机访问，导致性能低下。",
+      "存储对象时，错误地选择将整个对象序列化为String，而不是使用Hash结构，导致无法单独更新字段。",
+      "混淆ZSet中score和member的唯一性，score可重复，member才是唯一键。"
+    ],
+    "follow_up_paths": [
+      "ZSet底层是如何实现按score排序和快速按member查询的？",
+      "对比String和Hash存储对象，在内存占用和操作效率上具体有何差异？"
+    ]
+  }
+}

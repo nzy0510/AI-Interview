@@ -1,0 +1,24 @@
+{
+  "id": "innodb-vs-myisam-core-diff",
+  "subject": "InnoDB 与 MyISAM 存储引擎的核心区别（事务、锁、外键等）",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "存储引擎",
+    "事务",
+    "锁"
+  ],
+  "content": {
+    "principles": "核心区别：1. 事务：InnoDB 支持完整的 ACID 事务，具有提交和回滚能力；MyISAM 不支持事务。2. 锁粒度：InnoDB 支持行级锁（默认），并发写性能高；MyISAM 仅支持表级锁，写操作会锁全表。3. 外键：InnoDB 支持外键约束，保证参照完整性；MyISAM 不支持。4. 崩溃恢复：InnoDB 通过 redo log 和 undo log 实现崩溃自动恢复；MyISAM 崩溃后表易损坏，需手动修复。5. 索引结构：InnoDB 是索引组织表（IOT），主键索引即数据文件；MyISAM 是堆表，索引和数据文件分离。6. COUNT(*)：MyISAM 存储总行数，无条件的 COUNT(*) 极快；InnoDB 需实时计算。现代应用默认使用 InnoDB。",
+    "pitfalls": [
+      "认为 MyISAM 在读多写少的场景下绝对优于 InnoDB（忽略了事务和崩溃恢复的需求）。",
+      "不了解 MyISAM 的表锁在并发写入时的严重性能瓶颈。",
+      "误以为 InnoDB 不支持全文索引（5.6版本后已支持）。"
+    ],
+    "follow_up_paths": [
+      "为什么 MyISAM 的 COUNT(*) 快？它的存储机制是怎样的？",
+      "InnoDB 的行级锁是如何实现的？（记录锁、间隙锁、Next-Key Lock）",
+      "什么场景下可能还会考虑使用 MyISAM？（只读或极少更新的归档、日志表，且可接受手动修复风险）"
+    ]
+  }
+}

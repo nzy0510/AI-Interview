@@ -1,0 +1,24 @@
+{
+  "id": "transmittable-thread-local-context",
+  "subject": "TransmittableThreadLocal（TTL）原理与线程池上下文传递",
+  "category": "并发",
+  "difficulty": "困难",
+  "tags": [
+    "TransmittableThreadLocal",
+    "ThreadLocal",
+    "线程池",
+    "上下文传递"
+  ],
+  "content": {
+    "principles": "`ThreadLocal`无法在父子线程（尤其是线程池场景）间传递值。`TransmittableThreadLocal`（TTL，如Alibaba TTL库）通过包装任务（`TtlRunnable`/`TtlCallable`）或使用Java Agent字节码增强，在任务提交时`capture`当前线程的所有TTL值，在子线程执行前`replay`设置，执行后`clear`恢复，实现上下文透明传递。核心用于全链路追踪（TraceId）、用户上下文传递等场景。底层原理涉及重写线程池的`execute`/`submit`方法。需注意频繁capture/copy的性能开销，应仅用于必要场景。",
+    "pitfalls": [
+      "滥用TTL导致不必要的性能损耗，尤其是在提交大量短期任务的场景。",
+      "忘记包装任务（直接提交Runnable），导致上下文传递失效。",
+      "与普通`ThreadLocal`混用，造成上下文丢失或内存泄漏。"
+    ],
+    "follow_up_paths": [
+      "TTL是如何实现`capture`和`replay`的？请描述其内部数据结构与流程。",
+      "除了TTL，还有哪些方案可以实现线程池的上下文传递？（如`InheritableThreadLocal`的局限性、手动传递参数）"
+    ]
+  }
+}

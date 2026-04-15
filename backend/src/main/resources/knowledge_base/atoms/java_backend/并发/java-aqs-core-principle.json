@@ -1,0 +1,26 @@
+{
+  "id": "java-aqs-core-principle",
+  "subject": "AQS (AbstractQueuedSynchronizer) 核心原理",
+  "category": "并发",
+  "difficulty": "困难",
+  "tags": [
+    "Java",
+    "AQS",
+    "锁",
+    "同步器",
+    "并发基础"
+  ],
+  "content": {
+    "principles": "AQS 是 Java 并发包中构建锁和同步器（如 ReentrantLock, Semaphore, CountDownLatch）的底层框架。其核心是一个 volatile int 类型的 state 变量，用于表示同步状态（如锁的重入次数、信号量许可数）。线程通过 CAS 操作尝试修改 state，成功则获取资源，失败则被封装成 Node 节点加入一个双向的 CLH 等待队列并挂起。AQS 采用模板方法模式，将具体的资源获取（tryAcquire）和释放（tryRelease）逻辑交由子类实现，自身负责线程的排队、阻塞和唤醒。它支持两种模式：1) 独占模式（如 ReentrantLock），同一时刻只有一个线程能获取 state；2) 共享模式（如 Semaphore），多个线程可同时获取。同时支持公平（按队列顺序）和非公平（允许插队）策略。",
+    "pitfalls": [
+      "只知 AQS 是锁的基础，但说不清 state 和 CLH 队列的具体作用与协作流程。",
+      "混淆独占模式和共享模式的区别及应用场景。",
+      "不理解 AQS 的模板方法设计，无法阐述 tryAcquire/tryRelease 与 acquire/release 的调用关系。"
+    ],
+    "follow_up_paths": [
+      "请画出 AQS 中 Node 节点的数据结构，并解释 waitStatus 各个状态（CANCELLED, SIGNAL, CONDITION, PROPAGATE）的含义。",
+      "以 ReentrantLock 为例，说明其非公平锁和公平锁在 tryAcquire 实现上的关键区别。",
+      "AQS 的 ConditionObject（条件变量）是如何实现的？它与 Object.wait/notify 有何异同？"
+    ]
+  }
+}

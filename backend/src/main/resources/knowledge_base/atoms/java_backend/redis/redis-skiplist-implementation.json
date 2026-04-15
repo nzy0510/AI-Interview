@@ -1,0 +1,24 @@
+{
+  "id": "redis-skiplist-implementation",
+  "subject": "Redis 中跳表（Skip List）的实现原理与应用",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "数据结构",
+    "有序集合",
+    "算法"
+  ],
+  "content": {
+    "principles": "跳表在 Redis 中用于实现有序集合（ZSet）的底层结构，尤其适用于元素数量多或成员字符串较长的场景。它是一种带多级索引的链表，通过空间换时间，使查找、插入、删除的平均时间复杂度降至 O(log n)。Redis 跳表每层都是一个稀疏链表，最底层包含所有元素，上层节点数大致减半。每个节点拥有一个随机生成的“层高”，最高不超过 32 层。查找时从顶层开始横向移动，遇到更大值则向下层移动，快速逼近目标。节点结构简化如下：\ntypedef struct zskiplistNode {\n    sds ele;              // 成员值\n    double score;         // 分值，排序依据\n    struct zskiplistLevel {\n        struct zskiplistNode *forward; // 指向同层下一个节点\n        unsigned int span;             // 跨度，用于计算排名\n    } level[];\n} zskiplistNode;\n插入新节点时，通过随机函数决定其层数（如 rand() % 2 判断是否升级），保证索引分布大致均匀，避免退化为单链表。跳表优势包括：查找高效（平均 O(log n)）、实现比红黑树简单、范围查询友好（如 ZRANGE 可直接链表遍历）。",
+    "pitfalls": [
+      "误以为跳表的时间复杂度在最坏情况下仍是 O(log n)，不理解其概率性平衡特性。",
+      "混淆跳表与平衡树（如红黑树、AVL树）的适用场景，不清楚 Redis 为何选择跳表。",
+      "不理解节点中层高（level）的随机生成机制及其对性能的影响。"
+    ],
+    "follow_up_paths": [
+      "跳表与红黑树在实现复杂度、内存开销和并发友好性上有何具体差异？为何 Redis 选择跳表而非红黑树？",
+      "节点中的 'span' 字段具体作用是什么？如何利用它实现 ZRANK 这类排名查询？",
+      "如果跳表的随机层数生成算法出现偏差，导致索引分布不均，会对性能产生什么影响？Redis 如何规避？"
+    ]
+  }
+}

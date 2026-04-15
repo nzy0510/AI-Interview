@@ -1,0 +1,25 @@
+{
+  "id": "java-thread-safety-definition",
+  "subject": "线程安全的定义与实现手段",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "Java",
+    "线程安全",
+    "竞态条件",
+    "同步"
+  ],
+  "content": {
+    "principles": "线程安全是指当多个线程并发访问某个类、对象或方法时，这个类、对象或方法始终表现出正确的行为，其内部状态保持一致，且无需额外的同步或协调。核心问题在于管理对共享、可变状态的访问。\n\n实现线程安全的主要手段包括：\n1. 无状态：不包含任何成员变量（状态），只使用局部变量和参数。这是最安全的。\n2. 不可变：使用 final 字段，使对象状态在构造后不可变，如 String。\n3. 线程封闭：将对象限制在单个线程内访问，如 ThreadLocal。\n4. 加锁同步：使用 synchronized 或 Lock 控制对临界区的访问。\n5. 原子变量：使用 java.util.concurrent.atomic 包下的原子类，如 AtomicInteger。\n6. 并发容器：使用线程安全的集合类，如 ConcurrentHashMap、CopyOnWriteArrayList。\n\n线程不安全的典型例子：多个线程同时对共享的 int 变量进行 count++ 操作，由于该操作非原子性，可能导致结果小于实际累加次数。",
+    "pitfalls": [
+      "认为使用了线程安全类（如 Vector）的组合操作（如`if(!vector.contains(x)) vector.add(x)`）也是线程安全的。",
+      "误将不可变对象与仅被 final 修饰但持有可变引用字段的对象混淆。",
+      "认为无状态的 Servlet 一定是线程安全的，忽略了其可能访问的共享外部资源（如静态变量、数据库连接）。"
+    ],
+    "follow_up_paths": [
+      "如果候选人列出了多种手段，可以追问：'你刚才提到的几种手段，分别对应着《Java并发编程实战》中提到的哪种线程安全策略（如不可变、线程封闭等）？'",
+      "可以考察深入理解：'请解释一下什么是竞态条件（Race Condition）？并举例说明一个隐蔽的竞态条件。'",
+      "如果候选人定义模糊，可以引导：'假设有一个简单的计数器类，请分别用 synchronized、AtomicInteger 和 Lock 写出其线程安全的实现，并比较它们的优缺点。'"
+    ]
+  }
+}

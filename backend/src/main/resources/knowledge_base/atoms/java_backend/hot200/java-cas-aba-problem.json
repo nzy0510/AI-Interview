@@ -1,0 +1,24 @@
+{
+  "id": "java-cas-aba-problem",
+  "subject": "Java CAS 操作与 ABA 问题",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "并发",
+    "无锁编程"
+  ],
+  "content": {
+    "principles": "ABA 问题是使用 CAS（Compare-And-Swap）实现无锁并发结构（如 `AtomicInteger`）时的一个经典问题。它指一个变量的值从 A 变为 B，然后又变回 A。对于只进行值比较的 CAS 操作来说，它无法感知到这个中间变化过程，会误认为值没有改变而成功更新。这可能导致逻辑错误，例如在链表或栈操作中，可能误认为节点状态未变，引发悬挂指针或数据不一致。Java 中通过带版本号的原子引用类 `AtomicStampedReference` 来解决。它在比较时不仅比较引用值，还比较一个整型的 stamp（版本号），每次修改都递增 stamp，从而能识别出 A->B->A 的变化。类似的思想也应用于数据库的 MVCC 和 Redis 的乐观锁中。",
+    "pitfalls": [
+      "认为 ABA 问题只是值变回原值，不理解其核心在于中间状态的变化被忽略。",
+      "认为所有使用 CAS 的场景都必须解决 ABA 问题（实际上很多场景如计数器，ABA 不影响结果）。",
+      "不知道 Java 中 `AtomicStampedReference` 或 `AtomicMarkableReference` 的存在和用法。"
+    ],
+    "follow_up_paths": [
+      "除了版本号，还有哪些解决 ABA 问题的思路？",
+      "`ConcurrentLinkedQueue` 是如何处理 ABA 问题的？",
+      "请描述一次 CAS 操作在 CPU 指令层面的执行过程。"
+    ]
+  }
+}

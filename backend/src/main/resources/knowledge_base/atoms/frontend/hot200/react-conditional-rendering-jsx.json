@@ -1,0 +1,24 @@
+{
+  "id": "react-conditional-rendering-jsx",
+  "subject": "React 中 JSX 的条件渲染实现方式",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "React",
+    "JSX",
+    "条件渲染"
+  ],
+  "content": {
+    "principles": "在 React 的 `render` 函数或函数组件返回值中，不能直接使用 `if-else` 语句来控制 JSX 的渲染，因为 JSX 本质上是 `React.createElement()` 的语法糖，它要求其内部必须是表达式（expression），而 `if-else` 是语句（statement），无法直接嵌入 JSX 的花括号 `{}` 中。\n正确的条件渲染方法包括：\n1. **三元运算符**：`{condition ? <ComponentA /> : <ComponentB />}`\n2. **逻辑与 (&&) 运算符**：`{condition && <Component />}` （用于条件为真时渲染）\n3. **提前在函数逻辑中处理**：在 JSX 外部使用 `if-else` 或 `switch` 语句来决定最终要渲染的变量或组件，然后在 JSX 中引用该变量。\n这种方法将渲染逻辑与 UI 结构分离，代码更清晰且易于维护。",
+    "pitfalls": [
+      "试图在 JSX 的 `{}` 内直接写 `if-else` 语句导致语法错误。",
+      "过度嵌套三元运算符导致 JSX 可读性变差。",
+      "不理解 JSX 中只能嵌入表达式的基本规则。"
+    ],
+    "follow_up_paths": [
+      "除了三元运算符和 `&&`，还有哪些实现条件渲染的模式或技巧？",
+      "在复杂的多条件分支渲染场景下，如何组织代码更清晰？",
+      "`if-else` 语句和三元运算符在性能上有区别吗？为什么？"
+    ]
+  }
+}

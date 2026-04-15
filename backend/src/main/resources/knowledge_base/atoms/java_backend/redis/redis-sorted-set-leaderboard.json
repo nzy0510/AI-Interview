@@ -1,0 +1,24 @@
+{
+  "id": "redis-sorted-set-leaderboard",
+  "subject": "使用 Redis Sorted Set 实现排行榜",
+  "category": "redis",
+  "difficulty": "简单",
+  "tags": [
+    "应用场景",
+    "数据结构",
+    "性能"
+  ],
+  "content": {
+    "principles": "使用 Sorted Set (ZSET) 是实现排行榜的核心数据结构。其底层是跳跃表（skiplist）和哈希表的结合，提供 O(log N) 的增删改查性能。关键操作：1. 添加/更新分数：ZADD leaderboard score member，同名 member 会更新分数并重新排序。2. 获取 Top N：ZRANGE leaderboard 0 N-1 WITHSCORES（正序，分数从低到高）或 ZREVRANGE（倒序，分数从高到低）。3. 获取成员排名：ZRANK（正序排名，从0开始）或 ZREVRANK（倒序排名）。4. 获取成员分数：ZSCORE。适用于游戏积分榜、直播热度榜、电商销量排行等场景。",
+    "pitfalls": [
+      "误以为 ZADD 更新分数需要先删除旧记录。实际上直接覆盖即可。",
+      "忘记 ZRANGE 和 ZREVRANGE 的区别，导致取错排序方向。",
+      "数据量极大（如千万级）时，单个 ZSET 可能成为性能瓶颈或内存热点。"
+    ],
+    "follow_up_paths": [
+      "Sorted Set 底层跳跃表的具体结构和工作原理是什么？为什么选择它而不是平衡树？",
+      "面对亿级数据的排行榜，除了分片，还有哪些优化方案？（如：冷热数据分离、定期归档）",
+      "如何实现一个带时间维度的排行榜（如：本周排行榜）？"
+    ]
+  }
+}

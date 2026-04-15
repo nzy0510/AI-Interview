@@ -1,0 +1,24 @@
+{
+  "id": "vuex-plugin-implementation",
+  "subject": "Vuex插件的工作原理与实现",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Vuex",
+    "插件",
+    "状态管理"
+  ],
+  "content": {
+    "principles": "Vuex插件本质是一个接收`store`实例作为唯一参数的函数。插件在创建store时被立即调用，内部可通过`store.subscribe`方法订阅mutation变化，以执行副作用逻辑（如日志记录、状态持久化）。插件不会改变mutation或action的执行流程，仅作为“监听者”。例如，一个简单的日志插件实现：`const loggerPlugin = store => { store.subscribe((mutation, state) => { console.log('mutation:', mutation.type); console.log('state: ', state); }); }`。状态持久化插件可在订阅回调中将state存入`localStorage`，页面刷新时恢复。注册时通过`new Vuex.Store({ plugins: [plugin1, plugin2] })`传入。",
+    "pitfalls": [
+      "误认为插件可以拦截或直接修改mutation的payload或state（实际需在action或getter中处理）。",
+      "在插件中进行异步操作时，未处理好与store状态更新的时序问题。",
+      "多个插件执行顺序依赖注册顺序，可能产生意料之外的副作用。"
+    ],
+    "follow_up_paths": [
+      "如何实现一个插件，在每次mutation后自动将特定模块的状态同步到IndexedDB？",
+      "Vuex的插件机制与Pinia的插件机制（通过`pinia.use()`）在设计上有何异同？",
+      "在插件中订阅action变化（`store.subscribeAction`）的典型应用场景是什么？"
+    ]
+  }
+}

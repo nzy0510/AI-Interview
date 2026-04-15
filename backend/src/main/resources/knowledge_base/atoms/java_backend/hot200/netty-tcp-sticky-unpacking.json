@@ -1,0 +1,22 @@
+{
+  "id": "netty-tcp-sticky-unpacking",
+  "subject": "Netty解决TCP粘包和拆包问题",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Netty",
+    "网络协议",
+    "TCP"
+  ],
+  "content": {
+    "principles": "TCP是面向流的协议，不关心应用层消息边界，导致粘包和拆包问题。Netty通过提供一组解码器工具类来定义消息边界。常用方法包括：1) 长度字段法，使用LengthFieldBasedFrameDecoder，先读取表示body长度的字段，再按长度截取完整报文。2) 分隔符法，使用DelimiterBasedFrameDecoder，适合文本协议。3) 定长法，使用FixedLengthFrameDecoder，适用于心跳包等固定大小场景。核心是自定义协议格式，让接收方能识别完整消息的起止。",
+    "pitfalls": [
+      "认为Netty自动解决了粘包拆包，不理解需要主动选择或实现解码器",
+      "混淆不同解码器的适用场景，例如在二进制协议中使用分隔符法"
+    ],
+    "follow_up_paths": [
+      "LengthFieldBasedFrameDecoder的构造函数参数（如lengthFieldOffset, lengthAdjustment）如何配置？",
+      "如果自定义一个复杂的私有协议，如何设计编解码器？"
+    ]
+  }
+}

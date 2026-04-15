@@ -1,0 +1,25 @@
+{
+  "id": "nodejs-non-blocking-io",
+  "subject": "Node.js 非阻塞 I/O 的原理与实现机制",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Node.js",
+    "异步编程",
+    "事件循环",
+    "libuv"
+  ],
+  "content": {
+    "principles": "非阻塞 I/O 的核心是程序发起 I/O 操作（如读文件、网络请求）后不等待结果，立即返回执行后续任务，待 I/O 完成后通过事件通知程序处理。Node.js 通过事件循环（Event Loop）和底层异步 I/O 库（如 libuv，在 Linux 上使用 epoll）实现这一机制。所有 I/O 操作被委托给系统或 libuv 处理，Node.js 主线程（单线程）只负责调度和执行回调。例如，`http.get` 会立即返回，不阻塞 `console.log` 的执行，数据到达后由事件循环在轮询阶段触发 `data` 回调。这种单线程事件驱动模型避免了多线程上下文切换开销，能以较少资源支撑高并发连接，但需注意 CPU 密集型任务会阻塞事件循环，需使用 Worker Threads 处理。",
+    "pitfalls": [
+      "误认为 Node.js 是多线程的，实际上其异步 I/O 依赖于底层系统的多线程/多进程能力。",
+      "在事件循环中执行长时间同步计算（CPU 密集型任务），会阻塞所有后续 I/O 回调，导致性能急剧下降。",
+      "不理解事件循环各阶段的执行顺序，导致定时器（setTimeout/setImmediate）行为不符合预期。"
+    ],
+    "follow_up_paths": [
+      "请详细描述 libuv 在 Node.js 事件循环中扮演的角色，以及它在不同操作系统（Linux/Windows）上是如何实现异步 I/O 的？",
+      "Node.js 的 Worker Threads 与事件循环模型是什么关系？如何用它来处理 CPU 密集型任务？",
+      "除了回调，Node.js 中还有哪些处理异步 I/O 的编程模型（如 Promise, async/await）？它们底层是如何与事件循环协作的？"
+    ]
+  }
+}

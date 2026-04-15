@@ -1,0 +1,25 @@
+{
+  "id": "mysql-change-buffer-principle",
+  "subject": "MySQL Change Buffer 原理与作用",
+  "category": "mysql",
+  "difficulty": "困难",
+  "tags": [
+    "InnoDB",
+    "索引优化",
+    "IO优化",
+    "缓冲池"
+  ],
+  "content": {
+    "principles": "Change Buffer 是 InnoDB 用于优化非唯一二级索引写操作（INSERT、UPDATE、DELETE）性能的机制。当需要修改的索引页不在 Buffer Pool 中时，将修改操作缓存在 Change Buffer（本质是 B+树，存储在系统表空间），而非立即从磁盘读取索引页。待未来该索引页被读入 Buffer Pool 时，再将缓存的修改合并（merge）到页中。这将对二级索引的随机写 IO 转化为顺序写和延迟合并，大幅减少磁盘 IO。Change Buffer 仅对非唯一二级索引生效，因为唯一索引需要立即读取页以检查唯一性约束。其大小可通过 innodb_change_buffer_max_size 配置。",
+    "pitfalls": [
+      "误以为 Change Buffer 对所有索引都生效，实际上唯一索引不适用",
+      "在写后立即读的场景（频繁触发 merge）下，Change Buffer 可能带来额外开销",
+      "不理解 Change Buffer 的数据最终是如何持久化到磁盘的"
+    ],
+    "follow_up_paths": [
+      "Change Buffer 和 Redo Log 在写操作中分别扮演什么角色？它们之间有关联吗？",
+      "如何监控 Change Buffer 的使用效率和 merge 频率？哪些指标异常意味着需要调整？",
+      "如果数据库实例意外重启，Change Buffer 中未合并的数据会丢失吗？为什么？"
+    ]
+  }
+}

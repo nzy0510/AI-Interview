@@ -1,0 +1,24 @@
+{
+  "id": "webpack-css-inline-methods",
+  "subject": "Webpack 内联 CSS 的几种方法",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Webpack",
+    "CSS",
+    "构建优化"
+  ],
+  "content": {
+    "principles": "Webpack 本身不直接支持自动内联 CSS，需通过 loader 和插件组合实现。核心方法有三种：1) 使用 `style-loader` 和 `css-loader`：`css-loader` 解析 CSS 文件中的 `@import` 和 `url()`，`style-loader` 将解析后的 CSS 通过动态创建 `<style>` 标签插入页面 DOM，实现运行时内联。2) 使用 `html-inline-css-webpack-plugin`：在 `HtmlWebpackPlugin` 生成 HTML 文件后，将指定 CSS 内容提取并注入到 `<head>` 的 `<style>` 标签中，适用于 SSR 或关键路径 CSS 内联。3) 使用 `raw-loader`：将 CSS 文件作为字符串导入到 JavaScript 中，然后手动创建 `<style>` 标签并设置其 `textContent`，适用于小规模、局部的样式内联。内联 CSS 会增加 HTML 或 JS 体积，影响缓存，通常只建议内联首屏关键 CSS。",
+    "pitfalls": [
+      "混淆 `style-loader` 的内联方式：它是在运行时通过 JS 动态插入 `<style>` 标签，并非构建时直接嵌入 HTML。",
+      "忽略内联对缓存的影响：内联资源无法被浏览器单独缓存，每次 HTML 更新都会导致所有内联样式重新加载。",
+      "未考虑 `raw-loader` 已被 Webpack 5 的 Asset Modules (`asset/source`) 取代。"
+    ],
+    "follow_up_paths": [
+      "`style-loader` 和 `mini-css-extract-plugin` 的核心区别和应用场景是什么？",
+      "如何实现只内联首屏关键 CSS，其余 CSS 异步加载？",
+      "除了提到的插件，还有哪些工具或方案可以实现 CSS 内联？"
+    ]
+  }
+}

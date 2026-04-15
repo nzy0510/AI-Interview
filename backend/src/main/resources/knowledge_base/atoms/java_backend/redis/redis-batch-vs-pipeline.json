@@ -1,0 +1,24 @@
+{
+  "id": "redis-batch-vs-pipeline",
+  "subject": "Redis 原生批处理命令 (MSET/MGET) 与 Pipeline 的区别",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "网络优化",
+    "原子性",
+    "客户端"
+  ],
+  "content": {
+    "principles": "1. 原生批处理命令（如 MSET, MGET, HMGET）：是 Redis 服务端支持的单条命令，可一次性操作多个键值对。特性：原子性（命令执行期间不会被其他命令打断）、网络往返次数（RTT）为1次。2. Pipeline（管道）：是一种客户端技术，将多个独立的命令打包，一次性发送给服务器，服务器按顺序执行后，将结果打包一次性返回。特性：非原子性（命令在服务器端是逐个执行，期间可能被其他客户端命令插入）、主要优化网络延迟，将 N 次 RTT 减少为接近 1 次 RTT。核心区别在于原子性和实现层级：原生命令是服务器端的原子操作；Pipeline 是客户端的网络优化手段，服务器端并不感知“批处理”。",
+    "pitfalls": [
+      "误以为 Pipeline 内的命令具有原子性。",
+      "混淆两者适用的场景，例如在需要原子性保证时错误地使用 Pipeline。",
+      "Pipeline 打包命令过多，导致客户端和服务端缓冲区溢出或响应时间过长。"
+    ],
+    "follow_up_paths": [
+      "Pipeline 和事务（MULTI/EXEC）有什么区别？",
+      "除了减少 RTT，Pipeline 对 Redis 服务器端的负载有影响吗？",
+      "在 Cluster 模式下，如何使用 Pipeline？（需要确保所有命令的 key 位于同一 slot）"
+    ]
+  }
+}

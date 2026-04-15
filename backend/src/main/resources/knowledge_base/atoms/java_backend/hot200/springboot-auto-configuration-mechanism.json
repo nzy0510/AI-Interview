@@ -1,0 +1,24 @@
+{
+  "id": "springboot-auto-configuration-mechanism",
+  "subject": "Spring Boot 自动配置机制",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Spring Boot",
+    "自动配置",
+    "Spring"
+  ],
+  "content": {
+    "principles": "Spring Boot 自动配置基于“约定大于配置”思想，通过几个关键机制实现：1. **自动配置类注册**：启动时扫描 classpath 下 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 文件（旧版为 `spring.factories` 中的 `EnableAutoConfiguration` 键），加载其中列出的自动配置类。2. **条件化装配**：自动配置类上带有大量条件注解，如 `@ConditionalOnClass`（当指定类存在时生效）、`@ConditionalOnMissingBean`（当容器中不存在指定 Bean 时生效），确保配置仅在满足条件时加载，避免冲突。3. **配置优先级控制**：可通过 `@AutoConfigureAfter`、`@AutoConfigureBefore` 控制配置类的加载顺序。以 `spring-boot-starter-data-redis` 为例：当 classpath 中存在 `LettuceConnectionFactory` 类，且容器中没有 `RedisTemplate` Bean 时，相关的连接池和模板会自动配置好。`@EnableAutoConfiguration` 注解是触发整个自动配置链路的开关。",
+    "pitfalls": [
+      "混淆 `@SpringBootApplication` 与 `@EnableAutoConfiguration` 的关系。",
+      "不理解条件注解的工作原理，导致自定义 Bean 与自动配置 Bean 冲突。",
+      "认为自动配置是“黑魔法”，无法定位和调试配置加载问题。"
+    ],
+    "follow_up_paths": [
+      "如何查看 Spring Boot 应用启动时加载了哪些自动配置类？（如使用 `--debug` 参数）",
+      "如果想排除某个自动配置类，有哪些方法？",
+      "如何编写一个自定义的 Spring Boot Starter？关键步骤是什么？"
+    ]
+  }
+}

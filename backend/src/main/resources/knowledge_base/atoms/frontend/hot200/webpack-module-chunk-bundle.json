@@ -1,0 +1,24 @@
+{
+  "id": "webpack-module-chunk-bundle",
+  "subject": "Webpack中的Module、Chunk与Bundle概念解析",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Webpack",
+    "构建工具",
+    "打包原理"
+  ],
+  "content": {
+    "principles": "在Webpack中，Module是最小单位，指代项目中的单个文件，如.js、.css、图片等，每个通过import或require引入的文件都是一个Module。Webpack从入口文件开始，递归分析所有Module的依赖关系，形成依赖图。Chunk是打包过程中的逻辑代码块，是Module的集合。Webpack根据配置（如入口、代码分割）将一组Module分组到一个Chunk中。例如，动态导入import()会生成新的Chunk，SplitChunksPlugin可以将公共模块提取为独立的Chunk。Bundle是最终输出的物理文件，通常一个Chunk对应一个Bundle，但配置（如source map、asset modules）可能导致一个Chunk生成多个Bundle，或一个Bundle包含多个Chunk（如开发环境下的runtime逻辑）。例如，一个主入口和一个懒加载路由会生成两个Chunk，分别输出为main.bundle.js和async.bundle.js。Module负责组织代码结构，Chunk是构建时的分块策略（影响加载性能），Bundle是最终交付物。合理拆分Chunk能减少首屏体积并利用浏览器缓存。",
+    "pitfalls": [
+      "混淆Module、Chunk和Bundle的概念，认为它们是一回事。",
+      "认为一个Chunk必然只生成一个Bundle。",
+      "不理解动态导入（import()）与SplitChunksPlugin在生成Chunk机制上的区别。"
+    ],
+    "follow_up_paths": [
+      "SplitChunksPlugin有哪些常见的配置策略？它们如何影响最终的Bundle输出？",
+      "除了动态导入，还有哪些方式可以创建新的Chunk？",
+      "如何分析一个Bundle中包含哪些Module？有哪些工具可以使用？"
+    ]
+  }
+}

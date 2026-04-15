@@ -1,0 +1,25 @@
+{
+  "id": "mysql-default-isolation-level",
+  "subject": "MySQL 默认事务隔离级别及其选择原因",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "事务",
+    "隔离级别",
+    "并发控制",
+    "MVCC"
+  ],
+  "content": {
+    "principles": "MySQL InnoDB 引擎的默认事务隔离级别是 REPEATABLE READ（可重复读）。此级别解决了脏读和不可重复读问题。脏读指读到其他未提交事务的数据，不可重复读指同一事务内两次读取同一数据结果不一致。InnoDB 通过 MVCC（多版本并发控制）机制实现可重复读，为每个事务提供一个一致性的数据快照。虽然 SQL 标准中 REPEATABLE READ 不解决幻读（同一事务内两次范围查询结果集数量不同），但 InnoDB 在此级别下通过间隙锁（Gap Lock）与行锁（Next-Key Lock）的组合，在很大程度上防止了幻读的发生。选择此级别是因为它在保证数据一致性（避免脏读和不可重复读，并抑制幻读）和系统并发性能之间取得了较好的平衡，适合大多数业务场景（如电商、用户系统）。对于一致性要求极高的场景（如金融核心），可考虑 SERIALIZABLE 级别。",
+    "pitfalls": [
+      "认为 MySQL 的 REPEATABLE READ 完全解决了幻读问题（实际上是通过间隙锁很大程度上抑制，并非100%免疫，特别是在某些特定语句或场景下）。",
+      "混淆不同数据库的默认隔离级别（如 Oracle、PostgreSQL 默认是 READ COMMITTED）。",
+      "不清楚如何查看和设置当前会话或全局的隔离级别。"
+    ],
+    "follow_up_paths": [
+      "在 REPEATABLE READ 下，MVCC 的快照是如何创建和工作的？（Read View 的生成时机与可见性判断）",
+      "间隙锁具体在什么情况下会触发？它如何与行锁共同工作形成 Next-Key Lock？",
+      "从 READ COMMITTED 升级到 REPEATABLE READ 会带来什么性能影响？（锁范围扩大，可能增加锁竞争）"
+    ]
+  }
+}
