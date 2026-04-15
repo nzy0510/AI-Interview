@@ -1,0 +1,26 @@
+{
+  "id": "frontend-login-auth-methods",
+  "subject": "常见的登录鉴权方式及其优缺点",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "前端",
+    "安全",
+    "网络"
+  ],
+  "content": {
+    "principles": "登录鉴权是确认用户身份的过程。主流方式包括：1) Session-Cookie：服务端生成Session并存储（内存/Redis），将sessionId通过Cookie返回给客户端。优点是逻辑清晰，支持主动登出；缺点是服务端有状态，横向扩展需要Session共享（如Redis）。2) Token（如JWT）：服务端签发包含用户信息的签名Token，客户端存储并在请求Header中携带。优点是无状态，适合分布式系统；缺点是Token一旦签发无法主动撤销（除非引入黑名单机制），且Payload不应包含敏感信息。3) OAuth 2.0 / OpenID Connect：授权框架，用于第三方登录（如微信登录）或单点登录（SSO）。OpenID Connect在OAuth基础上增加了身份认证层。适合开放平台，但流程复杂。4) SAML：基于XML的企业级SSO方案，配置繁琐，多用于与传统系统（如AD FS）集成。",
+    "pitfalls": [
+      "混淆Session和Token的核心区别（有状态 vs 无状态）",
+      "认为JWT可以天然替代Session，忽略其无法主动失效的问题",
+      "在JWT的Payload中存放敏感信息（如密码）",
+      "不清楚OAuth 2.0是授权协议，OpenID Connect才是认证协议"
+    ],
+    "follow_up_paths": [
+      "如何实现JWT的主动失效/黑名单机制？",
+      "在微服务架构下，Session共享方案（如Spring Session）与JWT方案如何选型？",
+      "OAuth 2.0的授权码模式具体流程是怎样的？为什么最安全？",
+      "单点登录（SSO）的具体实现原理是什么？"
+    ]
+  }
+}

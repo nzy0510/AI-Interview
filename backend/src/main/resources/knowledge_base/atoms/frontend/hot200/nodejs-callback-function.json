@@ -1,0 +1,24 @@
+{
+  "id": "nodejs-callback-function",
+  "subject": "Node.js 回调函数",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Node.js",
+    "异步编程",
+    "回调"
+  ],
+  "content": {
+    "principles": "Node.js 的回调函数是一个作为参数传递给另一个函数的函数，在主任务（通常是异步 I/O 操作）完成后被调用。这是 Node.js 实现非阻塞 I/O 和高并发的基石。核心原理是事件循环，异步操作被提交给系统内核或线程池执行，执行完成后将回调函数放入事件队列，等待事件循环取出执行。例如，`fs.readFile` 在读取文件完成后调用其回调函数。这种模式避免了程序阻塞，但容易导致多层嵌套的“回调地狱”。",
+    "pitfalls": [
+      "混淆同步和异步回调的执行顺序，例如认为 `console.log('这行会先打印')` 会在文件读取完成后执行。",
+      "在回调函数中忘记处理错误参数（err），导致异常未被捕获。",
+      "不理解回调地狱的成因和危害，以及如何用 Promise 或 async/await 解决。"
+    ],
+    "follow_up_paths": [
+      "请解释 Node.js 事件循环（Event Loop）是如何调度回调函数的？",
+      "除了 `fs.readFile`，请再列举几个 Node.js 核心模块中使用回调的 API。",
+      "如何将一个基于回调的 API 包装成 Promise 风格？请写出代码示例。"
+    ]
+  }
+}

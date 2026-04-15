@@ -1,0 +1,24 @@
+{
+  "id": "java-threadpool-executor-workflow",
+  "subject": "ThreadPoolExecutor核心工作原理与流程",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "线程池",
+    "并发编程",
+    "JUC"
+  ],
+  "content": {
+    "principles": "`ThreadPoolExecutor`是Java线程池的核心实现类，其工作流程基于核心线程数（corePoolSize）、最大线程数（maximumPoolSize）和工作队列（workQueue）协同工作：\n1.  提交任务时，若当前运行的线程数小于`corePoolSize`，即使有空闲线程，也会立即创建新的核心线程来执行该任务。\n2.  若当前线程数已达到`corePoolSize`，新提交的任务会被放入`workQueue`（阻塞队列）中等待。\n3.  若`workQueue`已满，且当前线程数小于`maximumPoolSize`，则会创建新的非核心线程（临时线程）来执行任务。\n4.  若`workQueue`已满，且当前线程数已达到`maximumPoolSize`，则会触发`RejectedExecutionHandler`中定义的拒绝策略来处理新任务。\n\n线程池通过复用线程来避免频繁创建和销毁线程的系统开销。核心线程默认会一直存活（除非设置`allowCoreThreadTimeOut`），非核心线程在空闲时间超过`keepAliveTime`后会被回收。",
+    "pitfalls": [
+      "误以为线程池会优先使用空闲线程。实际上，在未达到核心线程数前，即使有空闲线程，也会创建新线程。",
+      "混淆`Executors`工厂类创建的线程池（如FixedThreadPool使用无界队列，CachedThreadPool最大线程数为Integer.MAX_VALUE）与手动配置`ThreadPoolExecutor`的区别，前者容易导致OOM或资源耗尽。",
+      "不理解不同队列（如LinkedBlockingQueue, SynchronousQueue, ArrayBlockingQueue）对线程池行为的影响。"
+    ],
+    "follow_up_paths": [
+      "如果核心线程数为5，最大线程数为10，队列容量为100。瞬间提交200个任务，线程池会如何反应？（先创建5个核心线程，100个任务入队，再创建5个非核心线程，剩余90个任务触发拒绝策略）",
+      "`Executors.newCachedThreadPool()`和`Executors.newFixedThreadPool(10)`在底层实现上有什么区别？（前者核心线程为0，最大线程无限，用SynchronousQueue；后者核心和最大线程固定，用无界LinkedBlockingQueue）",
+      "如何实现一个线程池，让任务提交者感知到队列已满并等待？（可以使用`ThreadPoolExecutor`并搭配有界队列，在提交时使用`offer`方法并处理返回值，或自定义拒绝策略将任务重新放回队列阻塞等待）"
+    ]
+  }
+}

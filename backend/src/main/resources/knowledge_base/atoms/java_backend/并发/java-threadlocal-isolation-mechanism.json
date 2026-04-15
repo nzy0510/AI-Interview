@@ -1,0 +1,25 @@
+{
+  "id": "java-threadlocal-isolation-mechanism",
+  "subject": "ThreadLocal 实现线程资源隔离的机制",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "Java",
+    "ThreadLocal",
+    "线程隔离",
+    "ThreadLocalMap"
+  ],
+  "content": {
+    "principles": "ThreadLocal 通过为每个线程维护一个独立的 ThreadLocalMap 来实现资源隔离。\n1. 每个 Thread 对象内部都有一个 threadLocals 字段（ThreadLocal.ThreadLocalMap 类型）。\n2. 当调用 `threadLocal.set(value)` 时，实际是获取当前线程的 ThreadLocalMap，并以当前 ThreadLocal 实例作为 key（弱引用），value 作为值存入 map。\n3. 当调用 `threadLocal.get()` 时，也是从当前线程的 ThreadLocalMap 中，以当前 ThreadLocal 实例为 key 取出对应的 value。\n4. 由于每个线程操作的是自己线程对象内部的 map，数据自然隔离，无需同步。关键点在于内存结构的隔离，而非通过锁机制。",
+    "pitfalls": [
+      "误以为 ThreadLocal 是通过复制变量或加锁来实现隔离。",
+      "认为 ThreadLocal 是全局变量，所有线程访问的是同一个实例。",
+      "不清楚 ThreadLocal 与 Thread、ThreadLocalMap 三者的关系。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答出了基本机制，可以追问：'ThreadLocal 的 initialValue() 方法是在什么时候被调用的？它的调用时机对性能有什么影响？'",
+      "可以深入源码细节：'在 ThreadLocal.get() 方法中，如果 map 尚未初始化或者当前 key 对应的 entry 不存在，具体是如何处理的？'",
+      "如果候选人回答过于笼统，可以引导：'你能描述一下，从调用 ThreadLocal.get() 开始，到返回值的整个方法调用栈和数据结构访问路径吗？'"
+    ]
+  }
+}

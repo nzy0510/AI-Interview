@@ -1,0 +1,24 @@
+{
+  "id": "nodejs-http-server",
+  "subject": "Node.js 原生 HTTP 服务器的创建",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Node.js",
+    "HTTP",
+    "后端基础"
+  ],
+  "content": {
+    "principles": "Node.js 内置的 http 模块可用于创建 HTTP 服务器，无需第三方框架。核心步骤：1) 引入 http 模块。2) 调用 http.createServer() 方法，传入一个回调函数处理请求。该回调接收 req (http.IncomingMessage) 和 res (http.ServerResponse) 对象。3) 在回调中，通过 res.writeHead() 设置状态码和响应头，通过 res.end() 发送响应体并结束响应。4) 调用 server.listen(port, callback) 绑定端口启动服务。这种方式轻量，适合快速创建测试接口或理解 HTTP 服务器原理，但生产环境通常使用 Express、Koa 等框架以提升开发效率。",
+    "pitfalls": [
+      "忘记调用 res.end() 结束响应，导致请求一直挂起。",
+      "未正确设置 Content-Type 响应头，导致浏览器解析错误。",
+      "将原生 http 服务器与 Express 等框架的 API 混淆。"
+    ],
+    "follow_up_paths": [
+      "req 和 res 对象上分别有哪些常用的属性和方法？",
+      "如何用原生模块处理 POST 请求的 JSON 数据体？",
+      "与 Express 相比，原生写法的优缺点是什么？中间件机制是如何实现的？"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "redis-transaction-vs-rdbms",
+  "subject": "Redis 事务与关系型数据库事务的主要区别",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "事务",
+    "ACID",
+    "对比"
+  ],
+  "content": {
+    "principles": "Redis 事务（MULTI/EXEC）与关系型数据库（如 MySQL）事务的核心区别：\n1. 原子性（Atomicity）与回滚（Rollback）：Redis 事务不具备回滚能力。在 MULTI 和 EXEC 之间排队的命令，即使其中某个命令执行出错，已执行的命令不会被撤销，后续命令仍会继续执行。而关系型数据库事务在出错时可以 ROLLBACK，撤销所有未提交的更改。\n2. 隔离性（Isolation）：Redis 是单线程执行命令，因此事务在执行（EXEC）期间，不会被其他客户端的命令打断，天然具备隔离性。关系型数据库通常通过锁或多版本并发控制（MVCC）来实现不同级别的隔离性。\n3. 一致性（Consistency）与持久性（Durability）：Redis 事务可以保证命令被顺序、隔离地执行，但一致性需要由应用层保证。持久性取决于配置的持久化策略（如 AOF）。关系型数据库在 ACID 模型下有更严格的一致性保证和事务日志机制。\nRedis 事务更接近于命令的批量打包执行，而非严格的数据库事务。",
+    "pitfalls": [
+      "误以为 Redis 事务出错会自动回滚。",
+      "认为 WATCH 命令是实现乐观锁的唯一或主要手段，不清楚其与事务的关系。",
+      "混淆 Redis 事务的隔离性与关系型数据库的隔离级别。"
+    ],
+    "follow_up_paths": [
+      "WATCH 命令是如何实现乐观锁的？它在事务执行失败后如何处理？",
+      "在 Redis Cluster 模式下，事务的使用有哪些限制？"
+    ]
+  }
+}

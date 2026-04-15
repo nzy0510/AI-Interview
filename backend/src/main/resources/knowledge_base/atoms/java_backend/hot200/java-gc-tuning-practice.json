@@ -1,0 +1,25 @@
+{
+  "id": "java-gc-tuning-practice",
+  "subject": "Java 垃圾回收调优实践与工具",
+  "category": "hot200",
+  "difficulty": "困难",
+  "tags": [
+    "Java",
+    "JVM",
+    "性能调优",
+    "诊断"
+  ],
+  "content": {
+    "principles": "GC 调优应遵循“观察-分析-调整”的流程：\n1) 观察：使用 jstat -gc、GC 日志（-XX:+PrintGCDetails）或 Arthas 等工具监控 GC 频率、耗时、对象晋升情况。若 Young GC 频繁（几十毫秒一次）或单次耗时过长（>50ms），可能对象分配速率过高。\n2) 分析：老年代增长过快可能是内存泄漏或对象晋升过早（可通过 -XX:+PrintTenuringDistribution 观察）。\n3) 调整：\n   - 控制对象分配速率，减少短生命周期大对象。\n   - 调整新生代大小（-Xmn）、晋升年龄阈值（-XX:MaxTenuringThreshold）。\n   - 根据场景选择收集器：低延迟用 ZGC/Shenandoah（参数示例：-XX:+UseZGC -Xmx8g）；吞吐量优先用 G1 并设置目标停顿时间（-XX:MaxGCPauseMillis=200）。\n关键方向：控制分配、减少晋升、选对收集器。",
+    "pitfalls": [
+      "不进行监控分析，直接盲目调整 GC 参数",
+      "过度调优，引入不必要的复杂度",
+      "忽略代码本身的内存使用模式（如缓存不当、集合滥用）"
+    ],
+    "follow_up_paths": [
+      "如何使用 jmap 和 MAT（Memory Analyzer Tool）分析堆转储，定位内存泄漏？",
+      "Arthas 的哪些命令（如 vm.gc, dashboard）可以辅助线上 GC 诊断？",
+      "在云原生环境下，如何实现 JVM 参数的动态调优和弹性伸缩？"
+    ]
+  }
+}

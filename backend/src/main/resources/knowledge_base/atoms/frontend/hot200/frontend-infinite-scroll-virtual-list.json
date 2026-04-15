@@ -1,0 +1,25 @@
+{
+  "id": "frontend-infinite-scroll-virtual-list",
+  "subject": "无限滚动与虚拟列表实现原理",
+  "category": "hot200",
+  "difficulty": "困难",
+  "tags": [
+    "性能优化",
+    "滚动",
+    "渲染"
+  ],
+  "content": {
+    "principles": "无限滚动直接加载所有数据会导致 DOM 节点无限增长，引发内存和性能问题。解决方案是**虚拟列表**：只渲染可视区域及其附近缓冲区的数据项。实现原理：1) **计算可视区域**：监听容器滚动事件，获取滚动偏移量 `scrollTop`。2) **计算渲染范围**：已知每项预估高度（`itemHeight`）和容器可视高度（`clientHeight`），可计算出当前可视区域的起始索引（`startIndex = Math.floor(scrollTop / itemHeight)`）和结束索引（`endIndex = startIndex + Math.ceil(clientHeight / itemHeight)`）。3) **添加缓冲区**：在实际渲染的 `startIndex` 和 `endIndex` 基础上上下扩展若干项（如5项），防止快速滚动时出现空白。4) **设置定位**：列表容器设置相对定位，其内的每一项使用绝对定位，并通过 `transform: translateY(startIndex * itemHeight)` 或 `top` 属性偏移到正确位置，使得滚动条行为正常。5) **动态高度处理**：若项目高度不固定，需先测量或预估，并维护一个位置索引表。核心是保持 DOM 节点数恒定，通过数据索引和定位模拟完整列表。",
+    "pitfalls": [
+      "未实现虚拟列表，随着滚动不断追加 DOM 元素，导致页面卡顿甚至崩溃。",
+      "使用固定高度计算索引，但实际项目高度动态变化，导致计算错误和滚动跳动。",
+      "缓冲区设置过小，快速滚动时出现短暂空白。",
+      "忘记在组件销毁时移除滚动事件监听器。"
+    ],
+    "follow_up_paths": [
+      "如何实现项目高度不固定的虚拟列表？（如聊天记录）",
+      "除了监听滚动事件，还有哪些更高效的滚动检测方式？（如 Intersection Observer）",
+      "在 Vue/React 中，如何设计一个可复用的虚拟列表组件？需要考虑哪些 API 设计？"
+    ]
+  }
+}

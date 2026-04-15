@@ -1,0 +1,24 @@
+{
+  "id": "mysql-select-all-memory-impact",
+  "subject": "MySQL 执行 `SELECT * FROM 大表` 是否会导致内存飙升？",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "MySQL",
+    "数据库",
+    "性能",
+    "查询优化"
+  ],
+  "content": {
+    "principles": "不一定。MySQL 默认使用流式结果集（Server 端游标）。当执行 `SELECT * FROM 大表` 时，MySQL Server 会从存储引擎（如 InnoDB）逐行或分批读取数据，并通过网络连接流式传输给客户端，并不会一次性将所有结果加载到 Server 端的内存中。因此，Server 端的内存压力相对可控。但是，**客户端的行为是关键**：如果客户端（如 JDBC 默认的 `ResultSet`）一次性将所有结果 fetch 到内存（例如使用 `ResultSet.TYPE_FORWARD_ONLY` 以外的模式，或未正确设置 fetch size），则客户端内存可能会飙升。在 JDBC 中，可以通过设置 `setFetchSize(Integer.MIN_VALUE)` 或合适的值来启用流式读取。",
+    "pitfalls": [
+      "误认为 MySQL Server 会一次性加载所有数据到内存，导致不敢查询大表。",
+      "忽略客户端驱动和应用程序的 fetch 行为，导致客户端 OOM。",
+      "不了解游标类型和事务隔离级别对锁和内存的影响（如可重复读下长时间流式读取可能持有锁）。"
+    ],
+    "follow_up_paths": [
+      "在 JDBC 中，如何正确配置以实现对大查询结果的流式读取？",
+      "如果需要在 Server 端对大量数据进行复杂处理，有哪些替代方案？（如存储过程、分页查询、数据导出工具）"
+    ]
+  }
+}

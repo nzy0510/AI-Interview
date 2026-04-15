@@ -1,0 +1,24 @@
+{
+  "id": "redis-big-key-problems-solutions",
+  "subject": "Redis Big Key 问题与解决方案",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "性能",
+    "内存",
+    "最佳实践"
+  ],
+  "content": {
+    "principles": "Big Key 指 value 过大的 key，如 String > 10MB 或 Hash/ZSet 成员数超数万。会引发连锁问题：1) 网络传输阻塞，单次读写占用满带宽，阻塞其他请求。2) 主从复制时，RDB/AOF 重放阶段，Big Key 加载拖慢恢复。3) 内存分配与释放，Redis 单线程处理命令，Big Key 的删除（DEL）可能导致长时间阻塞，甚至触发延迟告警。\n解决方案：1) 拆分：将大结构拆分为多个小 key。例如，将存储百万用户积分的 Hash 按用户 ID 分片，拆分为 user:score:001、user:score:002 等，读写时通过计算定位具体 key。2) 压缩：对文本或 JSON 等 value，使用 gzip 等压缩后存储，读取时解压，以 CPU 开销换取内存和网络开销降低。3) 使用合适的数据类型：避免用 String 存序列化大对象，改用 Hash 存储并拆分为多个 field，支持部分更新，避免全量读写。代码层面需控制批量操作粒度，避免一次性 `hgetall` 超大 Hash，应分批获取少量 field。监控上可使用 `redis-cli --bigkeys` 定期扫描，结合 Redis slow log 和内存分析工具发现隐患。",
+    "pitfalls": [
+      "认为 Big Key 只影响内存，忽略其对网络、持久化、删除操作的连锁影响。",
+      "在拆分 Big Key 时，未考虑如何高效地定位和聚合数据，导致业务逻辑复杂化。",
+      "过度依赖压缩，未权衡 CPU 开销与收益，在 CPU 密集型场景可能得不偿失。"
+    ],
+    "follow_up_paths": [
+      "如果使用 Hash 拆分，如何设计一个高效的路由算法来定位具体的分片 key？",
+      "除了 `redis-cli --bigkeys`，还有哪些工具或方法可以实时监控和预警 Big Key 的产生？",
+      "在 Redis Cluster 模式下，Big Key 的拆分策略与单实例有何不同？"
+    ]
+  }
+}

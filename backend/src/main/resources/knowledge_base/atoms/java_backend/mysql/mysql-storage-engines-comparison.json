@@ -1,0 +1,24 @@
+{
+  "id": "mysql-storage-engines-comparison",
+  "subject": "MySQL常用存储引擎（InnoDB vs MyISAM）对比",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "存储引擎",
+    "事务",
+    "锁"
+  ],
+  "content": {
+    "principles": "MySQL支持多种存储引擎，最常用的是InnoDB和MyISAM。核心区别：1）InnoDB（默认引擎）：支持事务（ACID）、行级锁、外键约束、MVCC（多版本并发控制）。数据按聚簇索引组织，主键索引叶子节点存储行数据，二级索引存储主键值。适用于高并发、要求强一致性的场景（如电商、支付）。2）MyISAM：不支持事务和行锁，仅支持表锁。查询性能较高，特别是全表扫描（如COUNT(*)）。索引结构简单，所有索引（包括主键）的叶子节点均存储数据文件地址。现已基本淘汰，仅用于只读或读多写少的日志类场景。其他引擎：Memory（内存表，断电丢失）、Archive（高压缩归档）。选型关键：需要事务和并发写必选InnoDB；纯读统计可考虑MyISAM，但现代架构通常用缓存或数据仓库替代。",
+    "pitfalls": [
+      "在新项目中使用MyISAM，遇到并发写入或崩溃恢复时无法保证数据一致性。",
+      "误以为MyISAM的COUNT(*)快是绝对优势，忽视其表锁在写入时的阻塞问题。",
+      "不了解InnoDB的MVCC和行锁机制，错误配置导致锁竞争或死锁。"
+    ],
+    "follow_up_paths": [
+      "为什么MyISAM的`COUNT(*)`比InnoDB快？InnoDB如何优化全表计数？",
+      "InnoDB的行锁是如何实现的？什么情况下会升级为表锁？",
+      "从MyISAM迁移到InnoDB需要注意哪些关键配置和兼容性问题？"
+    ]
+  }
+}

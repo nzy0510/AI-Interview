@@ -1,0 +1,25 @@
+{
+  "id": "java-thread-communication-mechanisms",
+  "subject": "Java线程间通信机制",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "线程通信",
+    "volatile",
+    "wait-notify",
+    "JUC"
+  ],
+  "content": {
+    "principles": "线程通信用于协调执行顺序和数据交换。1) volatile关键字：保证可见性和禁止指令重排，适合状态标志位。2) synchronized配合wait/notify：线程在synchronized块内调用对象的wait()释放锁并进入等待队列；其他线程获取锁后修改状态并调用notify()或notifyAll()唤醒等待线程，是生产者-消费者模型的经典实现。3) JUC工具类：CountDownLatch（一个/多个线程等待其他线程完成）、CyclicBarrier（线程互相等待至屏障点）、Semaphore等。ThreadPoolExecutor内部大量使用这些工具协调工作线程。",
+    "pitfalls": [
+      "在非synchronized块中调用wait/notify会抛出IllegalMonitorStateException",
+      "使用wait()时未在循环中检查条件（虚假唤醒问题）",
+      "误以为volatile能保证复合操作的原子性"
+    ],
+    "follow_up_paths": [
+      "wait()和sleep()的根本区别是什么？",
+      "除了volatile和synchronized，还有哪些保证可见性的方式？",
+      "CountDownLatch和CyclicBarrier的区别及应用场景？"
+    ]
+  }
+}

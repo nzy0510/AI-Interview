@@ -1,0 +1,23 @@
+{
+  "id": "unix-io-models-blocking-nonblocking",
+  "subject": "Unix I/O模型：阻塞I/O与非阻塞I/O",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "操作系统",
+    "网络编程",
+    "I/O"
+  ],
+  "content": {
+    "principles": "Unix下的I/O模型描述了数据在用户空间和内核空间之间拷贝的机制差异。\n1. 阻塞I/O（Blocking I/O）：进程发起系统调用（如`read`）后，会一直等待，直到内核将数据从网络设备拷贝到内核缓冲区，再拷贝到用户缓冲区，调用才返回。在此期间，进程被挂起，不能执行其他操作。这是最传统、最简单的模型，但并发能力差。典型应用：Java传统的Socket编程。\n2. 非阻塞I/O（Non-blocking I/O）：通过将Socket设置为`NONBLOCK`标志，进程发起`read`调用后，如果内核缓冲区没有数据，会立即返回一个错误（如EWOULDBLOCK），而不是阻塞进程。进程需要不断轮询（polling）来检查数据是否就绪。这种方式虽然进程不会在I/O调用上阻塞，但轮询会消耗CPU资源。",
+    "pitfalls": [
+      "认为非阻塞I/O调用在数据未就绪时，进程会等待（实际上它是立即返回错误的）。",
+      "混淆非阻塞I/O与异步I/O（AIO），后者是数据拷贝完成后内核通知进程，而非阻塞I/O仍需进程主动将数据从内核拷贝到用户空间。",
+      "认为使用非阻塞I/O就能提高性能，忽略了频繁轮询带来的CPU开销。"
+    ],
+    "follow_up_paths": [
+      "除了轮询，还有什么机制可以避免非阻塞I/O的CPU空转？（引出I/O多路复用：select/poll/epoll）",
+      "Java NIO中的Channel设置为非阻塞模式后，其底层是如何工作的？和这里的Unix非阻塞I/O模型是什么关系？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "java-volatile-memory-semantics",
+  "subject": "Java volatile 关键字的内存语义与适用场景",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "内存模型",
+    "可见性",
+    "有序性"
+  ],
+  "content": {
+    "principles": "volatile 关键字提供两种内存语义：1) 可见性保证：每次读操作都从主内存加载最新值，每次写操作都立即刷新到主内存，确保修改对所有线程立即可见。2) 禁止特定指令重排序：通过内存屏障实现，volatile 写操作不会被重排到其之前的读写操作之后，volatile 读操作不会被重排到其之后的读写操作之前。但 volatile 不保证原子性，例如 i++ 这类复合操作。典型使用场景包括：状态标志位（如 volatile boolean running）、一次性安全发布（如 Double-Checked Locking 中的单例引用）。",
+    "pitfalls": [
+      "误以为 volatile 可以保证任何操作的原子性，如 i++。",
+      "在需要复杂同步逻辑（如多个变量的复合操作）时滥用 volatile。",
+      "不理解 volatile 与 synchronized 在可见性和有序性保证机制上的根本区别。"
+    ],
+    "follow_up_paths": [
+      "volatile 底层是如何通过内存屏障（LoadLoad, StoreStore, LoadStore, StoreLoad）实现这些语义的？",
+      "为什么 DCL 单例模式中，单例引用必须用 volatile 修饰？具体防止了怎样的重排序问题？",
+      "volatile 变量在 x86 架构下和 ARM 架构下的内存屏障开销有何不同？"
+    ]
+  }
+}

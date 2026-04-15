@@ -1,0 +1,28 @@
+{
+  "id": "java-thread-safe-collections",
+  "subject": "Java线程安全集合的分类与选型",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "集合",
+    "ConcurrentHashMap",
+    "JUC",
+    "线程安全"
+  ],
+  "content": {
+    "principles": "Java线程安全集合主要分为两类：1. 早期同步容器：如Vector、Hashtable及Collections.synchronizedXxx包装类，通过在方法上加synchronized实现线程安全，但锁粒度粗，性能差，不推荐用于高并发场景。2. JUC并发容器：java.util.concurrent包下的高性能实现。核心包括：ConcurrentHashMap（JDK7使用分段锁，JDK8使用CAS+synchronized锁桶，读写分离，高吞吐）；CopyOnWriteArrayList（写时复制数组，读无锁，适合读多写少）；CopyOnWriteArraySet（基于CopyOnWriteArrayList）；并发队列如ArrayBlockingQueue（有界阻塞）、LinkedBlockingQueue（可选有界/无界阻塞）、ConcurrentLinkedQueue（无锁非阻塞高吞吐）。实际开发中，并发映射首选ConcurrentHashMap。",
+    "pitfalls": [
+      "误认为所有以`synchronized`包装的集合（如Collections.synchronizedList）性能足够好，用于高并发写场景。",
+      "在写多读少的场景中使用CopyOnWriteArrayList，导致频繁的数组复制开销巨大。",
+      "混淆阻塞队列（BlockingQueue）和非阻塞队列（如ConcurrentLinkedQueue）的使用场景。",
+      "不了解ConcurrentHashMap在JDK7和JDK8中实现原理的根本差异。"
+    ],
+    "follow_up_paths": [
+      "ConcurrentHashMap在JDK8中，synchronized是锁在哪个对象上的？",
+      "CopyOnWriteArrayList的迭代器有什么特性？在迭代过程中进行修改会发生什么？",
+      "为什么说LinkedBlockingQueue默认是无界的？它的put和take操作是如何实现的？",
+      "请解释ConcurrentLinkedQueue的HOPS（延迟更新）设计是为了优化什么？",
+      "在什么场景下，你会选择使用ConcurrentSkipListMap而不是ConcurrentHashMap？"
+    ]
+  }
+}

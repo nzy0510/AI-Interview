@@ -1,0 +1,26 @@
+{
+  "id": "nodejs-event-loop-libuv",
+  "subject": "Node.js 事件循环（Event Loop）与 libuv 原理",
+  "category": "hot200",
+  "difficulty": "困难",
+  "tags": [
+    "Node.js",
+    "事件循环",
+    "异步",
+    "libuv"
+  ],
+  "content": {
+    "principles": "Node.js 事件循环由 C++ 库 libuv 实现，用于协调异步 I/O 操作。JavaScript 主线程是单线程的，但 libuv 利用线程池（用于文件 I/O、DNS 等阻塞操作）和操作系统内核的异步机制（如 epoll, kqueue）处理并发。事件循环是一个包含多个阶段的无限循环，每个阶段维护一个先进先出（FIFO）的回调队列。主要阶段依次为：1) **定时器（Timers）**：执行 `setTimeout` 和 `setInterval` 的回调。2) **待定回调（Pending callbacks）**：执行某些系统操作（如 TCP 错误）的回调。3) **空闲/准备（Idle, Prepare）**：内部使用。4) **轮询（Poll）**：检索新的 I/O 事件；执行 I/O 相关回调（如文件读取、网络请求）；如果队列为空，则在此阶段阻塞等待。5) **检测（Check）**：执行 `setImmediate` 的回调。6) **关闭的回调（Close callbacks）**：执行关闭事件的回调（如 `socket.on('close')`）。`process.nextTick` 和 `Promise.then` 回调（微任务）不属于任何阶段，它们会在每个阶段切换前被清空，且 `nextTick` 优先级高于 Promise。",
+    "pitfalls": [
+      "误认为 `setImmediate` 一定比 `setTimeout(fn, 0)` 先执行（在 I/O 循环内，`setImmediate` 先于定时器；否则顺序不确定）。",
+      "在轮询（Poll）阶段执行计算密集型任务会阻塞事件循环，导致延迟响应。",
+      "滥用 `process.nextTick` 导致递归调用，造成 I/O 饥饿（Starving）。",
+      "不理解微任务（Promise）与宏任务（setTimeout, setImmediate, I/O）的执行优先级差异。"
+    ],
+    "follow_up_paths": [
+      "libuv 的线程池默认大小是多少？哪些操作会用到线程池？如何调整线程池大小？",
+      "请详细解释 `setTimeout(fn, 0)`、`setImmediate`、`process.nextTick` 在事件循环不同上下文（如主模块 vs I/O 回调）中的执行顺序，并画出示意图。",
+      "Node.js 的 `async/await` 在事件循环中是如何被调度的？它与 Promise 的关系是什么？"
+    ]
+  }
+}

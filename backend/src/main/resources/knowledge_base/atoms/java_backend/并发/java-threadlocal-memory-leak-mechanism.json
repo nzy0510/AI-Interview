@@ -1,0 +1,26 @@
+{
+  "id": "java-threadlocal-memory-leak-mechanism",
+  "subject": "ThreadLocal 内存泄漏原理与弱引用作用",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "ThreadLocal",
+    "内存泄漏",
+    "弱引用",
+    "GC"
+  ],
+  "content": {
+    "principles": "ThreadLocal 内存泄漏的核心在于其内部数据结构 ThreadLocalMap。每个 Thread 持有自己的 ThreadLocalMap，其 Entry 的 key 是 ThreadLocal 实例的弱引用，value 是线程本地值的强引用。\n\n1. 若 key 使用强引用：当外部将 ThreadLocal 实例置为 null 后，由于 ThreadLocalMap 的 key 仍持有强引用，该 ThreadLocal 实例无法被 GC 回收，导致内存泄漏。\n2. 若 key 使用弱引用（实际实现）：当外部强引用消失后，下一次 GC 时 key 会被回收，Entry 的 key 变为 null。但 value 仍被强引用关联，形成 key 为 null 的 '脏 Entry'，value 无法被访问也无法被回收，仍会导致内存泄漏。\n\n因此，弱引用仅解决了 ThreadLocal 对象本身无法回收的问题，但未解决 value 的泄漏。必须通过显式调用 remove() 方法，将整个 Entry 从 map 中移除，才能彻底避免内存泄漏。在线程池等长生命周期线程场景中，此问题尤为严重。",
+    "pitfalls": [
+      "误以为使用了弱引用就能完全避免内存泄漏，从而忽略主动调用 remove() 的必要性。",
+      "混淆了 key 和 value 的引用关系，不清楚 value 是强引用。",
+      "认为线程结束就会自动清理所有关联的 ThreadLocalMap，但在线程池中线程是复用的。"
+    ],
+    "follow_up_paths": [
+      "如果候选人清晰解释了弱引用的作用，可以追问：'既然弱引用不能完全解决问题，JVM 设计者为什么还要采用这种方案？相比于 key 用强引用，弱引用方案的优势是什么？'",
+      "如果候选人只提到要调用 remove()，可以追问：'除了手动 remove，ThreadLocalMap 本身在 set/get 过程中有没有一些自清理机制（如探测式清理、启发式清理）？这些机制能完全替代 remove 吗？'",
+      "如果候选人回答模糊，可以引导：'你能画一下 Thread、ThreadLocal、ThreadLocalMap 以及 Entry 中 key 和 value 之间的引用关系图吗？并标出哪些是强引用，哪些是弱引用。'"
+    ]
+  }
+}

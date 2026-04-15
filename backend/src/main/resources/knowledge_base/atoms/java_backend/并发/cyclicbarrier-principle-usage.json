@@ -1,0 +1,24 @@
+{
+  "id": "cyclicbarrier-principle-usage",
+  "subject": "CyclicBarrier 原理与使用",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "Java",
+    "并发工具",
+    "同步"
+  ],
+  "content": {
+    "principles": "CyclicBarrier 是一个同步辅助类，允许一组线程互相等待，直到所有线程都到达一个公共的屏障点（barrier point），然后这些线程才会继续执行。它特别适用于多线程并行计算中需要分阶段协同的场景，例如使用 Fork/Join 框架进行大数据处理后的结果汇总。构造时需指定参与线程数（parties）。线程通过调用 `await()` 方法表示到达屏障，该方法会阻塞直到所有 parties 个线程都调用了 `await()`。最后一个到达的线程会执行一个可选的屏障动作（barrierAction，一个 Runnable），然后唤醒所有等待线程。与 CountDownLatch 关键区别在于：CyclicBarrier 是可重置和重复使用的（一次屏障突破后，状态自动重置，可用于下一轮等待），而 CountDownLatch 是一次性的；CyclicBarrier 是线程之间互相等待，CountDownLatch 是一个或多个线程等待一组事件完成。如果等待过程中有线程被中断，或者超时，屏障会被打破（broken），所有等待线程会抛出 BrokenBarrierException。",
+    "pitfalls": [
+      "混淆 CyclicBarrier 和 CountDownLatch 的适用场景与特性（可重用性、等待方向）",
+      "未在 finally 块或考虑异常处理，导致线程因异常未能调用 await()，造成其他线程永久等待",
+      "忽略屏障被打破（BrokenBarrierException）的情况及处理"
+    ],
+    "follow_up_paths": [
+      "CyclicBarrier 底层是如何实现等待和唤醒的？",
+      "如果有一个线程在调用 await() 后发生死循环，其他线程会怎样？",
+      "如何利用 CyclicBarrier 实现一个分阶段的多线程数据处理框架？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "springboot-core-concept",
+  "subject": "Spring Boot 的核心设计理念与价值",
+  "category": "springboot",
+  "difficulty": "简单",
+  "tags": [
+    "自动配置",
+    "约定大于配置",
+    "微服务"
+  ],
+  "content": {
+    "principles": "Spring Boot 是 Spring 框架的脚手架，旨在简化基于 Spring 的应用开发。核心设计理念：1. **约定大于配置**：提供大量默认配置（如内嵌 Tomcat 监听 8080 端口，静态资源路径为 `/static`），开发者只需在 `application.properties`/`application.yml` 中覆盖需要定制的部分。2. **自动配置**：通过 `@EnableAutoConfiguration` 和 `spring.factories` 机制，根据类路径下的依赖（如 `spring-boot-starter-web`）自动装配 Bean（如 `DispatcherServlet`、`DataSource`）。3. **起步依赖（Starters）**：提供一系列 `spring-boot-starter-*` 依赖，管理传递依赖的版本，解决依赖冲突。4. **内嵌容器**：支持将 Servlet 容器（Tomcat、Jetty、Undertow）作为可执行 JAR 的一部分，简化部署。价值：极大降低了 Spring 应用的入门和配置复杂度，使开发者能快速构建独立运行、生产就绪的微服务或单体应用。",
+    "pitfalls": [
+      "黑盒风险：过度依赖自动配置可能导致开发者对底层组件（如数据源、事务管理器）的配置细节不熟悉，出现问题难以调试。",
+      "灵活性限制：对于极其特殊或复杂的配置场景，自动配置可能不够灵活，需要手动排除或定制自动配置类。",
+      "启动性能：随着引入的 Starter 增多，应用启动时的自动配置检查和 Bean 初始化可能变慢。"
+    ],
+    "follow_up_paths": [
+      "Spring Boot 的自动配置是如何实现的？请描述 `@SpringBootApplication` 注解和 `spring.factories` 文件的作用。",
+      "除了简化配置，Spring Boot 在微服务架构中还扮演了什么角色？（可引导至与 Spring Cloud 的集成）",
+      "如何排除或覆盖某个特定的 Spring Boot 自动配置？"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "spring-design-patterns-common",
+  "subject": "Spring 框架中常用的设计模式",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Spring",
+    "设计模式"
+  ],
+  "content": {
+    "principles": "Spring 框架广泛应用设计模式以解决特定问题：1. 单例模式：默认的 Bean 作用域，容器内一个 Bean 定义只对应一个实例，节省资源，但需注意线程安全。2. 工厂模式：BeanFactory 和 ApplicationContext 是核心的 IoC 容器，作为 Bean 工厂负责创建、配置和管理 Bean 的生命周期，实现解耦。3. 代理模式：AOP 的基石。Spring 默认对实现了接口的类使用 JDK 动态代理（基于 Proxy 和 InvocationHandler），对无接口的类使用 CGLIB 生成子类代理。事务管理（@Transactional）是代理模式的典型应用。4. 模板方法模式：在 JdbcTemplate、RestTemplate 等模板类中大量使用，定义了算法的骨架，将某些步骤延迟到子类或由回调函数实现，简化了资源管理和异常处理。",
+    "pitfalls": [
+      "仅能说出模式名称，无法结合 Spring 的具体组件或场景阐述其应用。",
+      "误认为 Spring 中所有 Bean 都是通过简单的 new 关键字创建，忽略了工厂模式的参与。"
+    ],
+    "follow_up_paths": [
+      "除了上述模式，Spring 中还使用了哪些设计模式？（如观察者模式-ApplicationEvent，适配器模式-HandlerAdapter）",
+      "模板方法模式在 JdbcTemplate 中是如何体现的？它解决了什么问题？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "mysql-order-by-implementation",
+  "subject": "MySQL 中 ORDER BY 排序的实现机制",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "查询优化",
+    "索引",
+    "排序算法"
+  ],
+  "content": {
+    "principles": "MySQL 实现 ORDER BY 排序主要有两种路径：1) 利用索引：如果 ORDER BY 子句中的字段顺序与某个可用索引的最左前缀匹配，则可以直接按索引顺序扫描获取有序结果，无需额外排序（执行计划中无 `Using filesort`）。这是最优情况。2) 文件排序（Filesort）：当无法利用索引时，MySQL 使用排序缓冲区（sort_buffer）进行排序。过程：将满足条件的行中需要排序的列和 SELECT 的列（取决于排序模式）放入 sort_buffer。若数据量小于 sort_buffer_size，则在内存中完成快速排序；若超出，则采用外部排序：将数据分块，每块在内存中排序后写入临时磁盘文件，最后对所有临时文件进行归并排序。排序模式受 `max_length_for_sort_data` 参数影响：单路排序（将查询所有字段放入 buffer）或双路排序（仅放排序字段和行指针，需回表）。优化关键在于通过创建合适索引避免 filesort，或调整 sort_buffer_size 减少磁盘 I/O。",
+    "pitfalls": [
+      "认为 `Using filesort` 一定意味着性能很差（少量数据的内存排序很快）。",
+      "未区分索引排序和 filesort，盲目优化。",
+      "不清楚 sort_buffer_size 是会话级参数，设置过大会导致内存消耗过大。",
+      "对联合索引的最左前缀原则理解不深，导致无法利用索引排序。"
+    ],
+    "follow_up_paths": [
+      "如何判断一个 ORDER BY 查询是否用到了索引排序？（查看执行计划中的 Extra 字段）",
+      "单路排序和双路排序的区别是什么？在什么情况下 MySQL 会选择哪种？",
+      "当排序字段有多个且方向不同（如 `ORDER BY a ASC, b DESC`）时，如何设计索引来优化？"
+    ]
+  }
+}

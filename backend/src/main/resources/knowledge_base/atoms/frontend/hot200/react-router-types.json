@@ -1,0 +1,24 @@
+{
+  "id": "react-router-types",
+  "subject": "React Router 中 Router 组件的类型与选型",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "React Router",
+    "路由",
+    "SPA"
+  ],
+  "content": {
+    "principles": "React Router 的核心路由能力由不同的 `Router` 组件提供，根据运行环境和需求选择：\n1. **BrowserRouter**: 利用浏览器的 History API (`pushState`, `replaceState`) 管理路由，URL 格式为 `/path`。刷新页面不会丢失应用状态，是现代单页应用（SPA，如 Create React App, Vite 项目）的首选。\n2. **HashRouter**: 使用 URL 的 hash 部分（`#` 之后）进行路由，格式为 `/#/path`。切换路由不会向服务器发送请求，兼容性极好（包括老旧浏览器），适用于静态站点托管（如 GitHub Pages）或服务器配置受限的场景。\n3. **MemoryRouter**: 将路由状态存储在内存中，不改变浏览器地址栏的 URL。常用于非浏览器环境（如 React Native）或单元测试。\n4. **StaticRouter**: 用于服务端渲染（SSR），根据传入的 `location` 属性确定初始路由。框架（如 Next.js）通常已封装此逻辑，开发者一般无需直接使用。\n选型原则：浏览器环境优先用 `BrowserRouter`；部署环境不支持 History API 或需要简单静态托管时用 `HashRouter`；测试时用 `MemoryRouter`。",
+    "pitfalls": [
+      "不清楚 `BrowserRouter` 和 `HashRouter` 在 URL 表现和服务器配置要求上的根本区别。",
+      "在需要 SSR 或测试的场景下错误地使用了 `BrowserRouter`。",
+      "认为 `MemoryRouter` 也适用于生产环境的浏览器应用。"
+    ],
+    "follow_up_paths": [
+      "`BrowserRouter` 需要服务器如何配置以支持 SPA？",
+      "`HashRouter` 的优缺点是什么？为什么现代应用更倾向于 `BrowserRouter`？",
+      "在单元测试中，如何使用 `MemoryRouter` 来模拟路由跳转和断言？"
+    ]
+  }
+}

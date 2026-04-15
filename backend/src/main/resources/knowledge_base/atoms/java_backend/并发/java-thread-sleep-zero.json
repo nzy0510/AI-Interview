@@ -1,0 +1,26 @@
+{
+  "id": "java-thread-sleep-zero",
+  "subject": "Thread.sleep(0)的作用与原理",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "线程调度",
+    "sleep",
+    "yield",
+    "CPU"
+  ],
+  "content": {
+    "principles": "Thread.sleep(0)的主要作用是提示操作系统当前线程愿意放弃其剩余的CPU时间片，从而触发线程调度器的重新调度，让其他就绪线程有机会运行。它并不会导致线程睡眠一个可测量的时间。在JVM层面，这会调用底层系统的纳秒级睡眠接口，传入0表示不强制休眠时长，但线程会进入阻塞状态并随后被唤醒，这个过程比Thread.yield()更重量级但行为更确定。典型应用场景是在高频率自旋循环中，用于降低CPU空转消耗，例如在某些无锁算法或早期AQS实现中控制竞争强度。现代并发工具（如LockSupport.park()）提供了更优的替代方案。",
+    "pitfalls": [
+      "误认为Thread.sleep(0)会让线程暂停0毫秒，即没有任何效果。",
+      "混淆Thread.sleep(0)与Thread.yield()，认为它们完全等价。",
+      "在现代代码中过度或不必要地使用Thread.sleep(0)进行优化。"
+    ],
+    "follow_up_paths": [
+      "从JVM源码或操作系统调度的角度，详细解释sleep(0)和yield()的底层实现差异。",
+      "在什么情况下，使用Thread.sleep(1)会比Thread.sleep(0)更合适？",
+      "请解释LockSupport.park()与Thread.sleep(0)在挂起线程机制上的本质区别。",
+      "在Java的忙等待（Busy Wait）循环中，除了sleep(0)，还有哪些降低CPU占用的方法？"
+    ]
+  }
+}

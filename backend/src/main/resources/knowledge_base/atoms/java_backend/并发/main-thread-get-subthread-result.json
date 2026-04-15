@@ -1,0 +1,25 @@
+{
+  "id": "main-thread-get-subthread-result",
+  "subject": "Java 中主线程获取子线程执行结果的常用方式",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "Java",
+    "线程通信",
+    "Future",
+    "回调"
+  ],
+  "content": {
+    "principles": "主线程感知子线程执行结果的核心是线程间通信。主要方式：1) Future/Callable 模式：通过 ExecutorService.submit(Callable) 提交任务，返回 Future 对象。主线程可调用 future.get() 阻塞等待结果，或 future.get(timeout) 限时等待。若任务抛出异常，get() 会抛出 ExecutionException，其 cause 为原始异常。2) 回调机制：在任务中定义回调接口，任务完成后主动调用回调方法通知主线程（或其它监听者）。3) 共享状态变量：使用线程安全的容器（如 BlockingQueue, ConcurrentHashMap）或 volatile 标记位来传递结果或状态。Future 模式是最标准、最常用的方式，它封装了异步计算和结果获取。",
+    "pitfalls": [
+      "使用 future.get() 时不设超时，可能导致主线程无限期阻塞（尤其在线程池任务被卡住时）。",
+      "误用 execute 方法提交 Callable 任务（应使用 submit）。",
+      "在回调或共享状态方案中，未考虑线程安全问题或可见性问题。"
+    ],
+    "follow_up_paths": [
+      "Future.get() 阻塞时，如何优雅地取消任务？",
+      "除了 Future，还有哪些更高级的异步结果获取方式（如 CompletableFuture, Guava 的 ListenableFuture）？",
+      "如果子线程需要返回多个阶段性结果，应该如何设计通信机制？"
+    ]
+  }
+}

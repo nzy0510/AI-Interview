@@ -1,0 +1,25 @@
+{
+  "id": "html-meta-tags",
+  "subject": "常用HTML meta标签及其作用",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "HTML",
+    "SEO",
+    "移动端"
+  ],
+  "content": {
+    "principles": "meta标签用于提供HTML文档的元数据，不直接显示，但影响浏览器行为、搜索引擎优化（SEO）和社交分享展示。常用meta标签包括：1. 字符集声明：`<meta charset=\"UTF-8\">`，定义文档编码，防止乱码。2. 视口（viewport）：`<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">`，移动端适配关键，控制布局宽度和初始缩放比例。3. 页面描述：`<meta name=\"description\" content=\"页面描述\">`，被搜索引擎用作搜索结果摘要。4. Open Graph协议：用于社交分享（如Facebook、微信），例如`<meta property=\"og:title\" content=\"标题\">`，`<meta property=\"og:image\" content=\"图片URL\">`。5. HTTP等价头：模拟HTTP响应头，如`<meta http-equiv=\"refresh\" content=\"5;url=...\">`实现定时刷新或重定向（现代开发少用）。6. iOS Web App模式：`<meta name=\"apple-mobile-web-app-capable\" content=\"yes\">`，使网页以全屏应用模式运行。keywords标签已被主流搜索引擎忽略，无需设置。",
+    "pitfalls": [
+      "忘记设置viewport，导致移动端页面按桌面宽度渲染，用户体验差。",
+      "description内容与页面实际内容不符，影响SEO效果和点击率。",
+      "混淆Open Graph属性名（property）和普通meta的name属性。",
+      "过度使用或错误使用http-equiv=\"refresh\"，影响可访问性和用户体验。"
+    ],
+    "follow_up_paths": [
+      "除了viewport，还有哪些meta标签或CSS设置对移动端适配至关重要？",
+      "Twitter Cards的meta标签与Open Graph有何异同？如何同时兼容？",
+      "如何通过meta标签控制浏览器缓存行为？其与HTTP Cache-Control头部的优先级关系？"
+    ]
+  }
+}

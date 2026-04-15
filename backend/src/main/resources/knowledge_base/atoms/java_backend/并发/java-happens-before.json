@@ -1,0 +1,24 @@
+{
+  "id": "java-happens-before",
+  "subject": "Java happens-before规则",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "JMM",
+    "happens-before",
+    "内存可见性"
+  ],
+  "content": {
+    "principles": "happens-before规则是JMM中定义操作可见性的一套规则，是一种先行发生关系，保证一个操作的结果对另一个操作可见，不等于时间先后。常见规则：1) 程序顺序规则：同一线程内，按代码顺序执行。2) volatile变量规则：对一个volatile变量的写操作happens-before后续对该变量的读操作。3) 监视器锁规则：对一个锁的解锁happens-before后续对这个锁的加锁。4) 线程启动规则：Thread.start()调用happens-before新线程中的任意操作。5) 线程终止规则：线程中的所有操作happens-before其他线程对该线程join()的返回。6) 传递性：若A happens-before B，B happens-before C，则A happens-before C。这些规则是编译器和CPU优化必须遵守的约束，是理解并发程序正确性的基础。",
+    "pitfalls": [
+      "将happens-before简单等同于时间上的先后顺序。",
+      "不清楚volatile写-读、锁的解锁-加锁等具体规则。",
+      "无法运用happens-before规则分析一段并发代码的可见性问题。"
+    ],
+    "follow_up_paths": [
+      "happens-before规则与as-if-serial语义有何联系与区别？",
+      "请用happens-before规则分析一个经典的双重检查锁定（DCL）案例。",
+      "final字段的初始化在happens-before规则中有什么特殊保证？"
+    ]
+  }
+}

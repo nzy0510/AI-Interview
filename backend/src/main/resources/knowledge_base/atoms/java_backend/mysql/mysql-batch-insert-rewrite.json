@@ -1,0 +1,21 @@
+{
+  "id": "mysql-batch-insert-rewrite",
+  "subject": "MySQL 批量插入重写优化",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "性能优化",
+    "SQL"
+  ],
+  "content": {
+    "principles": "MySQL 在启用 `rewriteBatchedStatements=true` 参数后，会将批量插入语句（如多次 `INSERT INTO ... VALUES (?)`）重写为 `INSERT INTO ... VALUES (...), (...), (...)` 这种多值形式。这种优化通过减少网络往返和 SQL 解析开销来大幅提升批量插入效率。单条插入语句不会经过此重写过程。",
+    "pitfalls": [
+      "误以为所有 JDBC 驱动或连接配置默认开启此优化",
+      "混淆此优化与 `LOAD DATA INFILE` 或事务批量提交的区别"
+    ],
+    "follow_up_paths": [
+      "除了参数优化，还有哪些提升批量插入性能的手段？",
+      "这种重写优化在什么场景下可能不生效或有副作用？"
+    ]
+  }
+}

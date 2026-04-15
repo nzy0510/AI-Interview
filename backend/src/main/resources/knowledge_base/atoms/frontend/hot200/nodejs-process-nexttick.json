@@ -1,0 +1,23 @@
+{
+  "id": "nodejs-process-nexttick",
+  "subject": "Node.js 中 process.nextTick() 的作用与原理",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Node.js",
+    "事件循环",
+    "异步编程"
+  ],
+  "content": {
+    "principles": "核心原理：`process.nextTick(callback)` 用于将一个回调函数延迟到**当前执行栈的末尾、下一次事件循环开始之前**立即执行。其回调被放入一个独立的“nextTick 队列”（属于微任务队列的一种）。在每个事件循环的阶段切换前，Node.js 都会优先清空 nextTick 队列和 Promise 微任务队列。因此，它的执行优先级高于 `setImmediate` 和 `setTimeout(fn, 0)`。常用于：1) 确保回调在当前操作完成后、但事件循环继续前执行（如错误处理、状态同步）。2) 在自定义事件触发时，延迟触发以确保监听器已注册。但过度使用会阻塞事件循环，导致 I/O 饥饿。示例代码执行顺序：同步代码 -> nextTick回调 -> 微任务(Promise) -> 定时器/I/O等。",
+    "pitfalls": [
+      "误以为 `process.nextTick` 是 `setTimeout(fn, 0)` 的等价物，不清楚其更高优先级。",
+      "滥用 `process.nextTick` 导致递归调用，阻塞事件循环。",
+      "不清楚 `process.nextTick` 与 `Promise.resolve().then()` 在微任务队列中的具体顺序（Node.js 中 nextTick 队列先于 Promise 微任务队列）。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：请描述 Node.js 事件循环各阶段，并指出 `process.nextTick` 和 `Promise` 微任务在哪个时间点被处理。为什么说过度使用 `process.nextTick` 可能导致 I/O 饥饿？",
+      "如果候选人答得不好，可以引导：写出以下代码的输出顺序，并解释原因：`console.log('1'); process.nextTick(()=>console.log('2')); Promise.resolve().then(()=>console.log('3')); console.log('4');`"
+    ]
+  }
+}

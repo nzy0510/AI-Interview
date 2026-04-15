@@ -1,0 +1,25 @@
+{
+  "id": "netty-fastthreadlocal-vs-threadlocal",
+  "subject": "Netty 的 FastThreadLocal 与 JDK ThreadLocal 性能对比",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Netty",
+    "ThreadLocal",
+    "性能优化",
+    "数据结构"
+  ],
+  "content": {
+    "principles": "Netty 为追求极致性能，自定义了 FastThreadLocal 以替代 JDK 的 ThreadLocal。核心区别在于数据访问方式：JDK ThreadLocal 底层使用哈希表（ThreadLocalMap），通过线性探测法解决哈希冲突，最坏时间复杂度接近 O(n)，且涉及哈希计算、扩容和内存泄漏处理。FastThreadLocal 为每个实例预分配一个唯一索引，数据存储在依附于 FastThreadLocalThread 的内部数组（InternalThreadLocalMap）中，通过数组下标（thread.array[index]）直接访问，时间复杂度稳定为 O(1)。这种设计以牺牲一定内存（每个线程持有一个可能较大的数组）为代价，换取了在频繁访问（如 Netty EventLoop 中任务上下文切换）场景下的恒定高速访问。",
+    "pitfalls": [
+      "认为 ThreadLocal 已经足够快，不理解在高并发、高频访问场景下其哈希开销可能成为瓶颈。",
+      "不了解 FastThreadLocal 依赖特定的线程类型（FastThreadLocalThread）才能发挥最大优势。",
+      "混淆了访问速度与内存开销的权衡，不理解 Netty 为何接受更大的内存占用。"
+    ],
+    "follow_up_paths": [
+      "FastThreadLocal 如何解决内存泄漏问题？它的索引分配机制是怎样的？",
+      "如果使用普通 Thread 而非 FastThreadLocalThread，FastThreadLocal 的性能会下降吗？为什么？",
+      "除了访问速度，FastThreadLocal 在哪些场景下相比 ThreadLocal 还有其他优势或劣势？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "redis-pipeline-mechanism",
+  "subject": "Redis Pipeline 机制与性能优化",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "网络",
+    "批量操作"
+  ],
+  "content": {
+    "principles": "Redis Pipeline 是一种批量执行命令的机制，旨在减少客户端与服务端之间的网络往返次数（RTT）。每次 Redis 命令通常需要经历“发送命令→等待响应”的过程。Pipeline 允许将多条命令一次性打包发送，服务端依次处理后再批量返回结果，避免了逐条等待的网络开销。例如，要 set 1000 个 key，不使用 Pipeline 需要至少 1000 次网络交互；使用后可能仅需 1 次或几次，性能提升显著（在千兆网络下可从几百 QPS 提升到几万 QPS）。Pipeline 与事务不同：它不保证原子性，也不支持回滚，纯粹是优化网络开销的手段。虽然 MSET、HSET 等原生批量命令效率更高，但当需要混合执行不同类型命令（如 set、del、incr 各几十个）时，Pipeline 是最佳选择。代码示例（以 Jedis 为例）：`try (Jedis jedis = new Jedis(\"localhost\")) { Pipeline pipeline = jedis.pipelined(); for (int i = 0; i < 1000; i++) { pipeline.set(\"key:\" + i, \"value\" + i); pipeline.incr(\"counter\"); } List<Object> results = pipeline.syncAndReturnAll(); }`。原理：1) 通过 pipelined() 获取管道对象后，调用命令不会立即执行，而是缓存在本地队列中。2) syncAndReturnAll() 才真正发送所有命令并等待所有回复。",
+    "pitfalls": [
+      "混淆 Pipeline 与事务，误以为 Pipeline 能保证命令的原子性",
+      "Pipeline 中打包的命令过多，导致单次网络包过大或客户端内存占用过高",
+      "不了解 Pipeline 与原生批量命令（如 MSET）的性能差异和适用场景"
+    ],
+    "follow_up_paths": [
+      "Pipeline 与 Redis 事务（MULTI/EXEC）在实现原理和适用场景上有何根本区别？",
+      "如何确定 Pipeline 一次打包多少条命令是性能最优的？",
+      "在 Redis 集群模式下，使用 Pipeline 有什么注意事项？"
+    ]
+  }
+}

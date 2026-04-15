@@ -1,0 +1,25 @@
+{
+  "id": "mysql-slow-sql-optimization",
+  "subject": "MySQL 慢 SQL 监控与优化",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "索引",
+    "执行计划",
+    "慢查询日志"
+  ],
+  "content": {
+    "principles": "开启慢查询日志（slow_query_log），设置合理阈值（如 long_query_time=1s）。使用 EXPLAIN 分析执行计划，关注 type（避免 ALL 全表扫描）、rows（扫描行数）、Extra（避免 Using temporary, Using filesort）。优化手段包括：为查询条件添加有效索引，遵循最左匹配原则；避免 SELECT *，减少回表；使用 Performance Schema 或 sys schema（如 sys.statements_with_full_table_scans）定位问题；代码层避免 N+1 查询；使用 pt-online-schema-change 进行在线 DDL 避免锁表。",
+    "pitfalls": [
+      "未开启慢查询日志或阈值设置不合理，导致漏掉性能问题",
+      "只看 EXPLAIN 结果但不理解 type、key_len 等字段含义",
+      "盲目添加索引，导致写性能下降或索引失效"
+    ],
+    "follow_up_paths": [
+      "EXPLAIN 中 type=index 和 type=range 的区别是什么？哪种效率更高？",
+      "如何判断一个复合索引是否被正确使用？最左匹配原则在哪些情况下会失效？",
+      "除了慢查询日志，还有哪些工具或方法可以实时监控数据库性能？"
+    ]
+  }
+}

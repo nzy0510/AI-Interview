@@ -1,0 +1,24 @@
+{
+  "id": "search-suggest-abort-controller",
+  "subject": "搜索建议与使用 AbortController 取消请求",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "JavaScript",
+    "网络请求",
+    "用户体验"
+  ],
+  "content": {
+    "principles": "在实现搜索建议功能时，核心优化点包括：1. 使用防抖 (debounce) 控制请求频率，延迟时间通常设为 200-500ms。2. 设置最小字符数过滤（如至少2个字符）以减少无效请求。3. 使用 `AbortController` 取消未完成的旧请求，防止因网络延迟导致的响应乱序（即后发的请求先返回）。`AbortController` 通过 `signal` 属性与 `fetch` 请求关联，调用 `controller.abort()` 可以中断请求。示例代码展示了如何为每次新的 `fetchSuggestion` 调用创建新的 `AbortController` 并取消前一个。",
+    "pitfalls": [
+      "忘记在发起新请求前取消上一个请求的 `controller`，导致潜在的竞态条件。",
+      "对 `AbortController` 的生命周期管理不当，例如在组件卸载时未取消挂起的请求。",
+      "将防抖与取消请求的逻辑割裂，未能形成完整的用户体验优化链。"
+    ],
+    "follow_up_paths": [
+      "除了 `AbortController`，在 `XMLHttpRequest` 或 `axios` 中如何实现请求取消？",
+      "如果后端不支持取消请求，前端应如何设计来缓解响应乱序问题？",
+      "请解释防抖和节流在此场景下的区别，并说明为何搜索框通常用防抖而非节流。"
+    ]
+  }
+}

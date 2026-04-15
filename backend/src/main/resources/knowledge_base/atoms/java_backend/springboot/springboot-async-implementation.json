@@ -1,0 +1,24 @@
+{
+  "id": "springboot-async-implementation",
+  "subject": "Spring Boot 异步处理的实现与线程池配置",
+  "category": "springboot",
+  "difficulty": "中等",
+  "tags": [
+    "异步",
+    "线程池",
+    "TaskExecutor"
+  ],
+  "content": {
+    "principles": "Spring Boot通过`@EnableAsync`开启异步支持。在方法上使用`@Async`注解，Spring会通过AOP代理将该方法的执行提交给`TaskExecutor`（线程池）。默认使用`SimpleAsyncTaskExecutor`（为每个任务创建新线程，不适合生产）。生产环境必须自定义线程池，通常配置`ThreadPoolTaskExecutor`，指定核心线程数、最大线程数、队列容量、拒绝策略等。异步方法返回值可以是`void`、`Future`或更现代的`CompletableFuture`，后者支持更丰富的异步编程模式。注意事项：1) 异步方法内部应妥善处理异常，避免异常丢失。2) `@Async`方法的事务边界需注意，通常在新线程中开启新事务。3) 同类内部调用不会经过代理，故不会异步执行。",
+    "pitfalls": [
+      "使用默认的`SimpleAsyncTaskExecutor`导致线程无限制创建，引发资源耗尽。",
+      "异步方法抛出异常，调用方无法感知，导致业务逻辑错误被掩盖。",
+      "在同一个类的非异步方法中调用`@Async`方法，误以为会异步执行。"
+    ],
+    "follow_up_paths": [
+      "如何为不同的`@Async`方法指定不同的线程池？",
+      "`@Async`方法返回`CompletableFuture`时，如何在调用方进行链式处理和组合？",
+      "在异步方法中，如何保证事务的上下文正确传播？（涉及`@Transactional`与`@Async`的共用）"
+    ]
+  }
+}

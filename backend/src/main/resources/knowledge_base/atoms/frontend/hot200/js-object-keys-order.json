@@ -1,0 +1,23 @@
+{
+  "id": "js-object-keys-order",
+  "subject": "Object.keys 的枚举顺序",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "JavaScript",
+    "对象"
+  ],
+  "content": {
+    "principles": "自 ES2015 (ES6) 起，`Object.keys`、`for...in` 等属性枚举顺序被规范。顺序规则为：1. 所有数字索引键（如 '0', '1', '2'），按数值升序排列。2. 所有字符串键（非数字索引），按对象创建时的插入顺序排列。3. 所有 Symbol 键（`Object.keys` 不返回 Symbol），按插入顺序排列。例如：`const obj = { 2: 'two', 1: 'one', a: 'apple', 0: 'zero' }; Object.keys(obj)` 返回 `['0', '1', '2', 'a']`。",
+    "pitfalls": [
+      "误以为所有 JavaScript 引擎中对象属性遍历都是无序的（ES6 后已规范）。",
+      "混淆数字索引键（如 '10'）与字符串键（如 'a10'）的排序规则。",
+      "在对象属性被动态删除和添加后，顺序可能变得不可预测（依赖于引擎实现）。"
+    ],
+    "follow_up_paths": [
+      "`Object.getOwnPropertyNames` 和 `Reflect.ownKeys` 的返回顺序规则是什么？",
+      "如何实现一个函数，按照对象的插入顺序（而非数字键优先）来遍历所有键？",
+      "在 Vue 2 的响应式系统中，为什么直接通过索引设置数组项可能不是响应式的？（与属性枚举顺序有关）"
+    ]
+  }
+}

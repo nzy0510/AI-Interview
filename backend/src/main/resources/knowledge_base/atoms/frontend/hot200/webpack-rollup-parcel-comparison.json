@@ -1,0 +1,24 @@
+{
+  "id": "webpack-rollup-parcel-comparison",
+  "subject": "Webpack、Rollup、Parcel构建工具对比",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "构建工具",
+    "前端工程化",
+    "打包"
+  ],
+  "content": {
+    "principles": "Webpack、Rollup、Parcel是主流前端构建工具，各有侧重。1. Webpack：功能完备的工厂流水线，基于配置，能处理各种资源模块（CSS、图片），支持代码分割、热更新等。生态强大，是React、Vue等复杂SPA项目的标准选择。缺点是配置复杂。2. Rollup：专注于ES模块打包，设计目标是生成更干净、更小的库代码。Tree Shaking效果比Webpack更彻底，输出代码冗余少。是开发UI组件库或工具库（如Lodash、D3）的标准选择。缺点是对非JS资源支持弱，不适合直接构建SPA。3. Parcel：主打零配置，开箱即用。能自动识别HTML文件中的依赖并处理JS、CSS、图片等资源。适合快速原型或小型项目。缺点是自动化程度高导致调试成本高，定制能力弱，不适合大型项目。总结：Webpack是全能选手，Rollup是库打包利器，Parcel是快速启动工具。",
+    "pitfalls": [
+      "在开发类库时错误选择Webpack，导致输出代码体积过大、Tree Shaking不彻底。",
+      "在大型复杂SPA项目中尝试使用Parcel，遇到定制和调试困难。",
+      "认为Rollup完全不能处理CSS等资源（实际上可通过插件支持，但非核心优势）。"
+    ],
+    "follow_up_paths": [
+      "为什么Rollup在打包类库时Tree Shaking效果通常比Webpack更好？其静态分析机制有何不同？",
+      "Vite构建工具在开发阶段使用了ESBuild和原生ESM，在生产构建时默认使用Rollup，这是基于哪些考虑？",
+      "如果在一个Monorepo项目中，既有SPA应用又有多个共享的组件库，如何混合使用这些工具以达到最佳效果？"
+    ]
+  }
+}

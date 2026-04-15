@@ -1,0 +1,23 @@
+{
+  "id": "typescript-core-types",
+  "subject": "TypeScript核心类型系统",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "TypeScript",
+    "类型系统"
+  ],
+  "content": {
+    "principles": "核心原理：TypeScript的类型系统旨在增强代码安全性和开发工具智能提示，其类型是结构化的（Structural Typing）。\n1.  **基础类型**：`string`, `number`, `boolean`, `null`, `undefined`, `void`, `symbol`, `bigint`。\n2.  **联合类型**：使用`|`表示一个值可以是多种类型之一，如`string | number`。\n3.  **字面量类型**：将值本身作为类型，常与联合类型配合约束取值范围，如`type Direction = \"left\" | \"right\"`。\n4.  **对象类型**：使用`interface`或`type`定义对象结构。`interface`支持声明合并，适合描述实例和扩展；`type`更灵活，支持联合、交叉等复杂类型操作。\n5.  **数组类型**：`number[]`或`Array<number>`。\n6.  **函数类型**：定义参数和返回值类型，如`(name: string): string`。\n7.  **特殊类型**：\n    - `any`：关闭类型检查，应尽量避免使用。\n    - `unknown`：类型安全的`any`，使用前必须进行类型断言或收窄。\n    - `tuple`：固定长度和类型的数组，如`[number, string]`。\n    - `enum`：定义命名常量集合。\n8.  **高级工具**：泛型（Generics）和工具类型（如`Partial<T>`, `Pick<T, K>`）用于增强类型复用和抽象。",
+    "pitfalls": [
+      "混淆`any`和`unknown`的用途，在需要类型安全的地方误用`any`。",
+      "不清楚`interface`和`type`的核心区别（声明合并 vs. 灵活性）。",
+      "对字面量类型和联合类型的组合使用场景不熟悉。"
+    ],
+    "follow_up_paths": [
+      "请解释TypeScript中的类型守卫（Type Guards）有哪几种实现方式？",
+      "`interface`的声明合并（Declaration Merging）具体指什么？请举例说明其应用场景和潜在问题。",
+      "请解释泛型约束（`extends`关键字在泛型中的用法）并给出一个实用例子。"
+    ]
+  }
+}

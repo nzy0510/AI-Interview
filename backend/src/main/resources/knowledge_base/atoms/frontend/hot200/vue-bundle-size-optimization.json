@@ -1,0 +1,26 @@
+{
+  "id": "vue-bundle-size-optimization",
+  "subject": "Vue 项目打包体积优化（Vendor 文件过大）",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Vue",
+    "Webpack",
+    "性能优化",
+    "代码分割"
+  ],
+  "content": {
+    "principles": "Vendor 文件过大是因所有第三方依赖被打包进单一 chunk，影响首屏加载。优化步骤：\n1.  **分析**：使用 `webpack-bundle-analyzer` 分析包构成，定位体积最大的依赖（如 `lodash`, `moment`, `echarts`）。\n2.  **按需引入**：\n    - 对于 `lodash`，避免 `import _ from 'lodash'`，改用 `import debounce from 'lodash/debounce'` 或使用 `babel-plugin-lodash`。\n    - 对于 `moment`，使用 `import 'moment/locale/zh-cn'` 并配合 Webpack 的 `IgnorePlugin` 忽略其他语言包。\n3.  **代码分割（Code Splitting）**：\n    - 配置 Webpack 的 `splitChunks`，将 `node_modules` 中的依赖拆分成独立 chunk，实现并行加载与缓存复用。\n    ```javascript\n    optimization: {\n      splitChunks: {\n        chunks: 'all',\n        cacheGroups: {\n          vendor: {\n            test: /[\\\\/]node_modules[\\\\/]/,\n            name: 'vendor',\n            chunks: 'all',\n          }\n        }\n      }\n    }\n    ```\n4.  **外部化（Externals）**：将大型库（如 Vue、React）通过 CDN 引入，并在 Webpack 配置中声明 `externals`，避免打包。\n5.  **动态导入（Dynamic Import）**：使用 `import()` 语法对路由组件进行懒加载，进一步拆分业务代码。",
+    "pitfalls": [
+      "盲目拆包导致请求过多，反而影响性能，需平衡 chunk 数量与大小。",
+      "按需引入配置错误，导致 Tree-shaking 失效，未使用的代码仍被打包。",
+      "使用 CDN 外链时，未考虑版本管理和 CDN 可用性风险。",
+      "忽略 Gzip/Brotli 压缩对最终传输体积的进一步优化。"
+    ],
+    "follow_up_paths": [
+      "除了 Webpack，Vite 在构建性能与产物优化上有哪些先天优势？",
+      "如何利用 Webpack 的 `magic comments`（如 `webpackPrefetch`）优化资源加载优先级？",
+      "分析工具除了 `webpack-bundle-analyzer`，还有哪些（如 `rollup-plugin-visualizer`）？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "mysql-wal-redo-log",
+  "subject": "Write-Ahead Logging (WAL) 技术原理及在MySQL中的应用",
+  "category": "mysql",
+  "difficulty": "困难",
+  "tags": [
+    "事务",
+    "redo log",
+    "持久性",
+    "崩溃恢复"
+  ],
+  "content": {
+    "principles": "Write-Ahead Logging (预写式日志) 是一种保证数据库事务持久性和提升写入性能的核心技术。其核心原则是：在修改实际的数据页之前，必须先将对应的修改日志持久化到磁盘。只要日志安全落盘，即使随后系统崩溃，数据页未来得及写入，重启后也可以通过重放（replay）日志来恢复数据。优点：1) 性能提升：将随机写数据页转变为顺序追加写日志文件，磁盘/SSD对顺序写优化极好。2) 保证持久性：事务提交时只需确保日志fsync到磁盘即可返回成功。3) 简化崩溃恢复：只需检查和处理日志文件，比扫描整个数据文件高效。在MySQL InnoDB引擎中，redo log是WAL的主要实现。执行UPDATE时：1) 修改数据页于内存（Buffer Pool）中，并生成redo log记录写入redo log buffer。2) 事务提交时，将redo log buffer中的相关日志通过fsync刷入磁盘的redo log文件（如ib_logfile0/1）。3) 内存中的脏数据页后续由后台线程异步刷回磁盘数据文件（.ibd）。伪代码流程：`write_log_to_buffer(log); fsync_log_file(); apply_change_to_data_page();`",
+    "pitfalls": [
+      "混淆了redo log和binlog。redo log是InnoDB引擎层的物理日志，用于崩溃恢复；binlog是Server层的逻辑日志，用于主从复制和数据归档。",
+      "误以为事务提交后数据立即落盘。实际上数据可能还在内存中，靠redo log保证持久性。",
+      "不了解redo log的写盘策略（如innodb_flush_log_at_trx_commit参数）对性能和数据安全性的影响。"
+    ],
+    "follow_up_paths": [
+      "追问：MySQL的‘双1’配置（sync_binlog=1, innodb_flush_log_at_trx_commit=1）代表什么？为什么能保证数据不丢？",
+      "引导：如果redo log写满了怎么办？谈谈checkpoint机制和日志文件循环写入的过程。",
+      "深入：对比WAL和另一种持久化策略（如Shadow Paging）的优劣。"
+    ]
+  }
+}

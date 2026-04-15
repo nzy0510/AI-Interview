@@ -1,0 +1,24 @@
+{
+  "id": "java-concurrent-tools-usage-scenarios",
+  "subject": "Java并发工具类（JUC）的典型应用场景",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "JUC",
+    "并发编程",
+    "工具类"
+  ],
+  "content": {
+    "principles": "Java并发包（`java.util.concurrent`， JUC）提供了丰富的工具类来解决不同并发场景问题：\n\n1.  **线程池管理**：`ThreadPoolExecutor` / `Executors` (慎用) - 用于管理线程生命周期，执行异步任务。\n2.  **显式锁**：`ReentrantLock` / `ReentrantReadWriteLock` - 提供比`synchronized`更灵活的锁操作（可中断、公平锁、条件变量）。读写锁在读多写少场景下提升并发度。\n3.  **并发控制**：\n    -   `Semaphore`：信号量，用于控制同时访问特定资源的线程数量（限流、资源池）。\n    -   `CountDownLatch`：倒计时闩，允许一个或多个线程等待其他一组线程完成操作（一等多）。\n    -   `CyclicBarrier`：循环栅栏，让一组线程互相等待，到达屏障点后同时继续执行（多等一）。\n4.  **线程安全集合**：`ConcurrentHashMap`（分段锁/CAS+synchronized）、`CopyOnWriteArrayList`（写时复制）等，提供高性能的并发容器。\n5.  **原子变量**：`AtomicInteger`、`AtomicReference`等，基于CAS实现无锁线程安全操作。\n\n**组合使用示例**：\n-   批量处理：`ThreadPoolExecutor` + `CountDownLatch`等待所有任务完成。\n-   接口限流：`Semaphore`控制最大并发调用数。\n-   缓存实现：`ConcurrentHashMap` + (Optional) `ReentrantReadWriteLock`。",
+    "pitfalls": [
+      "混淆`CountDownLatch`和`CyclicBarrier`的用途。前者一次性使用，后者可循环；前者是主线程等待，后者是所有子线程互相等待。",
+      "在简单的同步场景过度使用`ReentrantLock`，而忽略了更简单、性能可能更好的`synchronized`。",
+      "误用`ConcurrentHashMap`的`size()`/`isEmpty()`方法，其结果在并发下是近似值，不应用于严格的逻辑判断。"
+    ],
+    "follow_up_paths": [
+      "`Semaphore`初始许可数为1时，它和互斥锁有什么区别？（`Semaphore`可以跨线程释放，不要求释放的线程是获取的线程；而锁通常要求谁加锁谁解锁）",
+      "`CyclicBarrier`的`reset()`方法有什么作用？调用时如果已有线程在等待会怎样？（重置屏障，所有在屏障处等待的线程将抛出`BrokenBarrierException`）",
+      "`ConcurrentHashMap`在JDK1.7和1.8中实现原理有何重大变化？（1.7采用Segment分段锁，1.8改为数组+链表/红黑树，使用CAS+synchronized锁住链表头或树根节点，锁粒度更细）"
+    ]
+  }
+}

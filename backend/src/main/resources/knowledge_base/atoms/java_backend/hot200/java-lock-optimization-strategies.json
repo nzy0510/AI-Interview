@@ -1,0 +1,23 @@
+{
+  "id": "java-lock-optimization-strategies",
+  "subject": "Java锁优化策略",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "并发",
+    "锁",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "Java锁优化的核心在于减少竞争和降低开销。主要策略包括：1. 无锁编程：优先使用原子类（如AtomicInteger）等基于CAS的无锁结构，避免进入内核态。2. 缩小锁粒度：避免使用一把大锁，可借鉴ConcurrentHashMap的分段锁思想，或按业务维度（如用户ID取模）拆分锁对象。3. 替换重锁：synchronized在JDK1.6后虽有优化（偏向锁、轻量级锁），但在激烈竞争下会膨胀为重量级锁，此时可考虑使用功能更灵活的ReentrantLock（支持公平、可中断、超时）。4. 读写分离：在读多写少的场景下使用ReentrantReadWriteLock，注意写饥饿问题；或使用性能更优但更复杂的StampedLock（乐观读）。",
+    "pitfalls": [
+      "误以为synchronized性能一定差，实际上在低竞争场景下其优化后性能很好。",
+      "使用ReentrantLock时忘记在finally中unlock，会导致死锁。",
+      "滥用读写锁，在写多读少或竞争激烈的场景下，性能可能不如普通锁。"
+    ],
+    "follow_up_paths": [
+      "ConcurrentHashMap在JDK1.8之后是如何优化锁机制的？（答案：放弃了分段锁，改用synchronized+CAS锁住单个桶头节点）",
+      "StampedLock的乐观读具体如何工作？版本校验失败后怎么办？"
+    ]
+  }
+}

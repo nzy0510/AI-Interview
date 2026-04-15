@@ -1,0 +1,25 @@
+{
+  "id": "threadpool-size-configuration-strategy",
+  "subject": "线程池线程数配置策略",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "线程池",
+    "性能调优",
+    "CPU密集型",
+    "IO密集型"
+  ],
+  "content": {
+    "principles": "线程数设置需根据任务类型：1) CPU密集型（如计算、数据处理）：线程数 ≈ CPU核心数 + 1，避免过多线程导致上下文切换开销。可通过Runtime.getRuntime().availableProcessors()获取核心数。2) IO密集型（如网络、文件、DB操作）：线程数 ≈ CPU核心数 * (1 + 平均等待时间 / 平均工作时间)。经验值可为CPU核心数 * 2或更高，以压榨CPU在IO等待时的空闲。3) 混合型任务：建议拆分，使用不同线程池隔离（如ForkJoinPool处理计算，自定义线程池处理HTTP调用）。禁止直接使用Executors工厂类创建FixedThreadPool（无界队列OOM风险）或CachedThreadPool（无限线程风险），应显式构造ThreadPoolExecutor并明确参数。",
+    "pitfalls": [
+      "盲目设置过大线程数导致大量上下文切换，性能反而下降",
+      "对IO密集型任务仍使用CPU密集型配置，导致CPU利用率低下",
+      "使用Executors.newFixedThreadPool等默认无界队列，线上任务堆积引发OOM"
+    ],
+    "follow_up_paths": [
+      "如何估算IO密集型任务的平均等待时间和工作时间？",
+      "在容器化环境（如Docker）中，availableProcessors()返回值可能不准确，如何解决？",
+      "除了线程数，还有哪些线程池参数对性能有重大影响？"
+    ]
+  }
+}

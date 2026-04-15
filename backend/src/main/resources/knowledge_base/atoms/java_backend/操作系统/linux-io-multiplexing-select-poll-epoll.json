@@ -1,0 +1,24 @@
+{
+  "id": "linux-io-multiplexing-select-poll-epoll",
+  "subject": "I/O多路复用：select、poll与epoll的区别与原理",
+  "category": "操作系统",
+  "difficulty": "困难",
+  "tags": [
+    "网络编程",
+    "Linux内核",
+    "高并发"
+  ],
+  "content": {
+    "principles": "select、poll、epoll都是Linux下实现I/O多路复用的系统调用，允许一个线程监控多个文件描述符（fd）的读写状态。\n1. select：使用固定大小的fd_set（位图）表示关注的文件描述符集合，默认最大支持1024个fd。每次调用需要将整个fd_set从用户态拷贝到内核态，内核通过线性扫描所有fd判断是否就绪，返回后用户态仍需遍历整个集合。开销随fd数量线性增长。\n2. poll：使用pollfd结构体数组，以链表形式传递，突破了1024的数量限制。但内核和用户态仍需遍历整个数组，且每次调用传递全量数据，性能问题未根本解决。\n3. epoll：采用事件驱动模型。使用epoll_create创建epoll实例（内核红黑树）。epoll_ctl用于向红黑树中增删改fd，并为每个fd注册回调函数。当fd就绪时，内核通过回调将其加入就绪链表。epoll_wait调用时，仅将就绪链表中fd对应的事件拷贝到用户空间，无需遍历全部fd。支持水平触发（LT，默认）和边缘触发（ET）模式。epoll在连接数多但活动连接少的场景下性能极高，是Nginx、Netty等高并发框架的基础。",
+    "pitfalls": [
+      "认为select/poll的最大区别只是fd数量限制，忽略其底层都是O(n)遍历。",
+      "混淆epoll的LT和ET模式，不清楚ET模式必须使用非阻塞fd并一次性读完数据。",
+      "误以为epoll_wait返回的事件数量总是等于就绪的fd数量（一个fd可能多个事件）。"
+    ],
+    "follow_up_paths": [
+      "epoll的边缘触发（ET）和水平触发（LT）模式具体有什么区别？编程时分别要注意什么？",
+      "epoll内部使用红黑树管理fd，其时间复杂度是多少？为什么选择红黑树？",
+      "在什么场景下，select/poll的性能可能反而比epoll好？（考虑连接数极少且非常活跃的情况）"
+    ]
+  }
+}

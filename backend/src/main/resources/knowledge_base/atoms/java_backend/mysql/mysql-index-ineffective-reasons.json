@@ -1,0 +1,22 @@
+{
+  "id": "mysql-index-ineffective-reasons",
+  "subject": "索引失效的常见原因与排查",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "索引",
+    "性能调优",
+    "SQL优化"
+  ],
+  "content": {
+    "principles": "索引使用不一定有效，常见失效原因包括：1. 对索引列进行函数操作（如`YEAR(create_time) = 2023`）或表达式计算。2. 发生隐式类型转换（如varchar索引列用数字查询未加引号）。3. 使用`LIKE`以通配符`%`开头（如`LIKE '%abc'`）。4. 违反联合索引的最左前缀原则（如索引(a,b,c)，查询条件为`b=1 AND c=2`）。5. 使用`OR`连接条件，且并非所有条件列都有索引。6. 优化器基于成本估算（如数据量小）选择全表扫描。排查方法：使用`EXPLAIN`分析SQL执行计划，关注`type`字段（至少为`range`，`ref`/`const`更佳）、`key`字段（显示实际使用的索引）和`Extra`字段（出现`Using index`表示覆盖索引，`Using filesort`/`Using temporary`表示需要优化）。线上可结合慢查询日志和`pt-query-digest`工具分析。",
+    "pitfalls": [
+      "只关注是否创建了索引，而不关注SQL写法是否导致索引失效。",
+      "不理解优化器可能因为数据分布或统计信息不准确而放弃使用索引。"
+    ],
+    "follow_up_paths": [
+      "`EXPLAIN`结果中`type`字段的`ALL`, `index`, `range`, `ref`, `const`分别代表什么含义？性能优劣如何？",
+      "如何收集和更新表的统计信息，以帮助优化器做出更准确的索引选择判断？"
+    ]
+  }
+}

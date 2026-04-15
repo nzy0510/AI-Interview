@@ -1,0 +1,24 @@
+{
+  "id": "java-jmm-three-properties",
+  "subject": "Java内存模型（JMM）与原子性、可见性、有序性",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "JMM",
+    "内存模型",
+    "并发基础"
+  ],
+  "content": {
+    "principles": "Java内存模型（JMM）定义了多线程环境下变量的可见性、原子性和有序性规则，屏蔽硬件和操作系统差异。1) 原子性：基本读写是原子的，但i++这类复合操作不是。可通过synchronized或Atomic类（底层CAS）保证。2) 可见性：一个线程修改共享变量后，其他线程能立即看到。volatile强制读写主内存，synchronized和final也能保证。3) 有序性：编译器和处理器可能重排序指令优化性能。happens-before规则限制合法重排。volatile禁止特定重排序，synchronized通过互斥保证有序。典型反例：双重检查单例模式中，instance变量若不加volatile，可能因重排序返回未初始化完全的对象。",
+    "pitfalls": [
+      "将JMM等同于物理内存结构（堆、栈），JMM是抽象规范。",
+      "认为volatile能保证原子性（如i++）。",
+      "不理解指令重排序在多线程环境下可能引发的问题。"
+    ],
+    "follow_up_paths": [
+      "volatile如何保证可见性和禁止重排序？其内存屏障是如何工作的？",
+      "synchronized和volatile在保证可见性和有序性上的底层实现区别？",
+      "请用代码示例说明一个因缺乏可见性或有序性导致的并发Bug。"
+    ]
+  }
+}

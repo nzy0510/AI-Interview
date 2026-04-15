@@ -1,0 +1,23 @@
+{
+  "id": "redis-transaction-vs-mysql",
+  "subject": "Redis事务与MySQL事务的核心区别",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "事务",
+    "原⼦性",
+    "隔离性",
+    "WATCH"
+  ],
+  "content": {
+    "principles": "Redis事务与MySQL事务存在本质区别。1. 原⼦性：Redis事务的原⼦性指命令队列在EXEC前失败则全部不执⾏，但EXEC后即使某个命令执⾏失败（如类型错误），已执⾏的命令也不会回滚，后续命令继续执⾏。MySQL通过undo log⽀持事务级回滚。2. 隔离性：Redis单线程执⾏命令，天然实现串⾏化隔离，⽆需锁。MySQL通过MVCC或锁实现不同隔离级别。3. 回滚机制：Redis不⽀持回滚，但可通过WATCH命令实现乐观锁，在EXEC前检测键是否被修改，若被修改则放弃执⾏事务。Redis事务本质是命令打包执⾏，⼀致性保障有限，脏活累活需应⽤层兜底。",
+    "pitfalls": [
+      "误以为Redis事务和数据库事务⼀样，具有ACID特性，尤其是原⼦性和回滚能⼒。",
+      "不清楚WATCH的作⽤和乐观锁原理，不知道如何⽤它实现类似'回滚'的检查点功能。"
+    ],
+    "follow_up_paths": [
+      "如果使⽤WATCH检测到键被修改导致事务失败，应⽤层应该如何设计重试逻辑？",
+      "在Redis Cluster模式下，事务和WATCH命令有哪些限制？为什么？"
+    ]
+  }
+}

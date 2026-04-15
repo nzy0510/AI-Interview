@@ -1,0 +1,22 @@
+{
+  "id": "mysql-high-availability-solutions",
+  "subject": "MySQL高可用架构与避免单点故障的方案",
+  "category": "mysql",
+  "difficulty": "困难",
+  "tags": [
+    "高可用",
+    "故障切换",
+    "集群"
+  ],
+  "content": {
+    "principles": "避免MySQL单点故障的核心是数据冗余与自动故障切换。常见方案：1) 基础方案：主从复制。提供数据冗余，但主库故障时需要人工或脚本干预进行主从切换，存在服务中断和数据丢失风险。2) 自动高可用方案：a) MHA (Master High Availability)：监控主库，故障时自动选举数据最新的从库提升为新主，并重构其他从库的复制关系，切换过程在几十秒内。b) MySQL Group Replication / InnoDB Cluster：基于Paxos类协议实现多主或单主模式的数据同步，提供内置的成员管理和自动故障转移，任何节点宕机，只要多数派存活，集群仍可提供服务。3) 接入层方案：结合Keepalived（VIP漂移）或中间件（如MySQL Router, ProxySQL）实现应用无感知的故障切换，由这些组件维护后端实例状态并自动路由流量。",
+    "pitfalls": [
+      "混淆数据冗余（主从复制）与高可用（自动故障切换）的概念，认为搭建了主从就等于实现了高可用。",
+      "对MHA、Group Replication等方案的原理、适用场景和局限性了解不深。"
+    ],
+    "follow_up_paths": [
+      "比较MHA和基于Group Replication的InnoDB Cluster在故障切换机制、数据一致性保证和性能开销上的异同。",
+      "在云环境下，如何利用云厂商提供的RDS服务实现MySQL高可用？其底层可能采用了哪种机制？"
+    ]
+  }
+}

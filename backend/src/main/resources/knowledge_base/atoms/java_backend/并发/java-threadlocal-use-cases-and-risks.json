@@ -1,0 +1,26 @@
+{
+  "id": "java-threadlocal-use-cases-and-risks",
+  "subject": "ThreadLocal 的典型应用场景与风险",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "Java",
+    "ThreadLocal",
+    "应用场景",
+    "Web开发",
+    "Spring"
+  ],
+  "content": {
+    "principles": "ThreadLocal 的核心价值在于为每个线程提供独立的变量副本，从而避免多线程竞争，实现无锁的线程安全。典型应用场景包括：\n1. 上下文传递：在 Web 应用中，用于在同一次请求的调用链中传递用户身份、语言环境等上下文信息，避免在方法间显式传递参数。例如 Spring Security 的 SecurityContextHolder。\n2. 资源绑定：在框架中，将特定资源（如数据库连接 Connection、事务状态）绑定到当前执行线程。例如 Spring 的事务管理器，确保同一事务使用同一连接。\n\n主要风险是内存泄漏，尤其在线程池中。因为线程被复用，若未及时调用 remove()，可能导致：1. 内存中残留无用的 value 对象。2. 后续请求可能错误地获取到之前请求设置的值（数据污染）。因此，必须在 finally 块中确保 remove() 被调用。",
+    "pitfalls": [
+      "只看到 ThreadLocal 的便利性，而忽视其在复用线程环境下的清理责任。",
+      "在不需要线程隔离的场景滥用 ThreadLocal，增加复杂性和内存风险。",
+      "认为静态的 ThreadLocal 实例是跨线程共享数据的工具。"
+    ],
+    "follow_up_paths": [
+      "如果候选人提到了 Spring 的事务管理，可以追问：'Spring 的声明式事务是如何利用 ThreadLocal 来管理事务上下文的？当事务方法调用另一个事务方法时，这里有什么需要注意的传播行为？'",
+      "如果候选人提到了 Web 上下文，可以追问：'在异步处理（如使用 @Async）或响应式编程模型中，ThreadLocal 还能正常工作吗？为什么？有什么替代方案？'",
+      "如果候选人只列举场景而未提及风险，可以引导：'你刚才提到的这些场景，如果开发人员忘记调用 remove()，分别可能导致什么样的具体问题？请举例说明。'"
+    ]
+  }
+}

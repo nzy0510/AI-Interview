@@ -1,0 +1,24 @@
+{
+  "id": "redis-memory-eviction-policies",
+  "subject": "Redis 的内存淘汰策略",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "内存管理",
+    "淘汰策略",
+    "缓存"
+  ],
+  "content": {
+    "principles": "当 Redis 内存使用达到 maxmemory 限制时，会根据配置的淘汰策略清理 key 以腾出空间。淘汰策略直接影响缓存命中率和数据可靠性。主要策略包括：1) noeviction：默认策略，内存满后拒绝所有写操作（返回错误），读请求正常处理。适合不能容忍数据丢失的场景（如用作存储而非缓存）。2) volatile-lru：仅对设置了过期时间的 key 执行 LRU（最近最少使用）淘汰。适合有明确生命周期的数据（如 Session 缓存）。3) allkeys-lru：对所有 key 执行 LRU 淘汰，无论是否设置 TTL。这是最常用的策略之一，适合纯缓存场景（如电商商品热点数据缓存）。4) volatile-lfu / allkeys-lfu：基于 LFU（最不经常使用）淘汰，比 LRU 更能应对突发访问模式。allkeys-lfu 是当前推荐的默认策略，尤其适合访问分布不均的场景（如社交 feed 流）。5) volatile-ttl：优先淘汰剩余生存时间（TTL）较短的 key。适用于大量短期 key 堆积的场景。6) volatile-random / allkeys-random：随机删除 key，性能开销小，但缓存命中率可能较差，一般不作为首选。实际项目中，若 Redis 用作热点缓存，allkeys-lfu 或 allkeys-lru 能更好地应对流量；若混合存储了关键数据，需谨慎选择以避免误删，可考虑 noeviction 并配合监控告警。策略选择需基于数据的访问模式和可容忍的数据丢失程度。",
+    "pitfalls": [
+      "混淆 LRU 和 LFU 淘汰策略的原理与适用场景",
+      "误以为设置了 TTL 的 key 在内存不足时一定会被优先淘汰（需看具体策略）",
+      "在混合使用场景（缓存+存储）中错误选择淘汰策略导致关键数据丢失"
+    ],
+    "follow_up_paths": [
+      "Redis 的 LRU 和 LFU 算法是如何近似实现的？与标准算法有何区别？",
+      "如何根据业务访问模式（如热点数据、冷数据分布）选择合适的淘汰策略？",
+      "在 Redis Cluster 中，内存淘汰策略是如何在节点间工作的？"
+    ]
+  }
+}

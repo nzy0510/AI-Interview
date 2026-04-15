@@ -1,0 +1,22 @@
+{
+  "id": "spring-mvc-workflow-core",
+  "subject": "Spring MVC 核心工作流程与 DispatcherServlet",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Spring MVC",
+    "Web",
+    "DispatcherServlet"
+  ],
+  "content": {
+    "principles": "Spring MVC 以 DispatcherServlet 作为前端控制器，统一处理请求，其核心工作流程如下：1. 请求到达 DispatcherServlet。2. HandlerMapping 根据请求 URL 查找对应的处理器方法（如 @RequestMapping 标注的方法）。3. HandlerAdapter 适配并调用找到的处理器方法。4. 处理器方法执行，返回 ModelAndView 或直接数据。5. 如果返回视图名，ViewResolver 将逻辑视图名解析为具体 View 对象。6. 视图渲染（如 JSP, Thymeleaf）或通过 HttpMessageConverter 直接写回数据（如 @ResponseBody 返回 JSON）。在整个过程中，HandlerInterceptor 可以在处理器执行前后进行拦截，用于实现日志、权限校验等横切关注点。Spring Boot 通过自动配置默认集成了这些组件。",
+    "pitfalls": [
+      "将 HandlerMapping、HandlerAdapter、ViewResolver 等组件的职责混淆。",
+      "在 RESTful API 开发中，不理解为何不经过 ViewResolver 和视图渲染阶段。"
+    ],
+    "follow_up_paths": [
+      "描述一个 REST 请求（返回 JSON）在 Spring MVC 中的完整处理路径，与返回 JSP 页面的请求有何不同？",
+      "HandlerInterceptor 和 Filter 有什么区别？它们分别在哪个层面起作用？"
+    ]
+  }
+}

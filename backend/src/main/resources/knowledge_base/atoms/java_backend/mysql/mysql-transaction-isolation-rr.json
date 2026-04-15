@@ -1,0 +1,25 @@
+{
+  "id": "mysql-transaction-isolation-rr",
+  "subject": "MySQL生产环境常用的事务隔离级别：可重复读（Repeatable Read）",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "事务",
+    "隔离级别",
+    "MVCC",
+    "间隙锁"
+  ],
+  "content": {
+    "principles": "MySQL的默认事务隔离级别是可重复读（Repeatable Read），生产环境也普遍采用此级别。在该级别下，一个事务内多次读取同一行数据，结果总是一致的，避免了不可重复读和幻读（InnoDB通过间隙锁解决了幻读）。实现机制是MVCC（多版本并发控制）：每个事务启动时获取一个唯一的事务ID，查询时只能看到事务ID小于或等于当前事务ID且已提交的数据版本。例如，电商下单扣库存：事务A开始时读取库存为10，即使事务B在此期间提交了扣减库存的操作，事务A后续读取的库存仍为10，保证了事务内逻辑的一致性。相较于串行化隔离级别，可重复读在保证一致性的同时提供了更高的并发性能。相较于读已提交，它避免了不可重复读的问题。Spring的`@Transactional`注解在MySQL InnoDB引擎下默认即工作在可重复读语义中。注意：`SELECT ... FOR UPDATE`或`UPDATE`语句会触发‘当前读’，会看到已提交的最新数据，并可能加锁。",
+    "pitfalls": [
+      "误以为可重复读级别下完全不会出现幻读。InnoDB通过间隙锁防止了大部分幻读，但在某些特殊场景（如快照读后紧跟当前读）仍可能出现。",
+      "混淆了‘快照读’（普通SELECT，基于MVCC）和‘当前读’（SELECT FOR UPDATE/UPDATE/DELETE，基于最新数据并加锁）的行为差异。",
+      "在长事务中，由于需要维护多个数据版本，可能导致undo log膨胀，影响性能。"
+    ],
+    "follow_up_paths": [
+      "追问：详细解释一下MVCC是如何实现的？谈谈undo log、read view和行记录中的隐藏字段（DB_TRX_ID, DB_ROLL_PTR）。",
+      "引导：在什么业务场景下，你会考虑将隔离级别降为读已提交（Read Committed）？",
+      "深入：间隙锁（Gap Lock）和临键锁（Next-Key Lock）是什么？它们如何解决幻读问题？举一个间隙锁导致死锁的例子。"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "nodejs-module-loading-mechanism",
+  "subject": "Node.js 模块加载机制（CommonJS）",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Node.js",
+    "模块系统",
+    "CommonJS"
+  ],
+  "content": {
+    "principles": "核心原理：Node.js 采用 CommonJS 模块规范。模块在第一次被 `require` 时，会同步执行整个模块文件，并将其 `module.exports` 对象缓存于 `require.cache` 中。后续再次 `require` 同一路径时，直接返回缓存的 `exports` 对象，实现模块的单例特性。模块通过 `module.exports` 或 `exports` 暴露接口，通过 `require` 引入。模块查找优先级：1) 核心模块（如 fs、path）。2) 文件模块：按路径尝试加载，支持 .js、.json、.node 扩展名自动识别。3) 目录模块：查找 package.json 的 main 字段或 index.js。4) node_modules 中的第三方包。循环依赖需小心处理，可能导致部分导出未定义。",
+    "pitfalls": [
+      "误以为每次 `require` 都会重新执行模块代码，不了解缓存机制。",
+      "混淆 `exports` 和 `module.exports` 的引用关系，导致导出失败。",
+      "不清楚模块查找路径的详细规则，尤其是 node_modules 的向上递归查找。",
+      "对循环依赖的场景理解不深，不知道 Node.js 如何处理（加载已执行的部分）。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：请描述一个循环依赖的具体例子，并解释在 Node.js 中它的加载顺序和最终结果是什么？`require.cache` 的结构是怎样的，如何手动清除缓存？",
+      "如果候选人答得不好，可以引导：假设你在一个模块里修改了另一个已加载模块的导出对象，其他引用该模块的地方会看到变化吗？为什么？"
+    ]
+  }
+}

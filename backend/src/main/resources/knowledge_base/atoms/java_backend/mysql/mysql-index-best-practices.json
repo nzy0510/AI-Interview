@@ -1,0 +1,24 @@
+{
+  "id": "mysql-index-best-practices",
+  "subject": "MySQL 索引创建的最佳实践与注意事项",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "索引",
+    "性能优化",
+    "B+树"
+  ],
+  "content": {
+    "principles": "索引创建需权衡读写性能。核心原则包括：1) 选择区分度高的列作为索引键（如user_id优于gender）。2) 联合索引遵循最左前缀原则。3) 避免在索引列上使用函数或计算（如`YEAR(create_time)`）。4) 利用覆盖索引（查询字段全在索引中）避免回表。5) 对长字符串字段考虑前缀索引（需保证前缀区分度）。6) 大表加索引需谨慎，可使用`ALGORITHM=INPLACE, LOCK=NONE`或pt-online-schema-change工具避免锁表。7) 定期通过`information_schema.statistics`检查并清理冗余或未使用索引。索引不是越多越好，过多会降低写入性能并增加存储开销。",
+    "pitfalls": [
+      "盲目创建大量索引，忽视对写入性能（如B+树分裂合并、日志维护）的影响。",
+      "创建了联合索引但查询条件未使用最左前缀，导致索引失效。",
+      "误以为所有字符串索引都必须用完整长度，不知道前缀索引的适用场景和限制。"
+    ],
+    "follow_up_paths": [
+      "如何通过`EXPLAIN`命令判断一个查询是否使用了覆盖索引？",
+      "`ALGORITHM=INPLACE`和`ALGORITHM=COPY`在在线DDL时有什么区别？什么情况下INPLACE会失败？",
+      "前缀索引的区分度如何评估？它会对排序（ORDER BY）和覆盖索引产生什么影响？"
+    ]
+  }
+}

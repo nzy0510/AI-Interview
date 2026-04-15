@@ -1,0 +1,22 @@
+{
+  "id": "redis-memory-eviction-policies",
+  "subject": "Redis 内存淘汰策略",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Redis",
+    "内存管理",
+    "缓存策略"
+  ],
+  "content": {
+    "principles": "当 Redis 内存使用达到 maxmemory 限制时，会根据配置的策略淘汰 key 以释放空间。主要策略包括：\n1. noeviction（默认）：内存满时拒绝所有写请求，只允许读操作。适用于数据不能丢失的场景（如用作存储）。\n2. volatile-lru：仅对设置了过期时间的 key 使用 LRU（最近最少使用）算法进行淘汰。适用于如 Session 缓存等有明确生命周期的数据。\n3. allkeys-lru：对所有 key（无论是否设置 TTL）使用 LRU 算法淘汰。这是最常用的纯缓存场景策略，如缓存热点商品信息。\n4. volatile-lfu / allkeys-lfu：基于 LFU（最不经常使用）算法淘汰 key，allkeys-lfu 是当前推荐的默认策略，尤其适合访问分布不均匀的场景（如社交 feed 流）。\n5. volatile-ttl：优先淘汰剩余生存时间（TTL）较短的 key。适用于大量短期 key 堆积的场景。\n6. volatile-random / allkeys-random：随机删除 key，性能开销小但缓存命中率可能较差。\n策略选择需综合考虑数据访问模式和对数据丢失的容忍度。",
+    "pitfalls": [
+      "混淆 volatile-* 和 allkeys-* 策略的应用范围。volatile-* 只针对有 TTL 的 key，若误用可能导致永久数据被意外保留或关键数据被误删。",
+      "在混合存储（缓存+持久数据）场景下，错误选择 allkeys-lru 可能导致关键数据被淘汰。"
+    ],
+    "follow_up_paths": [
+      "在电商场景中，商品详情缓存和用户购物车数据都存储在同一个 Redis 实例，应如何选择淘汰策略？（考察对数据重要性和生命周期的区分）",
+      "LFU 和 LRU 的核心区别是什么？在什么场景下 LFU 表现更优？（深入算法原理和适用场景）"
+    ]
+  }
+}

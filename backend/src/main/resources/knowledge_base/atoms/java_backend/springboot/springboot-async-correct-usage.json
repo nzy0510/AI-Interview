@@ -1,0 +1,24 @@
+{
+  "id": "springboot-async-correct-usage",
+  "subject": "Spring Boot @Async 的正确用法与代理机制",
+  "category": "springboot",
+  "difficulty": "中等",
+  "tags": [
+    "异步",
+    "代理",
+    "AOP"
+  ],
+  "content": {
+    "principles": "在Spring Boot中，使用@Async实现异步处理时，必须通过Spring容器管理的Bean（代理对象）进行调用，才能触发异步执行。核心原理是Spring AOP的动态代理机制。@Async注解的方法会被Spring的`AsyncAnnotationBeanPostProcessor`处理，为其创建代理。当通过代理对象调用该方法时，代理会拦截调用，将任务提交给`TaskExecutor`（线程池）执行。如果直接在同一个类的内部方法中使用`this.sendEmail()`调用，则绕过了代理，导致同步执行。",
+    "pitfalls": [
+      "认为在同一个类内部调用@Async方法也会异步执行。",
+      "未配置自定义线程池，导致使用默认的SimpleAsyncTaskExecutor，该执行器为每个任务创建新线程，缺乏资源管理。",
+      "忽略异步方法的事务传播行为和异常处理，导致事务失效或异常被吞没。"
+    ],
+    "follow_up_paths": [
+      "如果同一个Bean的两个方法A和B都加了@Async，A内部调用B，会异步执行吗？为什么？",
+      "如何为不同的异步任务配置不同的线程池？",
+      "@Async方法返回Future或CompletableFuture时，调用方应如何处理？"
+    ]
+  }
+}

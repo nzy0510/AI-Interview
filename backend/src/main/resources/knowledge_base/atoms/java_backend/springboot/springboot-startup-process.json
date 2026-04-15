@@ -1,0 +1,24 @@
+{
+  "id": "springboot-startup-process",
+  "subject": "Spring Boot 应用启动流程",
+  "category": "springboot",
+  "difficulty": "中等",
+  "tags": [
+    "启动原理",
+    "ApplicationContext",
+    "内嵌容器"
+  ],
+  "content": {
+    "principles": "Spring Boot启动流程始于`SpringApplication.run()`，主要步骤包括：1) 创建`SpringApplication`实例，推断应用类型(Servlet/Reactive)并初始化`ApplicationContextInitializer`和`ApplicationListener`。2) 运行`run`方法：准备环境(读取配置文件、命令行参数)，创建合适的`ApplicationContext`(如`AnnotationConfigServletWebServerApplicationContext`)。3) 刷新上下文：这是核心，触发Bean定义加载(通过`@SpringBootApplication`中的`@ComponentScan`)、自动配置、条件装配。4) 在刷新阶段的`onRefresh`方法中，启动内嵌Web服务器(如Tomcat)，完成端口绑定。5) 发布`ApplicationReadyEvent`，标志应用完全就绪。整个过程封装了自动配置、条件装配和内嵌容器启动。",
+    "pitfalls": [
+      "认为启动只是执行main方法，不了解背后复杂的容器初始化和Bean加载过程。",
+      "混淆`ApplicationStartingEvent`、`ApplicationReadyEvent`等事件触发的时机。",
+      "不理解内嵌服务器是如何在刷新阶段被创建和启动的。"
+    ],
+    "follow_up_paths": [
+      "详细描述`refresh()`方法中`invokeBeanFactoryPostProcessors`和`finishBeanFactoryInitialization`这两个关键步骤做了什么？",
+      "Spring Boot如何根据类路径决定创建Servlet还是Reactive应用上下文？",
+      "如果在启动过程中某个自动配置失败，会发生什么？如何排查？"
+    ]
+  }
+}
