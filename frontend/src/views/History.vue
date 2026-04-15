@@ -98,11 +98,13 @@
         <el-divider content-position="left">AI 综合反馈</el-divider>
         <div class="feedback-box"><pre class="feedback-text">{{ selected.feedback }}</pre></div>
 
-        <!-- Emotion Analysis (video interview only) -->
+        <!-- Emotion / Sentiment Analysis -->
         <template v-if="selectedEmotion && Object.keys(selectedEmotion).length > 0">
           <el-divider content-position="left">
-            📹 情感分析
-            <el-tag size="small" type="success" effect="plain" style="margin-left: 8px">视频模式</el-tag>
+            🧠 情感分析
+            <el-tag size="small" :type="selectedEmotion.source === 'video' ? 'success' : 'primary'" effect="plain" style="margin-left: 8px">
+              {{ selectedEmotion.source === 'video' ? '视频模式' : '文本分析' }}
+            </el-tag>
           </el-divider>
           <div class="emotion-section">
             <div class="emotion-metrics">
@@ -114,8 +116,8 @@
                 <span class="em-val orange">{{ emotionLabel(selectedEmotion.dominantEmotion) }}</span>
                 <span class="em-label">主导情绪</span>
               </div>
-              <div class="em-metric">
-                <span class="em-val blue">{{ selectedEmotion.sampleCount || 0 }}</span>
+              <div class="em-metric" v-if="selectedEmotion.sampleCount">
+                <span class="em-val blue">{{ selectedEmotion.sampleCount }}</span>
                 <span class="em-label">采样次数</span>
               </div>
             </div>
@@ -127,6 +129,9 @@
                 </div>
                 <span class="em-pct">{{ (val * 100).toFixed(0) }}%</span>
               </div>
+            </div>
+            <div v-if="selectedEmotion.summary" class="emotion-summary-text">
+              <p>{{ selectedEmotion.summary }}</p>
             </div>
           </div>
         </template>
@@ -613,4 +618,6 @@ const drawMiniRadar = () => {
 .em-bar-bg { flex: 1; height: 14px; background: rgba(255,255,255,0.06); border-radius: 7px; overflow: hidden; }
 .em-bar-fill { height: 100%; border-radius: 7px; transition: width 0.6s ease; }
 .em-pct { min-width: 35px; font-size: 12px; color: #64748b; }
+.emotion-summary-text { margin-top: 12px; }
+.emotion-summary-text p { color: #64748b; font-size: 13px; line-height: 1.7; margin: 0; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border-left: 3px solid #67C23A; }
 </style>

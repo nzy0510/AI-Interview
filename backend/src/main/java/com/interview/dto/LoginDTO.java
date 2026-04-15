@@ -5,9 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 
 @Data
 public class LoginDTO {
-    @NotBlank(message = "Username cannot be empty")
+    @NotBlank(message = "登录账号不能为空")
     private String username;
     
-    @NotBlank(message = "Password cannot be empty")
+    @NotBlank(message = "密码不能为空")
     private String password;
 }

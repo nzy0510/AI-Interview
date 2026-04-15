@@ -139,6 +139,39 @@
                   <div class="kpi-lbl">总发信轮次</div>
                 </div>
               </div>
+              <div class="kpi-item" v-if="reportData.emotion">
+                <div class="kpi-icon">✨</div>
+                <div class="kpi-data">
+                  <div class="kpi-val">{{ (reportData.emotion.avgConfidence * 100).toFixed(0) }}<span class="unit">%</span></div>
+                  <div class="kpi-lbl">自信指数</div>
+                </div>
+              </div>
+              <div class="kpi-item" v-if="reportData.emotion">
+                <div class="kpi-icon">🎭</div>
+                <div class="kpi-data">
+                  <div class="kpi-val highlight">{{ emotionLabel(reportData.emotion.dominantEmotion) }}</div>
+                  <div class="kpi-lbl">主导情绪</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sentiment Analysis Card -->
+            <div v-if="reportData.emotion" class="bento-card bento-sentiment">
+              <h3 class="bento-card-title">🧠 情感分析</h3>
+              <div class="sentiment-content">
+                <div v-if="reportData.emotion.emotionDistribution" class="emotion-bars">
+                  <div v-for="(val, key) in reportData.emotion.emotionDistribution" :key="key" class="em-bar-row">
+                    <span class="em-name">{{ emotionLabel(key) }}</span>
+                    <div class="em-bar-bg">
+                      <div class="em-bar-fill" :style="{ width: (val * 100) + '%', background: emotionColor(key) }"></div>
+                    </div>
+                    <span class="em-pct">{{ (val * 100).toFixed(0) }}%</span>
+                  </div>
+                </div>
+                <div v-if="reportData.emotion.summary" class="sentiment-summary">
+                  <p>{{ reportData.emotion.summary }}</p>
+                </div>
+              </div>
             </div>
 
             <!-- Bottom Left: AI Eval -->
@@ -215,7 +248,8 @@ const reportData = reactive({
   ability: {},
   recommendations: [],
   wpm: 0,
-  voiceRounds: 0
+  voiceRounds: 0,
+  emotion: null
 })
 const totalUserRounds = computed(() => messageList.value.filter(m => m.role === 'user').length)
 
@@ -233,6 +267,11 @@ const gradeScore = { A: 1.0, B: 0.8, C: 0.6, D: 0.4, E: 0.2 }
 const getGradeType = (g) => ({ A: 'danger', B: 'success', C: 'primary', D: 'warning' }[g] || 'info')
 const getWpmText = (w) => w === 0 ? '未使用语音' : w < 80 ? '节奏较慢' : w > 220 ? '语速偏快' : '语速适中'
 const getWpmTagType = (w) => w === 0 ? 'info' : (w < 80 || w > 220) ? 'warning' : 'success'
+
+// ─── Emotion/Sentiment labels ────────────────────────────────────────────────
+const EMOTION_LABELS = { neutral: '平静', happy: '积极', sad: '低落', angry: '紧张', fearful: '焦虑', disgusted: '不适', surprised: '惊讶' }
+const emotionLabel = (key) => EMOTION_LABELS[key] || key
+const emotionColor = (key) => ({ neutral: '#909399', happy: '#67C23A', sad: '#5B9BD5', angry: '#F56C6C', fearful: '#E6A23C', disgusted: '#C71585', surprised: '#409EFF' }[key] || '#909399')
 
 // ─── Voice & Visualizer ───────────────────────────────────────────────────────
 const isRecording = ref(false)
@@ -533,6 +572,7 @@ const scrollToBottom = async () => {
 }
 
 let eventSource = null
+let pendingEndType = null
 
 const triggerAiStart = () => streamAiResponse('你好，我已准备好，请开始面试。')
 
@@ -549,6 +589,7 @@ const sendMessage = () => {
 
 const streamAiResponse = (msg) => {
   isStreaming.value = true
+  pendingEndType = null
   // Use reactive push via an object reference we keep
   const aiMsg = reactive({ role: 'ai', content: '', streaming: true })
   messageList.value.push(aiMsg)
@@ -582,6 +623,17 @@ const streamAiResponse = (msg) => {
       aiMsg.streaming = false
       isStreaming.value = false
       eventSource.close()
+      if (pendingEndType) {
+        const endType = pendingEndType
+        pendingEndType = null
+        const notice = endType === 'abnormal'
+          ? '检测到面试异常中断，正在生成记录...'
+          : '面试已正常结束，正在生成报告...'
+        ElMessage[endType === 'abnormal' ? 'warning' : 'info'](notice)
+        setTimeout(() => {
+          performEndInterview(endType)
+        }, 800)
+      }
       return
     }
 
@@ -592,20 +644,15 @@ const streamAiResponse = (msg) => {
         aiMsg.content = aiMsg.content.replace('[SWITCH_TO_HR]', '').trim()
       }
 
+      if (aiMsg.content.includes('[AUTO_FINISH]')) {
+        aiMsg.content = aiMsg.content.replace('[AUTO_FINISH]', '').trim()
+        pendingEndType = 'normal'
+      }
+
       // Check for termination marker
       if (aiMsg.content.includes('[TERMINATE]')) {
         aiMsg.content = aiMsg.content.replace('[TERMINATE]', '').trim()
-        aiMsg.streaming = false
-        isStreaming.value = false
-        eventSource.close()
-        
-        // Auto trigger end interview
-        ElMessage.warning('检测到面试异常中断，正在生成记录...')
-        setTimeout(() => {
-          // Pass true to bypass confirmation dialog
-          performEndInterview(true)
-        }, 1500)
-        return
+        pendingEndType = 'abnormal'
       }
       
       scrollToBottom()
@@ -626,14 +673,20 @@ const endInterview = async () => {
   performEndInterview()
 }
 
-const performEndInterview = async (isAuto = false) => {
+const performEndInterview = async (endType = 'manual') => {
   if (isRecording.value) stopRecording()
   isFinishing.value = true
   const wpm = calcAvgWpm()
-
+  const isAutoAbnormal = endType === 'abnormal'
+  const isAutoNormal = endType === 'normal'
+ 
   const loadingMsg = ElMessage({ 
-    message: isAuto ? '🚨 检测到异常中断，正在锁定评分...' : '🤖 正在深度分析，请稍候...', 
-    type: isAuto ? 'warning' : 'info', 
+    message: isAutoAbnormal
+      ? '🚨 检测到异常中断，正在生成报告...'
+      : isAutoNormal
+        ? '✅ 面试已完成，正在生成报告...'
+        : '🤖 正在深度分析，请稍候...',
+    type: isAutoAbnormal ? 'warning' : 'info', 
     duration: 0 
   })
   
@@ -654,6 +707,10 @@ const performEndInterview = async (isAuto = false) => {
       // Parse recommendations JSON
       try { reportData.recommendations = typeof res.recommendations === 'string' ? JSON.parse(res.recommendations) : (res.recommendations || []) }
       catch { reportData.recommendations = [] }
+
+      // Parse emotion/sentiment JSON
+      try { reportData.emotion = typeof res.emotionJson === 'string' ? JSON.parse(res.emotionJson) : (res.emotionJson || null) }
+      catch { reportData.emotion = null }
 
       showReport.value = true
       // Trigger animations
@@ -785,17 +842,29 @@ const performEndInterview = async (isAuto = false) => {
 
 .bento-kpis { 
   grid-column: 2 / 4; grid-row: 2 / 3; 
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 16px; 
+  display: flex; flex-wrap: wrap; gap: 16px; padding: 16px; 
   align-items: center; justify-content: center; background: rgba(30, 41, 59, 0.4); 
 }
-.kpi-item { display: flex; align-items: center; gap: 12px; }
+.kpi-item { display: flex; align-items: center; gap: 12px; min-width: 140px; }
 .kpi-icon { font-size: 28px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px; line-height: 1;}
 .kpi-val { font-size: 20px; font-weight: 800; color: #f8fafc; }
+.kpi-val .highlight { color: #67C23A; }
 .kpi-lbl { font-size: 12px; color: #94a3b8; }
 .unit { font-size: 12px; font-weight: normal; color: #64748b; margin-left: 2px; }
 
-.bento-feedback { grid-column: 1 / 3; grid-row: 3 / 4; min-height: 300px; max-height: 500px; overflow-y: auto; }
-.bento-roadmap { grid-column: 3 / 4; grid-row: 3 / 4; min-height: 300px; max-height: 500px; overflow-y: auto; }
+.bento-sentiment { grid-column: 1 / 4; grid-row: 3 / 4; }
+.sentiment-content { display: flex; gap: 24px; align-items: flex-start; }
+.emotion-bars { flex: 1; min-width: 280px; }
+.em-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.em-name { width: 40px; font-size: 13px; color: #94a3b8; text-align: right; flex-shrink: 0; }
+.em-bar-bg { flex: 1; height: 18px; background: rgba(255,255,255,0.06); border-radius: 9px; overflow: hidden; }
+.em-bar-fill { height: 100%; border-radius: 9px; transition: width 0.8s ease; }
+.em-pct { width: 40px; font-size: 13px; color: #cbd5e1; text-align: right; flex-shrink: 0; }
+.sentiment-summary { flex: 1; min-width: 200px; }
+.sentiment-summary p { color: #cbd5e1; font-size: 14px; line-height: 1.7; margin: 0; padding: 12px 16px; background: rgba(255,255,255,0.04); border-radius: 12px; border-left: 3px solid #67C23A; }
+
+.bento-feedback { grid-column: 1 / 3; grid-row: 4 / 5; min-height: 300px; max-height: 500px; overflow-y: auto; }
+.bento-roadmap { grid-column: 3 / 4; grid-row: 4 / 5; min-height: 300px; max-height: 500px; overflow-y: auto; }
 
 .custom-md { color: #e2e8f0; font-size: 15px; line-height: 1.7; }
 .custom-md :deep(h1), .custom-md :deep(h2), .custom-md :deep(h3) { color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.1); margin-top: 0; padding-bottom: 8px; }
