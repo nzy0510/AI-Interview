@@ -1,0 +1,24 @@
+{
+  "id": "mysql-leftmost-prefix-rule",
+  "subject": "MySQL联合索引的最左前缀匹配原则",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "MySQL",
+    "索引",
+    "查询优化"
+  ],
+  "content": {
+    "principles": "最左前缀匹配原则是联合索引使用的核心规则。MySQL使用联合索引时，会从索引的最左列开始向右连续匹配，直到遇到范围查询（>、<、BETWEEN、LIKE）或未使用的列为止。例如，联合索引(a, b, c)：查询`WHERE a=1 AND b=2 AND c=3`能完全利用索引；`WHERE a=1 AND b>2 AND c=3`只能利用到a和b（因为b是范围查询，其后的c无法走索引）；`WHERE b=2`或`WHERE b=2 AND c=3`则无法使用该索引，因为未从最左列a开始。设计联合索引时，应将等值查询列放在前面，范围查询列放在后面，且高频查询字段尽量靠左。",
+    "pitfalls": [
+      "认为联合索引(a,b,c)可以无条件加速对b或c的单独查询。",
+      "忽略范围查询对后续索引列使用的影响，误以为`WHERE a=1 AND b>2 AND c=3`中的c也能利用索引。",
+      "索引字段顺序设计不合理，导致高频查询无法命中索引。"
+    ],
+    "follow_up_paths": [
+      "索引下推（Index Condition Pushdown, ICP）是如何优化最左前缀原则的？请举例说明。",
+      "如果查询条件中使用了`OR`，对索引使用有何影响？",
+      "`LIKE 'prefix%'`和`LIKE '%suffix'`在使用索引上有何区别？为什么？"
+    ]
+  }
+}

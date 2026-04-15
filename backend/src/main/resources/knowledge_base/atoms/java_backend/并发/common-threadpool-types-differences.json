@@ -1,0 +1,24 @@
+{
+  "id": "common-threadpool-types-differences",
+  "subject": "常见线程池类型及其区别",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "线程池",
+    "Executors",
+    "ThreadPoolExecutor"
+  ],
+  "content": {
+    "principles": "Java并发包通过Executors工厂方法提供几种常见线程池，本质是ThreadPoolExecutor的不同参数组合：1) newFixedThreadPool(nThreads)：固定大小线程池，corePoolSize = maximumPoolSize = nThreads，使用无界LinkedBlockingQueue。适合负载稳定场景，但任务堆积可能导致OOM。2) newCachedThreadPool()：corePoolSize=0，maximumPoolSize=Integer.MAX_VALUE，使用SynchronousQueue，线程空闲60秒回收。适合大量短生命周期的异步任务，高并发可能创建大量线程。3) newSingleThreadExecutor()：单线程池，corePoolSize = maximumPoolSize = 1，使用无界LinkedBlockingQueue，包装后禁止重新配置线程数。保证任务顺序执行。4) newScheduledThreadPool(corePoolSize)：支持定时/周期性任务的线程池，使用DelayedWorkQueue。生产环境建议直接new ThreadPoolExecutor，明确指定核心参数以避免无界队列或无限线程的风险。",
+    "pitfalls": [
+      "在生产环境直接使用Executors创建线程池，导致潜在OOM或资源耗尽",
+      "混淆newCachedThreadPool和newFixedThreadPool的适用场景",
+      "认为newSingleThreadExecutor只是线程数为1的FixedThreadPool（实际被包装，无法cast回ThreadPoolExecutor修改配置）"
+    ],
+    "follow_up_paths": [
+      "为什么阿里Java开发手册禁止使用Executors创建线程池？",
+      "SynchronousQueue的工作原理是什么？为什么CachedThreadPool使用它？",
+      "如何实现一个支持监控和动态调整参数的线程池？"
+    ]
+  }
+}

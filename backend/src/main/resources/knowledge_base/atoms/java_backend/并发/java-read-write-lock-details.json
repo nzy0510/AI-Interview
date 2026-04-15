@@ -1,0 +1,23 @@
+{
+  "id": "java-read-write-lock-details",
+  "subject": "Java读写锁（ReentrantReadWriteLock）原理与使用",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "ReentrantReadWriteLock",
+    "读写锁",
+    "锁降级"
+  ],
+  "content": {
+    "principles": "读写锁（ReadWriteLock）的核心思想是读共享、写独占，适用于读多写少的场景（如缓存）。Java中的`ReentrantReadWriteLock`内部维护了一对锁（读锁和写锁）。规则：1) 有线程持有写锁时，其他线程无法获取读锁或写锁；2) 有线程持有读锁时，其他线程可获取读锁，但不能获取写锁；3) 写锁可以降级为读锁（先获取写锁，再获取读锁，然后释放写锁），但读锁不能升级为写锁（可能导致死锁）。锁降级是保证数据可见性的重要手段。使用不当可能导致写线程饥饿（读线程过多），此时可考虑`StampedLock`的乐观读模式。",
+    "pitfalls": [
+      "误用读写锁导致写线程饥饿：在持续有读锁的情况下，写锁可能永远无法获取。",
+      "错误地进行锁升级（试图在持有读锁时获取写锁）会导致死锁。",
+      "忽略锁降级的正确顺序：必须先获取写锁，再获取读锁，然后释放写锁，顺序错误则无法实现降级。"
+    ],
+    "follow_up_paths": [
+      "请解释为什么`ReentrantReadWriteLock`的写锁降级是安全的，而读锁升级会导致死锁？",
+      "在什么场景下`StampedLock`比`ReentrantReadWriteLock`更有优势？它的乐观读是如何工作的？"
+    ]
+  }
+}

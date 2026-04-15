@@ -1,0 +1,22 @@
+{
+  "id": "js-typeof-null-bug",
+  "subject": "`typeof null` 返回 'object' 的历史原因",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "JavaScript",
+    "数据类型",
+    "历史"
+  ],
+  "content": {
+    "principles": "`typeof null` 的结果是 `\"object\"`，而非 `\"null\"`。这是一个自 JavaScript 诞生之初就存在的历史性 Bug。在早期实现中，值的类型信息存储在低位标记中。`null` 的机器码表示为全零，而对象的类型标记恰好被判定为一组特定的位模式，导致全零被错误地解释为对象类型。由于修复此 Bug 会破坏大量现有代码的兼容性，因此一直保留至今。`null` 本质上是原始值，表示空指针。正确判断 `null` 应使用严格相等：`value === null`。若需同时判断 `null` 和 `undefined`，可使用 `value == null`。",
+    "pitfalls": [
+      "误以为 `typeof null` 的结果是设计使然。",
+      "使用 `typeof` 来检测 `null` 值。"
+    ],
+    "follow_up_paths": [
+      "JavaScript 中还有哪些类似的“历史遗留”设计或 Bug？",
+      "`undefined` 和 `null` 在类型和语义上有何根本区别？"
+    ]
+  }
+}

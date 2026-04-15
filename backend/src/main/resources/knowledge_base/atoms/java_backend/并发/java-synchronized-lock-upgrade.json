@@ -1,0 +1,24 @@
+{
+  "id": "java-synchronized-lock-upgrade",
+  "subject": "synchronized锁升级过程（偏向锁、轻量级锁、重量级锁）",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "synchronized",
+    "锁",
+    "JVM"
+  ],
+  "content": {
+    "principles": "synchronized锁的竞争机制不是一上来就重量级加锁，而是从无锁状态开始，随着竞争情况升级。1) 无竞争时，使用偏向锁，在对象头Mark Word中记录线程ID，同一线程再次进入无需CAS。2) 出现竞争但不激烈时，升级为轻量级锁，线程通过CAS操作尝试将对象头的Mark Word替换为指向线程栈中锁记录的指针。3) 竞争激烈时（如自旋失败），膨胀为重量级锁，线程进入阻塞态，由操作系统调度，性能开销大。锁的状态信息存储在对象头的Mark Word中（64位虚拟机占8字节）。字节码层面会生成monitorenter和monitorexit指令，对应到HotSpot虚拟机中C++实现的ObjectMonitor类的enter()和exit()方法。",
+    "pitfalls": [
+      "认为synchronized一开始就是重量级锁，不了解锁升级优化过程。",
+      "混淆轻量级锁和自旋锁的概念，轻量级锁在CAS失败后会尝试短暂自旋，但自旋失败会升级。",
+      "不清楚锁升级的具体触发条件和状态存储在对象头Mark Word中。"
+    ],
+    "follow_up_paths": [
+      "锁升级过程中，对象头Mark Word的具体结构是怎样的？",
+      "偏向锁在什么情况下会被撤销？偏向锁的延迟开启参数是什么？",
+      "除了synchronized，还有哪些锁优化技术（如锁消除、锁粗化）？"
+    ]
+  }
+}

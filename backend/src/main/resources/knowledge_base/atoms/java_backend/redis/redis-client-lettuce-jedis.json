@@ -1,0 +1,24 @@
+{
+  "id": "redis-client-lettuce-jedis",
+  "subject": "Redis客户端：Lettuce与Jedis的对比与选型",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "客户端",
+    "Lettuce",
+    "Jedis",
+    "性能"
+  ],
+  "content": {
+    "principles": "主流Java Redis客户端对比：1. Lettuce：Spring Boot 2.0后的默认推荐。基于Netty实现，支持响应式编程，使用长连接且线程安全，多个线程可共享连接，资源利用率高。与Spring Data Redis集成好（如RedisTemplate, ReactiveRedisTemplate）。生产环境建议通过LettucePoolingClientConfiguration配置连接池，并注意异步API的Future回调处理，防止连接泄漏。2. Jedis：早期常用，同步阻塞，每个操作通常独占一个连接，高并发下连接数易打满。适用于轻量级场景。通用生产建议：配置连接池、控制大Key操作粒度、开启SSL和设置超时时间。",
+    "pitfalls": [
+      "在高并发项目中选择Jedis而未配置足够连接池，导致连接数耗尽。",
+      "使用Lettuce异步API时未妥善处理Future，导致Netty线程堆积或连接泄漏。",
+      "生产环境未配置连接池、SSL或超时时间等基本安全与稳定性设置。"
+    ],
+    "follow_up_paths": [
+      "Lettuce的响应式编程支持是如何与Project Reactor集成的？请举例说明一个响应式缓存操作。",
+      "除了Lettuce和Jedis，还有哪些Redis客户端（如Redisson）？它们的主要应用场景是什么？"
+    ]
+  }
+}

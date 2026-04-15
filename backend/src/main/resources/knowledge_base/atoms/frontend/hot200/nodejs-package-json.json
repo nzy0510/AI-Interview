@@ -1,0 +1,24 @@
+{
+  "id": "nodejs-package-json",
+  "subject": "package.json 文件",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Node.js",
+    "npm",
+    "项目管理"
+  ],
+  "content": {
+    "principles": "package.json 是 Node.js 项目的核心配置文件，采用 JSON 格式。其主要作用包括：1) 定义项目元数据（名称、版本、描述、入口文件等）。2) 管理依赖：`dependencies` 记录生产环境依赖，`devDependencies` 记录开发环境依赖。npm/yarn 根据此文件安装和锁定版本。3) 定义脚本命令：`scripts` 字段允许定义如 `npm start`、`npm run build` 等快捷命令。4) 确保环境一致性：结合 `package-lock.json` 或 `yarn.lock` 锁定依赖树，保证不同环境安装的版本完全相同。它是项目初始化、依赖安装、自动化构建和团队协作的基础。",
+    "pitfalls": [
+      "混淆 `dependencies` 和 `devDependencies`，将生产环境必需的包误放入开发依赖。",
+      "不理解版本号前缀（如 `^`、`~`）的含义，导致依赖更新行为不符合预期。",
+      "认为 `package.json` 是唯一决定依赖版本的文件，忽略了锁文件（package-lock.json）的作用。"
+    ],
+    "follow_up_paths": [
+      "`package-lock.json` 和 `yarn.lock` 的作用是什么？为什么有了 package.json 还需要锁文件？",
+      "请解释 `^4.18.0` 和 `~4.18.0` 在版本控制上的具体区别。",
+      "如何将一个本地项目初始化为一个 npm 包，并发布到 npm 仓库？简述主要步骤。"
+    ]
+  }
+}

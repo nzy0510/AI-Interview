@@ -1,0 +1,24 @@
+{
+  "id": "synchronized-vs-reentrantlock",
+  "subject": "synchronized与ReentrantLock的对比",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "锁机制",
+    "synchronized",
+    "ReentrantLock"
+  ],
+  "content": {
+    "principles": "synchronized是JVM内置关键字，自动加锁/释放锁，异常时也能释放，不会死锁。ReentrantLock是JDK API，需手动lock/unlock（须在finally中确保释放）。主要区别：1. 等待可中断：ReentrantLock支持lockInterruptibly()，等待线程可响应中断；synchronized等待不可中断。2. 公平锁：ReentrantLock可通过构造函数实现公平锁（按排队顺序）；synchronized始终为非公平锁。3. 条件等待：ReentrantLock可绑定多个Condition实现精确线程通信（如生产者-消费者）；synchronized只能使用Object的wait/notify。4. 性能：JDK1.6后synchronized经过优化（偏向锁、轻量级锁、自适应自旋），在多数场景下性能与ReentrantLock相当甚至更优。选择建议：优先使用synchronized（简单安全），仅在需要可中断、公平锁、超时尝试、复杂条件队列等高级特性时使用ReentrantLock。",
+    "pitfalls": [
+      "误以为ReentrantLock在所有场景下都比synchronized性能好。",
+      "使用ReentrantLock时未在finally块中调用unlock()。",
+      "在只需要互斥的场景过度使用ReentrantLock的复杂特性。"
+    ],
+    "follow_up_paths": [
+      "synchronized的锁升级过程具体是怎样的？什么条件下会从轻量级锁膨胀为重量级锁？",
+      "如何使用ReentrantLock和Condition实现一个容量有限的阻塞队列？",
+      "ReentrantLock的AQS（AbstractQueuedSynchronizer）底层是如何实现锁获取和释放的？"
+    ]
+  }
+}

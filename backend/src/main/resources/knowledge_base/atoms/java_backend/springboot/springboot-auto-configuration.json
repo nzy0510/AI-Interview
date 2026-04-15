@@ -1,0 +1,25 @@
+{
+  "id": "springboot-auto-configuration",
+  "subject": "Spring Boot 自动配置原理",
+  "category": "springboot",
+  "difficulty": "困难",
+  "tags": [
+    "自动配置",
+    "条件装配",
+    "starter"
+  ],
+  "content": {
+    "principles": "Spring Boot自动配置的核心机制是：1) 启动时通过@EnableAutoConfiguration触发，扫描classpath下META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports文件（或旧版的spring.factories），加载其中声明的自动配置类。2) 自动配置类通常带有大量条件注解（如@ConditionalOnClass, @ConditionalOnMissingBean, @ConditionalOnProperty），只有满足所有条件时，配置类中定义的Bean才会被创建。3) 通过@AutoConfigureOrder或@AutoConfigureAfter/Before控制配置类的加载顺序。其本质是“约定大于配置”，当检测到特定类存在于classpath且容器中缺失相关Bean时，自动提供默认配置。例如，引入spring-boot-starter-data-redis后，自动配置检测到LettuceConnectionFactory类存在且没有RedisTemplate Bean，就会自动配置连接工厂和模板。",
+    "pitfalls": [
+      "认为自动配置是魔法，不了解其基于条件注解的触发机制",
+      "自定义Bean与自动配置Bean冲突时，不清楚生效规则（通常自定义Bean优先，因为@ConditionalOnMissingBean）",
+      "不清楚如何排除特定的自动配置类（使用@EnableAutoConfiguration.exclude）",
+      "混淆自动配置类（@Configuration）和普通配置类"
+    ],
+    "follow_up_paths": [
+      "如何编写一个自定义的Spring Boot Starter，并实现自动配置？",
+      "@ConditionalOnBean和@ConditionalOnMissingBean在复杂依赖场景下，加载顺序如何影响最终结果？",
+      "自动配置和@ConfigurationProperties是如何配合工作的？"
+    ]
+  }
+}

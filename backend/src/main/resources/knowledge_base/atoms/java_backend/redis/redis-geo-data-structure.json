@@ -1,0 +1,24 @@
+{
+  "id": "redis-geo-data-structure",
+  "subject": "Redis Geo 数据结构的原理与实现",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "数据结构",
+    "地理位置",
+    "算法"
+  ],
+  "content": {
+    "principles": "Redis Geo 是基于 Sorted Set (ZSET) 实现的地理位置功能。核心是将经纬度通过 Geohash 算法编码成一个 52 位整数，作为 ZSET 的 score 存储，member 为地点名称。Geohash 将二维坐标编码为一维字符串，前缀匹配越多的点距离越近。支持命令：GEOADD（添加）、GEODIST（计算距离）、GEORADIUS（按半径查询附近点）、GEORADIUSBYMEMBER（以成员为中心查询）。适用于查找附近的店铺、司机、共享设备等 LBS 应用。注意：经纬度有范围限制（经度[-180,180]，纬度[-85.05112878, 85.05112878]），且 Geohash 存在边界问题（位于格子边缘的点可能被漏掉或误判）。",
+    "pitfalls": [
+      "误以为 Geo 是一个独立的数据类型，其实质是 ZSET。",
+      "不了解 Geohash 的边界问题，导致范围查询结果不准确。",
+      "直接使用 ZSET 命令操作 Geo 数据可能导致数据格式错误。"
+    ],
+    "follow_up_paths": [
+      "Geohash 算法的具体编码和解码过程是怎样的？如何解决其边界问题？",
+      "除了 Redis Geo，还有哪些处理地理位置数据的方案？（如：PostGIS、MongoDB 地理索引）",
+      "如何实现更复杂的查询，如矩形范围查询或按距离排序分页？"
+    ]
+  }
+}

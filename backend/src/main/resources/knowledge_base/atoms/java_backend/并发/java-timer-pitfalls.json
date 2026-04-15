@@ -1,0 +1,24 @@
+{
+  "id": "java-timer-pitfalls",
+  "subject": "Java Timer 的缺陷与现代替代方案",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "定时任务",
+    "单线程",
+    "异常处理"
+  ],
+  "content": {
+    "principles": "Java Timer 是一个基于单线程的任务调度工具，内部使用优先级队列管理 TimerTask。它支持 schedule（固定延迟）和 scheduleAtFixedRate（固定速率）两种调度方式。主要缺陷有：1) 单线程模型：一个任务执行时间过长或阻塞，会延迟后续所有任务。2) 异常传播：TimerTask 中抛出未捕获的运行时异常会导致整个 Timer 线程终止，所有已安排但未执行的任务都会被取消。现代开发中，推荐使用 ScheduledThreadPoolExecutor（通过 Executors.newScheduledThreadPool 创建），它支持多线程、能更好地处理异常、提供更灵活的资源控制和任务管理。对于更复杂的业务调度，通常会选择 Quartz 或 Spring 的 @Scheduled 注解。",
+    "pitfalls": [
+      "不了解 Timer 的单线程特性，在任务可能阻塞或耗时长的场景下使用它。",
+      "忽略 TimerTask 中异常处理的重要性，导致整个调度器崩溃。",
+      "认为 Timer 的 schedule 和 scheduleAtFixedRate 在行为上没有区别。"
+    ],
+    "follow_up_paths": [
+      "Timer 内部是如何使用优先级队列来管理 TimerTask 的？它的调度线程是如何工作的？",
+      "如果使用 ScheduledThreadPoolExecutor 替代 Timer，如何配置核心线程数？如何处理被取消的任务？",
+      "Spring 的 @Scheduled 注解底层是如何与 ScheduledThreadPoolExecutor 协作的？"
+    ]
+  }
+}

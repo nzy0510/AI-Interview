@@ -1,0 +1,19 @@
+{
+  "id": "redis-001",
+  "subject": "Redis数据结构底层",
+  "category": "hot200",
+  "difficulty": "P6",
+  "tags": [
+    "Redis",
+    "Data Structure"
+  ],
+  "content": {
+    "principles": "1. String: SDS (Simple Dynamic String). 2. Hash: ziplist/listpack + hashtable. 3. List: quicklist (linkedlist of ziplists). 4. Set: intset + hashtable. 5. ZSet: ziplist/listpack + skiplist. Redis 7 uses listpack to replace ziplist.",
+    "pitfalls": "Big keys leading to blocking. Ziplist/listpack conversion to hashtable/skiplist is one-way (usually). Memory fragmentation in jemalloc.",
+    "follow_up_paths": [
+      "Why SkipList instead of Red-Black Tree?",
+      "SDS vs C String",
+      "Bitmaps and HyperLogLog"
+    ]
+  }
+}

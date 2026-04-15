@@ -1,0 +1,24 @@
+{
+  "id": "mysql-index-optimization-pitfalls",
+  "subject": "MySQL索引失效的常见场景与优化方法",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "索引",
+    "SQL优化",
+    "性能调优"
+  ],
+  "content": {
+    "principles": "索引失效是高频性能问题。核心原理与优化点：1）避免对索引字段使用函数或表达式，如`WHERE YEAR(create_time) = 2023`会导致索引失效。2）联合索引需遵守最左前缀原则，如索引`idx(a,b,c)`，查询条件只有`a`和`c`时，`c`部分无法使用索引。3）利用覆盖索引：查询字段全部在索引中时可避免回表，显著提升性能，例如`SELECT id FROM user WHERE status=1`，若`id`是主键，`status`有索引，则直接走索引返回。4）分析慢查询：使用`EXPLAIN`查看执行计划，重点关注`type`（最好到range以上）、`key`（使用的索引）、`rows`（扫描行数）。线上查询一般要求控制在50ms内。5）大表分页优化：使用游标分页（基于时间戳或ID）替代`LIMIT offset, size`，避免深分页导致的全文扫描。",
+    "pitfalls": [
+      "在WHERE子句中对索引列进行运算或使用函数，导致索引失效。",
+      "错误理解最左前缀原则，联合索引的中间字段缺失导致后续索引字段无法使用。",
+      "忽视覆盖索引的优势，频繁回表导致性能下降。"
+    ],
+    "follow_up_paths": [
+      "如何设计一个联合索引来同时优化`WHERE a=? AND b=?`和`WHERE b=? AND c=?`的查询？",
+      "`EXPLAIN`结果中`type`为`index`和`ALL`分别代表什么？如何优化？",
+      "除了索引，还有哪些手段可以优化大表的COUNT(*)查询性能？"
+    ]
+  }
+}

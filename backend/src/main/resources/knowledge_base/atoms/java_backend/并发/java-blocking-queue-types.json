@@ -1,0 +1,24 @@
+{
+  "id": "java-blocking-queue-types",
+  "subject": "Java阻塞队列的主要类型与适用场景",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "阻塞队列",
+    "线程池",
+    "并发容器"
+  ],
+  "content": {
+    "principles": "Java阻塞队列是线程安全的队列，支持阻塞插入/移除操作。主要类型：1. ArrayBlockingQueue：有界数组队列，构造需指定容量，生产/消费共用一把锁，适用于需限流的资源池或任务队列（如Tomcat工作队列）。2. LinkedBlockingQueue：基于链表的可选有界队列（默认无界），采用分离锁（putLock和takeLock），吞吐量较高，是ThreadPoolExecutor默认队列（如FixedThreadPool）。3. SynchronousQueue：不存储元素，每个插入操作必须等待对应的移除操作，实现直接交接，用于CachedThreadPool等即时处理场景。4. DelayQueue：无界延迟队列，元素需实现Delayed接口，到期才能取出，用于定时任务调度（如Netty的HashedWheelTimer）。5. PriorityBlockingQueue：无界优先级队列（堆实现），按优先级出队，用于需优先处理任务的场景（如消息中间件优先级消息）。选择依据：限流用ArrayBlockingQueue，高吞吐用LinkedBlockingQueue，即时传递用SynchronousQueue，延迟或优先级任务用对应特殊队列。",
+    "pitfalls": [
+      "在无界队列（如默认LinkedBlockingQueue）场景下任务无限堆积，导致内存溢出。",
+      "误用SynchronousQueue作为普通缓存队列，导致生产者阻塞。",
+      "在DelayQueue中未正确实现Delayed接口的getDelay和compareTo方法。"
+    ],
+    "follow_up_paths": [
+      "LinkedBlockingQueue的‘无界’默认值（Integer.MAX_VALUE）在实际使用中可能带来什么问题？如何避免？",
+      "DelayQueue内部是如何使用PriorityQueue和锁机制来管理延迟元素的？",
+      "为什么SynchronousQueue特别适合用于CachedThreadPool？它与工作窃取（Work Stealing）有何异同？"
+    ]
+  }
+}

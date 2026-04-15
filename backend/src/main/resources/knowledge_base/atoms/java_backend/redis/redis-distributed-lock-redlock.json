@@ -1,0 +1,24 @@
+{
+  "id": "redis-distributed-lock-redlock",
+  "subject": "Redis 分布式锁的 Redlock 算法与争议",
+  "category": "redis",
+  "difficulty": "困难",
+  "tags": [
+    "分布式锁",
+    "Redlock",
+    "容错"
+  ],
+  "content": {
+    "principles": "Redlock 算法旨在解决单点 Redis 主从切换时的锁失效问题。它要求客户端在 N 个（通常为 5 个）独立的 Redis 实例上依次尝试加锁（使用 `SET key random_value NX EX 10`）。客户端记录获取锁的开始时间 T1 和结束时间 T2。只有当在超过半数的节点上加锁成功，且总耗时 (T2 - T1) 小于锁的过期时间（如 10 秒）时，才认为锁获取成功。该设计允许最多 F 个节点故障（N = 2F + 1）。主要争议点在于其安全性严重依赖各节点系统时钟的稳定性，GC 停顿或时钟跳跃可能导致多个客户端同时认为自己持有锁。相比而言，基于共识算法（如 Raft）的 ZooKeeper/etcd 能提供更强的安全性保证。",
+    "pitfalls": [
+      "认为 Redlock 是万无一失的分布式锁解决方案，忽略了其对时钟的强依赖。",
+      "部署 Redlock 时使用了共享配置或依赖同一物理机的多个实例，破坏了‘独立性’假设。",
+      "混淆了 Redlock 与单实例加锁方案的适用场景，在不必要的场景下引入复杂性和性能开销。"
+    ],
+    "follow_up_paths": [
+      "Martin Kleppmann 对 Redlock 提出了哪些批评？Antirez 是如何回应的？",
+      "在什么业务场景下适合使用 Redlock？什么场景下单实例 Redis 锁或 etcd 锁更合适？",
+      "Redlock 中，为什么要求总获取时间必须小于锁的过期时间？如果不满足会怎样？"
+    ]
+  }
+}

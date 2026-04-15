@@ -1,0 +1,22 @@
+{
+  "id": "mysql-long-transaction-problems",
+  "subject": "MySQL长事务可能导致的问题",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "事务",
+    "锁",
+    "性能"
+  ],
+  "content": {
+    "principles": "长时间运行的事务（长事务）在MySQL中会引发一系列问题：1. 锁竞争加剧：长事务持有锁的时间更长，导致其他事务等待时间变长，响应变慢，严重时可拖垮连接池。2. 回滚段压力大：InnoDB的MVCC依赖undo log维护多版本数据，长事务不结束，其产生的undo log无法被清理，可能导致ibdata1系统表空间文件膨胀，甚至撑爆磁盘。3. 主从延迟：主库上长时间运行的事务（尤其是涉及大量行变更）在从库重放时，可能导致SQL Thread跟不上，产生复制延迟。4. 临时文件和内存泄漏风险：事务过程中产生的临时结果集、排序缓冲区等状态需要维持，长时间运行可能占用大量内存或触发磁盘临时表，增加OOM风险。5. 逻辑备份失败：使用mysqldump进行备份时，长事务可能阻塞FLUSH TABLES WITH READ LOCK或影响--single-transaction参数创建的一致性快照，导致备份超时或数据不一致。一般建议事务在几秒内完成，超过30秒视为危险信号，可通过查询information_schema.innodb_trx表定位异常事务。",
+    "pitfalls": [
+      "只关注长事务对锁的影响，忽略其对undo log、主从复制和备份的连锁影响。",
+      "认为使用`--single-transaction`参数备份就一定不受长事务影响。"
+    ],
+    "follow_up_paths": [
+      "如何监控和定位数据库中的长事务？除了innodb_trx表，还有哪些方法？",
+      "InnoDB的undo log清理机制是怎样的？什么情况下undo log才会被真正删除？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "mysql-buffer-pool-role",
+  "subject": "MySQL Buffer Pool 的作用与数据读取机制",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "InnoDB",
+    "内存管理",
+    "缓存",
+    "IO"
+  ],
+  "content": {
+    "principles": "Buffer Pool 是 InnoDB 引擎的核心内存区域，用于缓存表数据和索引页。数据读取时，首先在 Buffer Pool 中查找（内存命中），若命中则直接返回，速度极快（纳秒级）。若未命中（缺页），则需从磁盘读取对应数据页加载到 Buffer Pool 再返回（磁盘 IO，约10ms级）。写操作也是先修改 Buffer Pool 中的页（产生脏页），由后台线程异步刷盘。Buffer Pool 通过 LRU 算法管理页的换入换出。其大小（innodb_buffer_pool_size）通常设置为物理内存的70%-80%，是数据库性能的关键。",
+    "pitfalls": [
+      "认为所有查询都会触发磁盘 IO，忽略了 Buffer Pool 的缓存作用",
+      "Buffer Pool 大小设置不当，过小导致缓存命中率低，过大可能引发系统内存交换（swap）",
+      "混淆 Buffer Pool 与查询缓存（Query Cache）的功能"
+    ],
+    "follow_up_paths": [
+      "如何计算和监控 Buffer Pool 的命中率？命中率低通常意味着什么？",
+      "Buffer Pool 的 LRU 算法是如何实现的？如何防止全表扫描污染热点数据？",
+      "脏页（Dirty Page）是如何被刷回磁盘的？有哪些触发刷盘的机制？"
+    ]
+  }
+}

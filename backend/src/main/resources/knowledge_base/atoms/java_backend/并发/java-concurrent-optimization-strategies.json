@@ -1,0 +1,25 @@
+{
+  "id": "java-concurrent-optimization-strategies",
+  "subject": "Java并发性能优化策略",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "锁优化",
+    "无锁编程",
+    "性能调优"
+  ],
+  "content": {
+    "principles": "核心优化策略包括：1. 优先使用无锁结构，如AtomicInteger、AtomicReference，底层基于CAS实现，避免内核态切换，适用于Kafka、Netty等高并发场景。2. 缩小锁粒度，如ConcurrentHashMap的分段锁（Segment）或按业务维度（如用户ID取模）分片加锁，减少锁竞争。3. 替换重锁，synchronized在JDK1.6后优化（偏向锁、轻量级锁、自适应自旋），但竞争激烈时仍会膨胀为重量级锁；ReentrantLock提供更灵活的控制（公平锁、可中断、超时、Condition），但需在finally中unlock避免死锁。4. 读多写少场景使用读写锁，如ReentrantReadWriteLock（需注意写饥饿问题）或JDK8的StampedLock（支持乐观读，性能更好但需小心版本校验）。",
+    "pitfalls": [
+      "误以为synchronized在所有场景下都很重，忽略了其自JDK1.6后的优化（如自适应自旋）。",
+      "使用ReentrantLock时忘记在finally中unlock，导致死锁。",
+      "在写操作频繁的场景使用读写锁，可能导致写线程饥饿。",
+      "过度使用无锁结构，在低竞争场景下反而增加复杂度。"
+    ],
+    "follow_up_paths": [
+      "请详细解释ConcurrentHashMap在JDK8中如何用CAS和synchronized替换了分段锁？",
+      "在什么具体业务场景下，你会选择StampedLock而不是ReentrantReadWriteLock？",
+      "如何设计一个按用户ID分片的锁管理器，并解决死锁问题？"
+    ]
+  }
+}

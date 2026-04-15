@@ -1,0 +1,24 @@
+{
+  "id": "theme-switch-css-variables",
+  "subject": "使用CSS变量实现网站主题切换",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "CSS",
+    "主题化",
+    "用户体验"
+  ],
+  "content": {
+    "principles": "一键切换主题的核心是动态替换样式，最佳实践是使用CSS自定义属性（CSS Variables）配合JavaScript。实现步骤：1. **定义变量**：在 `:root` 或特定主题类（如 `.dark-theme`）中定义所有与主题相关的视觉属性（颜色、字体、间距等）。2. **应用变量**：在整个CSS中使用 `var(--variable-name)` 引用这些变量。3. **状态管理**：通过JavaScript读取用户偏好（来自 `localStorage` 或 `prefers-color-scheme` 媒体查询），为 `<html>` 或 `<body>` 元素添加或移除对应的主题类（如 `dark-theme`）。切换主题时，只需切换类名，所有引用该变量的样式会自动更新。这种方式性能好，无需重绘整个样式表，且易于维护和扩展。",
+    "pitfalls": [
+      "在旧版浏览器（如IE）中使用CSS变量，因不支持而导致主题失效，需提供降级方案。",
+      "CSS变量定义在错误的作用域，导致某些元素无法正确继承或覆盖变量值。",
+      "切换主题时，未持久化用户选择（如存入localStorage），导致刷新后主题重置。"
+    ],
+    "follow_up_paths": [
+      "如何实现跟随系统主题（深色/浅色模式）自动切换，并允许用户手动覆盖？",
+      "CSS变量与Sass/Less变量有何本质区别？在构建流程中如何处理？",
+      "如果主题涉及大量图片资源的替换，应如何设计？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "reentrantlock-aqs-implementation",
+  "subject": "ReentrantLock 基于 AQS 的实现原理",
+  "category": "并发",
+  "difficulty": "困难",
+  "tags": [
+    "Java",
+    "ReentrantLock",
+    "AQS",
+    "锁"
+  ],
+  "content": {
+    "principles": "ReentrantLock 的底层实现依赖于 AQS（AbstractQueuedSynchronizer）。AQS 内部维护一个 volatile int 类型的 state 变量表示同步状态，以及一个 FIFO 的双向链表队列（CLH 变体）来管理等待线程。获取锁时：线程尝试通过 CAS 操作将 state 从 0 改为 1，成功则获取锁，并将 exclusiveOwnerThread 设为当前线程（支持可重入，重入时 state 累加）。若失败（锁已被占用），则将当前线程包装成 Node 节点加入等待队列，并通过 LockSupport.park() 阻塞。释放锁时：将 state 减 1（可重入需多次释放），直到 state 为 0 时彻底释放，并将 exclusiveOwnerThread 置为 null，然后唤醒队列中下一个符合条件的线程。公平锁与非公平锁的核心区别在于尝试获取锁的时机：非公平锁在 lock() 时直接尝试 CAS 抢锁，不管队列中是否有等待者；而公平锁则先检查队列中是否有前驱节点（hasQueuedPredecessors()），若有则直接入队，保证严格的 FIFO 顺序。必须使用 try-finally 模式确保锁的释放，避免死锁。",
+    "pitfalls": [
+      "不清楚 AQS 队列的具体结构（双向链表）和节点状态（SIGNAL, CANCELLED 等）的含义",
+      "混淆公平锁和非公平锁的性能差异及适用场景（非公平锁吞吐量通常更高）",
+      "未能理解可重入性的实现机制（state 计数及 exclusiveOwnerThread 记录）"
+    ],
+    "follow_up_paths": [
+      "AQS 中 ConditionObject（条件变量）是如何实现的？与 Object.wait/notify 有何不同？",
+      "如果获取锁的线程异常退出，没有调用 unlock()，AQS 如何避免死锁？（资源泄漏问题）",
+      "请描述一下 AQS 中独占模式和共享模式的区别。"
+    ]
+  }
+}

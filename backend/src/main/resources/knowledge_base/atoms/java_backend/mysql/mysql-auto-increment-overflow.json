@@ -1,0 +1,24 @@
+{
+  "id": "mysql-auto-increment-overflow",
+  "subject": "MySQL AUTO_INCREMENT 溢出问题与预防",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "自增主键",
+    "数据类型",
+    "容量规划"
+  ],
+  "content": {
+    "principles": "当表的 AUTO_INCREMENT 列达到其数据类型定义的最大值时，数据库无法生成新的唯一自增值，下一次插入会因整数溢出导致自增值卡住不变，进而引发类似“Duplicate entry for key 'PRIMARY'”的主键冲突错误，语句中断。各整数类型有符号/无符号上限：TINYINT (127/255), SMALLINT (32767/65535), MEDIUMINT (8388607/16777215), INT (2147483647/4294967295), BIGINT (~9.2e18/~1.8e19)。预防措施：设计阶段需评估数据增长量，高并发写入场景（如订单、日志）建议直接使用 BIGINT UNSIGNED。若已接近上限，可通过在线工具（如 pt-online-schema-change）修改列类型或提前实施分库分表来分散压力。",
+    "pitfalls": [
+      "低估业务数据增长速度，使用 INT 导致提前溢出",
+      "认为无符号类型可以无限使用，忽视其实际上限",
+      "在已接近上限的大表上直接执行 ALTER TABLE 修改列类型，导致长时间锁表"
+    ],
+    "follow_up_paths": [
+      "除了修改列类型，还有哪些处理自增ID即将耗尽的方法？",
+      "分布式系统中如何生成全局唯一ID以避免单点自增瓶颈？",
+      "AUTO_INCREMENT 的机制在 InnoDB 中是如何实现的？"
+    ]
+  }
+}

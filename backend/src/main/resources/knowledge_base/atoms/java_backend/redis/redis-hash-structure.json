@@ -1,0 +1,21 @@
+{
+  "id": "redis-hash-structure",
+  "subject": "Redis 的 Hash 结构",
+  "category": "redis",
+  "difficulty": "简单",
+  "tags": [
+    "数据结构",
+    "内存编码"
+  ],
+  "content": {
+    "principles": "Redis的Hash是一个字段（field）和值（value）的映射表，存储在一个Key下，类似于编程语言中的Map<String, String>。\n1. **基本操作**：使用 `HSET key field value [field value ...]` 设置字段值，`HGET key field` 获取字段值。适合存储对象（如用户信息），可以独立更新单个字段，无需操作整个对象。\n2. **底层编码**：Redis根据数据量自动切换两种编码方式以平衡内存和性能：\n   - **ziplist（压缩列表）**：用于字段数量少（默认≤512）且值较小（默认≤64字节）的Hash。内存紧凑，字段和值连续存储。\n   - **hashtable（哈希表）**：当字段数或值大小超过阈值时，转换为真正的哈希表，提供O(1)的读写复杂度。\n3. **适用场景**：适用于缓存具有多个独立字段且需要单独更新的对象，如商品详情（price, stock, title）。若总是读取整个对象，直接使用String存储JSON可能更简单。\n4. **限制**：Redis不支持Hash嵌套。存储复杂结构需自行设计Key，例如使用 `user:1001:profile` 和 `user:1001:settings` 分开存储。",
+    "pitfalls": [
+      "候选人可能误以为Hash可以无限存储大对象，而不清楚其内部编码转换的阈值和性能影响。",
+      "候选人可能尝试在Hash中嵌套存储复杂对象，而不知道Redis不支持此功能。"
+    ],
+    "follow_up_paths": [
+      "追问：什么情况下使用Hash存储对象比使用String存储JSON序列化字符串更有优势？",
+      "引导：如果Hash中的某个field值非常大（超过64字节），底层编码会如何变化？这对性能有何影响？"
+    ]
+  }
+}

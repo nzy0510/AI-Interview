@@ -1,0 +1,25 @@
+{
+  "id": "threadpool-exception-handling",
+  "subject": "Java 线程池中任务异常的处理与捕获机制",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "线程池",
+    "异常处理",
+    "Future"
+  ],
+  "content": {
+    "principles": "线程池（ThreadPoolExecutor）默认会捕获任务执行中抛出的 Throwable，防止异常导致工作线程（Worker）意外终止。异常处理途径：1) 通过重写 afterExecute(Runnable r, Throwable t) 钩子方法，可以获取到任务和异常对象，并记录线程信息。2) 使用 submit 提交 Callable 或 Runnable 任务，返回 Future 对象，通过 future.get() 捕获 ExecutionException，再通过 getCause() 获取原始异常。3) 在任务内部自行 try-catch 并记录上下文（如线程名、任务ID）。最佳实践常结合日志框架的 MDC（Mapped Diagnostic Context）在任务执行前后传递上下文信息。",
+    "pitfalls": [
+      "误以为任务抛出的异常会直接导致线程池停止或主线程崩溃。",
+      "使用 execute 提交任务时，未处理异常导致异常信息静默丢失（仅打印到标准错误流）。",
+      "在 afterExecute 中未正确处理 Throwable 为 null 的情况（任务正常完成）。"
+    ],
+    "follow_up_paths": [
+      "如果 afterExecute 方法本身抛出了异常，会对线程池产生什么影响？",
+      "使用 Future.get() 处理异常时，如果主线程一直不调用 get()，异常信息去哪了？",
+      "如何实现一个全局的、与业务逻辑解耦的线程池异常处理器？"
+    ]
+  }
+}

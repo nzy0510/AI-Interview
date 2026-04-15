@@ -1,0 +1,22 @@
+{
+  "id": "spring-bean-lifecycle-detailed",
+  "subject": "Spring Bean 的完整生命周期",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Spring",
+    "IoC",
+    "Bean 生命周期"
+  ],
+  "content": {
+    "principles": "Spring Bean 的生命周期由 IoC 容器管理，主要阶段如下：1. 实例化：通过构造器或工厂方法创建 Bean 实例。2. 属性填充（依赖注入）：通过 setter、字段或构造器注入依赖。3. BeanPostProcessor.postProcessBeforeInitialization：初始化前扩展点，可进行自定义处理。4. 初始化：若实现 `InitializingBean`，则调用 `afterPropertiesSet`；若配置了 `init-method`，则调用指定方法。5. BeanPostProcessor.postProcessAfterInitialization：初始化后扩展点，AOP 代理通常在此阶段完成。6. 放入单例池：单例 Bean 被放入一级缓存 `singletonObjects`。7. 使用阶段：Bean 处于就绪状态，被应用程序使用。8. 销毁：容器关闭时，若实现 `DisposableBean`，则调用 `destroy` 方法；若配置了 `destroy-method`，则调用指定方法。原型（prototype）Bean 容器不管理其销毁，不会调用销毁方法。整个流程的核心扩展点是 `BeanPostProcessor`，Spring 的 AOP、事务等功能都依赖它织入。",
+    "pitfalls": [
+      "混淆初始化前和初始化后扩展点的执行时机和用途。",
+      "误认为原型 Bean 也会经历完整的销毁阶段。"
+    ],
+    "follow_up_paths": [
+      "`BeanPostProcessor` 和 `BeanFactoryPostProcessor` 有什么区别？它们分别在生命周期的哪个阶段起作用？",
+      "如何在 Bean 生命周期的不同阶段注入自定义逻辑？请举例说明。"
+    ]
+  }
+}

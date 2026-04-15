@@ -1,0 +1,23 @@
+{
+  "id": "mysql-sql-tuning",
+  "subject": "MySQL SQL 调优方法论",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "索引",
+    "架构"
+  ],
+  "content": {
+    "principles": "SQL 调优首先需定位慢查询。开启慢查询日志（`slow_query_log`），设置阈值（如 `long_query_time = 1` 秒），捕获执行慢的 SQL。针对慢 SQL，使用 `EXPLAIN` 分析执行计划，重点关注 `type`（避免 ALL）、`key`（是否走索引）、`rows`（扫描行数）和 `Extra`（避免 Using filesort/temporary）。索引设计需遵循最左前缀原则，联合索引的列顺序应与高频查询条件匹配。例如，对于 `SELECT * FROM orders WHERE user_id = 123 AND create_time > '2023-01-01'`，建立 `(user_id, create_time)` 的联合索引是高效的。索引并非越多越好，写多读少的表过多索引会影响写入性能。对于超大表（如上亿行），需考虑分库分表（如使用 ShardingSphere），但会引入跨库事务和 JOIN 难题。热点数据可使用 Redis 等缓存，但需防范缓存穿透、击穿、雪崩问题。",
+    "pitfalls": [
+      "盲目添加索引，不考虑索引维护成本和最左前缀原则，导致索引失效或写入性能下降。",
+      "过早或过度进行分库分表，增加了系统复杂度和维护成本。",
+      "忽略业务逻辑优化，试图单纯通过数据库技术手段解决所有性能问题。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：对于一个既有等值查询（`status = 1`）又有范围查询（`create_time > 'xxx'`）和排序（`ORDER BY update_time DESC`）的复杂 SQL，如何设计一个最有效的联合索引？",
+      "如果候选人答得不好，可以引导：假设发现一条 SQL 执行很慢，`EXPLAIN` 显示 `type` 是 `ALL`，但 `WHERE` 条件里明明有索引字段，可能是什么原因？"
+    ]
+  }
+}

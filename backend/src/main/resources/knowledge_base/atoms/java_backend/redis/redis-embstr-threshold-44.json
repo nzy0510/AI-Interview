@@ -1,0 +1,24 @@
+{
+  "id": "redis-embstr-threshold-44",
+  "subject": "Redis EMBSTR 编码的 44 字节阈值原理与历史",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "内存管理",
+    "字符串编码",
+    "jemalloc"
+  ],
+  "content": {
+    "principles": "EMBSTR 是 Redis 用于优化小字符串存储的编码方式，它将 redisObject 和 SDS（简单动态字符串）连续存放，只进行一次内存分配，以减少指针和内存碎片开销。44 字节的阈值是基于默认内存分配器 jemalloc 的内存对齐规则反推得出的。具体计算如下：redisObject 占 16 字节，SDS header（sdshdr8）占 3 字节，加上字符串内容本身和末尾的 '\\0'，总共不能超过 48 字节，否则 jemalloc 会从分配 32 字节的 chunk 变为 48 字节。因此留给 payload 的空间为：48 - 16 - 3 - 1 = 44 字节。若字符串长度 ≤ 44，则使用 EMBSTR 编码，一次性分配 48 字节；超过 44 字节则退化为 RAW 编码，redisObject 和 SDS 分开两次分配。该值并非硬编码，在不同架构或分配器下可能变化，但 Redis 为统一行为，以 jemalloc 为基准定为 44。EMBSTR 编码在 Redis 3.2 版本引入，旨在优化大量小字符串场景（如 session ID、token、短配置项）。",
+    "pitfalls": [
+      "误以为 44 是任意设定的魔法数字，不理解其与内存分配器对齐规则的关联。",
+      "混淆 EMBSTR 和 RAW 编码的适用场景，不清楚何时会触发编码转换。",
+      "认为该阈值在所有系统和分配器下固定不变。"
+    ],
+    "follow_up_paths": [
+      "除了 jemalloc，如果使用其他内存分配器（如 libc malloc），这个阈值会如何变化？Redis 是如何处理这种差异的？",
+      "SDS 的结构（sdshdr8/16/32/64）如何影响 EMBSTR 的阈值计算？如果字符串长度不变但 SDS 头大小变化，阈值会变吗？",
+      "EMBSTR 编码除了减少内存分配次数，还有哪些性能优势（如缓存局部性）？"
+    ]
+  }
+}

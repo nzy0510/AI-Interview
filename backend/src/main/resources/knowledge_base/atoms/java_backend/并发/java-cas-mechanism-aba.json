@@ -1,0 +1,24 @@
+{
+  "id": "java-cas-mechanism-aba",
+  "subject": "Java CAS（Compare-And-Swap）操作原理、实现与ABA问题",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "CAS",
+    "原子操作",
+    "ABA问题",
+    "Unsafe"
+  ],
+  "content": {
+    "principles": "CAS（Compare-And-Swap）是一种由CPU指令（如x86的`cmpxchg`）支持的原子操作，包含三个参数：内存位置V、预期旧值A和新值B。仅当V的当前值等于A时，才将V更新为B，否则不执行。Java通过`sun.misc.Unsafe`类提供底层CAS操作，`AtomicInteger`、`AtomicLong`等原子类基于此实现（如`incrementAndGet()`通过CAS自旋）。CAS避免了锁的阻塞，适用于低竞争场景。但存在ABA问题（值从A变B又变回A，CAS误认为未变化），可通过`AtomicStampedReference`（带版本戳）或`AtomicMarkableReference`解决。此外，CAS在竞争激烈时自旋开销大，且只能保证单个变量的原子性。",
+    "pitfalls": [
+      "忽视ABA问题及其在特定业务场景（如链表操作）中的风险。",
+      "在高度竞争的场景下滥用CAS，导致CPU空转。",
+      "误以为CAS能保证多个变量的原子性，实际需借助锁或合并变量。"
+    ],
+    "follow_up_paths": [
+      "`AtomicStampedReference`是如何解决ABA问题的？请描述其内部实现机制。",
+      "请对比CAS与锁（如`synchronized`）在性能与适用场景上的根本区别。"
+    ]
+  }
+}

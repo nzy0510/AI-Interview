@@ -1,0 +1,24 @@
+{
+  "id": "java-atomic-classes-usage",
+  "subject": "Java原子类的分类与使用场景",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "原子类",
+    "CAS",
+    "无锁编程"
+  ],
+  "content": {
+    "principles": "Java原子类基于CAS（配合volatile和Unsafe）实现无锁线程安全。常用类包括：1. 基础类型：AtomicInteger、AtomicLong、AtomicBoolean，用于计数器等场景（如incrementAndGet）。2. 引用类型：AtomicReference，原子更新对象引用。3. 数组类型：AtomicIntegerArray，原子更新数组元素。4. 累加器：LongAdder/DoubleAdder，采用分段累加思想，在高并发写场景（如监控埋点、ConcurrentHashMap计数）下性能远优于AtomicLong，但sum()方法非强一致（返回快照）。5. 带版本原子类：AtomicStampedReference/AtomicMarkableReference，通过版本号或标记位解决CAS的ABA问题。选择原则：低并发用基础原子类，高并发写多用累加器，需避免ABA问题时用带版本原子类。",
+    "pitfalls": [
+      "在高并发写场景下错误使用AtomicLong导致CAS竞争激烈，性能下降。",
+      "误以为LongAdder的sum()方法是强一致的，在需要精确实时计数的场景使用它。",
+      "不了解AtomicStampedReference解决ABA问题的原理。"
+    ],
+    "follow_up_paths": [
+      "LongAdder内部的分段累加（Cell数组）是如何工作的？如何解决伪共享问题？",
+      "AtomicInteger的incrementAndGet()在底层是如何通过CAS循环实现的？",
+      "ABA问题在实际业务中会造成什么后果？请举例说明。"
+    ]
+  }
+}

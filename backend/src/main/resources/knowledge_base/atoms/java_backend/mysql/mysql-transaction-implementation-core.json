@@ -1,0 +1,24 @@
+{
+  "id": "mysql-transaction-implementation-core",
+  "subject": "MySQL InnoDB事务实现的核心机制",
+  "category": "mysql",
+  "difficulty": "困难",
+  "tags": [
+    "事务",
+    "InnoDB",
+    "ACID",
+    "锁",
+    "日志"
+  ],
+  "content": {
+    "principles": "MySQL InnoDB引擎通过三大核心机制实现事务的ACID特性：1) Redo Log（重做日志）：确保事务的持久性（Durability）。采用Write-Ahead Logging (WAL)机制，事务提交时，先将所有数据页的修改记录顺序写入redo log（顺序IO），再异步刷盘数据文件（随机IO）。即使宕机，重启后也能通过redo log重放恢复已提交的事务。2) Undo Log（回滚日志）：确保事务的原子性（Atomicity）和隔离性（Isolation）中的多版本控制（MVCC）。记录数据修改前的旧版本，用于事务回滚，并为其他并发事务提供一致性读视图。3) 锁机制：确保隔离性。包括行级锁（共享锁S、排他锁X）、意向锁等，控制并发事务对同一数据的访问。MVCC通过Undo Log构建历史版本链，配合ReadView机制，使得普通SELECT查询（默认REPEATABLE-READ级别）无需加锁即可实现非阻塞的一致性读，极大提升了并发性能。",
+    "pitfalls": [
+      "混淆redo log和binlog的作用。redo log是InnoDB引擎层的物理日志，用于崩溃恢复；binlog是Server层的逻辑日志，用于主从复制和数据归档。",
+      "误认为MVCC可以完全避免加锁，实际上写操作（UPDATE/DELETE）仍需加排他锁。"
+    ],
+    "follow_up_paths": [
+      "详细描述在REPEATABLE-READ隔离级别下，InnoDB如何利用Undo Log和ReadView实现一致性非锁定读。",
+      "什么是“两阶段提交”（2PC）？它在MySQL内部如何协调redo log和binlog的写入以保证数据一致性？"
+    ]
+  }
+}

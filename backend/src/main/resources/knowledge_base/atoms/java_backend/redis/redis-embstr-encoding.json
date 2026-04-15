@@ -1,0 +1,24 @@
+{
+  "id": "redis-embstr-encoding",
+  "subject": "Redis EMBSTR 编码的阈值与内存优化原理",
+  "category": "redis",
+  "difficulty": "困难",
+  "tags": [
+    "内存管理",
+    "数据结构",
+    "编码优化"
+  ],
+  "content": {
+    "principles": "EMBSTR (embedded string) 是 Redis 为优化短字符串设计的一种编码方式。它将 redisObject 结构体与 SDS (Simple Dynamic String) 结构体在内存中连续分配，只需一次内存分配操作。这减少了内存碎片，并利用了 CPU 缓存局部性，提高了访问效率。44 字节的阈值是基于默认内存分配器 jemalloc 的内存对齐规则反推得出的。在 64 位系统中，redisObject 占 16 字节，SDS 结构头（sdshdr8）占 3 字节，加上 1 字节的字符串结束符 '\\0'，总共 20 字节。jemalloc 通常按 8 字节对齐，因此为了将整个 EMBSTR 对象控制在一个 64 字节的内存块内（一个 cache line 大小或常见分配单元），留给字符串本身的空间是 64 - 20 = 44 字节。超过此长度的字符串将使用 RAW (SDS) 编码，即 redisObject 和 SDS 分开分配。",
+    "pitfalls": [
+      "误以为 44 字节是固定不变的，实际上它依赖于系统架构和内存分配器。",
+      "不了解 EMBSTR 与 RAW 编码在内存布局上的根本区别。",
+      "混淆 EMBSTR 和 INT 编码（用于可以表示为整数的字符串）。"
+    ],
+    "follow_up_paths": [
+      "在 32 位系统上，这个阈值会变化吗？为什么？",
+      "除了 EMBSTR，Redis 还有哪些针对不同数据类型的编码优化？（如 ziplist 对于 list/hash/zset）",
+      "如何通过命令查看一个 key 底层使用的编码类型？（`OBJECT ENCODING key`）"
+    ]
+  }
+}

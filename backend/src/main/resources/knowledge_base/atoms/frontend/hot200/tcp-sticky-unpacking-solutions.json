@@ -1,0 +1,26 @@
+{
+  "id": "tcp-sticky-unpacking-solutions",
+  "subject": "TCP 粘包与拆包问题及解决方案",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "TCP",
+    "网络编程",
+    "Netty",
+    "协议设计"
+  ],
+  "content": {
+    "principles": "TCP 是面向字节流的协议，不维护消息边界。发送方多次 write 的数据可能被 TCP 合并成一个数据包发送（Nagle 算法等），或一个大的 write 被拆分成多个包；接收方 read 时，可能一次读到多个应用层消息（粘包），或一个消息分多次读到（拆包）。解决方案需在应用层协议中定义消息边界：1) **固定长度**：每个消息长度固定，不足补填充。简单但浪费带宽。2) **分隔符**：使用特殊字符（如换行符 `\\n`、`\\0`）作为消息结束标志。需转义分隔符本身。3) **长度字段**：最常用。消息头包含表示消息体长度的字段（如 2 字节或 4 字节）。接收方先读固定长度的头，解析出长度 N，再读取后续 N 个字节作为消息体。许多 RPC 框架（如 Dubbo、gRPC）和消息队列（如 RocketMQ、Kafka）都采用此方式。在 Netty 中，通过 `LengthFieldBasedFrameDecoder` 等解码器自动处理。",
+    "pitfalls": [
+      "误认为 TCP 是“包”的传输，试图依赖 `send` 和 `recv` 的次数对应来解析消息。",
+      "使用分隔符方案时，未处理消息体本身包含分隔符的情况，导致错误切分。",
+      "长度字段方案中，未考虑字节序（大端/小端）问题，导致跨平台通信解析错误。",
+      "未设置最大帧长度限制，可能导致恶意客户端发送超大长度字段导致内存耗尽（DoS 攻击）。"
+    ],
+    "follow_up_paths": [
+      "Netty 的 `LengthFieldBasedFrameDecoder` 构造函数中，`lengthFieldOffset`, `lengthFieldLength`, `lengthAdjustment`, `initialBytesToStrip` 这几个参数分别代表什么？请举例说明。",
+      "除了上述三种方案，还有哪些高级的协议设计可以处理粘包拆包（例如，使用 TLV 格式或 Protocol Buffers 等序列化框架）？",
+      "UDP 协议是否存在粘包拆包问题？为什么？"
+    ]
+  }
+}

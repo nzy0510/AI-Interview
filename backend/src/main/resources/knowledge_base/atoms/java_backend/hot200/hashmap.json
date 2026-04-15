@@ -1,0 +1,20 @@
+{
+  "id": "java-001",
+  "subject": "HashMap原理",
+  "category": "hot200",
+  "difficulty": "P6",
+  "tags": [
+    "Java",
+    "Collection",
+    "Source Code"
+  ],
+  "content": {
+    "principles": "1.7 uses Array + Linked List; 1.8 uses Array + Linked List + Red-Black Tree. Treeification occurs when chain length > 8 and array size >= 64. Resize factor is 0.75. 1.8 uses tail insertion and maintains order during resize to avoid infinite loops.",
+    "pitfalls": "Not thread-safe; use ConcurrentHashMap in multi-threaded environments. 1.7 head insertion can cause infinite loops during resize. Hash collisions can degrade performance to O(n) without treeification.",
+    "follow_up_paths": [
+      "ConcurrentHashMap implementation",
+      "Hash collision strategies",
+      "LinkedHashMap for LRU"
+    ]
+  }
+}

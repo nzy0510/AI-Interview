@@ -1,0 +1,23 @@
+{
+  "id": "redis-string-max-size",
+  "subject": "Redis String类型的最大值限制及大Key影响",
+  "category": "redis",
+  "difficulty": "简单",
+  "tags": [
+    "String",
+    "性能",
+    "内存"
+  ],
+  "content": {
+    "principles": "Redis中一个String类型的value最大可存储512MB数据。这是硬编码在Redis源码中的限制，主要为了防止单个value过大导致：1. 内存耗尽。2. 网络传输阻塞。3. 单线程模型下，处理超大value的读写命令会阻塞其他请求，导致延迟飙升。实际生产环境中，建议单个value控制在10KB以内，超过100KB即被视为大Key，可能引发慢查询和内存分配不均。存储大型数据（如图片、视频）的正确做法是使用对象存储（如S3、MinIO），Redis仅存储其URL或索引。",
+    "pitfalls": [
+      "试图在Redis中存储超过512MB的单个String value。",
+      "设计上将大型序列化对象存入单个key，造成大Key问题。",
+      "不了解大Key对Redis单线程性能的严重影响。"
+    ],
+    "follow_up_paths": [
+      "除了String，其他数据类型（如List、Hash）是否有类似的大小限制？",
+      "生产环境中如何检测和处理已经存在的大Key？"
+    ]
+  }
+}

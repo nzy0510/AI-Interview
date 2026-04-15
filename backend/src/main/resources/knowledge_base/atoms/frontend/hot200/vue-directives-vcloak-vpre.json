@@ -1,0 +1,23 @@
+{
+  "id": "vue-directives-vcloak-vpre",
+  "subject": "Vue 指令 v-cloak 与 v-pre 的作用与原理",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Vue",
+    "指令",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "**v-cloak**：用于解决 Vue 应用在首次渲染时，模板中 Mustache 语法（如 `{{ message }}`）在 Vue 实例挂载完成前短暂显示在页面上的“闪烁”问题。其原理是，在 Vue 实例编译完成前，元素上的 `v-cloak` 属性存在，可通过 CSS `[v-cloak] { display: none; }` 将其隐藏；实例挂载后，`v-cloak` 属性被移除，元素正常显示。**v-pre**：用于跳过该元素及其所有子元素的编译过程。适用于包含大量静态内容（如文档中的代码示例）的节点，可以避免 Vue 对其进行不必要的解析和响应式处理，从而提升一定的性能。",
+    "pitfalls": [
+      "忘记添加对应的 CSS 规则，导致 `v-cloak` 无效。",
+      "在需要响应式更新的元素上误用 `v-pre`，导致数据绑定失效。",
+      "过度使用 `v-pre` 进行微优化，而忽略了更大的性能瓶颈。"
+    ],
+    "follow_up_paths": [
+      "除了 `v-cloak`，还有哪些方法可以解决页面初始化时的内容闪烁问题？",
+      "`v-pre` 和 `v-once` 指令在优化静态内容方面有何异同？"
+    ]
+  }
+}

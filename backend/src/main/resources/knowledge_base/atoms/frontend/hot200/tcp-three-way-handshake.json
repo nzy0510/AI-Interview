@@ -1,0 +1,23 @@
+{
+  "id": "tcp-three-way-handshake",
+  "subject": "TCP三次握手",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "网络",
+    "TCP"
+  ],
+  "content": {
+    "principles": "TCP三次握手是建立连接的过程，主要目的是同步双方的初始序列号（ISN），并确认彼此的收发能力。具体流程：1) 客户端发送SYN报文（SYN=1, seq=x，x为客户端ISN）。2) 服务器回复SYN+ACK报文（SYN=1, ACK=1, ack=x+1, seq=y，y为服务器ISN）。3) 客户端发送ACK报文（ACK=1, ack=y+1）。握手完成后，双方状态均变为ESTABLISHED。不能只用两次握手的原因：两次握手无法防止已失效的连接请求报文突然又传送到服务器，导致服务器错误打开连接（历史连接问题），且无法确保客户端确认了服务器的序列号，即无法保证双向通信通道都已准备就绪。",
+    "pitfalls": [
+      "记不清三次握手具体交换了哪些字段（SYN, ACK, seq, ack）",
+      "不理解为什么不能是两次握手",
+      "不清楚握手过程中客户端和服务器的状态变化（CLOSED -> SYN_SENT -> ESTABLISHED; LISTEN -> SYN_RCVD -> ESTABLISHED）"
+    ],
+    "follow_up_paths": [
+      "如果第三次ACK丢失了，会发生什么？连接还能建立吗？",
+      "什么是半连接队列（SYN队列）和全连接队列？队列满了会怎样？",
+      "初始序列号（ISN）为什么是随机生成的？"
+    ]
+  }
+}

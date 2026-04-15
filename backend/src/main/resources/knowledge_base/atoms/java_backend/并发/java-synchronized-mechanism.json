@@ -1,0 +1,25 @@
+{
+  "id": "java-synchronized-mechanism",
+  "subject": "Java synchronized 关键字的工作原理与锁升级",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "锁",
+    "同步",
+    "JVM"
+  ],
+  "content": {
+    "principles": "synchronized 是 Java 内置的互斥同步机制，用于解决竞态条件。它基于对象的监视器锁（Monitor）实现。编译后生成 monitorenter 和 monitorexit 字节码指令。锁的粒度是对象，而非代码。Java 6 后引入锁升级优化：无锁 -> 偏向锁（减少同一线程重复获取锁的开销） -> 轻量级锁（通过 CAS 自旋尝试） -> 重量级锁（真正的操作系统互斥量）。synchronized 保证互斥性、可见性（通过锁的 acquire-release 语义强制刷新工作内存）和一定程度的有序性（acquire 和 release 操作形成的屏障效应）。",
+    "pitfalls": [
+      "认为 synchronized 锁的是代码块或方法本身，而不是对象实例或类对象。",
+      "不理解锁升级过程，误以为 synchronized 在任何情况下都是重量级锁。",
+      "混淆 synchronized 与 volatile 在有序性控制上的粒度差异。"
+    ],
+    "follow_up_paths": [
+      "详细描述从偏向锁膨胀为重量级锁的具体触发条件（如竞争加剧、调用了 wait() 方法）。",
+      "synchronized 的 acquire-release 语义具体如何保证可见性和抑制重排序？与 volatile 的内存屏障有何异同？",
+      "什么是锁粗化（Lock Coarsening）和锁消除（Lock Elimination）？JVM 在什么条件下会进行这些优化？"
+    ]
+  }
+}

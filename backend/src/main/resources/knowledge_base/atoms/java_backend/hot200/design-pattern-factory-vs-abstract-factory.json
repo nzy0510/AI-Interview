@@ -1,0 +1,23 @@
+{
+  "id": "design-pattern-factory-vs-abstract-factory",
+  "subject": "工厂模式与抽象工厂模式的区别",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "设计模式",
+    "创建型模式"
+  ],
+  "content": {
+    "principles": "工厂模式和抽象工厂模式都用于解耦对象创建，但解决的问题层次不同。1. 工厂模式（通常指工厂方法或简单工厂）：针对单个产品等级结构。它定义一个创建对象的接口，让子类决定实例化哪一个类。核心是把 `new` 操作统一收口，便于扩展新类型。例如 `ConnectionFactory.getConnection(String type)` 根据类型返回 `MySQLConnection` 或 `PostgreSQLConnection`。2. 抽象工厂模式：针对多个产品族（一系列相关或依赖的对象）。它提供一个创建一系列相关或相互依赖对象的接口，而无需指定它们具体的类。例如 `DaoFactory` 接口定义了 `createConnection()` 和 `createCache()` 方法，`MysqlRedisFactory` 实现类负责创建配套的 `MySQLConnection` 和 `RedisCache`。抽象工厂强调产品之间的协调性，通常内部会用到多个工厂方法。工厂模式更常见，抽象工厂在需要维护多套独立完整组件组合时使用，但容易过度设计。",
+    "pitfalls": [
+      "混淆“产品等级结构”（同一接口的不同实现）和“产品族”（配套的一系列产品）。",
+      "认为抽象工厂只是多个工厂方法的简单组合，忽略了其创建“产品族”的核心目的。",
+      "在只需要创建单一类型对象时误用抽象工厂，导致设计复杂化。"
+    ],
+    "follow_up_paths": [
+      "Spring 的 `BeanFactory` 和 `ApplicationContext` 属于哪种工厂模式？为什么？",
+      "如果要设计一个跨数据库（MySQL, PostgreSQL）和缓存（Redis, Memcached）的DAO层，如何用抽象工厂实现？画出类图。",
+      "工厂模式和依赖注入（DI）有何异同？它们分别解决了什么问题？"
+    ]
+  }
+}

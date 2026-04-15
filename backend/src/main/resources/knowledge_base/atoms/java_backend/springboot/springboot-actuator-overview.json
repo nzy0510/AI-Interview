@@ -1,0 +1,24 @@
+{
+  "id": "springboot-actuator-overview",
+  "subject": "Spring Boot Actuator 的核心功能与优势",
+  "category": "springboot",
+  "difficulty": "简单",
+  "tags": [
+    "监控",
+    "运维",
+    "微服务"
+  ],
+  "content": {
+    "principles": "Spring Boot Actuator 是用于应用监控和管理的生产级功能模块。核心功能：1. **端点（Endpoints）**：通过 HTTP 或 JMX 暴露预定义的运维端点，如 `/actuator/health`（健康检查）、`/actuator/metrics`（应用指标）、`/actuator/info`（应用信息）、`/actuator/env`（环境变量）等。2. **集成与扩展**：与 Micrometer 集成，可将指标（如 JVM 内存、GC、HTTP 请求）无缝导出到 Prometheus、Datadog 等监控系统。支持自定义端点（通过 `@Endpoint`、`@ReadOperation` 等注解）。3. **配置**：通过 `management.endpoints.web.exposure.include` 控制暴露哪些端点；可结合 Spring Security 进行访问认证。优势：1. **开箱即用**：引入 `spring-boot-starter-actuator` 依赖即可。2. **标准化观测入口**：为微服务架构提供了统一的健康检查、指标收集接口，便于运维脚本和告警规则复用。3. **深度集成 Spring 生态**：能自动收集 Spring MVC、数据源、缓存等组件的运行时信息。",
+    "pitfalls": [
+      "安全风险：生产环境必须对 Actuator 端点进行访问控制（如通过 Spring Security），避免敏感信息（如 `env`、`heapdump`）泄露。",
+      "性能开销：频繁采集和暴露指标可能带来轻微的性能影响，需根据实际情况调整采集频率。",
+      "端点依赖：某些端点（如 `health`）可能依赖外部服务（数据库、Redis），配置不当可能导致健康检查失败，引发服务误判。"
+    ],
+    "follow_up_paths": [
+      "如何自定义一个 Actuator 端点来暴露应用的业务指标（如当前在线用户数）？",
+      "Actuator 的 `health` 端点如何与 Spring Cloud 的服务注册发现（如 Eureka）集成？",
+      "在 Kubernetes 环境中，如何利用 Actuator 端点实现就绪性和存活性探针（Readiness/Liveness Probes）？"
+    ]
+  }
+}

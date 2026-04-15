@@ -1,0 +1,24 @@
+{
+  "id": "springboot-scheduled-tasks",
+  "subject": "Spring Boot 定时任务实现与局限",
+  "category": "springboot",
+  "difficulty": "中等",
+  "tags": [
+    "定时任务",
+    "调度",
+    "并发"
+  ],
+  "content": {
+    "principles": "Spring Boot 中实现定时任务最常用的方式是使用 `@Scheduled` 注解，并需在配置类上使用 `@EnableScheduling` 开启支持。`@Scheduled` 支持三种策略：`fixedRate`（固定频率，上次开始后间隔指定时间）、`fixedDelay`（固定延迟，上次结束后间隔指定时间）和 `cron` 表达式。默认情况下，所有定时任务共享一个单线程的 `TaskScheduler`，任务是串行执行的。若需并行，需自定义 `TaskScheduler` 或 `ThreadPoolTaskScheduler` 并配置线程池。`@Scheduled` 注解的方案仅适用于单实例应用。在集群部署时，多个应用实例会同时执行定时任务，导致重复执行。此时需要引入分布式调度框架（如 XXL-JOB, Elastic-Job, Quartz with DB lock）来保证任务在集群中的唯一性。",
+    "pitfalls": [
+      "默认单线程执行，长任务会阻塞后续任务，误以为是任务未触发。",
+      "在集群环境中直接使用 `@Scheduled`，导致任务被重复执行，可能引发数据不一致。",
+      "对 `fixedRate` 和 `fixedDelay` 的区别理解不清。"
+    ],
+    "follow_up_paths": [
+      "如何配置一个自定义的 `ThreadPoolTaskScheduler` 来并行执行定时任务？",
+      "在分布式环境下，除了引入中间件，还有哪些设计模式可以避免定时任务重复执行？",
+      "`@Scheduled` 的 cron 表达式与 Linux 的 crontab 表达式有何异同？"
+    ]
+  }
+}

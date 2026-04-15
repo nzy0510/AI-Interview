@@ -1,0 +1,23 @@
+{
+  "id": "microservice-dubbo-vs-springcloud-gateway",
+  "subject": "Dubbo 与 Spring Cloud Gateway 的核心区别与定位",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "微服务",
+    "Dubbo",
+    "Spring Cloud Gateway",
+    "架构"
+  ],
+  "content": {
+    "principles": "Dubbo 是 RPC（远程过程调用）框架，专注于服务间的透明、高性能通信。它基于 TCP 协议（默认使用 Netty），解决的是服务A如何高效调用服务B的问题。核心是服务治理（注册发现、负载均衡、容错）。Spring Cloud Gateway 是 API 网关，作为系统的统一流量入口，处理所有外部 HTTP/HTTPS 请求。它基于 WebFlux 响应式编程，核心功能是路由转发、限流、鉴权、熔断等流量治理。两者定位不同：Gateway 是对外（处理用户请求），Dubbo 是对内（处理服务间调用），在典型微服务架构中可协同使用。",
+    "pitfalls": [
+      "混淆两者定位，认为它们是竞争或替代关系。",
+      "误认为 Dubbo 也能处理 HTTP 网关层的路由和过滤。"
+    ],
+    "follow_up_paths": [
+      "除了 Spring Cloud Gateway，还有哪些常见的 API 网关？（如 Nginx, Kong, Zuul）",
+      "Dubbo 3.0 在云原生方面有哪些新特性？（如应用级服务发现、Triple 协议）"
+    ]
+  }
+}

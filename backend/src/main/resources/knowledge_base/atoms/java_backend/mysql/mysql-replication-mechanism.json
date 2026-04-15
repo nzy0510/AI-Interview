@@ -1,0 +1,22 @@
+{
+  "id": "mysql-replication-mechanism",
+  "subject": "MySQL主从同步机制与实现原理",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "主从复制",
+    "数据一致性",
+    "binlog"
+  ],
+  "content": {
+    "principles": "MySQL主从同步本质是数据变更事件的异步传递与重放。实现基于三个核心线程和日志文件：1) 主库（Master）将数据更改（DML/DDL）以事件形式记录到二进制日志（binlog）中。2) 从库（Slave）的I/O线程连接主库，请求并接收binlog事件，将其写入本地的中继日志（relay log）。3) 从库的SQL线程读取relay log中的事件，并按顺序重放，从而保持与主库数据一致。整个过程默认是异步的。binlog格式推荐使用`ROW`模式，因为它记录每行数据的实际变化，比`STATEMENT`模式（记录SQL语句）更能保证数据一致性，避免因函数、触发器或存储过程导致的主从不一致。半同步复制（semi-sync replication）可部分缓解数据丢失风险，它要求至少一个从库确认收到binlog事件后，主库才向客户端返回事务提交成功。",
+    "pitfalls": [
+      "混淆异步复制、半同步复制和全同步复制的区别及应用场景。",
+      "不了解不同binlog格式（STATEMENT, ROW, MIXED）的优缺点及适用场景。"
+    ],
+    "follow_up_paths": [
+      "半同步复制在什么情况下仍然可能丢失数据？如何实现更强的一致性保证（如组复制）？",
+      "如果主库宕机且binlog未及时传输到从库，如何进行数据恢复？基于GTID的复制如何简化故障切换？"
+    ]
+  }
+}

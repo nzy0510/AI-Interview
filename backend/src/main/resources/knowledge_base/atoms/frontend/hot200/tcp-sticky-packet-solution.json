@@ -1,0 +1,24 @@
+{
+  "id": "tcp-sticky-packet-solution",
+  "subject": "TCP粘包拆包问题与解决方案",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "网络协议",
+    "TCP",
+    "Netty"
+  ],
+  "content": {
+    "principles": "TCP是面向字节流的传输层协议，不保证应用层消息的边界。发送端写入的多个数据包可能被合并成一个大的TCP报文段发送（粘包），也可能一个数据包被拆分成多个TCP报文段发送（拆包）。根本原因是TCP只保证字节流的顺序和可靠性，不保证收发消息的次数对等。\n\n常见解决方案需在应用层协议中定义消息边界：\n1. 固定长度：每个消息长度固定，不足部分补零。实现简单但不够灵活，浪费带宽。\n2. 分隔符：使用特殊字符（如换行符）作为消息结束标志。需要转义分隔符本身，解析效率较低。\n3. 长度字段（最常用）：消息采用“头部+体部”格式，头部固定字段（如4字节）存储消息体的实际长度。接收方先读头部，再根据长度读取完整消息体。\n\nNetty等网络框架提供了`LengthFieldBasedFrameDecoder`等解码器来处理此类问题。Dubbo、RocketMQ等中间件内部均采用此方案。",
+    "pitfalls": [
+      "认为TCP会保持消息边界，不理解粘包拆包的必然性。",
+      "混淆TCP报文段（Segment）和应用层消息（Message）的概念。",
+      "仅依赖TCP的可靠性，未在应用层设计消息边界协议。"
+    ],
+    "follow_up_paths": [
+      "Netty的`LengthFieldBasedFrameDecoder`是如何工作的？它的构造参数（如lengthFieldOffset, lengthAdjustment）有什么作用？",
+      "除了提到的三种方案，还有哪些处理消息边界的协议设计（如HTTP/2的帧结构）？",
+      "如果使用UDP协议，还会有粘包拆包问题吗？为什么？"
+    ]
+  }
+}

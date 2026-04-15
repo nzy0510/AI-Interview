@@ -1,0 +1,25 @@
+{
+  "id": "cdc-concept-and-tools",
+  "subject": "CDC（变更数据捕获）概念与常见工具",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "CDC",
+    "数据同步",
+    "实时计算",
+    "架构"
+  ],
+  "content": {
+    "principles": "CDC（Change Data Capture）是一种通过解析数据库事务日志（如MySQL的binlog、PostgreSQL的WAL）来捕获数据变更（增删改）的技术。它不依赖业务代码侵入，能以低延迟将变更事件同步到下游系统（如缓存、数据仓库、消息队列），实现数据实时流动。相比定时轮询，CDC避免了高频查询对源库的压力和延迟问题。常见开源工具有：1) Debezium（基于Kafka Connect，支持多数据库）。2) Canal（阿里开源，专用于MySQL，模拟从库拉取binlog）。3) Flink CDC（集成在计算引擎中）。商业产品如Oracle GoldenGate。实现时需注意DDL变更处理和可靠的offset存储以实现断点续传。",
+    "pitfalls": [
+      "混淆CDC与基于查询的增量同步，不清楚CDC依赖数据库日志的本质。",
+      "忽略CDC工具对源数据库版本和配置的依赖（如binlog格式必须为ROW）。",
+      "低估了处理DDL变更（如删列、改类型）和schema演化的复杂度。"
+    ],
+    "follow_up_paths": [
+      "Debezium是如何保证在分布式环境下，捕获到的变更事件顺序与数据库提交顺序一致的？",
+      "如果源数据库是主从架构，CDC应该连接主库还是从库？各有什么优缺点？",
+      "CDC捕获的变更事件中，如何获取变更前的数据（before image）？这在哪些业务场景下是必需的？"
+    ]
+  }
+}

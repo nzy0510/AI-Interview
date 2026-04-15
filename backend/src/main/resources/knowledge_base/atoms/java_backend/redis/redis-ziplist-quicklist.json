@@ -1,0 +1,23 @@
+{
+  "id": "redis-ziplist-quicklist",
+  "subject": "Redis Ziplist 与 Quicklist 数据结构的特点",
+  "category": "redis",
+  "difficulty": "困难",
+  "tags": [
+    "数据结构",
+    "内存优化",
+    "内部实现"
+  ],
+  "content": {
+    "principles": "Ziplist：一种紧凑的、连续内存存储结构，用于存储小对象（如小列表、哈希、有序集合）。它将多个数据项连续存储，无指针开销，节省内存。但插入、删除需要移动后续元素，时间复杂度 O(n)，且可能触发连锁更新（cascade update），性能不稳定。通过配置参数（如 list-max-ziplist-size）控制使用条件。\nQuicklist：Redis 3.2 后 List 的默认实现，是双向链表与 Ziplist 的结合。每个链表节点是一个 Ziplist 片段。优点：\n1. 将大 Ziplist 分段，插入删除操作的影响范围被限制在局部 Ziplist 内，避免整体数据搬移。\n2. 支持对两端节点进行 LZF 压缩（通过 list-compress-depth 配置），进一步节省内存。\n3. 平衡了内存效率和操作性能，更适合生产环境。Hash 和 Zset 类型的小对象仍可能使用 Ziplist 编码，但 List 已统一使用 Quicklist。",
+    "pitfalls": [
+      "不了解 Ziplist 的连锁更新机制及其对性能的潜在影响。",
+      "误以为 Quicklist 是完全的链表结构，不清楚其内部 Ziplist 分段的细节。",
+      "混淆不同数据类型的底层编码方式。"
+    ],
+    "follow_up_paths": [
+      "连锁更新（cascade update）具体是如何发生的？在什么配置下最容易触发？",
+      "Quicklist 的压缩深度（list-compress-depth）参数如何影响内存和性能？"
+    ]
+  }
+}

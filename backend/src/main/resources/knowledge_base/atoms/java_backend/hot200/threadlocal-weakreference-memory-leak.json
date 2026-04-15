@@ -1,0 +1,23 @@
+{
+  "id": "threadlocal-weakreference-memory-leak",
+  "subject": "ThreadLocal的弱引用与内存泄漏",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "并发",
+    "ThreadLocal",
+    "内存管理"
+  ],
+  "content": {
+    "principles": "ThreadLocal内部使用ThreadLocalMap存储线程本地变量，其Key（ThreadLocal实例）被设计为弱引用（WeakReference），而Value是强引用。这样设计的核心目的是防止ThreadLocal实例本身的内存泄漏：当外部强引用（如`ThreadLocal tl = new ThreadLocal()`中的`tl`）被置为null后，由于ThreadLocalMap的Key是弱引用，在下一次GC时该Key会被回收，Entry中的Key变为null。然而，Value由于是强引用，且Entry本身未被移除，仍然存在，这形成了“脏Entry”导致Value对象无法被回收，这才是真正的内存泄漏风险。因此，最佳实践是在使用完ThreadLocal后，必须显式调用`remove()`方法清理Entry，尤其是在线程池等长生命周期线程场景中。",
+    "pitfalls": [
+      "误以为Key是弱引用就能完全避免内存泄漏，实际上Value泄漏风险更大。",
+      "在线程池环境中使用ThreadLocal后不调用remove，导致多个任务间的数据串扰和内存累积。",
+      "认为ThreadLocal的get/set操作会自动清理Key为null的Entry，实际上只有在调用set、get、remove时，遇到哈希冲突探测到null key的Entry才会进行启发式清理。"
+    ],
+    "follow_up_paths": [
+      "ThreadLocalMap在set/get时是如何进行惰性清理（清理Key为null的Entry）的？",
+      "如果使用静态的ThreadLocal实例，是否还有内存泄漏风险？为什么？（答案：有，静态变量生命周期长，但线程池中线程不销毁，Value对象仍会累积，仍需remove）"
+    ]
+  }
+}

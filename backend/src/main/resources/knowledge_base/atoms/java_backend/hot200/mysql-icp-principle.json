@@ -1,0 +1,24 @@
+{
+  "id": "mysql-icp-principle",
+  "subject": "MySQL索引条件下推（ICP）原理与作用",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "MySQL",
+    "索引优化",
+    "查询性能"
+  ],
+  "content": {
+    "principles": "索引条件下推（Index Condition Pushdown, ICP）是MySQL的一项查询优化技术。传统查询流程中，存储引擎层根据索引定位记录，将满足索引条件（如最左前缀）的记录ID返回给Server层，再由Server层判断其他WHERE条件是否满足。ICP允许存储引擎层在遍历索引时，提前应用WHERE子句中所有可以利用索引字段的过滤条件（即使这些条件不能用于索引查找，如范围查询后的列），直接过滤掉不满足条件的记录，只将真正符合条件的记录ID进行回表操作。这显著减少了不必要的回表次数和I/O开销。例如，对于联合索引`idx_name_age (name, age)`和查询`WHERE name LIKE '张%' AND age > 30`，传统方式只能利用`name`的前缀匹配，`age > 30`需回表后判断；启用ICP后，`age > 30`的条件会在索引遍历时直接应用。ICP不适用于主键索引（聚簇索引），也不适用于覆盖索引场景（因为无需回表）。可通过执行计划中Extra字段出现`Using index condition`来判断是否启用了ICP。",
+    "pitfalls": [
+      "误以为ICP适用于所有索引，实际上不适用于主键索引和覆盖索引场景。",
+      "认为联合索引中范围查询后的列完全无法被利用，实际上ICP可以使其在存储引擎层被用于过滤。",
+      "忽略检查执行计划，无法确认ICP是否实际生效。"
+    ],
+    "follow_up_paths": [
+      "ICP是如何与覆盖索引（Covering Index）互斥的？请解释其根本原因。",
+      "除了ICP，还有哪些MySQL查询优化技术可以减少回表操作？",
+      "如果查询条件中包含了非索引列的过滤，ICP还能起到优化作用吗？为什么？"
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "java-threadlocal-best-practices",
+  "subject": "ThreadLocal 的正确使用与最佳实践",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "ThreadLocal",
+    "内存管理",
+    "线程池"
+  ],
+  "content": {
+    "principles": "ThreadLocal 用于为每个线程提供独立的变量副本，实现线程隔离。最佳实践包括：1. 尽量重写 initialValue() 方法以提供默认值。2. 使用 static final 修饰 ThreadLocal 实例，防止内存泄漏和实例泛滥。3. 在 finally 块中显式调用 remove() 方法进行清理，尤其是在线程池等线程复用场景下，避免因 Entry 残留导致内存泄漏。4. 优先使用局部变量或参数传递解决问题，避免滥用 ThreadLocal。5. 原生 ThreadLocal 不支持父子线程数据传递，需使用 InheritableThreadLocal 或更完善的 TransmittableThreadLocal。6. 不应将 ThreadLocal 作为高性能缓存使用。",
+    "pitfalls": [
+      "在线程池环境中忘记调用 remove()，导致内存泄漏或数据污染（拿到上个请求的残留数据）。",
+      "滥用 ThreadLocal，用于本可通过局部变量或参数传递解决的场景。",
+      "误以为 ThreadLocal 支持父子线程数据传递，或误用 InheritableThreadLocal 于线程池场景。",
+      "将 ThreadLocal 当作缓存使用，存储大对象或大量数据。"
+    ],
+    "follow_up_paths": [
+      "如果候选人提到了 remove() 的重要性，可以追问：'在 Web 框架（如 Spring MVC）的拦截器或过滤器中，如何确保 ThreadLocal 被正确清理？'",
+      "如果候选人提到了线程池，可以追问：'为什么 InheritableThreadLocal 对线程池不友好？TransmittableThreadLocal 是如何解决这个问题的？'",
+      "如果候选人回答不完整，可以引导：'除了 finally 块中手动 remove，还有哪些设计模式或框架机制可以帮助我们自动管理 ThreadLocal 的生命周期？'"
+    ]
+  }
+}

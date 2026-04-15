@@ -1,0 +1,23 @@
+{
+  "id": "java-countdownlatch-cyclicbarrier",
+  "subject": "CountDownLatch 与 CyclicBarrier 的对比与使用",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "线程协作",
+    "同步器"
+  ],
+  "content": {
+    "principles": "CountDownLatch 是一个一次性使用的同步辅助工具。构造时给定一个计数。await() 方法阻塞调用线程，直到 countDown() 方法被调用足够次数使计数归零。一旦归零，所有等待线程被释放，后续调用 await() 会立即通过。适用于‘一等多’场景（如主线程等待多个服务初始化完成）。CyclicBarrier 是一个可循环使用的屏障。一组线程互相等待，直到所有线程都到达屏障点（调用 await()），然后所有线程被释放，屏障可重置用于下一次循环。适用于‘多等一’场景（如并发计算分阶段同步）。关键区别：CountDownLatch 不可重置，计数由事件驱动；CyclicBarrier 可重置，由线程自身到达驱动。",
+    "pitfalls": [
+      "混淆两者适用场景：用 CountDownLatch 实现线程互相等待，或用 CyclicBarrier 实现主从等待。",
+      "CountDownLatch 的计数归零后无法再次使用，需要重新创建实例。",
+      "CyclicBarrier 的构造器可以传入一个 Runnable 作为屏障动作，该动作由最后一个到达屏障的线程执行。"
+    ],
+    "follow_up_paths": [
+      "CountDownLatch 内部是如何实现计数和线程等待/唤醒的？",
+      "CyclicBarrier 在重置（reset）时，已经等待的线程会怎样？",
+      "如何用 CountDownLatch 实现类似 CyclicBarrier 的‘多等一’效果？（提示：使用多个 CountDownLatch）"
+    ]
+  }
+}

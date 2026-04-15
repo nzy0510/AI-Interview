@@ -1,0 +1,23 @@
+{
+  "id": "java-volatile-vs-synchronized",
+  "subject": "volatile与synchronized的区别",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "内存模型",
+    "锁机制"
+  ],
+  "content": {
+    "principles": "volatile和synchronized都涉及Java内存模型，但职责和机制不同。volatile：1) 保证可见性（写立即刷新到主内存，读从主内存读取）和禁止指令重排序（通过内存屏障实现，如StoreStore, StoreLoad屏障）。2) 不保证原子性。synchronized：1) 保证可见性、原子性和有序性。2) 通过对象监视器（monitor）实现互斥锁，进入同步块前获取锁，执行后释放锁，解锁前将变量刷新回主内存。3) 在JDK6后进行了优化（偏向锁、轻量级锁、重量级锁自适应升级）。适用场景：volatile适合状态标志位（如boolean running）；synchronized适合复合操作（如i++）。性能：volatile几乎无锁开销；synchronized在无竞争时开销小，竞争激烈时升级为重量级锁影响吞吐。",
+    "pitfalls": [
+      "认为volatile能保证任何操作的原子性（如误用于i++）",
+      "在只需要可见性保证的场景过度使用synchronized，导致性能下降",
+      "不了解synchronized锁升级过程及优化机制"
+    ],
+    "follow_up_paths": [
+      "volatile的内存屏障具体是如何插入的？在x86和ARM架构下有区别吗？",
+      "synchronized锁升级（偏向锁->轻量级锁->重量级锁）的具体触发条件是什么？",
+      "请举例说明哪些并发工具（如ConcurrentHashMap）内部结合使用了volatile和CAS来减少锁竞争？"
+    ]
+  }
+}

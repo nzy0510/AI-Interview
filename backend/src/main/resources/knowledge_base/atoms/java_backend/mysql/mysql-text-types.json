@@ -1,0 +1,24 @@
+{
+  "id": "mysql-text-types",
+  "subject": "MySQL TEXT 类型详解与选择",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "数据类型",
+    "存储",
+    "大对象"
+  ],
+  "content": {
+    "principles": "MySQL 的 TEXT 类型是一组用于存储大文本的字段类型，不同变种容量差异大：1) **TINYTEXT**：最大 255 字节。2) **TEXT**：最大 65,535 字节（约 64KB），实际字符数受字符集影响（如 utf8mb4 下约 16383 字符）。3) **MEDIUMTEXT**：最大 16,777,215 字节（约 16MB）。4) **LONGTEXT**：最大 4,294,967,295 字节（约 4GB）。TEXT 类型数据不存储在行内，而是将实际内容放在额外的溢出页，行内只存指针，因此访问时有间接寻址开销，性能通常低于 VARCHAR。若字段常用于 WHERE 或 ORDER BY，应避免使用 TEXT，因为对其建立普通索引有长度限制（默认前缀 767 字节，受 `innodb_large_prefix` 影响），全文检索可考虑 FULLTEXT 索引或外部搜索引擎。",
+    "pitfalls": [
+      "混淆 TEXT 与 VARCHAR 的存储和性能差异，盲目使用 TEXT",
+      "不了解字符集对 TEXT 实际可存储字符数的影响",
+      "试图在 TEXT 列上创建普通索引时遇到长度限制错误"
+    ],
+    "follow_up_paths": [
+      "TEXT 和 BLOB 类型在存储机制上有什么异同？",
+      "如何优化包含 TEXT 列的表的设计和查询？",
+      "什么场景下应该考虑使用外部存储（如文件系统或对象存储）代替 TEXT 类型？"
+    ]
+  }
+}

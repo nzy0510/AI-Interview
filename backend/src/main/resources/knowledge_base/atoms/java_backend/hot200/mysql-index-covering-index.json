@@ -1,0 +1,22 @@
+{
+  "id": "mysql-index-covering-index",
+  "subject": "MySQL 覆盖索引",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "MySQL",
+    "索引",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "覆盖索引指一个索引包含了查询语句所需的所有字段，使得查询可以仅通过扫描索引树就能获取结果，无需回表。例如，表 `orders` 有联合索引 `(status, create_time, user_id)`，查询 `SELECT user_id FROM orders WHERE status = 1` 即可使用覆盖索引。覆盖索引能极大减少随机 I/O，提升查询性能，尤其是对于范围查询和聚合操作。但创建过宽的覆盖索引会增加写操作成本和索引维护开销。",
+    "pitfalls": [
+      "误将 `SELECT *` 查询的优化寄托于覆盖索引。",
+      "为了覆盖过多查询而创建过于宽泛的联合索引，导致写入性能下降。"
+    ],
+    "follow_up_paths": [
+      "如何通过 `EXPLAIN` 的 `Extra` 字段中的 `Using index` 来判断是否使用了覆盖索引？",
+      "在已有索引基础上，如何通过索引条件下推（ICP）进一步优化覆盖索引查询？"
+    ]
+  }
+}

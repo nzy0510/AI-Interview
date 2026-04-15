@@ -1,0 +1,24 @@
+{
+  "id": "redis-performance-bottleneck-analysis",
+  "subject": "Redis 性能瓶颈分析与优化策略",
+  "category": "redis",
+  "difficulty": "困难",
+  "tags": [
+    "性能调优",
+    "架构",
+    "监控"
+  ],
+  "content": {
+    "principles": "Redis 性能瓶颈通常源于 CPU（单线程）、内存、网络或磁盘。分析步骤：1. 使用 INFO stats、redis-cli --latency、SLOWLOG 等工具定位。2. 常见问题及优化：a) 大 Key：拆分（如将大 Hash 按字段或 slot 拆分）、使用 SCAN 替代 KEYS。b) 慢查询：优化数据结构（如频繁修改分数的 ZSET 可考虑降级为 LIST+索引或使用 Streams）、禁用阻塞命令。c) 网络/吞吐量：使用 Pipeline 减少 RTT、考虑读写分离（主从）。d) 内存：优化数据结构（如使用 ziplist 编码的小对象）、设置过期策略、启用内存淘汰策略。e) 扩展性：数据量过大时采用 Redis Cluster 进行分片，注意 multi-key 操作需使用 hash tag 确保落在同一 slot。f) 热点数据：引入本地缓存（如 Caffeine）作为前置，减少对 Redis 的访问压力。",
+    "pitfalls": [
+      "盲目增加 Redis 实例数量，而不先分析是否存在大 Key 或慢查询。",
+      "在 Cluster 模式下使用涉及多个 key 的操作（如 MGET）而未使用 hash tag，导致报错。",
+      "过度依赖 KEYS 命令导致服务阻塞。"
+    ],
+    "follow_up_paths": [
+      "Redis 单线程模型下，如何理解其高并发能力？瓶颈真正在哪里？",
+      "Redis Cluster 的数据分片原理是什么？扩容和缩容时数据如何迁移？",
+      "如何设计一个多级缓存（本地缓存 + Redis）架构？缓存一致性如何保证？"
+    ]
+  }
+}

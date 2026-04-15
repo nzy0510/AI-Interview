@@ -1,0 +1,22 @@
+{
+  "id": "mysql-delete-drop-truncate-diff",
+  "subject": "DELETE、DROP与TRUNCATE的区别",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "DDL",
+    "DML",
+    "数据删除"
+  ],
+  "content": {
+    "principles": "DELETE、DROP、TRUNCATE都是删除数据的命令，但有本质区别：1. DELETE：属于DML（数据操作语言），逐行删除数据，每删除一行都会记录undo log（支持回滚）和redo log，执行速度相对较慢。可以带WHERE条件删除部分数据。删除后，表空间不会立即释放（标记为可复用），自增列的值不会重置。2. TRUNCATE：属于DDL（数据定义语言），通过直接删除并重建表结构的方式来清空整个表的数据。操作不记录单行日志（无法回滚），执行速度极快。会释放表空间（对于InnoDB，会释放除基本结构外的空间），并重置自增列。3. DROP：属于DDL，直接删除整个表（包括表结构、数据、索引、约束等），释放所有关联的空间。操作不可逆。总结：DELETE是条件删除、可回滚、慢；TRUNCATE是清空全表、不可回滚、快、重置自增；DROP是删除整个表。",
+    "pitfalls": [
+      "误以为TRUNCATE操作可以回滚（在大多数数据库和默认设置下不能）。",
+      "混淆DELETE和TRUNCATE对自增ID的影响。"
+    ],
+    "follow_up_paths": [
+      "从实现原理上，为什么TRUNCATE比DELETE快这么多？",
+      "在InnoDB引擎下，执行DELETE后，如何才能真正释放磁盘空间？"
+    ]
+  }
+}

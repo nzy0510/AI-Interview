@@ -1,0 +1,24 @@
+{
+  "id": "java-collection-framework-overview",
+  "subject": "Java 集合框架概述与核心类选择",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Java",
+    "集合框架",
+    "数据结构"
+  ],
+  "content": {
+    "principles": "Java集合类主要分为两大体系：Collection接口和Map接口。Collection下主要有List（有序可重复，如ArrayList基于数组，LinkedList基于双向链表）、Set（无序不可重复，如HashSet基于HashMap，LinkedHashSet维护插入顺序，TreeSet基于红黑树排序）、Queue（队列，如ArrayDeque、ConcurrentLinkedQueue）。Map是键值对结构，如HashMap（数组+链表/红黑树，非线程安全）、ConcurrentHashMap（分段锁+CAS，线程安全）、LinkedHashMap（维护插入顺序）、TreeMap（按键排序）。选择依据：随机访问用ArrayList，频繁增删用LinkedList；去重用HashSet，保序用LinkedHashSet，排序用TreeSet；高并发Map用ConcurrentHashMap。",
+    "pitfalls": [
+      "混淆ArrayList和LinkedList的适用场景，误以为LinkedList在任何情况下增删都快（实际中间插入仍需遍历）。",
+      "认为HashSet是有序的，或者TreeSet的排序是插入顺序。",
+      "在多线程环境下误用非线程安全的HashMap导致数据错乱。"
+    ],
+    "follow_up_paths": [
+      "HashMap的负载因子、扩容机制以及链表转红黑树的阈值是多少？",
+      "ConcurrentHashMap在JDK1.7和1.8中实现有何不同？为什么放弃了分段锁？",
+      "LinkedHashMap如何实现LRU缓存？请描述其removeEldestEntry方法的作用。"
+    ]
+  }
+}

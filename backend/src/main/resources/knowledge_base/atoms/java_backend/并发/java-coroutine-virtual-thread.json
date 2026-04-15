@@ -1,0 +1,24 @@
+{
+  "id": "java-coroutine-virtual-thread",
+  "subject": "协程与Java虚拟线程",
+  "category": "并发",
+  "difficulty": "困难",
+  "tags": [
+    "协程",
+    "虚拟线程",
+    "高并发"
+  ],
+  "content": {
+    "principles": "协程是用户态轻量级线程，由程序自身控制挂起和恢复，切换成本远低于操作系统线程。Java本身无原生协程支持。1) Kotlin通过suspend函数和launch等API提供完整协程，底层由编译器将suspend函数转换为状态机，运行时通过Continuation管理上下文。2) Java可通过响应式编程（如Project Reactor, RxJava）模拟异步流，但代码复杂度高。3) Java从JDK19引入虚拟线程（Virtual Thread），JDK21正式发布。虚拟线程由JVM调度，映射到少量平台线程（载体线程），可支持百万数量级。写法为传统同步风格，在IO等阻塞操作时自动挂起，释放载体线程。目标与协程一致：以同步编码方式实现高并发。",
+    "pitfalls": [
+      "混淆协程与线程的概念，认为协程是更快的线程",
+      "认为Java有原生协程（实际没有，Kotlin有）",
+      "不了解虚拟线程与平台线程（Platform Thread）的关系及调度机制"
+    ],
+    "follow_up_paths": [
+      "Kotlin协程的suspend函数在编译后是如何工作的？Continuation的作用是什么？",
+      "虚拟线程在遇到synchronized阻塞或native方法调用时，为什么可能阻塞载体线程？如何避免？",
+      "比较虚拟线程与Go goroutine或Kotlin协程在实现机制和适用场景上的异同。"
+    ]
+  }
+}

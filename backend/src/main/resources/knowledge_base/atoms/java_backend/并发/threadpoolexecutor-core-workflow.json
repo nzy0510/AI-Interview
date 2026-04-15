@@ -1,0 +1,24 @@
+{
+  "id": "threadpoolexecutor-core-workflow",
+  "subject": "ThreadPoolExecutor核心工作流程",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "线程池",
+    "ThreadPoolExecutor",
+    "任务调度"
+  ],
+  "content": {
+    "principles": "线程池核心是复用线程减少创建销毁开销。ThreadPoolExecutor工作流程：1) 提交任务，若当前工作线程数 < corePoolSize，即使有空闲线程也创建新线程执行。2) 若工作线程数 >= corePoolSize，任务放入阻塞队列等待。3) 若队列已满且工作线程数 < maximumPoolSize，创建新线程（非核心线程）执行任务。4) 若队列满且工作线程数达到maximumPoolSize，触发拒绝策略。核心线程默认常驻，非核心线程空闲超过keepAliveTime后被回收。",
+    "pitfalls": [
+      "误以为有空闲核心线程时，新任务会直接使用该线程（实际可能先创建新线程直到达到corePoolSize）",
+      "忽略无界队列（如LinkedBlockingQueue）导致任务堆积可能引发OOM",
+      "混淆corePoolSize和maximumPoolSize的触发条件（队列满才可能创建非核心线程）"
+    ],
+    "follow_up_paths": [
+      "为什么设计为先填满核心线程，再入队，最后创建非核心线程？",
+      "如何实现一个线程池，使得任务提交后立即创建线程直到maximumPoolSize，然后再入队？",
+      "线程池的prestartAllCoreThreads()方法有什么用？"
+    ]
+  }
+}

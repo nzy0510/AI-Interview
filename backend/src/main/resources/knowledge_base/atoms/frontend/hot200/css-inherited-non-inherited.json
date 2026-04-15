@@ -1,0 +1,23 @@
+{
+  "id": "css-inherited-non-inherited",
+  "subject": "CSS 中可继承与不可继承属性",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "CSS",
+    "前端基础"
+  ],
+  "content": {
+    "principles": "CSS属性分为可继承和不可继承两类，这决定了子元素是否会默认采用父元素的样式值。\n1.  **可继承属性**：通常与文本内容、字体、排版相关，子元素未设置时会继承父元素的值。常见属性包括：`color`, `font-size`, `font-family`, `font-weight`, `line-height`, `text-align`, `text-indent`, `visibility`, `cursor`, `list-style` 等。可以使用 `inherit` 关键字显式强制任何属性继承父值。\n2.  **不可继承属性**：通常与布局、盒模型、定位相关，子元素必须自行定义。常见属性包括：`display`, `width`, `height`, `padding`, `margin`, `border`, `background-color`, `position`, `top/left/right/bottom`, `float`, `overflow`, `z-index` 等。\n3.  **易混淆点**：`background-color` 不可继承，即使文字颜色继承了，背景色也不会自动跟随。\n4.  **全局控制**：`all` 属性可以一键设置元素所有属性的继承行为，其值可以是 `inherit`（继承所有）、`initial`（重置为初始值）、`unset`（如果是可继承属性则继承，否则重置为初始值）。\n理解继承性有助于编写更简洁高效的CSS，例如在 `body` 上设置 `font-family` 和 `color` 可使全局文本继承这些样式。",
+    "pitfalls": [
+      "误以为所有与“外观”相关的属性都可继承，例如错误地认为 `background-image` 或 `border` 会被子元素继承。",
+      "不理解 `inherit` 关键字的作用，或与 `initial`、`unset` 混淆。",
+      "在调试样式时，忽略了继承链的影响，导致找不到样式来源。"
+    ],
+    "follow_up_paths": [
+      "为什么 `visibility: hidden` 是可继承的，而 `display: none` 是不可继承的？这在实际效果上有何区别？",
+      "如果一个元素的 `font-size` 设置为 `2em`，它的子元素也设置了 `font-size: 2em`，最终子元素的字体大小是如何计算的？",
+      "如何使用 Chrome DevTools 快速查看一个属性的值是否是继承而来的？"
+    ]
+  }
+}

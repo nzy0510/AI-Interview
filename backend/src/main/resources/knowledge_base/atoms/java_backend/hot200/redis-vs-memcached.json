@@ -1,0 +1,25 @@
+{
+  "id": "redis-vs-memcached",
+  "subject": "Redis与Memcached的核心区别",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Redis",
+    "Memcached",
+    "缓存",
+    "选型"
+  ],
+  "content": {
+    "principles": "1. **数据类型**：Memcached仅支持简单的key-value字符串；Redis支持String、Hash、List、Set、Sorted Set、Stream等多种数据结构，可直接进行原子操作。2. **持久化**：Memcached数据纯内存，重启丢失；Redis提供RDB快照和AOF日志两种持久化机制。3. **高可用与集群**：Memcached无内置主从复制，依赖客户端分片；Redis支持主从复制、哨兵模式、Redis Cluster。4. **线程模型**：Memcached使用多线程处理并发；Redis 6.0前为单线程事件循环，6.0+引入多线程I/O（读写网络数据），但命令执行仍为单线程。5. **内存管理**：两者均有内存池减少碎片，但Redis支持更丰富的内存淘汰策略和key的TTL设置。选型上，纯缓存且追求极致简单与并发可用Memcached；需要丰富功能、持久化或作为轻量数据库则选Redis。",
+    "pitfalls": [
+      "认为两者功能完全等价，可以随意替换。",
+      "忽略持久化需求，在需要数据可靠性的场景误用Memcached。",
+      "认为Redis的单线程模型一定比Memcached的多线程模型性能差。"
+    ],
+    "follow_up_paths": [
+      "在什么样的具体业务场景下，选择Memcached会比Redis更合适？",
+      "Redis Cluster的数据分片原理是什么？与客户端分片有何不同？",
+      "Memcached的多线程模型是如何工作的？是否存在锁竞争问题？"
+    ]
+  }
+}

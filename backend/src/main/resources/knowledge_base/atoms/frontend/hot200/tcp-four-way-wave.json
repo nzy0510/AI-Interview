@@ -1,0 +1,24 @@
+{
+  "id": "tcp-four-way-wave",
+  "subject": "TCP四次挥手",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "网络",
+    "TCP"
+  ],
+  "content": {
+    "principles": "TCP四次挥手是连接释放的过程。由于TCP是全双工的，每个方向必须独立关闭。流程：1) 主动关闭方（如客户端）发送FIN报文（FIN=1, seq=u），进入FIN_WAIT_1状态。2) 被动关闭方（服务器）收到FIN后，发送ACK报文（ACK=1, ack=u+1），进入CLOSE_WAIT状态；客户端收到ACK后进入FIN_WAIT_2状态。此时为半关闭状态，服务器仍可发送数据。3) 服务器完成数据发送后，发送自己的FIN报文（FIN=1, seq=v, ACK=1, ack=u+1），进入LAST_ACK状态。4) 客户端收到FIN后，发送最后的ACK报文（ACK=1, ack=v+1），进入TIME_WAIT状态，等待2MSL后关闭；服务器收到ACK后关闭连接。TIME_WAIT状态持续2MSL（Maximum Segment Lifetime）是为了确保最后一个ACK能到达服务器，并让网络中该连接的旧报文都消失，防止新旧连接混淆。",
+    "pitfalls": [
+      "记不清四次挥手的具体步骤和状态转换",
+      "不理解为什么需要四次挥手（对比全双工特性）",
+      "不清楚TIME_WAIT状态的作用和持续时间（2MSL）",
+      "混淆CLOSE_WAIT和TIME_WAIT状态的含义及产生方"
+    ],
+    "follow_up_paths": [
+      "如果第四次挥手的ACK丢失了，会发生什么？",
+      "大量TIME_WAIT状态对服务器性能有什么影响？如何优化？（如SO_REUSEADDR, tcp_tw_reuse）",
+      "什么是CLOSE_WAIT状态过多？通常是什么原因导致的？"
+    ]
+  }
+}

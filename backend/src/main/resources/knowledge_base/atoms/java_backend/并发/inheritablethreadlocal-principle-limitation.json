@@ -1,0 +1,25 @@
+{
+  "id": "inheritablethreadlocal-principle-limitation",
+  "subject": "InheritableThreadLocal 原理与局限性",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "ThreadLocal",
+    "线程继承",
+    "上下文传递"
+  ],
+  "content": {
+    "principles": "InheritableThreadLocal 扩展自 ThreadLocal，用于解决父子线程间的 ThreadLocal 数据传递问题。当创建新线程（调用 new Thread()）时，在 Thread 的 init 方法中，会将父线程的 inheritableThreadLocals 映射表里的数据拷贝一份到子线程的 inheritableThreadLocals 中。其核心是重写了 childValue 方法，用于定义如何传递父值。关键特性：1) 传递是一次性的，仅在子线程创建时发生，后续父线程对值的修改不影响已创建的子线程。2) 支持链式传递（子线程创建孙线程可继续传递）。常用于日志追踪 ID、用户上下文等需要透传的场景。但其在池化线程（如线程池）中会失效或导致数据污染，因为线程是复用的，可能继承到无关任务的旧数据。",
+    "pitfalls": [
+      "认为 InheritableThreadLocal 能实时同步父子线程的数据变化。",
+      "不了解其传递机制仅发生在线程创建时刻。",
+      "尝试在线程池场景下直接使用 InheritableThreadLocal，导致上下文传递错误。"
+    ],
+    "follow_up_paths": [
+      "Thread 类内部是如何存储 threadLocals 和 inheritableThreadLocals 的？它们在结构上有何异同？",
+      "为什么 InheritableThreadLocal 不适用于线程池？Alibaba 的 TransmittableThreadLocal 是如何解决这个问题的？",
+      "请描述一个场景，说明使用 InheritableThreadLocal 可能带来的数据不一致问题。"
+    ]
+  }
+}

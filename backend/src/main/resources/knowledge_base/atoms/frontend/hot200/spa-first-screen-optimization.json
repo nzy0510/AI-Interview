@@ -1,0 +1,26 @@
+{
+  "id": "spa-first-screen-optimization",
+  "subject": "SPA应用首屏加载速度优化方案",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "SPA",
+    "首屏渲染",
+    "Webpack"
+  ],
+  "content": {
+    "principles": "SPA首屏加载慢的核心原因是资源体积大（如几MB的JS）导致下载和解析耗时。主要优化方案包括：1) 服务端渲染（SSR）：在服务器端将页面预渲染为HTML返回，用户可直接看到内容，无需等待JS下载执行，可使用Next.js、Nuxt.js等框架，能将首屏时间从3s+压缩到1s内。2) 静态站点生成（SSG）：适用于内容不常变的场景，构建时生成静态HTML部署到CDN，完全省去服务端计算，如文档站、博客可使用Gatsby或VitePress。3) 代码分割：必须进行，避免单一bundle.js，应按路由使用动态import()进行懒加载非首屏模块，利用Webpack的splitChunks将公共库和业务代码分离。4) 资源优化：包括JS压缩（Terser）、图片转WebP、字体子集化（subsetting）。在HTTP/2下可适当多拆chunk，但单个chunk建议控制在50-100KB以内。5) 预加载提示：使用<link rel=\"preload\">提前加载高优先级资源，<link rel=\"prefetch\">在空闲时预加载下一页资源，提升用户体验流畅度。",
+    "pitfalls": [
+      "认为SSR适用于所有场景，忽略其带来的服务器成本和复杂度增加。",
+      "代码分割过度，导致请求过多反而影响性能。",
+      "忽略资源格式优化（如图片、字体），仅关注JS/CSS。",
+      "未结合HTTP/2特性进行合理的资源拆分与合并。"
+    ],
+    "follow_up_paths": [
+      "SSR和SSG在SEO和性能上的具体差异是什么？如何根据项目类型进行选择？",
+      "除了路由懒加载，还有哪些代码分割的策略（如组件级、库级）？",
+      "如何量化评估和监控首屏加载时间的优化效果？"
+    ]
+  }
+}

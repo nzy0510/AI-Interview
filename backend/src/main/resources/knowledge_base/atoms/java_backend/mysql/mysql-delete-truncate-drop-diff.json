@@ -1,0 +1,25 @@
+{
+  "id": "mysql-delete-truncate-drop-diff",
+  "subject": "DELETE、TRUNCATE 和 DROP 的区别",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "DDL",
+    "DML",
+    "数据删除",
+    "事务"
+  ],
+  "content": {
+    "principles": "DELETE 是 DML 操作，逐行删除数据，记录 undo log 和 redo log，支持事务回滚和 WHERE 条件，执行后不释放表空间，自增 ID 不重置。TRUNCATE 是 DDL 操作，通过删除并重建表来快速清空整个表，不记录单行日志，不支持事务回滚和 WHERE 条件，执行后自增 ID 重置、表空间被回收。DROP 是 DDL 操作，删除整个表结构（包括数据、索引、约束等），数据文件被移除，恢复需依赖备份。",
+    "pitfalls": [
+      "误以为 TRUNCATE 可以回滚或带条件删除",
+      "在需要删除部分数据或事务安全时误用 TRUNCATE",
+      "混淆 DROP 与 TRUNCATE，DROP 会彻底删除表定义"
+    ],
+    "follow_up_paths": [
+      "DELETE 操作在 InnoDB 中是如何加锁的？可能引起什么性能问题？",
+      "TRUNCATE 操作在哪些场景下比 DELETE 有显著性能优势？原理是什么？",
+      "如果误执行了 DROP，有哪些恢复手段？binlog 能恢复 DROP 吗？"
+    ]
+  }
+}

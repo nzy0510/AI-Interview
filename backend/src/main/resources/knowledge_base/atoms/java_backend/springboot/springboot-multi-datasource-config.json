@@ -1,0 +1,24 @@
+{
+  "id": "springboot-multi-datasource-config",
+  "subject": "Spring Boot 多数据源配置原理与实现",
+  "category": "springboot",
+  "difficulty": "中等",
+  "tags": [
+    "数据源",
+    "AOP",
+    "事务"
+  ],
+  "content": {
+    "principles": "Spring Boot 默认配置单一数据源。实现多数据源的核心是动态数据源路由，使用 `AbstractRoutingDataSource` 作为分发器，根据当前线程上下文决定使用哪个数据源。具体实现：1. 定义多个 `DataSource` Bean（如 masterDataSource, slaveDataSource）。2. 创建 `DynamicDataSource` 继承 `AbstractRoutingDataSource`，将多个数据源注册到其 `targetDataSources` 属性中。3. 定义自定义注解（如 `@DataSource(\"slave1\")`）标记在 Service 方法上。4. 通过 AOP 拦截被注解的方法，将数据源标识存入 `ThreadLocal`。5. 在 `DynamicDataSource` 的 `determineCurrentLookupKey` 方法中，从 `ThreadLocal` 获取标识并返回对应的数据源。6. 将 `DynamicDataSource` 作为主数据源注入 Spring 容器，并配置事务管理器使用此动态数据源。注意：同一个类内方法直接调用不会触发 AOP 代理，需要拆到不同 Bean 中。",
+    "pitfalls": [
+      "事务管理：使用 `@Transactional` 默认绑定主数据源，无法管理跨数据源的事务，只能保证单个数据源的 ACID。",
+      "AOP 代理失效：同一个类内的方法直接调用，`@DataSource` 注解不会生效，因为不会经过代理。",
+      "线程安全与清理：使用 `ThreadLocal` 存储数据源标识后，必须在请求结束后（如通过 AOP 的 `@After` 或 `@AfterReturning`）清理，避免内存泄漏和后续请求数据源污染。"
+    ],
+    "follow_up_paths": [
+      "如果使用 `@Transactional` 注解，如何保证跨数据源的事务一致性？（可引导至分布式事务如 Seata、JTA）",
+      "除了基于注解和 AOP 的方案，还有哪些实现多数据源路由的方式？（如基于包路径、方法名前缀）",
+      "动态数据源切换在高并发场景下可能有什么性能问题？如何优化？（如连接池管理、上下文切换开销）"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "java-stampedlock",
+  "subject": "Java的StampedLock",
+  "category": "并发",
+  "difficulty": "困难",
+  "tags": [
+    "读写锁",
+    "乐观锁"
+  ],
+  "content": {
+    "principles": "StampedLock是Java 8引入的高性能读写锁，用于替代ReentrantReadWriteLock。核心特点是支持乐观读模式，在读多写少场景可显著提升吞吐。原理：1) 通过long类型的stamp表示锁状态版本。2) 乐观读：调用tryOptimisticRead()获取stamp，执行读操作后必须用validate(stamp)校验数据是否被写锁修改；若失效，则降级为悲观读锁（readLock()）。3) 写锁：writeLock()获取，writeLock()释放，但写锁不可重入（否则死锁）。底层基于用户态CAS操作，避免内核切换。典型应用：缓存容器、配置中心本地快照（如Nacos客户端）。注意：API设计复杂，try和release必须严格配对，stamp失效需手动重试。",
+    "pitfalls": [
+      "误将StampedLock的写锁当作可重入锁使用，导致死锁",
+      "乐观读操作后忘记调用validate()进行校验，可能读到脏数据",
+      "未正确处理stamp失效后的降级重试逻辑"
+    ],
+    "follow_up_paths": [
+      "StampedLock的乐观读相比ReentrantReadWriteLock的读锁，性能提升的原理是什么？",
+      "为什么StampedLock的写锁设计为不可重入？如何避免由此引发的死锁？",
+      "在极高并发读写混合场景下，StampedLock可能遇到什么问题（如饥饿）？如何缓解？"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "common-design-patterns",
+  "subject": "常见设计模式及其应用场景",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "设计模式",
+    "软件工程"
+  ],
+  "content": {
+    "principles": "1. 工厂模式：封装对象创建逻辑。\n   - 简单工厂：一个静态方法根据参数创建不同产品。缺点是不符合开闭原则。\n   - 工厂方法：每个产品对应一个工厂类，新增产品不影响原有代码。\n   - 抽象工厂：创建一系列相关或依赖的产品族（如不同数据库的DAO组件）。\n   - 应用：Spring的BeanFactory，MyBatis的SqlSessionFactory。\n\n2. 单例模式：确保一个类只有一个实例，并提供全局访问点。\n   - 实现：私有构造器、静态实例变量、公共静态获取方法。\n   - 线程安全：双重检查锁（DCL）、静态内部类、枚举。\n   - 枚举单例最安全，能防止反射攻击和序列化破坏。\n   - 应用：Spring的ApplicationContext，各种配置管理器。\n\n3. 观察者模式：定义对象间的一对多依赖，当一个对象状态改变时，所有依赖它的对象自动得到通知并更新。\n   - 角色：Subject（主题）、Observer（观察者）。\n   - 应用：Java的EventListener，Spring的ApplicationEvent机制，消息队列的发布订阅模型。\n\n4. 代理模式：为对象提供代理以控制访问。\n   - 应用：Spring AOP，RPC框架，Hibernate懒加载。\n\n5. 模板方法模式：在抽象类中定义算法的骨架，将一些步骤延迟到子类实现。\n   - 应用：Java的AbstractExecutorService，Servlet的doGet/doPost，JdbcTemplate。",
+    "pitfalls": [
+      "死记硬背模式定义，不理解其解决的核心问题。",
+      "混淆相似模式，如策略模式和工厂模式。",
+      "过度设计，在不必要的场景强行使用设计模式。"
+    ],
+    "follow_up_paths": [
+      "Spring框架中哪里用到了观察者模式？请举例说明。",
+      "单例模式在分布式环境下如何保证唯一性？",
+      "模板方法模式和策略模式有什么区别？分别适用于什么场景？"
+    ]
+  }
+}

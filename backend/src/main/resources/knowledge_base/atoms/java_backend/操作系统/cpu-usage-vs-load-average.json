@@ -1,0 +1,25 @@
+{
+  "id": "cpu-usage-vs-load-average",
+  "subject": "CPU使用率与CPU负载（Load Average）的区别与联系",
+  "category": "操作系统",
+  "difficulty": "中等",
+  "tags": [
+    "性能分析",
+    "CPU",
+    "负载",
+    "系统监控"
+  ],
+  "content": {
+    "principles": "CPU使用率（CPU Utilization）和CPU负载（Load Average）是两个不同的系统性能指标。CPU使用率：指在特定时间间隔内，CPU处于非空闲状态（即执行用户态或内核态代码）的时间百分比。可通过`top`或`vmstat`查看，通常细分为用户态（us）、系统态（sy）、等待I/O（wa）、空闲（id）等。CPU负载（Load Average）：在Linux中，指一段时间内（通常为1、5、15分钟）系统处于可运行状态（正在使用CPU或等待CPU）和不可中断状态（通常因等待磁盘I/O而阻塞）的平均进程数。例如，在4核CPU上，负载为4.0表示CPU已被充分利用；负载持续高于CPU核数（如8.0）则表示有进程在排队。关系与区别：1) CPU使用率高通常意味着CPU繁忙，但负载不一定高（如单核单任务计算密集型，使用率100%，负载约1.0）。2) 负载高但CPU使用率低，通常意味着系统瓶颈在I/O（大量进程因等待I/O而阻塞），CPU空闲。3) 两者都高，则系统面临全面的资源压力。诊断时需结合`top`的`%wa`（iowait）、`dstat`或`iostat`等工具综合分析。",
+    "pitfalls": [
+      "将CPU负载直接等同于CPU使用率。",
+      "不理解负载值（如2.5）在单核和多核CPU上的不同含义。",
+      "忽略iowait对负载的贡献，仅关注CPU使用率。"
+    ],
+    "follow_up_paths": [
+      "Linux内核是如何具体计算Load Average这三个数值的？",
+      "当发现系统Load Average很高但CPU使用率很低时，应该使用哪些命令进行下一步排查？",
+      "在多核CPU系统中，如何理解“Load Average / CPU核心数”这个比值？"
+    ]
+  }
+}

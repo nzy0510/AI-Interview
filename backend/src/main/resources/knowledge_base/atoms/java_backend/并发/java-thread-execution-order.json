@@ -1,0 +1,23 @@
+{
+  "id": "java-thread-execution-order",
+  "subject": "控制 Java 线程执行顺序的多种方法",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "线程协作",
+    "同步"
+  ],
+  "content": {
+    "principles": "控制线程执行顺序的核心是管理线程间的依赖和协作。主要方法：1) Thread.join(): 让当前线程等待目标线程终止。简单直接，但会阻塞调用线程。2) CountDownLatch: 通过设置多个门闩，实现复杂的顺序控制（如A->B->C），灵活性高，不绑定具体线程。3) CyclicBarrier: 让多个线程在某个屏障点同步，然后可能按某种顺序继续。4) wait/notify 机制: 配合 synchronized 手动控制，但易出错。5) CompletableFuture: 提供链式异步编程，能优雅编排有依赖关系的任务顺序。实际开发中，join() 和 CountDownLatch 能满足大部分简单顺序控制需求；复杂异步流程推荐使用 CompletableFuture。",
+    "pitfalls": [
+      "过度依赖 join() 导致调用线程不必要的阻塞，影响整体性能。",
+      "使用 wait/notify 时未在循环中检查条件，可能导致虚假唤醒或逻辑错误。",
+      "误以为线程启动顺序就是执行顺序。"
+    ],
+    "follow_up_paths": [
+      "使用 CompletableFuture 如何实现‘A完成后执行B，B完成后执行C’的链式调用？thenApply 和 thenCompose 有何区别？",
+      "如何用单个 CountDownLatch 实现三个线程严格按 T1, T2, T3 顺序执行？",
+      "CyclicBarrier 的屏障动作（Runnable）在哪个线程中执行？它能否影响线程被释放后的执行顺序？"
+    ]
+  }
+}

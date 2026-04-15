@@ -1,0 +1,24 @@
+{
+  "id": "redis-zset-implementation",
+  "subject": "Redis ZSet（有序集合）的底层实现原理",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "数据结构",
+    "ZSet",
+    "跳表",
+    "ziplist"
+  ],
+  "content": {
+    "principles": "Redis ZSet底层采用两种编码，根据元素数量和成员长度动态切换以平衡内存和性能：1. ziplist编码：当元素数量少（默认<=128，zset-max-ziplist-entries）且成员字符串短（默认<=64字节，zset-max-ziplist-value）时使用。它将score和member连续存储在一段内存中，节省空间，插入删除快。2. skiplist（跳表）+ hashtable编码：当超过上述阈值时自动切换。跳表是核心有序结构，多层链表，底层按score升序存储所有元素，上层为索引，查询时间复杂度O(log N)，支持ZREVRANGE反向遍历。哈希表保存member到score的映射，确保ZSCORE查询为O(1)。一个zset对象同时包含跳表和哈希表，以空间换时间。",
+    "pitfalls": [
+      "误以为ZSet在任何情况下都只用跳表实现，不了解ziplist的优化和自动切换机制。",
+      "不清楚跳表查询的时间复杂度，或误以为是O(1)。",
+      "不理解为何需要同时维护跳表和哈希表，忽略哈希表对ZSCORE O(1)查询的贡献。"
+    ],
+    "follow_up_paths": [
+      "跳表的具体数据结构是怎样的？Redis的跳表实现（如层数、指针）与经典的跳表有何异同？",
+      "从ziplist切换到skiplist+hashtable的过程是怎样的？这个切换是阻塞的吗？"
+    ]
+  }
+}

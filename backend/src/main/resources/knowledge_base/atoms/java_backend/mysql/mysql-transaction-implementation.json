@@ -1,0 +1,24 @@
+{
+  "id": "mysql-transaction-implementation",
+  "subject": "MySQL事务实现机制",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "事务",
+    "ACID",
+    "InnoDB"
+  ],
+  "content": {
+    "principles": "MySQL的事务能力主要由InnoDB存储引擎实现，通过redo log、undo log和锁机制协同保证ACID特性。\n1. **持久性 (Durability)**: 由redo log保证。数据更新时，先写redo log（顺序写，性能高），再修改内存中的数据页（Buffer Pool）。后续通过异步刷盘将脏页持久化到磁盘。即使宕机，重启后也能通过redo log进行崩溃恢复（crash recovery），重放未落盘的变更。\n2. **原子性与一致性 (Atomicity & Consistency)**: 由undo log支持。每次修改操作都会生成对应的undo log，记录反向操作。若事务回滚，则利用undo log将数据恢复到修改前的状态。同时，undo log为MVCC（多版本并发控制）提供历史版本数据，用于构建一致性读视图。\n3. **隔离性 (Isolation)**: 由锁机制（主要是行级锁）和MVCC共同保障。InnoDB支持共享锁（读锁）和排他锁（写锁）。通过Next-Key Lock（记录锁+间隙锁）的组合，在可重复读（RR）隔离级别下防止幻读。不同隔离级别（如RC、RR）调整了锁策略和数据可见性规则。\n实际应用（如支付转账）必须依赖此机制确保数据在并发和故障下的正确性。",
+    "pitfalls": [
+      "误认为事务完全由MySQL Server层实现，实际核心在存储引擎层（如InnoDB）。",
+      "混淆redo log和binlog的作用：redo log是引擎层物理日志，用于崩溃恢复；binlog是Server层逻辑日志，用于主从复制和数据归档。",
+      "认为MVCC完全解决了幻读问题，实际上在RR级别，快照读（普通SELECT）靠MVCC避免幻读，而当前读（如SELECT ... FOR UPDATE）或更新操作需依靠Next-Key Lock来防止幻读。"
+    ],
+    "follow_up_paths": [
+      "追问：详细解释一下两阶段提交（2PC）过程中，redo log和binlog是如何协同工作的？",
+      "追问：如果事务提交后，redo log还没来得及刷盘就宕机了，数据会丢失吗？为什么？",
+      "引导：除了锁，InnoDB还有哪些机制来保证隔离性？可以谈谈一致性非锁定读吗？"
+    ]
+  }
+}

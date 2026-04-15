@@ -1,0 +1,24 @@
+{
+  "id": "java-threadpool-corepoolsize-dynamic",
+  "subject": "动态修改线程池核心线程数",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "线程池",
+    "ThreadPoolExecutor",
+    "动态配置"
+  ],
+  "content": {
+    "principles": "线程池的核心线程数在运行时可以动态修改。通过ThreadPoolExecutor的setCorePoolSize(int corePoolSize)方法实现。1) 当新值大于当前核心线程数时，线程池会尝试创建新的核心线程，前提是工作队列中有等待执行的任务。2) 当新值小于当前核心线程数时，超出数量的空闲线程会在下次空闲时被回收。3) 此机制使线程池具备弹性伸缩能力，适用于负载波动大的场景（如电商大促）。动态调整可以基于监控指标（如QPS）进行，以优化资源利用。",
+    "pitfalls": [
+      "认为核心线程数一旦创建就不可变。",
+      "不清楚setCorePoolSize方法的具体行为（何时创建、何时回收线程）。",
+      "滥用动态调整，频繁修改可能带来性能抖动。"
+    ],
+    "follow_up_paths": [
+      "setCorePoolSize方法内部是如何实现线程创建和回收的？",
+      "动态调整核心线程数时，如何与最大线程数（maximumPoolSize）配合？",
+      "除了核心线程数，还有哪些线程池参数可以动态调整？如何设计一个自适应线程池？"
+    ]
+  }
+}
