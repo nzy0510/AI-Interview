@@ -1,0 +1,23 @@
+{
+  "id": "java-multithreading-creation",
+  "subject": "Java中创建多线程的几种方式",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "多线程",
+    "并发编程",
+    "基础"
+  ],
+  "content": {
+    "principles": "Java中创建多线程主要有三种核心方式：1) 继承Thread类，重写run方法。但此方式因Java单继承限制而不推荐。2) 实现Runnable接口，将任务对象传递给Thread构造器。这种方式解耦了任务与线程执行体，更灵活，任务可提交给Thread或线程池。3) 实现Callable接口，配合FutureTask使用，可以获取线程执行后的返回值，并支持抛出异常。实际高并发开发中，应避免手动创建线程，推荐使用线程池（如ThreadPoolExecutor）来管理线程资源，提高性能并防止资源耗尽。",
+    "pitfalls": [
+      "混淆Thread类和Runnable接口的关系，误认为它们是两种完全独立的创建线程方式。",
+      "在实际项目中仍大量使用`new Thread().start()`，忽略线程池的重要性。",
+      "对`Future.get()`的阻塞特性理解不深，可能导致主线程长时间等待。"
+    ],
+    "follow_up_paths": [
+      "Runnable和Callable接口的本质区别是什么？为什么Callable可以返回结果和抛出异常？",
+      "为什么推荐使用线程池？手动创建线程可能带来哪些问题？"
+    ]
+  }
+}

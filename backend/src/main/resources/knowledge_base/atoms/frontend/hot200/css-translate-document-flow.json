@@ -1,0 +1,22 @@
+{
+  "id": "css-translate-document-flow",
+  "subject": "CSS transform: translate 对文档流的影响",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "CSS",
+    "布局",
+    "动画"
+  ],
+  "content": {
+    "principles": "使用 `transform: translate` 进行元素位移时，元素在视觉上移动，但其在文档流中的原始位置会被保留，不会影响其他元素的布局。这是因为 `transform` 属性创建了一个新的层叠上下文，其布局计算发生在渲染的合成阶段，而非布局阶段。这使得它在制作过渡动画时非常高效，无需为元素预留空间或处理布局重排。Vue的 `<transition>` 组件、Swiper轮播、抽屉弹窗以及React Spring、Framer Motion等动画库底层都优先使用 `transform` 来实现平滑位移。",
+    "pitfalls": [
+      "误以为 `translate` 移动的元素会占据新位置，从而影响后续元素的排列。",
+      "在需要元素移动后“让出”原位置给其他元素时，错误地使用 `translate` 而应使用 `position` 或 `margin`。"
+    ],
+    "follow_up_paths": [
+      "`transform` 与 `position: relative/absolute` 在实现位移时的性能差异和适用场景是什么？",
+      "`translate` 的百分比值是相对于哪个尺寸计算的？与 `top/left` 的百分比有何不同？"
+    ]
+  }
+}

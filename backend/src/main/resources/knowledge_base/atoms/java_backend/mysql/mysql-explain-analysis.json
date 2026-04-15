@@ -1,0 +1,22 @@
+{
+  "id": "mysql-explain-analysis",
+  "subject": "使用EXPLAIN分析SQL执行计划",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "SQL优化",
+    "执行计划",
+    "索引"
+  ],
+  "content": {
+    "principles": "EXPLAIN是分析MySQL SQL语句执行计划的核心工具。其关键列解读：1) `type`列表示访问类型，从优到劣依次为：system > const > eq_ref > ref > range > index > ALL。优化目标至少达到`range`级别，`ALL`表示全表扫描。2) `key`列显示实际使用的索引，`NULL`表示未使用索引。`possible_keys`列显示可能用到的索引。3) `rows`列是预估需要扫描的行数，数值越大性能越差。4) `Extra`列包含额外信息，出现`Using filesort`（无法利用索引排序）或`Using temporary`（使用临时表）通常意味着需要优化；出现`Using index`表示使用了覆盖索引，是理想状态。",
+    "pitfalls": [
+      "候选人可能只关注`type`列，而忽略`Extra`列中`Using filesort`或`Using temporary`等关键性能警告。",
+      "容易混淆`key`（实际使用的索引）和`possible_keys`（可能使用的索引）。"
+    ],
+    "follow_up_paths": [
+      "请举例说明，一个`ORDER BY`查询出现`Using filesort`，如何通过索引设计来消除它？",
+      "`EXPLAIN`中的`filtered`列代表什么含义？它对性能评估有何作用？"
+    ]
+  }
+}

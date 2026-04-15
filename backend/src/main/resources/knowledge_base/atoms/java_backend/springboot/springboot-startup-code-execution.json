@@ -1,0 +1,24 @@
+{
+  "id": "springboot-startup-code-execution",
+  "subject": "Spring Boot 启动时执行特定代码的方式",
+  "category": "springboot",
+  "difficulty": "简单",
+  "tags": [
+    "生命周期",
+    "事件监听",
+    "初始化"
+  ],
+  "content": {
+    "principles": "Spring Boot提供了多种在启动生命周期不同阶段执行代码的机制：1) **CommandLineRunner/ApplicationRunner**：在`ApplicationContext`完全刷新后、应用完全就绪前执行。`CommandLineRunner.run(String... args)`接收原始命令行参数；`ApplicationRunner.run(ApplicationArguments args)`接收封装后的参数对象。可通过`@Order`或实现`Ordered`接口控制多个Runner的执行顺序。2) **事件监听**：监听特定应用事件，如`ApplicationReadyEvent`（应用完全就绪，可接收请求）、`ApplicationStartedEvent`（上下文已刷新，Runner未执行）。使用`@EventListener`注解。3) **ApplicationContextInitializer**：在`ApplicationContext`创建后、刷新前执行，用于早期环境定制。需在`META-INF/spring.factories`中注册或通过`SpringApplication.addInitializers()`添加。4) **@PostConstruct**：在Bean初始化阶段执行。对于大多数初始化任务，`CommandLineRunner`是简单直接的选择。",
+    "pitfalls": [
+      "混淆不同执行阶段的时机，例如在`ApplicationReadyEvent`中执行数据库初始化可能太晚。",
+      "在`CommandLineRunner`中执行耗时操作，阻塞应用启动完成。",
+      "多个Runner有依赖关系时，未正确指定执行顺序。"
+    ],
+    "follow_up_paths": [
+      "`CommandLineRunner`和`ApplicationRunner`的执行顺序是怎样的？谁先谁后？",
+      "如果需要在所有Bean加载之前就执行一些配置（如修改环境变量），应该使用哪种方式？",
+      "`@PostConstruct`和实现`InitializingBean`的`afterPropertiesSet`方法，与`CommandLineRunner`有何区别？"
+    ]
+  }
+}

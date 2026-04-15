@@ -1,0 +1,25 @@
+{
+  "id": "java-wait-notify-mechanism",
+  "subject": "Java wait/notify/notifyAll机制与线程协作",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "wait",
+    "notify",
+    "notifyAll",
+    "线程协作",
+    "虚假唤醒"
+  ],
+  "content": {
+    "principles": "`wait()`、`notify()`和`notifyAll()`是定义在`Object`类中的方法，用于线程间协作，必须在`synchronized`块或方法内调用（依赖对象的内置锁monitor）。`wait()`使当前线程释放锁并进入等待状态，直到被`notify()`或`notifyAll()`唤醒。`notify()`随机唤醒一个等待线程，`notifyAll()`唤醒所有等待线程。为防止虚假唤醒（spurious wakeup），等待条件应使用`while`循环检查而非`if`。在多个条件等待的场景，`notify()`可能唤醒错误线程导致死锁，此时应使用`notifyAll()`或改用`ReentrantLock`与`Condition`实现更精细的控制。",
+    "pitfalls": [
+      "在非`synchronized`代码块中调用`wait`/`notify`，会抛出`IllegalMonitorStateException`。",
+      "使用`if`而非`while`检查等待条件，无法处理虚假唤醒。",
+      "误用`notify()`导致线程饥饿或死锁（当多个线程等待不同条件时）。"
+    ],
+    "follow_up_paths": [
+      "为什么`wait()`和`notify()`方法定义在`Object`类而不是`Thread`类中？",
+      "请用`wait`/`notifyAll`实现一个简单的生产者-消费者模型，并说明如何避免死锁。"
+    ]
+  }
+}

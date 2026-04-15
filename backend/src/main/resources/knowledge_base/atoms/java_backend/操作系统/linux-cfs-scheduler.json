@@ -1,0 +1,25 @@
+{
+  "id": "linux-cfs-scheduler",
+  "subject": "Linux完全公平调度器（CFS）原理",
+  "category": "操作系统",
+  "difficulty": "困难",
+  "tags": [
+    "Linux",
+    "调度算法",
+    "CFS",
+    "内核"
+  ],
+  "content": {
+    "principles": "完全公平调度器（Completely Fair Scheduler, CFS）是Linux内核（2.6.23+）默认的普通进程（SCHED_NORMAL）调度器。其核心设计目标是公平性，即让所有可运行进程（任务）尽可能平等地分享CPU时间。核心机制：1) 虚拟运行时间（vruntime）：CFS为每个任务维护一个`vruntime`，表示该任务在CPU上已运行的加权时间。调度决策基于`vruntime`，总是选择`vruntime`最小的任务来运行。2) 红黑树管理：所有可运行任务按其`vruntime`为键值存入一颗红黑树，调度器每次从树的最左侧（`vruntime`最小）选取下一个运行任务，时间复杂度O(log n)。3) 权重与nice值：任务的权重影响其`vruntime`的增长速度。权重高的任务（如nice值低）`vruntime`增长慢，从而获得更多的实际CPU时间。4) 目标延迟（target latency）：CFS设定一个调度周期（默认6ms），旨在该周期内让所有可运行任务都至少运行一次。如果任务数多，则每个任务分到的时间片变小。5) 休眠补偿：休眠（阻塞）的任务其`vruntime`保持不变，唤醒后因其`vruntime`相对较小，会优先获得调度，有利于交互式程序的响应性。CFS不适用于实时任务（SCHED_FIFO/SCHED_RR）。",
+    "pitfalls": [
+      "将CFS与传统的固定时间片轮转（RR）调度算法混淆。",
+      "不理解`vruntime`的加权计算方式及其与nice值的关系。",
+      "误认为CFS也负责实时任务的调度。"
+    ],
+    "follow_up_paths": [
+      "CFS的`vruntime`具体是如何计算的？公式是什么？",
+      "CFS如何处理新创建的子进程的`vruntime`（与父进程的关系）？",
+      "如果系统中既有CPU密集型任务，又有I/O密集型任务，CFS如何保证后者的响应速度？"
+    ]
+  }
+}

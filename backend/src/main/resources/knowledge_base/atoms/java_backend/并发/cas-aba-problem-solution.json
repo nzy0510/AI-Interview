@@ -1,0 +1,25 @@
+{
+  "id": "cas-aba-problem-solution",
+  "subject": "CAS 操作中的 ABA 问题及解决方案",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "CAS",
+    "无锁编程",
+    "AtomicStampedReference"
+  ],
+  "content": {
+    "principles": "ABA 问题是使用 CAS（Compare-And-Swap）实现无锁并发结构时的一个经典问题。它指一个变量值从 A 变为 B，又被改回 A，而 CAS 操作在检查时发现值仍是 A，便误认为没有变化而成功更新。问题核心在于 CAS 仅比较值，无法感知中间的状态变化，这在涉及资源生命周期（如内存分配/释放、指针引用）的场景中可能导致严重问题（如悬挂指针、重复释放）。在 Java 中，典型解决方案是使用带版本号的原子引用类 `AtomicStampedReference`。它内部不仅存储对象引用，还维护一个整型的版本戳（stamp）。每次修改引用时，版本戳都会递增。因此，即使引用从 A→B→A，版本戳也从 0→1→2，CAS 操作可以通过同时比较引用值和版本戳来发现变化，从而避免 ABA 问题。这种思路与数据库 MVCC、Redis 乐观锁等机制一脉相承。",
+    "pitfalls": [
+      "认为 ABA 问题只是值变回原样，无关紧要（实际上中间状态变化可能破坏业务逻辑或数据结构完整性）",
+      "只知道使用 `AtomicReference`，不了解 `AtomicStampedReference` 或 `AtomicMarkableReference`",
+      "在需要严格状态连续性的场景中，错误地仅依赖值比较的 CAS"
+    ],
+    "follow_up_paths": [
+      "除了版本号，还有哪些技术可以解决或缓解 ABA 问题？",
+      "`AtomicStampedReference` 的内部实现原理是什么？如何保证引用和版本戳的原子性更新？",
+      "在哪些具体的业务场景或数据结构中，ABA 问题会带来实际危害？请举例说明。"
+    ]
+  }
+}

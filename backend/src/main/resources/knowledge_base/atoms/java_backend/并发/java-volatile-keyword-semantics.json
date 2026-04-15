@@ -1,0 +1,24 @@
+{
+  "id": "java-volatile-keyword-semantics",
+  "subject": "Java volatile关键字的内存语义与作用",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "volatile",
+    "可见性",
+    "有序性",
+    "内存屏障"
+  ],
+  "content": {
+    "principles": "`volatile`关键字保证变量的可见性和禁止指令重排序。1) 可见性：每次读`volatile`变量都从主内存读取，每次写都立即刷新到主内存，确保线程修改立即可见。2) 有序性：通过内存屏障（Memory Barrier）禁止编译器与处理器对`volatile`写操作之前和之后的读写操作进行重排序，遵循happens-before原则。`volatile`适用于状态标志（如`boolean flag`）或一次性安全发布（如单例模式的double-check locking），但不能保证复合操作的原子性（如`i++`）。",
+    "pitfalls": [
+      "误用`volatile`保证复合操作（如自增）的原子性，实际仍需`synchronized`或原子类。",
+      "混淆`volatile`与锁的语义，`volatile`无法实现互斥访问。",
+      "不理解`volatile`如何禁止重排序，无法解释其在DCL（Double-Checked Locking）中的作用。"
+    ],
+    "follow_up_paths": [
+      "请从JMM（Java内存模型）角度解释`volatile`是如何实现可见性和禁止重排序的？",
+      "对比`volatile`与`synchronized`在可见性和有序性保证上的异同。"
+    ]
+  }
+}

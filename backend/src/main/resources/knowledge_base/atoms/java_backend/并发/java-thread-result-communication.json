@@ -1,0 +1,23 @@
+{
+  "id": "java-thread-result-communication",
+  "subject": "Java主线程如何感知子线程执行结果",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "线程通信",
+    "并发工具"
+  ],
+  "content": {
+    "principles": "主线程感知子线程执行结果，本质是线程间通信，需通过共享状态或回调机制。核心方法包括：1) Future + Callable：通过ExecutorService提交Callable任务，主线程调用Future.get()阻塞等待结果或异常。2) 共享变量 + volatile：子线程修改volatile状态标志，主线程轮询或等待通知。3) CountDownLatch：主线程await()，子线程执行完毕后countDown()，适用于只关心完成与否的场景。4) CompletableFuture：提供链式异步处理，支持whenComplete等成功/异常回调。关键点：不能依赖Thread.isAlive()或join()判断业务成功，它们仅反映线程状态，需通过返回值或异常信息判断业务成败。",
+    "pitfalls": [
+      "误用Thread.isAlive()或join()作为业务成功判断依据",
+      "使用volatile共享变量时，未考虑复合操作（如i++）的非原子性问题",
+      "CountDownLatch适用于一次性等待，不适用于需要获取具体返回值的场景"
+    ],
+    "follow_up_paths": [
+      "CompletableFuture相比Future有哪些优势？如何处理多个异步任务的组合（如thenCombine, allOf）？",
+      "如果子线程需要返回多个阶段性结果，应该选用哪种机制（如BlockingQueue, Phaser）？",
+      "volatile能保证可见性，但为什么i++操作即使对volatile变量也不是线程安全的？"
+    ]
+  }
+}

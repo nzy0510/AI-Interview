@@ -1,0 +1,24 @@
+{
+  "id": "springboot-cache-preload",
+  "subject": "Spring Boot 应用启动时缓存预热",
+  "category": "springboot",
+  "difficulty": "中等",
+  "tags": [
+    "缓存",
+    "启动流程",
+    "生命周期"
+  ],
+  "content": {
+    "principles": "Spring Boot 应用启动后，在容器初始化完成但业务请求尚未开始前，将数据库中的固定数据加载到 Redis 缓存中，此过程称为缓存预热。核心是利用 Spring 的生命周期钩子。推荐使用 `CommandLineRunner` 或 `ApplicationRunner` 接口，它们的 `run` 方法会在 `ApplicationContext` 完全刷新后、`SpringApplication.run(...)` 完成前自动执行。实现时需注意：1. 数据量大时应分页异步加载，避免单次查询压垮数据库。2. 做好异常处理，通常不应因缓存预热失败而阻塞应用启动，但需记录告警日志并通过后续定时任务补偿。3. 更底层的时机可使用 `@EventListener` 监听 `ContextRefreshedEvent`。",
+    "pitfalls": [
+      "预热时机选择不当，如在数据库连接池未初始化前执行，或业务请求已开始才执行。",
+      "一次性加载大量数据，导致数据库或应用内存压力过大。",
+      "忽略异常处理，导致 Redis 不可用时应用启动失败或静默失败无感知。"
+    ],
+    "follow_up_paths": [
+      "除了 CommandLineRunner，还有哪些方式可以实现初始化逻辑？它们之间的执行顺序和区别是什么？",
+      "如果预热的数据量极大（例如上亿条），如何设计预热策略以避免对线上服务造成影响？",
+      "如何确保在集群部署时，缓存预热任务不会在多个实例上重复执行？"
+    ]
+  }
+}

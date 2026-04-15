@@ -1,0 +1,22 @@
+{
+  "id": "mysql-deadlock-handling",
+  "subject": "MySQL死锁的检测与解决",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "死锁",
+    "锁",
+    "故障处理"
+  ],
+  "content": {
+    "principles": "死锁是指两个或更多事务循环等待对方持有的锁，导致所有事务都无法继续。MySQL InnoDB引擎内置死锁检测机制，通常会在几秒内自动回滚其中一个代价最小的事务（根据undo log量判断），并让另一个事务继续，被回滚的事务会收到“Deadlock found when trying to get lock”错误。应用层应捕获此异常并实施重试机制（通常配合退避策略如指数退避）。诊断死锁可通过：1. 查询`information_schema.innodb_lock_waits`和`innodb_trx`表。2. 执行`SHOW ENGINE INNODB STATUS`，查看“LATEST DETECTED DEADLOCK”部分，其中会详细列出涉及的事务、持有的锁、等待的锁等信息。避免死锁的关键在于：1. 保持一致的访问顺序：对多张表或同一表的多行进行操作时，约定固定的顺序（如按主键升序）。2. 缩短事务长度：避免在事务内进行网络调用、文件IO等慢操作，尽快提交或回滚。3. 使用较低的隔离级别（如读已提交）可能减少锁冲突。大多数死锁源于业务逻辑设计问题，而非数据库本身。",
+    "pitfalls": [
+      "认为死锁是数据库bug，实际上多由应用逻辑引起。",
+      "在应用层进行无限制或过于激进的重试，可能加剧系统负载。"
+    ],
+    "follow_up_paths": [
+      "如何解读`SHOW ENGINE INNODB STATUS`输出的死锁信息？",
+      "除了重试，还有哪些编程模式或设计可以降低死锁概率？"
+    ]
+  }
+}

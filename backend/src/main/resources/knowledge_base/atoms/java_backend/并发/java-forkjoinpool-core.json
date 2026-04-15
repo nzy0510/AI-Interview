@@ -1,0 +1,28 @@
+{
+  "id": "java-forkjoinpool-core",
+  "subject": "ForkJoinPool 的设计原理与工作窃取机制",
+  "category": "并发",
+  "difficulty": "困难",
+  "tags": [
+    "Java",
+    "并发编程",
+    "线程池",
+    "ForkJoinPool",
+    "分治"
+  ],
+  "content": {
+    "principles": "ForkJoinPool 是 Java 7 引入的专为分治（Divide-and-Conquer）算法设计的线程池。其核心设计是工作窃取（Work-Stealing）算法。每个工作线程维护一个双端队列（Deque）来存放自己的任务。线程执行任务时，从自己队列的头部取出任务（LIFO顺序）。当某个线程的队列为空时，它会从其他线程队列的尾部“窃取”一个任务来执行（FIFO顺序）。这种设计减少了线程间的竞争，提高了 CPU 利用率，特别适合可以递归分解成子任务的计算密集型任务。使用方式通常是继承 RecursiveTask（有返回值）或 RecursiveAction（无返回值），并重写 compute 方法，在方法内部根据阈值判断是直接计算还是继续拆分（fork）子任务并合并（join）结果。公共实例 ForkJoinPool.commonPool() 的默认线程数通常等于 CPU 核心数。",
+    "pitfalls": [
+      "在 IO 密集型或阻塞操作多的任务中使用 ForkJoinPool，会导致线程因阻塞而无法窃取工作，严重降低性能。",
+      "任务拆分粒度过细（阈值太小），导致任务创建和调度的开销超过计算本身，得不偿失。",
+      "错误理解 fork() 和 join() 的顺序。通常先 fork 子任务，然后处理当前任务或另一个子任务，最后 join 等待结果，以避免不必要的线程挂起。",
+      "认为 ForkJoinPool 是普通线程池的替代品，实际上它针对可分解的递归任务进行了特殊优化，并非通用场景的最佳选择。"
+    ],
+    "follow_up_paths": [
+      "工作窃取算法中，为什么偷取任务是从其他队列的尾部（FIFO）而不是头部（LIFO）？这样设计有什么好处？",
+      "ForkJoinPool 与 ThreadPoolExecutor 在任务队列设计和工作原理上有什么本质区别？",
+      "在 compute 方法中，如果先调用 left.join() 再调用 right.compute() 会有什么问题？",
+      "ForkJoinPool 的公共池（commonPool）在什么情况下会被使用？如何监控和调整它的配置？"
+    ]
+  }
+}

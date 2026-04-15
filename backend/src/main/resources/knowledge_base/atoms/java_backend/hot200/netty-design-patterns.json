@@ -1,0 +1,22 @@
+{
+  "id": "netty-design-patterns",
+  "subject": "Netty中使用的设计模式",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Netty",
+    "设计模式",
+    "架构"
+  ],
+  "content": {
+    "principles": "Netty核心采用了Reactor模式作为线程模型主心骨，通过EventLoop进行事件循环调度。具体变体包括：单线程Reactor、多线程Reactor（I/O线程与业务线程分离）、主从Reactor（Boss线程accept，Worker线程处理read/write）。责任链模式体现在ChannelPipeline上，Handler按顺序处理入站出站事件，实现解耦和动态扩展。工厂模式用于ByteBuf的创建，通过ByteBufAllocator统一分配堆内/堆外缓冲区，上层不关心具体实现。这些模式的组合提供了高并发下的灵活性和性能。",
+    "pitfalls": [
+      "只能说出模式名称，无法阐述其在Netty中的具体实现和协作方式",
+      "混淆主从Reactor与多线程Reactor的区别"
+    ],
+    "follow_up_paths": [
+      "ChannelPipeline中InboundHandler和OutboundHandler的执行顺序和区别是什么？",
+      "Netty如何利用对象池模式（如Recycler）来优化性能？"
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "spring-boot-starter-principle",
+  "subject": "Spring Boot Starter原理与自动配置",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Spring Boot",
+    "自动配置",
+    "依赖管理"
+  ],
+  "content": {
+    "principles": "Spring Boot Starter是一组依赖描述符（Maven/Gradle依赖），用于快速集成特定功能，避免手动管理传递依赖和版本冲突。其核心是“约定大于配置”。1) 命名规范：官方starter为`spring-boot-starter-xxx`，第三方为`xxx-spring-boot-starter`。2) 结构分离：Starter模块本身通常是一个空的pom文件，只负责引入相关依赖（包括对应的`autoconfigure`模块）。真正的自动配置逻辑在`spring-boot-autoconfigure`模块或第三方提供的`xxx-spring-boot-autoconfigure`模块中。3) 自动配置机制：基于Java配置类（`@Configuration`）和一系列条件注解（如`@ConditionalOnClass`, `@ConditionalOnMissingBean`, `@ConditionalOnProperty`）。Spring Boot启动时会扫描`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`文件，加载其中声明的配置类，并根据当前类路径、已有Bean等条件决定是否生效。例如，`RedisAutoConfiguration`会在检测到Lettuce或Jedis的类时，自动创建`RedisTemplate`和`ConnectionFactory`。",
+    "pitfalls": [
+      "认为starter包含了业务代码，实际上它只管理依赖，核心逻辑在autoconfigure中。",
+      "不清楚如何排除或覆盖自动配置的Bean（使用`@ConditionalOnMissingBean`的原因正是为此）。",
+      "混淆`spring-boot-starter`与`spring-boot-autoconfigure`两个模块的职责。",
+      "自定义starter时，忘记在autoconfigure模块中创建`AutoConfiguration.imports`文件。"
+    ],
+    "follow_up_paths": [
+      "如果同时引入了Jedis和Lettuce的依赖，Spring Boot会如何选择？它的优先级是什么？",
+      "`@ConditionalOnMissingBean`注解在自动配置中起到了什么关键作用？请举例说明。",
+      "如何自定义一个starter？需要创建哪几个模块，关键步骤是什么？",
+      "Spring Boot的自动配置是在哪个阶段被加载和处理的？和`@ComponentScan`的关系是什么？"
+    ]
+  }
+}

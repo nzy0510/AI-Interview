@@ -1,0 +1,24 @@
+{
+  "id": "redis-hash-structure",
+  "subject": "Redis Hash数据结构与实现",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Redis",
+    "数据结构",
+    "Hash"
+  ],
+  "content": {
+    "principles": "Redis Hash 是一个 field-value 映射表，存储在一个 key 下，类似于编程语言中的 Map<String, String>。常用命令如 `HSET`, `HGET`。其底层实现根据数据量动态切换编码：1. **ziplist（压缩列表）**：当字段数量少（默认hash-max-ziplist-entries 512）且每个字段值较小（默认hash-max-ziplist-value 64字节）时使用，内存紧凑，字段和值顺序存储。2. **hashtable（哈希表）**：当超过上述阈值时自动转换，提供O(1)时间复杂度的读写。适用场景为存储对象（如用户信息），可独立更新字段而无需操作整个对象。Redis不支持嵌套Hash，复杂结构需通过多个key设计。",
+    "pitfalls": [
+      "误用Hash存储超大value或过多field，导致从ziplist转换为hashtable，可能带来瞬时性能开销。",
+      "试图用Hash实现嵌套对象。",
+      "在只需要读取整个对象的场景下，使用Hash反而不如直接用String存储序列化后的JSON方便。"
+    ],
+    "follow_up_paths": [
+      "ziplist 和 hashtable 在内存布局和读写性能上有何具体差异？",
+      "如何监控和优化Redis Hash的内存使用？",
+      "与直接使用多个String key存储字段相比，使用Hash有什么优势和劣势？"
+    ]
+  }
+}

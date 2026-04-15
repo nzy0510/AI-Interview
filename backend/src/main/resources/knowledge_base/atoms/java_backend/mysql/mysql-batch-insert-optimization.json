@@ -1,0 +1,24 @@
+{
+  "id": "mysql-batch-insert-optimization",
+  "subject": "MySQL 批量数据入库的优势与优化",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "性能优化",
+    "批量操作",
+    "JDBC"
+  ],
+  "content": {
+    "principles": "批量数据入库指将多条数据打包后一次性提交给数据库，相比单条插入可大幅提升性能。核心优势在于减少网络往返次数、SQL解析开销和事务提交次数。例如，JDBC的`addBatch()`和`executeBatch()`方法，或MyBatis Plus的`saveBatch()`方法。通过设置`rewriteBatchedStatements=true`参数，JDBC驱动可将批量插入重写为`INSERT INTO ... VALUES (...), (...), (...)`的多值语句，进一步提升效率。但批量大小需合理控制（如200-500条），过大会导致大事务、内存压力或锁超时问题。",
+    "pitfalls": [
+      "认为批量大小越大越好，导致大事务风险或内存溢出。",
+      "未启用`rewriteBatchedStatements`参数，导致批量插入在驱动层未被优化。",
+      "在循环中误用批量操作，实际上仍是一条条提交。"
+    ],
+    "follow_up_paths": [
+      "`rewriteBatchedStatements=true`具体是如何重写SQL的？它对INSERT、UPDATE、DELETE都有效吗？",
+      "除了JDBC批量，还有哪些批量数据加载方法（如LOAD DATA INFILE）？它们各适用于什么场景？",
+      "在事务中执行大批量插入，如何避免产生过大的undo log和redo log对性能的影响？"
+    ]
+  }
+}

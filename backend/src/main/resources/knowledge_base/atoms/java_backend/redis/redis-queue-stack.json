@@ -1,0 +1,24 @@
+{
+  "id": "redis-queue-stack",
+  "subject": "使用Redis List实现队列和栈",
+  "category": "redis",
+  "difficulty": "简单",
+  "tags": [
+    "数据结构",
+    "List",
+    "队列",
+    "栈"
+  ],
+  "content": {
+    "principles": "Redis的List结构可用于模拟队列和栈：1. 队列（FIFO）：生产者使用LPUSH从列表左侧插入数据，消费者使用RPOP从右侧取出数据。为避免消费者空轮询，应使用BRPOP进行阻塞等待并设置超时（如`BRPOP queue_key 5`）。2. 栈（LIFO）：使用LPUSH从左侧压入数据，使用LPOP从左侧弹出数据。对于需要消息可靠性、消费者组、回溯等复杂场景，应使用Redis 5.0+的Streams。使用List时需注意配合持久化策略防止数据丢失，且避免使用LRANGE进行低效轮询。",
+    "pitfalls": [
+      "使用RPOP/LPOP非阻塞命令时，客户端采用低效的轮询方式检查新消息。",
+      "在需要消息可靠性的场景下错误地使用List，而未考虑使用Streams或专业消息队列。",
+      "忽略数据持久化，导致服务重启后队列消息丢失。"
+    ],
+    "follow_up_paths": [
+      "Redis Streams相比List作为消息队列，提供了哪些关键特性（如消费者组、消息确认、历史消息）？",
+      "使用BRPOP实现分布式队列时，如果客户端在阻塞期间崩溃，消息如何处理？"
+    ]
+  }
+}

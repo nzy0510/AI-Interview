@@ -1,0 +1,22 @@
+{
+  "id": "vue-component-name-option",
+  "subject": "Vue 组件中 name 选项的作用与关键场景",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Vue",
+    "组件",
+    "开发工具"
+  ],
+  "content": {
+    "principles": "组件的 name 选项主要有三个关键作用：1) 递归组件自引用：在组件模板中调用自身时，必须通过 name 选项来识别。例如，树形组件 TreeNode 需要在模板中使用 <TreeNode />。2) 开发工具支持：Vue Devtools 依赖 name 显示组件层级。热重载（HMR）也依赖 name 来判断是否为同一组件，以保持组件状态不丢失。3) 路由与缓存：Vue Router 的导航守卫（如 beforeRouteLeave）和 <keep-alive> 的 include/exclude 属性都依赖组件名称进行匹配。虽然单文件组件可通过文件名推断 name，但显式声明更可靠，尤其是在构建工具压缩或改变文件名后。",
+    "pitfalls": [
+      "认为 name 选项只是可有可无的标识，忽略了其在递归组件和开发体验中的必要性。",
+      "在需要被 <keep-alive> 缓存或使用路由守卫时，未正确设置 name 导致功能失效。"
+    ],
+    "follow_up_paths": [
+      "如果组件没有设置 name，Vue 内部是如何处理组件标识的？",
+      "在 Vue 3 的 Composition API 中，如何定义组件的 name？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "threadpool-shutdown-vs-shutdownnow",
+  "subject": "Java 线程池 shutdown() 与 shutdownNow() 的区别与使用场景",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "Java",
+    "线程池",
+    "生命周期",
+    "资源管理"
+  ],
+  "content": {
+    "principles": "shutdown(): 将线程池状态置为 SHUTDOWN。不再接受新任务，但会继续执行已提交的任务（包括正在执行的和队列中等待的）。不会中断正在运行的线程。是一种优雅关闭。shutdownNow(): 将线程池状态置为 STOP。不再接受新任务，并尝试中断所有正在执行的任务（通过调用 Thread.interrupt()）。同时，会清空任务队列，并将未处理的任务列表返回给调用者。是一种强制关闭。两者都是异步方法，调用后立即返回。若需等待线程池完全终止，应配合 awaitTermination(long timeout, TimeUnit unit) 方法使用。典型关闭模式：先调用 shutdown()，然后 awaitTermination 等待一段时间，若超时仍未结束，再调用 shutdownNow() 进行强制中断。",
+    "pitfalls": [
+      "误以为调用 shutdown() 或 shutdownNow() 后线程池会立即停止所有活动。",
+      "不清楚 shutdownNow() 返回的 List<Runnable> 包含的是什么（是队列中尚未开始执行的任务）。",
+      "忽略了对中断信号（InterruptedException）的处理，导致任务无法正确响应中断。"
+    ],
+    "follow_up_paths": [
+      "shutdownNow() 是如何中断线程的？如果任务内部没有检查中断状态，会有什么后果？",
+      "线程池状态从 RUNNING 到 SHUTDOWN 或 STOP 的转换是原子的吗？如何保证？",
+      "在 Spring 等框架中，通常如何注册钩子来优雅关闭线程池？"
+    ]
+  }
+}

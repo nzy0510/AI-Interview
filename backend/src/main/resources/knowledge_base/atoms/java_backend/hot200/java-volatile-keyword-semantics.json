@@ -1,0 +1,23 @@
+{
+  "id": "java-volatile-keyword-semantics",
+  "subject": "volatile关键字的作用与内存语义",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "并发",
+    "内存模型",
+    "volatile"
+  ],
+  "content": {
+    "principles": "volatile关键字提供两种保证：1. 可见性：对volatile变量的写操作会立即刷新到主内存，并使其他线程中该变量的缓存行无效，从而保证后续读操作能从主内存读取最新值。2. 禁止指令重排序：通过内存屏障（Memory Barrier）实现。JMM对volatile的重排序规则为：a) volatile写操作之前的任何读写操作都不能被重排序到该写之后（StoreStore + StoreLoad屏障）。b) volatile读操作之后的任何读写操作都不能被重排序到该读之前（LoadLoad + LoadStore屏障）。这使得volatile变量像一个“开关”或“状态标志”，能安全地在线程间传递状态信息。但volatile不保证复合操作（如i++）的原子性。",
+    "pitfalls": [
+      "误用volatile保证复合操作的原子性（如count++），这仍然需要同步。",
+      "过度依赖volatile，在需要多个变量构成不变性条件或状态机转换时，volatile无法保证原子性和正确性，仍需锁。",
+      "不理解happens-before原则中volatile写-读所建立的顺序关系。"
+    ],
+    "follow_up_paths": [
+      "volatile和synchronized在可见性保证上有何异同？（synchronized的解锁操作同样会将变量刷新到主内存）",
+      "单例模式的双重检查锁（DCL）中，为什么instance变量必须用volatile修饰？（防止初始化对象的指令重排序导致其他线程拿到未完全初始化的对象）"
+    ]
+  }
+}

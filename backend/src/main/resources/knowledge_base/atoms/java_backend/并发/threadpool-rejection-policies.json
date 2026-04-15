@@ -1,0 +1,24 @@
+{
+  "id": "threadpool-rejection-policies",
+  "subject": "线程池拒绝策略",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "线程池",
+    "拒绝策略",
+    "RejectedExecutionHandler"
+  ],
+  "content": {
+    "principles": "当线程池饱和（工作线程数=maximumPoolSize且队列满）时，新提交任务触发拒绝策略。JDK内置4种：1) AbortPolicy（默认）：直接抛出RejectedExecutionException。2) CallerRunsPolicy：由提交任务的线程自己执行该任务，可减缓提交速度。3) DiscardOldestPolicy：丢弃队列中最老的任务，然后尝试提交新任务。4) DiscardPolicy：静默丢弃新任务。可自定义策略，实现RejectedExecutionHandler接口，例如记录日志、存入死信队列。",
+    "pitfalls": [
+      "使用AbortPolicy但未在调用方捕获RejectedExecutionException，导致程序异常退出",
+      "误用DiscardOldestPolicy于非FIFO队列（如优先级队列）导致逻辑错误",
+      "对不允许丢失的任务使用了DiscardPolicy"
+    ],
+    "follow_up_paths": [
+      "CallerRunsPolicy在什么场景下特别有效？它有什么潜在风险？",
+      "如何实现一个将拒绝任务持久化到磁盘的自定义拒绝策略？",
+      "线程池饱和的根本原因有哪些？除了拒绝策略，如何从源头避免？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "redis-hotkey-problem-solution",
+  "subject": "如何解决 Redis 中的热点 Key 问题？",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "缓存",
+    "高并发"
+  ],
+  "content": {
+    "principles": "热点Key问题指某个Key被极高频率访问，可能导致Redis实例CPU或网卡被打满。解决方案需多管齐下：\n1. **定位**：使用 `redis-cli --hotkeys` 或监控系统（如Prometheus+Grafana）分析Key访问频率。生产环境建议在代理层（如TendisProxy、Codis）埋点统计Top N热Key。\n2. **本地缓存**：作为第一道防线，在应用节点使用Caffeine或Guava Cache缓存热Key，设置短过期时间（如1-2秒），使大部分请求不经过网络到达Redis。需注意缓存穿透问题，可用布隆过滤器兜底。\n3. **Key拆分**：将单个热Key拆分为多个分片Key（如key_1, key_2），访问时随机或轮询拉取，分散压力。适用于静态资源类场景。\n4. **多副本**：在Redis侧为热Key创建只读副本集群，或利用Redis Cluster的Replica节点分流读请求。\n5. **写扩散（极端情况）**：将热Key的值推送到所有客户端内存中，通过消息中间件（如Kafka）通知更新。此方案运维复杂，对一致性要求高，需谨慎使用。",
+    "pitfalls": [
+      "候选人可能只提出单一方案（如只加本地缓存），而忽略了组合策略的必要性。",
+      "候选人可能不了解‘写扩散’方案的复杂性和适用边界，或错误地将其作为首选方案。"
+    ],
+    "follow_up_paths": [
+      "追问：在实施本地缓存时，如何保证多个应用节点间缓存数据的一致性？",
+      "引导：如果热Key是一个频繁更新的计数器，上述哪些方案仍然适用？为什么？"
+    ]
+  }
+}

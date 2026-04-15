@@ -1,0 +1,25 @@
+{
+  "id": "redis-client-lettuce-vs-jedis",
+  "subject": "Redis客户端：Lettuce与Jedis对比",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Redis",
+    "Java",
+    "Spring",
+    "客户端"
+  ],
+  "content": {
+    "principles": "Java中常用的Redis客户端主要有Lettuce和Jedis。\n1. Lettuce：\n   - 基于Netty实现，支持响应式编程（Reactive）。\n   - 使用长连接，多个线程可共享一个连接，资源利用率高，适合高并发场景。\n   - 与Spring Data Redis（特别是Spring Boot 2.0+）集成良好，是默认推荐。\n   - 原生无连接池，但可通过`LettucePoolingClientConfiguration`启用连接池。\n2. Jedis：\n   - 早期常用客户端，采用同步阻塞I/O。\n   - 每个操作通常独占一个连接，高并发下连接数易打满。\n   - 适用于轻量级或旧项目。\n生产环境建议：使用Lettuce，并配置连接池、SSL、超时时间。避免直接操作底层异步API导致连接泄漏，推荐使用`RedisTemplate`进行封装。",
+    "pitfalls": [
+      "在高并发项目中使用Jedis，未配置连接池或配置不当，导致连接耗尽。",
+      "使用Lettuce的异步API时，未妥善处理Future回调，导致Netty线程堆积或资源泄漏。",
+      "未对Redis操作进行超时设置，导致服务线程在Redis故障时被长时间阻塞。"
+    ],
+    "follow_up_paths": [
+      "Lettuce的响应式API（如ReactiveRedisTemplate）与传统的同步API相比，在编程模型和性能上有什么不同？",
+      "如何配置Lettuce的连接池参数（如最大连接数、最大空闲时间）？",
+      "在Spring Boot中，如何自定义RedisTemplate的序列化方式？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "redis-distributed-lock-basic",
+  "subject": "基于 Redis 实现分布式锁的基础方案与原子性保障",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "分布式锁",
+    "原子操作",
+    "Lua脚本"
+  ],
+  "content": {
+    "principles": "核心命令：`SET resource_name random_value NX PX 30000`。`NX` 确保仅当 key 不存在时设置，实现互斥性。`PX` 设置毫秒级过期时间，防止持有者崩溃后锁无法释放。`random_value`（如 UUID）必须全局唯一，用于标识锁的持有者。释放锁时，必须通过 Lua 脚本原子性地执行‘判断值+删除’操作：`if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end`，以避免误删其他客户端的锁。单实例 Redis 下此方案基本可用。",
+    "pitfalls": [
+      "使用分开的 `SETNX` 和 `EXPIRE` 命令，非原子性，可能导致死锁。",
+      "释放锁时直接使用 `DEL`，可能删除其他客户端持有的锁。",
+      "锁的过期时间设置不当，业务未执行完锁已过期，或节点宕机后锁长期不释放。"
+    ],
+    "follow_up_paths": [
+      "为什么释放锁需要 Lua 脚本？用 `GET` 判断后再 `DEL` 为什么不行？（非原子性，中间锁可能过期被其他客户端获取）",
+      "如果业务执行时间超过锁的过期时间怎么办？（引入‘看门狗’机制自动续期，如 Redisson 的实现）",
+      "在 Redis 主从架构下，这个基础方案有什么缺陷？（主从切换可能导致锁丢失）"
+    ]
+  }
+}

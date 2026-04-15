@@ -1,0 +1,24 @@
+{
+  "id": "mysql-sort-order-by-index",
+  "subject": "MySQL ORDER BY 排序的执行路径",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "排序",
+    "索引",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "MySQL 中 ORDER BY 的执行路径主要有三种：1）如果 ORDER BY 子句的列顺序与某个索引的列顺序完全匹配（或满足最左前缀），且排序方向一致，则可以直接利用索引的有序性返回结果，无需额外排序。2）若无可用索引，则使用 sort buffer 进行内存排序。如果待排序数据量超过 sort buffer 大小，会使用磁盘临时文件进行归并排序。3）`max_length_for_sort_data` 参数控制排序模式：当单行数据长度小于此值时，使用单路排序（全字段排序），将查询所需的所有字段放入 sort buffer 排序后直接返回；否则使用双路排序（rowid排序），只将排序字段和主键放入 sort buffer，排序后需要根据主键回表获取其他字段。老版本 MySQL 在双路排序时回表可能造成随机 I/O，影响性能。",
+    "pitfalls": [
+      "误以为所有 ORDER BY 都会导致 filesort（文件排序），实际上有索引覆盖时不会。",
+      "不理解 `max_length_for_sort_data` 的作用，盲目调大可能导致内存占用过高，调小可能强制走低效的双路排序。",
+      "在复合索引中，ORDER BY 的顺序与索引列顺序不一致或方向不一致，可能导致无法利用索引排序。"
+    ],
+    "follow_up_paths": [
+      "如何判断一个 ORDER BY 查询是否用到了索引排序？（Explain 的 Extra 字段）",
+      "sort buffer 的大小由哪个参数控制？设置时需要考虑哪些因素？",
+      "在无法避免 filesort 的场景下，有哪些优化手段？（例如，增大 sort_buffer_size，使用更合适的索引减少待排序数据量）"
+    ]
+  }
+}

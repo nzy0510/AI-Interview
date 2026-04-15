@@ -1,0 +1,25 @@
+{
+  "id": "completablefuture-async-programming",
+  "subject": "CompletableFuture 异步编程",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "异步编程",
+    "Future",
+    "CompletableFuture"
+  ],
+  "content": {
+    "principles": "CompletableFuture 是 Java 8 引入的增强版 Future，实现了 Future 和 CompletionStage 接口，用于简化异步编程和构建非阻塞应用。它解决了传统 Future 只能通过阻塞 get() 获取结果的局限，提供了强大的回调机制和组合能力。核心特性包括：链式调用（通过 thenApply, thenAccept, thenRun, thenCompose 等方法串联异步任务）、组合多个 Future（allOf, anyOf）、异常处理（exceptionally, handle）以及手动完成（complete, completeExceptionally）。其底层通常使用 ForkJoinPool 的公共池或自定义线程池来执行任务。通过回调，可以在任务完成后自动触发后续操作，无需主动轮询或阻塞等待，从而编写出更高效、更易读的异步代码。它广泛应用于需要聚合多个异步操作结果、实现响应式编程风格的场景。",
+    "pitfalls": [
+      "混淆 thenApply（转换结果）和 thenCompose（扁平化嵌套 Future）的用法",
+      "默认使用公共 ForkJoinPool，在 I/O 密集型任务或大量长时间任务时可能导致线程池耗尽，需注意使用自定义线程池",
+      "不理解异步任务完成顺序的不确定性，错误地依赖执行时序"
+    ],
+    "follow_up_paths": [
+      "thenApplyAsync 和 thenApply 有什么区别？在什么情况下需要使用 Async 后缀的方法？",
+      "CompletableFuture 内部的完成状态是如何传递和触发的？",
+      "如何利用 CompletableFuture 实现一个超时控制机制？"
+    ]
+  }
+}

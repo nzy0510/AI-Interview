@@ -1,0 +1,25 @@
+{
+  "id": "mysql-log-buffer",
+  "subject": "MySQL InnoDB Log Buffer 的作用与原理",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "事务",
+    "redo log",
+    "InnoDB",
+    "性能"
+  ],
+  "content": {
+    "principles": "Log Buffer 是 InnoDB 引擎的一块`内存缓冲区`，用于临时存储事务产生的 redo log 记录。其核心作用是`批量处理`和`异步刷盘`，以提升事务性能。工作流程：1）事务执行 INSERT/UPDATE/DELETE 时，生成的 redo log 首先写入 Log Buffer。2）Log Buffer 的日志会在以下时机被刷入磁盘的 redo log 文件：a) 事务提交时（取决于 innodb_flush_log_at_trx_commit 参数）。b) Log Buffer 空间不足时。c) 后台线程定期（约每秒一次）刷盘。d) Checkpoint 发生时。这是`Write-Ahead Logging (WAL)`机制的关键一环：数据页的修改必须在对应的 redo log 持久化到磁盘之后才能被覆盖。通过参数 `innodb_log_buffer_size` 可调整其大小，默认16MB。对于有大事务或高并发写入场景，适当调大（如64MB）可以减少刷盘频率，提高吞吐。但调得过大可能增加崩溃恢复时间。",
+    "pitfalls": [
+      "误将 Log Buffer 与 Binlog Cache 混淆。Log Buffer 是 InnoDB 的 redo log 缓存，Binlog Cache 是 Server 层的 binlog 缓存。",
+      "认为设置 innodb_flush_log_at_trx_commit=1 时，每次提交都直接写磁盘文件，实际上也是先写 Log Buffer，再由该参数控制刷盘行为。",
+      "盲目调大 innodb_log_buffer_size，但系统内存紧张，反而影响整体性能。"
+    ],
+    "follow_up_paths": [
+      "参数 innodb_flush_log_at_trx_commit 的 0, 1, 2 三个值分别代表什么刷盘策略？对性能和数据一致性有何影响？",
+      "Log Buffer 和 InnoDB 的另一个缓冲池（Buffer Pool）有什么关系？",
+      "如果事务非常大，Log Buffer 写满了会怎样？"
+    ]
+  }
+}

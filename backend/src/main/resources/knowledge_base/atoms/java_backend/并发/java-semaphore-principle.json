@@ -1,0 +1,24 @@
+{
+  "id": "java-semaphore-principle",
+  "subject": "Semaphore（信号量）的原理与应用",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "限流",
+    "并发控制",
+    "同步器"
+  ],
+  "content": {
+    "principles": "Semaphore 是一个计数信号量，用于控制同时访问特定资源的线程数量。它维护一组‘许可’（permits）。构造时指定许可总数。acquire() 方法会阻塞直到获取一个许可（或可中断、可超时）。release() 方法释放一个许可。与互斥锁（如 synchronized）不同，Semaphore 允许多个线程同时进入临界区，本质是一个流量控制阀。典型应用场景包括：限制数据库连接池并发数、控制API调用QPS（如秒杀系统）。使用时必须确保在 finally 块中释放许可，否则会导致许可泄漏，线程永久阻塞。",
+    "pitfalls": [
+      "忘记在 finally 块中调用 release()，导致许可泄漏和线程饥饿。",
+      "误将 Semaphore 当作互斥锁使用（许可数设为1），忽略了其更通用的流量控制能力。",
+      "不理解 tryAcquire() 非阻塞方法与 acquire() 阻塞方法的区别及适用场景。"
+    ],
+    "follow_up_paths": [
+      "Semaphore 的公平模式和非公平模式底层是如何实现的？与 ReentrantLock 的公平性实现有何异同？",
+      "如何用 Semaphore 实现一个简单的连接池？",
+      "Semaphore 的许可数量可以动态增加或减少吗？如何实现？"
+    ]
+  }
+}

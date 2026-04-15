@@ -1,0 +1,25 @@
+{
+  "id": "thread-sleep-vs-yield",
+  "subject": "Java 中 Thread.sleep() 与 Thread.yield() 的区别与行为",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "Java",
+    "线程调度",
+    "阻塞",
+    "协作"
+  ],
+  "content": {
+    "principles": "Thread.sleep(long millis): 使当前线程从 RUNNING 状态进入 TIMED_WAITING 状态（阻塞），在指定时间内放弃 CPU 使用权，时间到后进入 RUNNABLE 状态等待调度。sleep 期间不会释放已持有的监视器锁（synchronized 锁）。可响应中断（抛出 InterruptedException）。Thread.yield(): 是一个提示（hint），建议调度器当前线程愿意让出 CPU。线程从 RUNNING 状态回到 RUNNABLE 状态，但调度器可以立即再次选中它。效果是不确定的、依赖于操作系统的。yield 不会导致线程阻塞，也不会释放锁。实际开发中极少使用，因为其行为不可控且可移植性差。sleep 常用于定时、轮询间隔；yield 几乎不用于生产代码。",
+    "pitfalls": [
+      "误以为 yield() 会让线程暂停一段时间或保证其他线程一定能执行。",
+      "误以为 sleep() 会释放锁。",
+      "在生产代码中不必要地使用 yield() 试图进行性能优化。"
+    ],
+    "follow_up_paths": [
+      "sleep(0) 和 yield() 在行为上有什么异同？",
+      "在什么极端情况下，使用 yield() 可能有一点点益处？",
+      "除了 sleep 和 yield，还有哪些方法可以让线程暂停或让出 CPU（如 LockSupport.parkNanos）？"
+    ]
+  }
+}

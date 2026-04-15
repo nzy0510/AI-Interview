@@ -1,0 +1,23 @@
+{
+  "id": "redis-pubsub-mechanism",
+  "subject": "Redis 发布订阅（Pub/Sub）机制与适用场景",
+  "category": "redis",
+  "difficulty": "简单",
+  "tags": [
+    "发布订阅",
+    "消息通信"
+  ],
+  "content": {
+    "principles": "Redis Pub/Sub 是一个基于频道的消息广播系统，采用‘一对多’通信模型。客户端使用 `SUBSCRIBE` 命令订阅一个或多个频道，或使用 `PSUBSCRIBE` 订阅通配符模式。生产者使用 `PUBLISH <channel> <message>` 向频道发送消息，服务器会立即、同步地将消息推送给所有当前在线的订阅者。整个过程是实时的，消息不持久化，如果消费者离线，消息将丢失。它适用于聊天室、服务状态广播等即时通知场景。由于消息无持久化、无重试、无消费组，不适用于需要可靠性的消息队列场景。对于可靠性要求高的场景，应使用 Redis Stream。",
+    "pitfalls": [
+      "误将 Pub/Sub 用作可靠消息队列，导致消息丢失。",
+      "忽略 Pub/Sub 的阻塞特性，大量订阅连接可能耗尽 Redis 线程资源，影响服务性能。",
+      "不了解 `PSUBSCRIBE` 支持模式订阅。"
+    ],
+    "follow_up_paths": [
+      "Redis Stream 相比 Pub/Sub 提供了哪些可靠性保障？（消息持久化、消费组、ACK 机制）",
+      "Pub/Sub 的消息是如何在服务器内部传递的？描述一下发布命令的执行流程。",
+      "如何实现一个简单的基于 Pub/Sub 的聊天室？需要考虑哪些问题（如用户上下线通知）？"
+    ]
+  }
+}

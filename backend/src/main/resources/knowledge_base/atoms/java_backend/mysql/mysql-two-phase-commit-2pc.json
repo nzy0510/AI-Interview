@@ -1,0 +1,24 @@
+{
+  "id": "mysql-two-phase-commit-2pc",
+  "subject": "MySQL InnoDB的二阶段提交(2PC)机制",
+  "category": "mysql",
+  "difficulty": "困难",
+  "tags": [
+    "事务",
+    "崩溃恢复",
+    "高可用"
+  ],
+  "content": {
+    "principles": "MySQL的二阶段提交（2PC）是InnoDB在崩溃恢复时保证redo log与binlog一致性的核心机制，确保事务的持久性与数据一致性。redo log是物理日志，保证事务原子性与持久性；binlog是逻辑日志，用于主从复制与时间点恢复(PITR)。二阶段提交过程：1）Prepare阶段：事务的redo log写入磁盘，事务状态标记为PREPARED，此时binlog未落盘。2）Commit阶段：binlog写入并刷盘，然后InnoDB在redo log中写入一条commit标记。至此事务才真正提交。崩溃恢复时，MySQL扫描undo log中的PREPARED事务，根据其XID在binlog中查找。如果binlog中存在该XID，则提交事务；否则回滚。此机制是主从复制、MGR、XtraDB Cluster等高可用方案的基础。注意：仅在开启binlog且使用支持事务的引擎（如InnoDB）时生效。",
+    "pitfalls": [
+      "误以为二阶段提交是分布式事务协议，实为单机数据库内部保证日志一致的机制。",
+      "未理解prepare阶段后事务并未提交，崩溃恢复依赖binlog进行决策。",
+      "在未开启binlog的实例上，此机制不生效，崩溃恢复逻辑不同。"
+    ],
+    "follow_up_paths": [
+      "如果binlog在commit阶段写入后，redo log的commit标记写入前发生崩溃，恢复流程如何处理？",
+      "二阶段提交对数据库写性能有何影响？如何优化？",
+      "在组提交（Group Commit）中，二阶段提交是如何被优化的？"
+    ]
+  }
+}

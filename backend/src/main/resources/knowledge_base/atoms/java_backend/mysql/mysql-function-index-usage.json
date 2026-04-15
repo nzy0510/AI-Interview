@@ -1,0 +1,22 @@
+{
+  "id": "mysql-function-index-usage",
+  "subject": "MySQL 函数的使用场景与索引失效陷阱",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "函数",
+    "索引",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "MySQL 提供了丰富的内置函数，如字符串处理（CONCAT, SUBSTRING）、日期函数（DATE_ADD, DATEDIFF）、数值计算（ROUND）和聚合函数（SUM, COUNT）。合理使用可以简化查询逻辑。但关键陷阱在于：**在 WHERE 条件中对索引字段使用函数会导致索引失效**。例如 `WHERE YEAR(create_time) = 2024` 无法利用 `create_time` 上的索引，会导致全表扫描。应改写为范围查询：`WHERE create_time >= '2024-01-01' AND create_time < '2025-01-01'`。同样，对字段进行运算或使用 `LEFT(name, 3)` 等操作也会使索引失效。优化原则是尽量保持索引列在查询条件中的‘纯洁性’，将复杂计算逻辑移至应用层或使用生成列（Generated Columns）。滥用函数还会增加数据库CPU负载，可能影响主从复制延迟。",
+    "pitfalls": [
+      "候选人知道函数的用法，但可能不清楚在 WHERE 子句中使用函数对索引的破坏性影响。",
+      "容易忽视聚合函数或复杂表达式在大量数据上执行时的性能成本。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：MySQL 5.7/8.0 的虚拟列（Generated Columns）能否解决函数索引的问题？如何创建？",
+      "如果候选人答得不好，可以引导：如何发现一条SQL语句没有使用索引？除了 EXPLAIN，还有什么工具或方法？"
+    ]
+  }
+}

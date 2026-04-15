@@ -1,0 +1,25 @@
+{
+  "id": "spring-async-annotation-failure",
+  "subject": "@Async 注解失效的常见场景",
+  "category": "springboot",
+  "difficulty": "中等",
+  "tags": [
+    "异步",
+    "AOP",
+    "代理"
+  ],
+  "content": {
+    "principles": "Spring 的 `@Async` 注解基于 AOP 代理实现，在以下场景会失效：1. **同类调用**：在同一个类中，一个方法直接调用另一个被 `@Async` 标记的方法（即 `this.asyncMethod()`），不会经过 Spring 代理，导致异步失效。2. **方法修饰符限制**：`@Async` 方法不能是 `private`、`static` 或 `final` 的，因为代理无法覆盖这些方法。3. **未启用异步支持**：必须在配置类上使用 `@EnableAsync` 来启用异步功能。4. **非 Spring 管理对象**：调用方和被调用方都必须是 Spring 容器管理的 Bean。5. **异常处理不当**：异步方法内未捕获的异常可能导致任务静默失败，从调用方看像是未执行。正确的做法是将异步方法定义在独立的 Service Bean 中，并通过依赖注入在其他 Bean 中调用。",
+    "pitfalls": [
+      "在同一个类内部调用 `@Async` 方法，是最常见的失效原因。",
+      "忘记在配置类上添加 `@EnableAsync` 注解。",
+      "将 `@Async` 注解用在 `private` 方法上。",
+      "忽略异步方法的异常处理，导致问题难以排查。"
+    ],
+    "follow_up_paths": [
+      "Spring 是如何实现 `@Async` 的？底层使用了哪种线程池？",
+      "如何自定义 `@Async` 使用的线程池（Executor）？",
+      "除了 `@Async`，还有哪些方式可以在 Spring 中实现异步编程？它们与 `@Async` 有何优劣？"
+    ]
+  }
+}

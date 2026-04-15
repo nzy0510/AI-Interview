@@ -1,0 +1,23 @@
+{
+  "id": "cookie-session-token",
+  "subject": "Cookie、Session与Token的区别与应用场景",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Web开发",
+    "身份认证",
+    "状态管理"
+  ],
+  "content": {
+    "principles": "三者均用于解决HTTP无状态问题，但实现机制不同。\n1. Cookie：由服务器通过Set-Cookie响应头下发，由浏览器自动存储并在后续请求的Cookie头中回传。它是存储在客户端的一小段文本，可被JavaScript读写（除非设置HttpOnly），存在XSS风险。通常用于存储Session ID或用户偏好设置。\n2. Session：是服务器端的存储机制。用户登录后，服务端创建Session对象并以唯一Session ID为键存储在内存或Redis中。Session ID通常通过Cookie传递给客户端。后续请求携带此ID，服务端即可查询对应用户状态。状态集中管理，登出可立即销毁，但存在扩展性挑战（需Session共享）。\n3. Token（如JWT）：是无状态方案。用户登录后，服务器签发一个签名的Token（如JWT），其中包含用户信息（payload）。客户端自行存储Token，每次请求在Header（如Authorization）中携带。服务器无需存储状态，仅需验证签名并解析Token即可。扩展性好，适合分布式系统，但Token一旦签发难以主动作废（需借助黑名单或设置短有效期）。\nJWT典型格式为Header.Payload.Signature，三段Base64编码用点分隔。单体应用常用Session，微服务架构多采用Token。",
+    "pitfalls": [
+      "混淆Session和Token的本质（服务端状态 vs 无状态）。",
+      "不了解JWT的结构和签名验证原理。",
+      "忽视Cookie的安全隐患（如CSRF、XSS）及防护措施。"
+    ],
+    "follow_up_paths": [
+      "JWT的签名是如何生成的？如果密钥泄露会有什么后果？",
+      "在分布式系统中，如何实现Session共享？有哪些方案？"
+    ]
+  }
+}

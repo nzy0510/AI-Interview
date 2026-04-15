@@ -1,0 +1,23 @@
+{
+  "id": "vuex-data-change-watch",
+  "subject": "监听 Vuex 中状态数据的变化",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Vuex",
+    "状态管理",
+    "Vue"
+  ],
+  "content": {
+    "principles": "监听 Vuex 状态变化的核心是利用 Vue 的响应式系统或 Vuex 提供的订阅 API。主要方法有：\n\n1.  **组件内 Watch**：在组件中使用 `watch` 选项监听通过 `mapState` 或 `this.$store.state` 映射到本地的状态。这是最直接的方式，适用于组件内部的副作用。\n2.  **Store.subscribe**：通过 `store.subscribe((mutation, state) => {})` 订阅 store 的 mutation。每次 mutation 提交后触发，能获取 mutation 类型和 payload。适用于全局副作用，如日志记录、埋点等，但不建议用于处理核心业务逻辑。\n3.  **Store.watch**：通过 `store.watch(getterFunction, callback)` 监听 store 中状态或派生状态的变化。它类似于组件内的 `watch`，但作用在 store 实例上，适用于非组件环境或需要监听计算后状态的场景。\n\n最佳实践是优先利用 Vue 的响应式依赖追踪，在模板或计算属性中绑定 Vuex 的 state/getter，让 Vue 自动处理更新。监听应作为“反应”机制，而非主动的“轮询”。",
+    "pitfalls": [
+      "滥用 `store.subscribe` 处理业务逻辑，导致数据流混乱，难以追踪状态变更源头。",
+      "在可以使用计算属性自动响应的场景下，不必要地使用了 `watch`，增加了复杂度。",
+      "混淆 `store.subscribe` 和 `store.watch` 的使用场景。"
+    ],
+    "follow_up_paths": [
+      "`store.subscribe` 和 `store.subscribeAction` 有什么区别？各自适用什么场景？",
+      "在 Vuex 模块化（Module）且启用命名空间的情况下，如何正确监听特定模块的状态？"
+    ]
+  }
+}

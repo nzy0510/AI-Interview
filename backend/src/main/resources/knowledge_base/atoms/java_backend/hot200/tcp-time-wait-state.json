@@ -1,0 +1,23 @@
+{
+  "id": "tcp-time-wait-state",
+  "subject": "TCP TIME_WAIT状态的作用与优化",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "TCP",
+    "网络协议",
+    "高并发"
+  ],
+  "content": {
+    "principles": "在TCP四次挥手中，主动关闭连接的一方会进入TIME_WAIT状态，持续时间通常为2MSL（报文最大生存时间，约1-4分钟）。其核心作用有二：1) 确保最后一个ACK能被被动方收到。若ACK丢失，被动方会重传FIN，处于TIME_WAIT的主动方能重发ACK，保证连接正常关闭。2) 防止旧连接的延迟数据包干扰新连接。等待2MSL可使网络中属于该连接的旧数据包全部失效，避免被新连接误收。在高并发短连接场景（如Web服务器），大量TIME_WAIT连接可能导致端口耗尽。可通过设置Socket选项`SO_REUSEADDR`允许复用处于TIME_WAIT状态的端口来缓解。",
+    "pitfalls": [
+      "误认为TIME_WAIT是设计缺陷或无用状态，试图完全消除。",
+      "不了解TIME_WAIT状态只出现在主动关闭连接的一方。",
+      "在高并发场景下，未采取任何优化措施（如`SO_REUSEADDR`），导致'Address already in use'错误。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：为什么TIME_WAIT的持续时间是2MSL，而不是1MSL？",
+      "如果候选人答得不好，可以引导：假设你是Nginx的运维，发现服务器上有大量TIME_WAIT连接，可能是什么原因？你会如何排查和优化？"
+    ]
+  }
+}

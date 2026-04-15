@@ -1,0 +1,25 @@
+{
+  "id": "springboot-event-mechanism",
+  "subject": "Spring Boot 事件发布与监听机制",
+  "category": "springboot",
+  "difficulty": "中等",
+  "tags": [
+    "事件驱动",
+    "观察者模式",
+    "异步"
+  ],
+  "content": {
+    "principles": "Spring Boot 事件机制是观察者模式的实现，用于应用内部模块解耦。核心组件：1. **事件发布者**：通过 `ApplicationEventPublisher`（通常注入或通过 `ApplicationContext`）调用 `publishEvent` 方法发布事件。事件可以是任意对象（Spring 4.2+），或继承 `ApplicationEvent`。2. **事件监听器**：实现 `ApplicationListener` 接口或使用 `@EventListener` 注解标注方法。容器启动时会自动注册这些监听器。3. **执行方式**：默认同步阻塞执行，监听器与发布者在同一线程和事务上下文中。可通过 `@Async` 和 `@EnableAsync` 实现异步处理，但需注意异步监听器的事务边界（可能消费到未提交的数据）。4. **错误处理**：监听器抛出异常默认会传播给发布者，可能导致主流程中断。可通过 `@EventListener` 的 `errorHandler` 属性指定错误处理器，或在监听方法内部进行 try-catch。",
+    "pitfalls": [
+      "异步监听导致的数据不一致：异步监听器可能在主事务提交前执行，访问到未提交的数据，产生脏读或业务逻辑错误。",
+      "异常传播：监听器抛出未捕获的异常会导致整个事件发布过程失败，影响主业务逻辑。",
+      "性能影响：事件机制基于反射调用，频繁发布大量事件可能影响性能。",
+      "适用范围：事件机制仅适用于同一应用上下文（JVM）内的解耦，跨服务通信应使用消息队列（如 RabbitMQ、Kafka）。"
+    ],
+    "follow_up_paths": [
+      "如何保证事件监听器的执行顺序？（可引导至 `@Order` 注解或实现 `SmartApplicationListener`）",
+      "在微服务架构下，如何将本地事件与分布式消息队列（如 Kafka）集成？",
+      "如果监听器处理非常耗时，除了异步，还有哪些优化策略？（如引入线程池、批量处理）"
+    ]
+  }
+}

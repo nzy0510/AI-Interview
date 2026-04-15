@@ -1,0 +1,25 @@
+{
+  "id": "springboot-xml-config",
+  "subject": "Spring Boot 中使用 XML 配置",
+  "category": "springboot",
+  "difficulty": "简单",
+  "tags": [
+    "配置",
+    "迁移",
+    "兼容性"
+  ],
+  "content": {
+    "principles": "Spring Boot完全支持传统的Spring XML配置，但不推荐作为首选。可以通过在配置类或启动类上使用@ImportResource注解来导入XML配置文件（如@ImportResource(\"classpath:applicationContext.xml\")）。XML配置在某些复杂场景（如整合遗留系统、精确控制Bean生命周期、使用仅提供XML配置的第三方库）下仍有价值。然而，日常开发应优先使用Java Config（@Configuration）和属性文件（application.yml/properties），因为XML配置冗长、维护成本高，且破坏了Spring Boot约定优于配置的原则。Spring Boot的许多高级特性（如条件装配@ConditionalOnMissingBean）在XML中难以实现。",
+    "pitfalls": [
+      "过度使用XML配置，破坏了Spring Boot的简洁和约定",
+      "认为Spring Boot完全不支持XML配置",
+      "在XML和Java Config混合使用时，对Bean定义覆盖顺序理解不清",
+      "在XML中无法方便地使用Spring Boot的自动配置和条件注解"
+    ],
+    "follow_up_paths": [
+      "在混合使用Java Config和XML时，如果同一个Bean被两者定义，哪个会生效？",
+      "如何将一个大而复杂的传统Spring XML项目逐步迁移到Spring Boot的Java Config风格？",
+      "@ImportResource和@Import注解有什么区别？"
+    ]
+  }
+}

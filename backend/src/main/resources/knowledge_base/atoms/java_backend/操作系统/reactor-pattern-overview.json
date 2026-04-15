@@ -1,0 +1,23 @@
+{
+  "id": "reactor-pattern-overview",
+  "subject": "Reactor模式核心原理",
+  "category": "操作系统",
+  "difficulty": "中等",
+  "tags": [
+    "网络编程",
+    "高并发",
+    "I/O模型"
+  ],
+  "content": {
+    "principles": "Reactor是一种事件驱动的编程模型，用于构建高并发、低延迟的服务端应用。其核心是使用少量线程（事件循环线程，Event Loop）通过操作系统提供的I/O多路复用机制（如Linux的epoll）来监听和管理成千上万的连接。每个Event Loop线程轮询一批通道（Channel）上的事件（如数据可读、可写）。当事件就绪时，Event Loop会调用预先注册的对应处理器（回调函数）进行处理，整个过程是非阻塞的。关键特性包括：1) 所有I/O操作都是非阻塞的；2) 请求到来时不创建新线程，由Event Loop统一派发；3) 业务逻辑以回调方式注册，事件触发时执行。Netty、Node.js、Spring WebFlux是该模式的典型实现。在Netty中，Boss线程负责接受新连接，Worker线程使用Reactor模式处理读写事件，一个Worker线程可以处理数万个连接。代码层面体现为ChannelHandler、onRead、onWrite等回调方法。",
+    "pitfalls": [
+      "将Reactor模式与传统的每个连接一个线程的阻塞式模型混淆，不理解其通过事件循环和回调实现非阻塞的核心机制。",
+      "将Reactor模式与响应式编程（如Project Reactor库）混为一谈。Reactor是底层的线程/事件处理模型，而响应式编程是基于此的更高层编程抽象。"
+    ],
+    "follow_up_paths": [
+      "请详细解释一下I/O多路复用（如select/poll/epoll）是如何在操作系统层面支持Reactor模式的？",
+      "Netty的EventLoopGroup、Boss和Worker线程是如何分工协作的？请结合源码或配置说明。",
+      "除了Reactor，还有哪些高并发网络编程模型（如Proactor）？它们与Reactor的主要区别是什么？"
+    ]
+  }
+}

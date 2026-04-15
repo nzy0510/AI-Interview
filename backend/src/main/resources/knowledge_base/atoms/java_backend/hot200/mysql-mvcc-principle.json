@@ -1,0 +1,24 @@
+{
+  "id": "mysql-mvcc-principle",
+  "subject": "MySQL InnoDB MVCC 原理",
+  "category": "hot200",
+  "difficulty": "困难",
+  "tags": [
+    "MySQL",
+    "数据库",
+    "并发控制"
+  ],
+  "content": {
+    "principles": "MVCC (Multi-Version Concurrency Control，多版本并发控制) 是 InnoDB 实现高并发读的核心机制，它让读操作（快照读）无需加锁也能看到一致的数据视图，读写互不阻塞。其实现依赖于三个隐藏字段和 undo log：\n1.  **DB_TRX_ID**：最近修改该行记录的事务 ID。\n2.  **DB_ROLL_PTR**：指向该行记录上一个版本的 undo log 记录的指针。\n3.  **DB_ROW_ID**：隐含的自增行 ID（如果表没有主键）。\n每次对记录进行修改，都会将旧数据拷贝到 undo log 中，并通过 DB_ROLL_PTR 形成一个版本链。\n事务启动时（RR 级别下是第一次读操作时），InnoDB 会生成一个 **Read View**，其中包含当前活跃事务 ID 列表、最小活跃事务 ID 和下一个将要分配的事务 ID。通过比较行记录的 DB_TRX_ID 与 Read View 中的规则，决定该事务能看到版本链中的哪个数据版本（即：已提交且早于当前视图，或是自身修改的版本）。\n在 RR 隔离级别下，同一个事务中的多次普通 SELECT 会使用同一个 Read View，从而实现可重复读。但 MVCC 只作用于快照读，对于 `SELECT ... FOR UPDATE`、`UPDATE`、`DELETE` 等当前读操作，会读取最新的已提交数据并加锁。防止幻读主要依靠 next-key lock，而非 MVCC。",
+    "pitfalls": [
+      "认为 MVCC 完全不用加锁，忽略了当前读操作。",
+      "认为 RR 级别下的可重复读和防止幻读都是 MVCC 实现的。",
+      "不理解 Read View 的生成时机（RR 和 RC 隔离级别的区别）。"
+    ],
+    "follow_up_paths": [
+      "RC (Read Committed) 和 RR (Repeatable Read) 隔离级别下，Read View 的生成和销毁机制有何不同？",
+      "长事务会对 MVCC 和 undo log 产生什么影响？",
+      "请描述一次 UPDATE 操作在 MVCC 机制下，版本链是如何构建和清理的？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "npm-core-usage",
+  "subject": "npm 的核心功能与依赖管理",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Node.js",
+    "npm",
+    "包管理"
+  ],
+  "content": {
+    "principles": "npm 是 Node.js 的包管理工具，用于管理项目的第三方依赖。核心功能围绕 package.json 和 package-lock.json 文件：1) npm init 初始化项目，生成 package.json，记录项目元数据和依赖。2) 安装依赖：npm install <package> 安装并添加到 dependencies；npm install --save-dev <package> 添加到 devDependencies。3) package-lock.json 锁定依赖树的确切版本，确保团队间和环境间安装一致性，必须提交到版本库。4) 常用命令：npm install 安装所有依赖；npm update 更新包（遵循语义化版本规则）；npm uninstall 卸载包。依赖应通过命令管理，避免手动修改 node_modules。",
+    "pitfalls": [
+      "将 node_modules 目录提交到版本库，或相反，不提交 package-lock.json。",
+      "混淆 dependencies 和 devDependencies，导致生产环境安装不必要的包。",
+      "使用 npm install -g 全局安装项目依赖，而非在项目本地安装。"
+    ],
+    "follow_up_paths": [
+      "package.json 中的语义化版本号（^, ~, *）有什么区别？",
+      "npm ci 和 npm install 命令有何不同？分别在什么场景下使用？",
+      "如何解决项目中的依赖冲突或循环依赖问题？"
+    ]
+  }
+}

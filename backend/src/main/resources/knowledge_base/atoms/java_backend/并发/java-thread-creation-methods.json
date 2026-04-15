@@ -1,0 +1,25 @@
+{
+  "id": "java-thread-creation-methods",
+  "subject": "Java 线程创建的三种方式",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "Java",
+    "线程",
+    "Runnable",
+    "Callable"
+  ],
+  "content": {
+    "principles": "Java 创建线程主要有三种方式：1）继承 Thread 类，重写 run 方法。2）实现 Runnable 接口，将任务对象传递给 Thread 构造函数，实现任务与线程的解耦，任务可提交给线程池（如 ThreadPoolExecutor）。3）实现 Callable 接口，配合 FutureTask 使用，可以获取线程执行后的返回值，并能抛出异常。实际高并发开发中，应使用线程池（如通过 Executors 工厂类或直接使用 ThreadPoolExecutor）来复用线程、控制资源，避免频繁创建线程导致系统崩溃。",
+    "pitfalls": [
+      "混淆继承 Thread 和实现 Runnable 的区别，不理解后者解耦的优势。",
+      "不知道 Callable 与 Runnable 的关键区别在于是否有返回值和能否抛出受检异常。",
+      "在实际开发中仍手动 new Thread，不了解线程池的必要性和优势。"
+    ],
+    "follow_up_paths": [
+      "为什么实现 Runnable 接口比继承 Thread 类更推荐？这体现了面向对象设计的什么原则？",
+      "FutureTask 的 get() 方法是阻塞的，如果不想阻塞，有哪些替代方案？",
+      "Executors 工厂类创建的各种线程池（如 newCachedThreadPool, newFixedThreadPool）背后默认的 ThreadPoolExecutor 参数是什么？各有什么潜在问题？"
+    ]
+  }
+}

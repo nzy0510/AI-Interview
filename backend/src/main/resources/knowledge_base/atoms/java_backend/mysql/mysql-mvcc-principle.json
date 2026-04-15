@@ -1,0 +1,24 @@
+{
+  "id": "mysql-mvcc-principle",
+  "subject": "MySQL MVCC (多版本并发控制) 原理与作用",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "并发控制",
+    "MVCC",
+    "隔离级别"
+  ],
+  "content": {
+    "principles": "MVCC（多版本并发控制）是InnoDB实现高并发读的核心机制，它使得读操作（快照读）无需加锁即可看到一致的数据视图，从而实现读写不阻塞。\n1. **实现基础**: \n   a. **隐藏字段**: 每行记录包含`DB_TRX_ID`（最近修改该行的事务ID）和`DB_ROLL_PTR`（指向undo log中旧版本数据的回滚指针）。\n   b. **Undo Log**: 记录数据修改前的版本，通过`DB_ROLL_PTR`形成一条版本链。\n   c. **Read View**: 事务启动时生成，用于判断版本链中哪个版本对当前事务可见。它包含当前活跃事务ID列表、最小活跃事务ID、下一个即将分配的事务ID等。\n2. **工作流程**: 当执行普通SELECT（快照读）时，InnoDB会遍历数据行的版本链，通过对比`DB_TRX_ID`和当前事务的Read View，找到对当前事务可见的最新版本数据（即事务开始时已提交的版本）。\n3. **与隔离级别的关系**: 在**可重复读（RR）** 级别，事务在第一次读时生成Read View，并在整个事务期间复用，因此看到的数据快照保持一致。在**读已提交（RC）** 级别，每次读都会生成新的Read View，因此能看到其他已提交事务的最新修改。\n4. **限制**: MVCC仅作用于快照读（普通SELECT）。对于**当前读**（如SELECT ... FOR UPDATE, LOCK IN SHARE MODE, UPDATE, DELETE），InnoDB会读取最新已提交的数据并加锁。在RR级别防止幻读，主要依赖Next-Key Lock，而非MVCC。",
+    "pitfalls": [
+      "认为MVCC完全解决了所有并发问题，实际上它主要优化了读并发，写操作仍需加锁。",
+      "混淆快照读和当前读，误以为SELECT ... FOR UPDATE也利用MVCC，实际上它是当前读，会加锁。",
+      "误认为RR级别下MVCC能完全避免幻读，实际上对于当前读或更新操作，幻读的防止需要依靠Next-Key Lock。"
+    ],
+    "follow_up_paths": [
+      "追问：在RR隔离级别下，两个事务同时启动并修改同一行数据，MVCC和锁是如何协同工作的？",
+      "追问：长事务会对MVCC产生什么负面影响？（提示：undo log清理）",
+      "引导：如果没有MVCC，数据库如何保证可重复读隔离级别？性能代价是什么？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "mysql-count-differences",
+  "subject": "COUNT(*), COUNT(1), COUNT(列名) 的区别与性能",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "聚合函数",
+    "性能",
+    "SQL语义"
+  ],
+  "content": {
+    "principles": "1）`COUNT(*)`：SQL标准语法，统计`结果集的行数`，包括所有列都为NULL的行。MySQL优化器会对其进行特殊优化，InnoDB引擎下会选择最小的非空二级索引或主键索引进行扫描，避免全表扫描。2）`COUNT(1)`：统计结果集的行数，原理与COUNT(*)几乎完全相同。因为“1”是常量，对每一行求值结果都不为NULL，因此统计所有行。在绝大多数情况下，其执行计划与COUNT(*)一致。3）`COUNT(列名)`：统计指定列`非空（NOT NULL）值的行数`。如果该列允许为NULL，则NULL值不会被计入。这会导致统计结果可能与预期不符。性能上，COUNT(*)和COUNT(1)通常最优。COUNT(列名)需要读取该列的实际值并判断是否为NULL，如果该列无索引，可能需要进行全表扫描。最佳实践：统计表总行数时，使用COUNT(*)或COUNT(1)。需要统计某列非空值时，使用COUNT(列名)并明确其语义。",
+    "pitfalls": [
+      "误以为 COUNT(1) 是统计第一列，或比 COUNT(*) 快。",
+      "在需要统计总行数时使用 COUNT(允许为NULL的列)，导致结果偏小。",
+      "认为 COUNT(主键) 一定最快，实际上在InnoDB下 COUNT(*) 经过优化可能更优。"
+    ],
+    "follow_up_paths": [
+      "在 MyISAM 和 InnoDB 引擎下，COUNT(*) 的优化机制有何不同？",
+      "如果有一个二级索引，COUNT(*) 会走哪个索引？为什么？",
+      "如何快速估算一个大表的行数？（提示：information_schema或采样统计）"
+    ]
+  }
+}

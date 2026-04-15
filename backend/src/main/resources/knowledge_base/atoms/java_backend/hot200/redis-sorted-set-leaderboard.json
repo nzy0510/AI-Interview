@@ -1,0 +1,24 @@
+{
+  "id": "redis-sorted-set-leaderboard",
+  "subject": "使用Redis Sorted Set实现排行榜",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Redis",
+    "数据结构",
+    "Sorted Set",
+    "排行榜"
+  ],
+  "content": {
+    "principles": "Redis的Sorted Set（有序集合）是天然适合实现排行榜的数据结构，其元素按分数（score）排序，支持高效的增、删、查、范围查询操作，时间复杂度为O(log N)。\n核心命令：\n- 添加/更新分数：`ZADD leaderboard score member`（相同member会更新score）。\n- 获取Top N（降序）：`ZREVRANGE leaderboard 0 N-1 WITHSCORES`。\n- 获取某成员分数：`ZSCORE leaderboard member`。\n- 获取某成员排名（降序）：`ZREVRANK leaderboard member`。\n内部实现为跳跃表（skiplist）和哈希表，兼顾了范围查询和单点查询的效率。适用于游戏积分榜、直播热度榜、商品销量排行等场景。数据量极大时，可考虑按维度（如服务器、时间）分片。",
+    "pitfalls": [
+      "误用`ZRANGE`（默认升序）来获取Top N，实际应使用`ZREVRANGE`。",
+      "未考虑分数相同（score tie）时的排名规则（默认按member字典序），可能不符合业务预期。",
+      "对于海量数据（如亿级），单个Sorted Set可能内存过大，未设计分片或分页策略。"
+    ],
+    "follow_up_paths": [
+      "如果排行榜需要支持实时更新且查询QPS极高，如何进一步优化（例如结合本地缓存、异步更新等）？",
+      "如何使用Sorted Set实现一个带时间衰减（如最近一周热度）的排行榜？"
+    ]
+  }
+}

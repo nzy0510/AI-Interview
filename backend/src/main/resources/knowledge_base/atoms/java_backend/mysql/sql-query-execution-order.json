@@ -1,0 +1,23 @@
+{
+  "id": "sql-query-execution-order",
+  "subject": "SQL 查询语句中关键子句（SELECT, FROM, WHERE等）的逻辑执行顺序",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "SQL基础",
+    "查询优化"
+  ],
+  "content": {
+    "principles": "SQL 语句的逻辑处理顺序（非书写顺序）为：1. FROM（包括 JOIN，确定数据源并生成虚拟表）。2. ON（应用 JOIN 条件）。3. JOIN（合并表）。4. WHERE（对行进行过滤，此时不能使用 SELECT 中定义的别名或聚合函数）。5. GROUP BY（分组）。6. HAVING（对分组结果过滤，可使用聚合函数）。7. SELECT（选择列，计算表达式，定义别名）。8. DISTINCT（去重）。9. ORDER BY（排序，可使用 SELECT 中的别名）。10. LIMIT/OFFSET（限制行数）。理解此顺序是编写正确高效 SQL 和进行查询优化的基础。",
+    "pitfalls": [
+      "在 WHERE 子句中使用 SELECT 中定义的别名或聚合函数会导致错误。",
+      "误认为 ORDER BY 可以使用任何别名，实际上只能使用 SELECT 阶段定义的别名。",
+      "不理解 HAVING 和 WHERE 的区别及适用阶段。"
+    ],
+    "follow_up_paths": [
+      "为什么 WHERE 中不能使用聚合函数？（因为 WHERE 在 GROUP BY 之前执行，此时尚未分组计算）",
+      "如果 SELECT 中使用了 DISTINCT，对执行顺序有什么影响？（DISTINCT 在 SELECT 之后，ORDER BY 之前生效）",
+      "FROM 子句中的子查询是在哪个阶段执行的？（作为数据源，在第一步被处理）"
+    ]
+  }
+}

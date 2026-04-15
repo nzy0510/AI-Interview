@@ -1,0 +1,24 @@
+{
+  "id": "spring-ioc-di-core",
+  "subject": "Spring IoC（控制反转）与DI（依赖注入）核心概念与实现",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "Spring",
+    "IoC",
+    "DI",
+    "设计模式"
+  ],
+  "content": {
+    "principles": "**IoC（控制反转）**是一种设计思想，将对象的创建、组装、生命周期管理的控制权从应用程序代码转移到外部容器（如Spring容器）。\n**DI（依赖注入）**是IoC思想的一种具体实现方式，由容器在运行时动态地将依赖对象注入到目标组件中。\n\n**核心流程**：\n1. 容器启动时，读取配置（XML、Java Config或注解）。\n2. 根据配置信息实例化Bean，并管理其生命周期（单例、原型等）。\n3. 解析Bean之间的依赖关系，通过DI完成装配。\n\n**常见注入方式**：\n1. **构造器注入**：通过构造函数参数注入。推荐方式，保证依赖不可变，便于测试。\n2. **Setter方法注入**：通过setter方法注入。灵活性高，但可能导致对象处于不完整状态。\n3. **字段注入**：使用`@Autowired`等注解直接注入字段。最简便，但降低了代码的可测试性和灵活性，不推荐在复杂项目中使用。\n\n**底层实现**：基于Java反射和JavaBean规范。Spring通过三级缓存机制解决单例Bean的循环依赖问题。\n\n**示例**：\n```java\n@Service // Bean定义\npublic class UserService {\n    private final UserDao userDao; // 依赖\n    @Autowired // 构造器注入\n    public UserService(UserDao userDao) {\n        this.userDao = userDao;\n    }\n}\n```\n**价值**：降低组件间的耦合度，提高代码可测试性和可维护性。",
+    "pitfalls": [
+      "将IoC和DI概念混淆，IoC是更宽泛的思想，DI是实现IoC的一种模式。",
+      "过度使用字段注入（`@Autowired`），导致代码难以进行单元测试（无法通过构造器传入Mock对象）和存在NPE风险。",
+      "不理解Spring解决循环依赖的原理（三级缓存），无法解释在何种情况下循环依赖会失败（如构造器注入的循环依赖）。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：Spring的三级缓存具体是哪三级？它们是如何协作来解决Setter注入的循环依赖问题的？",
+      "如果候选人答得不好，可以引导：如果不使用Spring，如何在代码中手动实现一个简单的、支持构造器注入的IoC容器？"
+    ]
+  }
+}

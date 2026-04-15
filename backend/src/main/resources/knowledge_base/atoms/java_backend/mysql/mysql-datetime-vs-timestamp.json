@@ -1,0 +1,22 @@
+{
+  "id": "mysql-datetime-vs-timestamp",
+  "subject": "MySQL DATETIME 与 TIMESTAMP 类型的核心区别与应用场景",
+  "category": "mysql",
+  "difficulty": "简单",
+  "tags": [
+    "数据类型",
+    "时区",
+    "存储"
+  ],
+  "content": {
+    "principles": "DATETIME 和 TIMESTAMP 都用于存储日期时间，但有本质区别：1) **存储范围**：DATETIME 支持 '1000-01-01' 到 '9999-12-31'，精度到秒。TIMESTAMP 支持 '1970-01-01 00:00:01' UTC 到 '2038-01-19 03:14:07' UTC，受32位整数限制（2038年问题）。2) **时区处理**：TIMESTAMP 以UTC时间戳（4字节）存储，插入和查询时会根据会话的 `time_zone` 设置自动转换。DATETIME（8字节）按字面值存储，不进行时区转换。3) **自动更新**：两者都支持 `DEFAULT CURRENT_TIMESTAMP` 和 `ON UPDATE CURRENT_TIMESTAMP`，但旧版本MySQL中一个表只能有一个TIMESTAMP列自动更新。应用场景：需要记录事件发生的确切时刻且跨时区一致（如日志、交易时间），使用 TIMESTAMP；记录固定的时间点（如预约时间、生日），不希望受时区影响，使用 DATETIME。",
+    "pitfalls": [
+      "候选人可能只记得 TIMESTAMP 占空间小，但忽略了2038年溢出风险。",
+      "容易混淆两者的时区行为，误以为 DATETIME 也会自动转换。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：在微服务或全球化应用中，如何统一管理数据库中的时间存储和展示？",
+      "如果候选人答得不好，可以引导：如果将一个 TIMESTAMP 值从东八区服务器导出，导入到零时区服务器，显示的值会变吗？为什么？"
+    ]
+  }
+}

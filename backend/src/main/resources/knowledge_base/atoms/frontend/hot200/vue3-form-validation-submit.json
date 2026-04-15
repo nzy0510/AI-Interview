@@ -1,0 +1,25 @@
+{
+  "id": "vue3-form-validation-submit",
+  "subject": "Vue 3中复杂表单的验证与提交逻辑设计",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Vue3",
+    "表单",
+    "组合式API"
+  ],
+  "content": {
+    "principles": "在Vue 3中实现复杂表单验证与提交，关键在于逻辑分层与解耦。1. 使用`reactive`或`ref`管理表单数据对象，通过`v-model`进行双向绑定。2. 验证逻辑应抽离为独立的组合式函数（如`useFormValidation`）或使用成熟库（如VeeValidate）。组合式函数接收表单数据，返回错误信息和校验方法。3. 提交逻辑需包含防抖、loading状态管理。流程：点击提交 → 调用`validate()`进行同步/异步校验 → 失败则高亮错误字段 → 成功则通过Axios等发送请求。Axios拦截器可统一处理400等错误并回填到表单错误对象。4. 对于动态表单项（`v-for`渲染数组），必须为每项设置唯一`key`（如ID），避免DOM复用导致输入错乱。示例代码核心：`const form = reactive({ name: '', email: '' }); const errors = ref({}); const validate = () => { /* 校验规则 */ }; const submit = async () => { errors.value = {}; if (!validate()) return; try { await api.submitForm(form); } catch (err) { errors.value.global = '网络错误'; } }`。",
+    "pitfalls": [
+      "将所有验证逻辑内联在组件模板或方法中，导致代码臃肿难以维护。",
+      "动态表单项未使用唯一`key`，导致数据更新时DOM状态错乱。",
+      "提交时未重置错误对象或未处理异步校验的竞态条件。",
+      "忽略了对全局提交错误（如网络问题）的反馈处理。"
+    ],
+    "follow_up_paths": [
+      "如何使用VeeValidate的`<Form>`和`<Field>`组件与组合式API结合，实现声明式验证？",
+      "如何设计一个支持嵌套对象、数组的深层表单验证逻辑？",
+      "在大型应用中，如何将表单状态管理与Pinia结合，实现跨组件表单状态共享？"
+    ]
+  }
+}

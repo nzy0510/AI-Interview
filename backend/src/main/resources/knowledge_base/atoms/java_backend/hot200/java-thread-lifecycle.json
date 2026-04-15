@@ -1,0 +1,23 @@
+{
+  "id": "java-thread-lifecycle",
+  "subject": "Java 线程的生命周期与状态",
+  "category": "hot200",
+  "difficulty": "简单",
+  "tags": [
+    "多线程",
+    "Thread",
+    "状态"
+  ],
+  "content": {
+    "principles": "Java 线程的生命周期由 `java.lang.Thread.State` 枚举定义，共6种状态：\n1. **NEW（新建）**：线程对象已被创建，但尚未调用 `start()` 方法。\n2. **RUNNABLE（可运行）**：调用 `start()` 后，线程处于此状态。它可能在等待CPU时间片，也可能正在运行。对应操作系统线程状态中的就绪（Ready）和运行（Running）。\n3. **BLOCKED（阻塞）**：线程被阻塞，等待获取一个监视器锁（monitor lock）以进入同步块/方法。例如，线程A持有锁，线程B尝试进入同步块时就会进入BLOCKED状态。\n4. **WAITING（等待）**：线程进入等待状态，需要其他线程显式地唤醒。调用 `Object.wait()`、`Thread.join()` 或 `LockSupport.park()` 会进入此状态。\n5. **TIMED_WAITING（超时等待）**：与WAITING类似，但带有超时时间。调用 `Thread.sleep(long)`、`Object.wait(long)`、`Thread.join(long)` 或 `LockSupport.parkNanos()` 等会进入此状态。\n6. **TERMINATED（终止）**：线程执行完毕（run方法结束）或异常退出。",
+    "pitfalls": [
+      "将 RUNNABLE 状态简单理解为“正在运行”，忽略了其包含“就绪等待CPU”的情况",
+      "混淆 BLOCKED 和 WAITING/TIMED_WAITING 状态，不清楚它们分别由什么操作引起",
+      "认为调用 `sleep()` 或 `yield()` 会让线程释放锁"
+    ],
+    "follow_up_paths": [
+      "调用 `Thread.sleep(1000)` 和 `Object.wait(1000)` 都会让线程进入 TIMED_WAITING 状态，它们有什么区别？",
+      "一个线程如何从 BLOCKED 状态转换到 RUNNABLE 状态？"
+    ]
+  }
+}

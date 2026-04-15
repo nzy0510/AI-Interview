@@ -1,0 +1,25 @@
+{
+  "id": "mysql-doublewrite-buffer",
+  "subject": "MySQL Doublewrite Buffer 的作用与原理",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "存储引擎",
+    "InnoDB",
+    "崩溃恢复",
+    "数据一致性"
+  ],
+  "content": {
+    "principles": "Doublewrite Buffer 是 InnoDB 用于防止数据页'部分写'问题的机制。InnoDB 页大小为16K，而磁盘写入单位通常为4K或8K。在刷脏页时，InnoDB 会先将脏页写入共享表空间内一个连续的、称为 doublewrite buffer 的区域（顺序写），然后再将页写回真正的数据文件。其核心价值在于崩溃恢复：若因断电导致数据文件中的页不完整（如只写了前8K），重启后，InnoDB 会检查页的 checksum，若发现损坏，则从 doublewrite buffer 中找到该页的完整副本进行恢复。redo log 记录的是逻辑变更，无法恢复物理损坏的页，因此需要 doublewrite buffer 提供物理备份。虽然涉及两次写，但写 doublewrite buffer 是顺序、批量操作，对性能影响有限。在某些提供原子写的文件系统（如 ZFS）或使用 DAX 模式的持久化内存上，可以禁用此功能。",
+    "pitfalls": [
+      "误以为 doublewrite buffer 是内存缓冲区，它实际是共享表空间中的一段物理存储区域。",
+      "混淆其与 redo log 的作用：redo log 用于逻辑恢复（重放事务），doublewrite 用于物理恢复（修复损坏页）。",
+      "认为'双写'必然导致性能严重下降，忽略了其顺序写的优化和避免页损坏带来的更大开销。"
+    ],
+    "follow_up_paths": [
+      "如果禁用 doublewrite buffer，InnoDB 如何保证数据页的完整性？（依赖文件系统原子写或 checksum 配合全页重做，代价可能更高）",
+      "doublewrite buffer 刷盘的时机和流程是怎样的？（与脏页刷新、检查点机制的关系）",
+      "如何监控 doublewrite buffer 的使用情况？（通过 `SHOW ENGINE INNODB STATUS` 或 `information_schema` 相关表）"
+    ]
+  }
+}

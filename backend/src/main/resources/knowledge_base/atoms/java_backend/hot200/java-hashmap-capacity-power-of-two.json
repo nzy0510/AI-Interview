@@ -1,0 +1,24 @@
+{
+  "id": "java-hashmap-capacity-power-of-two",
+  "subject": "HashMap 容量为何设计为2的幂次方",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "HashMap",
+    "数据结构",
+    "位运算",
+    "哈希"
+  ],
+  "content": {
+    "principles": "HashMap 的容量设计为2的n次方，核心目的是为了用位运算 `&` 替代取模运算 `%` 来计算数组下标，即 `index = hash & (capacity - 1)`。当 capacity 为2的幂时，`capacity - 1` 的二进制低位全为1（如15为0b1111），`&` 运算能有效截断高位，实现均匀分布，且效率远高于 `%`。扩容时翻倍（如16->32）也保证了此特性一直成立，迁移数据时能利用 `hash & oldCapacity` 快速判断元素是否需要移动。此外，JDK 8 的树化阈值判断和红黑树拆分逻辑也依赖此均匀分布特性来保证性能稳定。",
+    "pitfalls": [
+      "认为容量设为任意值（如100）也可以，不理解其对取模运算效率和哈希分布的影响",
+      "不理解 `hash & (capacity - 1)` 等价于 `hash % capacity` 的前提条件是 capacity 为2的幂",
+      "忽略扩容翻倍是为了维持 `capacity` 为2的幂这一关键性质"
+    ],
+    "follow_up_paths": [
+      "如果构造 HashMap 时传入的初始容量不是2的幂，比如10，内部会如何处理？",
+      "为什么用 `&` 替代 `%` 能提升性能？除了性能，对哈希冲突有什么影响？"
+    ]
+  }
+}

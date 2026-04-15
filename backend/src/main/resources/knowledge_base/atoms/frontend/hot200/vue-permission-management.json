@@ -1,0 +1,25 @@
+{
+  "id": "vue-permission-management",
+  "subject": "Vue项目中的权限管理方案（路由与按钮级）",
+  "category": "hot200",
+  "difficulty": "中等",
+  "tags": [
+    "Vue",
+    "权限控制",
+    "路由守卫"
+  ],
+  "content": {
+    "principles": "Vue项目权限管理核心在于将用户权限信息与页面、操作进行映射。实现分为两个层级：1. **路由级控制**：用户登录后获取角色或权限列表。在`router.beforeEach`全局前置守卫中，检查目标路由的`meta`字段（如`requiresAuth`、`roles`），判断当前用户是否具备访问权限。若无权限，则重定向到403页面或登录页。示例：`router.beforeEach((to, from, next) => { const requiresAuth = to.matched.some(record => record.meta.requiresAuth); const userRoles = store.state.user.roles; if (requiresAuth && !userRoles.includes('admin')) { next('/forbidden'); } else { next(); } })`。2. **按钮/组件级控制**：通过全局自定义指令`v-permission`实现细粒度控制。指令在`inserted`钩子中，根据绑定值（所需权限）与当前用户权限列表进行比对，若无权限则从DOM中移除或禁用该元素。这实现了基于权限的动态UI渲染。",
+    "pitfalls": [
+      "权限判断逻辑分散在各个组件中，未进行统一抽象，导致维护困难。",
+      "路由守卫中仅检查顶层路由的`meta`，忽略了嵌套路由的权限继承或覆盖关系。",
+      "按钮级权限指令仅隐藏元素，但未考虑通过API直接访问对应功能的可能性（需后端同时校验）。",
+      "用户权限信息更新（如登出、切换角色）后，未及时清除路由缓存或更新UI权限状态。"
+    ],
+    "follow_up_paths": [
+      "如何设计一个支持动态路由添加（根据用户权限异步生成路由表）的权限系统？",
+      "除了全局指令，如何使用渲染函数或高阶组件（HOC）来实现组件级的权限控制？",
+      "在微前端架构下，主应用与子应用之间应如何协调权限信息与路由守卫？"
+    ]
+  }
+}

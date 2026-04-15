@@ -1,0 +1,24 @@
+{
+  "id": "redis-string-sds",
+  "subject": "Redis String类型的底层实现：SDS（简单动态字符串）",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "数据结构",
+    "String",
+    "SDS",
+    "源码"
+  ],
+  "content": {
+    "principles": "Redis的String类型底层使用SDS（Simple Dynamic String）而非C原生字符数组，以解决C字符串的缺陷。SDS结构核心字段：len（已使用字节数）、free（剩余空闲字节数）、buf[]（字符数组）。优势：1. 常数复杂度获取字符串长度（O(1)，直接访问len）。2. 杜绝缓冲区溢出：拼接前检查free，不足则自动扩容。3. 减少内存重分配次数：通过空间预分配（扩容时多分配）和惰性空间释放（缩短时不立即回收，更新len和free）策略优化。4. 二进制安全：可存储任意二进制数据。SDS是Redis各种复杂数据类型实现的基础。",
+    "pitfalls": [
+      "认为Redis的String就是普通的C字符串，不了解其二进制安全和防溢出的特性。",
+      "不清楚SDS如何实现O(1)复杂度获取长度。",
+      "忽略空间预分配和惰性释放对性能提升的具体作用。"
+    ],
+    "follow_up_paths": [
+      "SDS的空间预分配策略具体规则是什么？分配多少额外空间？",
+      "SDS的惰性空间释放可能导致内存浪费，Redis有机制回收这些空间吗？"
+    ]
+  }
+}

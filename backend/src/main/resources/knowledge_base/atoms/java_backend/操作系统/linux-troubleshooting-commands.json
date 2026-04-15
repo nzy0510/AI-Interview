@@ -1,0 +1,24 @@
+{
+  "id": "linux-troubleshooting-commands",
+  "subject": "Linux常用故障排查命令",
+  "category": "操作系统",
+  "difficulty": "简单",
+  "tags": [
+    "Linux",
+    "运维",
+    "调试"
+  ],
+  "content": {
+    "principles": "Linux故障排查常用命令围绕日志、资源、进程、网络等方面：1) 日志查看：`tail -f /var/log/app.log` 实时跟踪；`grep --color \"ERROR\" /var/log/app.log` 搜索关键字。2) 系统资源：`top` 或 `htop` 查看CPU、内存占用高的进程（关注RES和%MEM列）。3) 进程管理：`ps aux | grep java` 查找进程；`kill -15` 优雅终止，`kill -9` 强制杀死。4) 网络状态：`netstat -tunlp` 或 `ss -tulnp` 查看端口占用（如 `ss -tulnp | grep 8080`）；`curl -v http://api.example.com/health` 测试接口连通性。5) 文件传输与磁盘：`scp` 或 `rsync -avz ./logs/ user@host:/backup/` 同步目录；`df -h` 查看磁盘整体使用，`du -sh *` 查看目录大小。这些命令组合可用于日常运维和线上问题定位。",
+    "pitfalls": [
+      "混淆 `ps aux` 和 `ps -ef` 的输出格式和含义。",
+      "不理解 `kill -15` (SIGTERM) 和 `kill -9` (SIGKILL) 的本质区别（能否被进程捕获处理）。",
+      "不熟悉 `ss` 命令相对于 `netstat` 的优势（速度更快，信息更详细）。"
+    ],
+    "follow_up_paths": [
+      "如何持续监控一个进程的资源（CPU、内存）变化？可以用什么命令或工具（如pidstat, atop）？",
+      "如果发现某个端口被占用，如何定位到具体的进程和程序文件路径？",
+      "`strace` 或 `perf` 命令在排查性能问题或程序卡顿时如何使用？"
+    ]
+  }
+}
