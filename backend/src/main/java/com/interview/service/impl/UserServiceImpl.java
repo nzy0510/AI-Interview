@@ -25,12 +25,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public String login(LoginDTO loginDTO) {
+        String loginIdentity = loginDTO.getUsername();
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, loginDTO.getUsername());
+        wrapper.and(w -> w.eq(User::getEmail, loginIdentity).or().eq(User::getUsername, loginIdentity));
         User user = this.getOne(wrapper);
 
         if (user == null) {
-            throw new RuntimeException("用户不存在");
+            throw new RuntimeException("邮箱或用户名不存在");
         }
 
         String md5Password = DigestUtil.md5Hex(loginDTO.getPassword());
