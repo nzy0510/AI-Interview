@@ -17,15 +17,89 @@
     </header>
 
     <el-main class="page-body" v-loading="loading">
+      <section class="surface-card hero-shell">
+        <div class="hero-copy">
+          <p class="section-kicker">{{ reportCenter.hero.kicker }}</p>
+          <h2 class="hero-title">{{ reportCenter.hero.title }}</h2>
+          <p class="hero-desc">{{ reportCenter.hero.description }}</p>
+          <div class="hero-tags">
+            <el-tag v-for="tag in reportCenter.hero.tags" :key="tag" effect="plain" class="hero-tag">
+              {{ tag }}
+            </el-tag>
+          </div>
+        </div>
+
+        <div class="hero-side">
+          <div class="recent-box">
+            <div class="recent-label">最近表现</div>
+            <div v-if="latestRecord" class="recent-main">
+              <strong>{{ latestRecord.score }}</strong>
+              <span>分</span>
+            </div>
+            <div v-else class="recent-main empty">
+              <strong>--</strong>
+            </div>
+            <div class="recent-sub">
+              <span>{{ latestRecord ? latestRecord.position : '暂无记录' }}</span>
+              <span>{{ latestRecord ? formatDate(latestRecord.createTime) : '等待新的面试结果' }}</span>
+            </div>
+          </div>
+
+          <div class="summary-grid">
+            <article v-for="item in summaryCards" :key="item.label" class="summary-tile">
+              <span class="summary-label">{{ item.label }}</span>
+              <strong class="summary-value">{{ item.value }}</strong>
+              <span class="summary-hint">{{ item.hint }}</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <template v-if="!loading && historyList.length === 0">
         <section class="surface-card empty-shell">
-          <el-empty description="还没有完成过面试，快去挑战一场吧！">
+          <el-empty :description="reportCenter.emptyStates.all">
             <el-button type="primary" class="primary-cta" @click="router.push('/')">开始面试</el-button>
           </el-empty>
         </section>
       </template>
 
       <template v-else>
+        <section class="surface-card section-shell overview-shell">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Overview</p>
+              <h2 class="section-title">筛选与摘要</h2>
+              <p class="section-desc">先从模式和关键字收窄范围，再看趋势和列表。</p>
+            </div>
+            <div class="toolbar">
+              <el-input
+                v-model="searchKeyword"
+                class="search-input"
+                clearable
+                :prefix-icon="Search"
+                placeholder="搜索岗位、反馈或摘要"
+              />
+              <el-radio-group v-model="modeFilter" size="small" class="mode-switch">
+                <el-radio-button v-for="item in reportCenter.filters" :key="item.value" :value="item.value">
+                  {{ item.label }}
+                </el-radio-button>
+              </el-radio-group>
+            </div>
+          </div>
+
+          <div class="metric-grid">
+            <article v-for="metric in overviewMetrics" :key="metric.label" class="metric-card">
+              <div class="metric-head">
+                <span class="metric-kicker">{{ metric.kicker }}</span>
+                <el-tag size="small" effect="plain" :type="metric.tagType">{{ metric.trend }}</el-tag>
+              </div>
+              <strong class="metric-value">{{ metric.value }}</strong>
+              <span class="metric-label">{{ metric.label }}</span>
+              <p class="metric-desc">{{ metric.description }}</p>
+            </article>
+          </div>
+        </section>
+
         <section class="surface-card section-shell chart-shell">
           <div class="section-head">
             <div>
@@ -33,13 +107,51 @@
               <h2 class="section-title">能力成长曲线</h2>
               <p class="section-desc">在评分、能力热力和知识图谱之间切换，观察长期变化。</p>
             </div>
-            <el-radio-group v-model="chartMode" size="small" class="mode-switch" @change="drawGrowthChart">
-              <el-radio-button value="score">综合得分</el-radio-button>
-              <el-radio-button value="radar">能力热力图</el-radio-button>
-              <el-radio-button value="graph">知识星图</el-radio-button>
-            </el-radio-group>
+            <div class="chart-actions">
+              <el-radio-group v-model="chartMode" size="small" class="mode-switch" @change="drawGrowthChart">
+                <el-radio-button value="score">综合得分</el-radio-button>
+                <el-radio-button value="radar">能力热力图</el-radio-button>
+                <el-radio-button value="graph">知识星图</el-radio-button>
+              </el-radio-group>
+              <el-button :icon="RefreshRight" plain size="small" @click="refreshChart">刷新图表</el-button>
+            </div>
           </div>
-          <div ref="growthChartRef" class="echarts-growth-container"></div>
+          <div class="chart-wrap">
+            <div ref="growthChartRef" class="echarts-growth-container"></div>
+            <el-empty
+              v-if="!loading && visibleHistoryList.length === 0"
+              class="chart-empty"
+              :description="reportCenter.emptyStates.filtered"
+            />
+          </div>
+        </section>
+
+        <section class="surface-card section-shell performance-shell">
+          <div class="section-head compact">
+            <div>
+              <p class="section-kicker">Recent Performance</p>
+              <h2 class="section-title">最近表现与能力画像</h2>
+            </div>
+          </div>
+
+          <div v-if="latestRecord" class="performance-grid">
+            <article class="performance-block">
+              <span class="performance-label">最近岗位</span>
+              <strong>{{ latestRecord.position }}</strong>
+              <p>{{ latestRecord.interviewMode === 'video' ? '视频面试' : '文字面试' }} · {{ formatDate(latestRecord.createTime) }}</p>
+            </article>
+            <article class="performance-block">
+              <span class="performance-label">最近得分</span>
+              <strong>{{ latestRecord.score }}</strong>
+              <p>{{ scoreDeltaText }}</p>
+            </article>
+            <article class="performance-block">
+              <span class="performance-label">重点能力</span>
+              <strong>{{ strongestAbility.label }}</strong>
+              <p>{{ strongestAbility.grade }} 级 · {{ strongestAbility.description }}</p>
+            </article>
+          </div>
+          <el-empty v-else :description="reportCenter.emptyStates.all" />
         </section>
 
         <section class="surface-card section-shell list-shell">
@@ -48,9 +160,17 @@
               <p class="section-kicker">Interview Ledger</p>
               <h2 class="section-title">历史面试记录</h2>
             </div>
+            <div class="list-meta">
+              <el-tag effect="plain" type="info">{{ visibleHistoryList.length }} 条结果</el-tag>
+            </div>
           </div>
-          <div class="table-shell">
-            <el-table :data="historyList" stripe @row-click="openDetail" row-class-name="table-row">
+          <div v-if="!loading && visibleHistoryList.length === 0" class="list-empty">
+            <el-empty :description="reportCenter.emptyStates.filtered">
+              <el-button type="primary" class="primary-cta" @click="clearFilters">清空筛选</el-button>
+            </el-empty>
+          </div>
+          <div v-else class="table-shell">
+            <el-table :data="visibleHistoryList" stripe @row-click="openDetail" row-class-name="table-row">
               <el-table-column label="日期" width="170">
                 <template #default="{ row }">
                   {{ formatDate(row.createTime) }}
@@ -204,20 +324,24 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ArrowLeft, RefreshRight, Search, Setting } from '@element-plus/icons-vue'
 import { getHistoryListAPI } from '@/api/interview'
+import { reportCenterConfig } from '@/mock/reports'
 import * as echarts from 'echarts'
 
 const router = useRouter()
 const loading = ref(true)
 const historyList = ref([])      // Sorted newest-first for table
 const chartMode = ref('score')
+const searchKeyword = ref('')
+const modeFilter = ref('all')
 const growthChartRef = ref(null)
 const miniRadarRef = ref(null)
 let growthChartInstance = null
 let miniRadarInstance = null
 const drawerOpen = ref(false)
 const selected = ref(null)
+const reportCenter = reportCenterConfig
 
 const abilityDimensions = {
   techDepth:      { label: '技术深度', color: '#409eff' },
@@ -249,8 +373,115 @@ const EMOTION_LABELS = { neutral: '平静', happy: '积极', sad: '低落', angr
 const emotionLabel = (key) => EMOTION_LABELS[key] || key
 const emotionColor = (key) => ({ neutral: '#909399', happy: '#67C23A', sad: '#5B9BD5', angry: '#F56C6C', fearful: '#E6A23C', disgusted: '#C71585', surprised: '#409EFF' }[key] || '#909399')
 
-// Chronological order for chart (oldest → newest = left → right)
-const chartData = computed(() => [...historyList.value].reverse())
+const sortedHistoryList = computed(() => {
+  return [...historyList.value].sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
+})
+const filteredHistoryList = computed(() => {
+  const keyword = searchKeyword.value.trim().toLowerCase()
+  return sortedHistoryList.value.filter((row) => {
+    const matchesMode = modeFilter.value === 'all'
+      ? true
+      : modeFilter.value === 'video'
+        ? row.interviewMode === 'video'
+        : row.interviewMode !== 'video'
+    const matchesKeyword = !keyword
+      ? true
+      : [row.position, row.feedback, row.score, row.voiceWpm]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(keyword))
+    return matchesMode && matchesKeyword
+  })
+})
+const visibleHistoryList = computed(() => filteredHistoryList.value)
+const chartData = computed(() => [...visibleHistoryList.value].reverse())
+const latestRecord = computed(() => sortedHistoryList.value[0] || null)
+const previousRecord = computed(() => sortedHistoryList.value[1] || null)
+const averageScore = computed(() => {
+  if (!sortedHistoryList.value.length) return 0
+  const total = sortedHistoryList.value.reduce((sum, row) => sum + (Number(row.score) || 0), 0)
+  return Math.round(total / sortedHistoryList.value.length)
+})
+const scoreDelta = computed(() => {
+  if (!latestRecord.value || !previousRecord.value) return null
+  return Number(latestRecord.value.score || 0) - Number(previousRecord.value.score || 0)
+})
+const scoreDeltaText = computed(() => {
+  if (scoreDelta.value == null) return '暂无前后对比'
+  const prefix = scoreDelta.value > 0 ? '+' : ''
+  return `较上一场 ${prefix}${scoreDelta.value} 分`
+})
+const summaryCards = computed(() => {
+  const total = sortedHistoryList.value.length
+  const videoCount = sortedHistoryList.value.filter((row) => row.interviewMode === 'video').length
+  const textCount = total - videoCount
+  const latest = latestRecord.value
+  return [
+    { label: '累计报告', value: total || '--', hint: total ? '所有已归档记录' : '等待面试结束后生成' },
+    { label: '平均得分', value: total ? `${averageScore.value}` : '--', hint: total ? '基于全部历史记录' : '暂无可计算数据' },
+    { label: '视频 / 文字', value: total ? `${videoCount} / ${textCount}` : '--', hint: '按面试模式拆分' },
+    { label: '最近更新', value: latest ? formatDate(latest.createTime) : '--', hint: latest ? latest.position : '尚未有新报告' }
+  ]
+})
+const overviewMetrics = computed(() => [
+  {
+    kicker: 'Volume',
+    label: '累计报告',
+    value: sortedHistoryList.value.length || '--',
+    trend: sortedHistoryList.value.length ? '稳步积累' : '待开始',
+    tagType: 'info',
+    description: '所有归档面试记录都会在这里汇总。'
+  },
+  {
+    kicker: 'Score',
+    label: '平均得分',
+    value: sortedHistoryList.value.length ? `${averageScore.value}` : '--',
+    trend: sortedHistoryList.value.length ? '基线' : '暂无',
+    tagType: sortedHistoryList.value.length ? 'success' : 'info',
+    description: '用来快速判断整体稳定性。'
+  },
+  {
+    kicker: 'Mode Mix',
+    label: '视频 / 文字',
+    value: sortedHistoryList.value.length
+      ? `${sortedHistoryList.value.filter((row) => row.interviewMode === 'video').length} / ${sortedHistoryList.value.filter((row) => row.interviewMode !== 'video').length}`
+      : '--',
+    trend: '结构',
+    tagType: 'primary',
+    description: '帮助查看训练模式的分布。'
+  },
+  {
+    kicker: 'Trend',
+    label: '最近变化',
+    value: scoreDelta.value == null ? '--' : `${scoreDelta.value > 0 ? '+' : ''}${scoreDelta.value}`,
+    trend: scoreDelta.value == null ? '无对比' : scoreDelta.value > 0 ? '上升' : scoreDelta.value < 0 ? '回落' : '持平',
+    tagType: scoreDelta.value == null ? 'info' : scoreDelta.value > 0 ? 'success' : scoreDelta.value < 0 ? 'warning' : 'info',
+    description: '和上一场面试对比的分数变化。'
+  }
+])
+const strongestAbility = computed(() => {
+  const source = selected.value || latestRecord.value
+  let ability = {}
+  try { ability = source?.abilityJson ? JSON.parse(source.abilityJson) : {} } catch { ability = {} }
+  const entries = Object.entries(ability)
+  if (!entries.length) {
+    return { label: '暂无画像', grade: '--', description: '等到报告详情展开后，会在这里显示主能力项。' }
+  }
+
+  let bestKey = entries[0][0]
+  let bestVal = entries[0][1]
+  entries.forEach(([key, grade]) => {
+    if ((gradeScore[grade] || 0) > (gradeScore[bestVal] || 0)) {
+      bestKey = key
+      bestVal = grade
+    }
+  })
+
+  return {
+    label: abilityDimensions[bestKey]?.label || bestKey,
+    grade: bestVal,
+    description: '当前最稳定的能力项'
+  }
+})
 
 onMounted(async () => {
   try {
@@ -281,6 +512,10 @@ watch(drawerOpen, (v) => {
   if (v) nextTick(() => drawMiniRadar())
 })
 
+watch([chartMode, visibleHistoryList], () => {
+  nextTick(() => drawGrowthChart())
+}, { deep: true })
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'
 const excerpt = (t) => t ? (t.length > 60 ? t.slice(0, 60) + '...' : t) : ''
@@ -290,10 +525,22 @@ const openDetail = (row) => {
   drawerOpen.value = true
 }
 
+const clearFilters = () => {
+  modeFilter.value = 'all'
+  searchKeyword.value = ''
+}
+
+const refreshChart = () => {
+  nextTick(() => drawGrowthChart())
+}
+
 // ─── Growth Trend Chart ───────────────────────────────────────────────────────
 const drawGrowthChart = () => {
   const container = growthChartRef.value
-  if (!container || chartData.value.length === 0) return
+  if (!container || chartData.value.length === 0) {
+    if (growthChartInstance) growthChartInstance.clear()
+    return
+  }
 
   if (!growthChartInstance) {
     growthChartInstance = echarts.init(container)
@@ -695,14 +942,220 @@ const drawMiniRadar = () => {
   color: #191c1e;
 }
 
+.hero-shell {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.9fr);
+  gap: 20px;
+}
+
+.hero-copy {
+  min-width: 0;
+}
+
+.hero-title {
+  font-size: 28px;
+  line-height: 1.15;
+  max-width: 720px;
+}
+
+.hero-desc {
+  max-width: 720px;
+}
+
+.hero-tags {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.hero-tag {
+  border-color: rgba(58, 56, 139, 0.12);
+  background: #f4f3ff;
+  color: #3a388b;
+}
+
+.hero-side {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.recent-box {
+  padding: 18px;
+  border-radius: 14px;
+  background: #faf9f5;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+}
+
+.recent-label {
+  font-size: 12px;
+  color: #5a6678;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.recent-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.recent-main strong {
+  font-size: 44px;
+  line-height: 1;
+  color: #3a388b;
+}
+
+.recent-main span {
+  color: #5a6678;
+  font-size: 14px;
+}
+
+.recent-main.empty strong {
+  font-size: 30px;
+  color: #94a3b8;
+}
+
+.recent-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  color: #5a6678;
+  font-size: 13px;
+}
+
+.overview-shell {
+  padding-top: 24px;
+}
+
+.toolbar {
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+  min-width: min(100%, 440px);
+}
+
+.search-input {
+  width: min(100%, 340px);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metric-card {
+  padding: 18px;
+  border-radius: 14px;
+  background: #faf9f5;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+}
+
+.metric-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.metric-value {
+  display: block;
+  font-size: 28px;
+  line-height: 1;
+  color: #191c1e;
+  margin-bottom: 6px;
+}
+
+.metric-label {
+  display: block;
+  color: #454652;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.metric-desc {
+  margin: 0;
+  color: #5a6678;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .mode-switch {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
+.chart-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.chart-wrap {
+  position: relative;
+}
+
 .echarts-growth-container {
   width: 100%;
   height: 340px;
+}
+
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+}
+
+.performance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.performance-block {
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+  background: #faf9f5;
+}
+
+.performance-label {
+  display: block;
+}
+
+.performance-block strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1.25;
+  color: #191c1e;
+  margin-bottom: 8px;
+}
+
+.performance-block p {
+  margin: 0;
+  color: #5a6678;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.list-meta {
+  display: flex;
+  align-items: center;
+}
+
+.list-empty {
+  padding: 18px 0 6px;
 }
 
 .table-shell {
@@ -992,6 +1445,7 @@ const drawMiniRadar = () => {
 
 @media (max-width: 960px) {
   .page-header,
+  .hero-shell,
   .section-head,
   .drawer-hero,
   .mini-radar-wrap {
@@ -1007,6 +1461,20 @@ const drawMiniRadar = () => {
 
   .mode-switch {
     justify-content: flex-start;
+  }
+
+  .toolbar,
+  .chart-actions {
+    width: 100%;
+    justify-items: start;
+    justify-content: flex-start;
+  }
+
+  .metric-grid,
+  .summary-grid,
+  .performance-grid,
+  .emotion-metrics {
+    grid-template-columns: 1fr;
   }
 
   .echarts-growth-container {
@@ -1033,6 +1501,7 @@ const drawMiniRadar = () => {
     padding-top: 20px;
   }
 
+  .hero-shell,
   .section-shell {
     padding: 18px 16px;
   }
@@ -1041,8 +1510,12 @@ const drawMiniRadar = () => {
     font-size: 20px;
   }
 
-  .emotion-metrics {
-    grid-template-columns: 1fr;
+  .hero-title {
+    font-size: 20px;
+  }
+
+  .search-input {
+    width: 100%;
   }
 
   .mini-legend {
