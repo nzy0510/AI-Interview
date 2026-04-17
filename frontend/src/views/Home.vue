@@ -6,8 +6,8 @@
     <el-container class="main-layout">
       <el-header class="glass-header">
         <div class="logo-wrap">
-          <span class="logo-icon">🤖</span>
-          <span class="logo-text">InterWise</span>
+          <span class="logo-icon">◼</span>
+          <span class="logo-text">Architectural Intelligence</span>
         </div>
         <div class="header-actions">
           <!-- 简历管理入口 -->
@@ -26,36 +26,36 @@
 
       <el-main class="hero-main">
         <div class="hero-content">
-          <div class="badge">Next-Gen Interview Prep</div>
+          <div class="badge">Architectural Intelligence</div>
           <h1 class="hero-title">
-            打破传统，开启 <span class="gradient-text">AI-Interview</span> 新时代
+            让每一次面试，都像一次架构评审
           </h1>
           <p class="hero-subtitle">
-            融合深度语义检索 (RAG) 与大语言模型，为您提供最真实的岗位实战演练与精准的能力画像评估。
+            结合简历画像、岗位角色和即时追问，生成更接近真实技术面试的训练路径与能力反馈。
           </p>
 
           <div class="role-grid">
             <div class="role-glass-card" @click="startInterview('Java后端开发')">
               <div class="card-glow"></div>
-              <div class="role-icon-box java">☕</div>
+              <div class="role-icon-box java">J</div>
               <h3>Java 后端开发</h3>
-              <p>精通 Spring Cloud, JVM, 性能调优</p>
+              <p>聚焦 Spring Boot、JVM、并发与服务治理</p>
               <div class="card-footer">立即开始 <el-icon><ArrowRight /></el-icon></div>
             </div>
 
             <div class="role-glass-card" @click="startInterview('Web前端开发')">
               <div class="card-glow"></div>
-              <div class="role-icon-box web">⚡</div>
+              <div class="role-icon-box web">W</div>
               <h3>Web 前端开发</h3>
-              <p>深挖 Vue/React 架构与现代 Web 性能</p>
+              <p>聚焦 Vue、工程化、性能优化与交互设计</p>
               <div class="card-footer">立即开始 <el-icon><ArrowRight /></el-icon></div>
             </div>
           </div>
 
           <div class="feature-pills">
             <span class="pill"><el-icon><Microphone /></el-icon> 语音实时交互</span>
-            <span class="pill"><el-icon><PieChart /></el-icon> 六维能力画像</span>
-            <span class="pill"><el-icon><Connection /></el-icon> RAG 专业题库</span>
+            <span class="pill"><el-icon><PieChart /></el-icon> 架构能力画像</span>
+            <span class="pill"><el-icon><Connection /></el-icon> 专业题库</span>
             <span class="pill"><el-icon><VideoCamera /></el-icon> 视频面试</span>
           </div>
         </div>
@@ -70,9 +70,9 @@
         <!-- 已有简历时 -->
         <template v-if="hasResume">
           <h3 class="resume-title">检测到已有简历画像 ✅</h3>
-          <p class="resume-desc">系统将自动使用您上次上传的简历进行定制化面试，无需重复上传。</p>
+          <p class="resume-desc">系统将自动使用上次上传的简历进行定制化面试，无需重复上传。</p>
           <el-button class="use-existing-btn" type="success" @click="useExistingResume">
-            🚀 使用已有简历，选择面试模式
+            使用已有简历，选择面试模式
           </el-button>
           <div class="resume-divider"><span>或</span></div>
           <el-upload
@@ -98,7 +98,7 @@
         <!-- 无简历时 -->
         <template v-else>
           <h3 class="resume-title">是否提供个人简历？</h3>
-          <p class="resume-desc">系统将使用 AI 解析您的简历，为您生成**专属画像**并对准您的项目发起**定制化深度提问**，极大还原真实大厂面试场景。</p>
+          <p class="resume-desc">系统将使用 AI 解析您的简历，为你生成专属画像，并对准项目经历发起定制化深度提问。</p>
           <el-upload
             class="resume-upload"
             drag
@@ -111,7 +111,7 @@
             accept=".pdf"
           >
             <div class="el-upload__text" v-if="!isParsing">
-              <em>点击上传 PDF 简历</em>，生成定制化拷问
+              <em>点击上传 PDF 简历</em>，生成定制化画像
             </div>
             <div class="el-upload__text" v-else>
               <el-icon class="is-loading"><Loading /></el-icon> 正在深度解析简历，请稍候...
@@ -124,7 +124,7 @@
         </div>
 
         <el-button class="skip-btn" plain @click="skipResumeAndSelectMode" v-if="!hasResume">
-          暂无简历，体验文字 or 视频模式
+          暂无简历，直接选择文字 / 视频模式
         </el-button>
       </div>
     </el-dialog>
@@ -135,10 +135,10 @@
         <el-icon class="resume-icon"><Document /></el-icon>
         <template v-if="hasResume">
           <h3 class="resume-title">当前简历画像 ✅</h3>
-          <p class="resume-desc">您已有简历画像，开始面试时将自动使用。您也可以上传新简历覆盖。</p>
+          <p class="resume-desc">你已有简历画像，开始面试时将自动使用，也可以上传新简历覆盖。</p>
           <div class="resume-manager-actions">
             <el-button type="primary" @click="showResumeManager = false; router.push({ path: '/resume' })">
-              📊 查看画像详情
+              查看画像详情
             </el-button>
           </div>
           <div class="resume-divider"><span>更新简历</span></div>
@@ -170,17 +170,17 @@
 
     <!-- Mode Selection Dialog -->
     <el-dialog v-model="showModeDialog" title="选择面试模式" width="480" center :close-on-click-modal="false">
-      <div class="mode-options">
-        <div class="mode-card" @click="confirmMode('text')">
-          <div class="mode-icon">📝</div>
+        <div class="mode-options">
+          <div class="mode-card" @click="confirmMode('text')">
+          <div class="mode-icon">T</div>
           <h3>文字模式</h3>
-          <p>通过文字/语音转文字与 AI 交流，适合安静环境</p>
+          <p>通过文字 / 语音转文字与 AI 交流，适合安静环境。</p>
           <el-tag type="info" size="small">经典模式</el-tag>
         </div>
         <div class="mode-card video" @click="confirmMode('video')">
-          <div class="mode-icon">📹</div>
+          <div class="mode-icon">V</div>
           <h3>视频模式</h3>
-          <p>开启摄像头面对面交流，AI 语音对话 + 情感分析</p>
+          <p>开启摄像头面对面交流，AI 语音对话 + 情感分析。</p>
           <el-tag type="success" size="small">进阶模式</el-tag>
         </div>
       </div>
@@ -410,335 +410,476 @@ const confirmMode = (mode) => {
 <style scoped>
 .home-container {
   position: relative;
-  height: 100vh;
+  min-height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background: #020617; /* Very deep dark navy */
+  background:
+    linear-gradient(180deg, rgba(247, 249, 251, 0.9), rgba(247, 249, 251, 0.98)),
+    radial-gradient(circle at top left, rgba(58, 56, 139, 0.08), transparent 30%),
+    radial-gradient(circle at top right, rgba(4, 76, 69, 0.06), transparent 28%),
+    #f7f9fb;
 }
 
 .bg-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.22;
+  pointer-events: none;
 }
 
 .main-layout {
   position: relative;
-  z-index: 2;
-  height: 100%;
+  z-index: 1;
+  min-height: 100vh;
 }
 
 .glass-header {
-  height: 70px !important;
+  height: 76px !important;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 40px;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 18px;
+  padding: 0 32px;
+  background: rgba(250, 249, 245, 0.9);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid #e8e6dc;
 }
 
 .logo-wrap {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
-.logo-icon { font-size: 24px; }
+
+.logo-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: linear-gradient(135deg, #3a388b, #5250a4);
+  font-size: 16px;
+  flex: 0 0 auto;
+}
+
 .logo-text {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #141413;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .glass-btn {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #cbd5e1 !important;
+  background: #ffffff !important;
+  border: 1px solid #e8e6dc !important;
+  color: #3d3d3a !important;
   backdrop-filter: blur(4px);
-  transition: all 0.3s;
+  box-shadow: 0 0 0 1px rgba(209, 207, 197, 0.65) inset;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
+
 .glass-btn:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: #10b981 !important; /* Emerald */
-  color: #fff !important;
+  border-color: #3a388b !important;
+  transform: translateY(-1px);
 }
 
 .hero-main {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding-bottom: 50px;
+  padding: 36px 28px 42px;
 }
 
 .hero-content {
-  text-align: center;
-  max-width: 840px;
+  width: min(1120px, 100%);
+  text-align: left;
+  display: grid;
+  gap: 28px;
+  padding: 28px;
+  background: rgba(250, 249, 245, 0.9);
+  border: 1px solid #e8e6dc;
+  border-radius: 28px;
+  box-shadow: 0 18px 50px rgba(20, 20, 19, 0.06);
 }
 
 .badge {
-  display: inline-block;
-  padding: 6px 14px;
-  background: rgba(16, 185, 129, 0.1); /* Emerald */
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  border-radius: 99px;
-  color: #10b981;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 24px;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(58, 56, 139, 0.08);
+  border: 1px solid rgba(58, 56, 139, 0.14);
+  color: #3a388b;
+  font-size: 12px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.08em;
 }
 
 .hero-title {
-  font-size: 48px;
-  font-weight: 850;
-  color: #fff;
-  line-height: 1.2;
-  margin-bottom: 20px;
-  letter-spacing: -1px;
+  font-size: clamp(34px, 4vw, 56px);
+  font-weight: 800;
+  color: #141413;
+  line-height: 1.08;
+  margin: 0;
+  letter-spacing: 0;
+  max-width: 760px;
 }
+
 .gradient-text {
-  background: linear-gradient(90deg, #10b981, #0ea5e9, #f59e0b); /* Emerald -> Cyan -> Amber */
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #3a388b;
 }
 
 .hero-subtitle {
-  font-size: 18px;
-  color: #94a3b8;
-  max-width: 600px;
-  margin: 0 auto 48px;
-  line-height: 1.6;
+  font-size: 17px;
+  color: #5e5d59;
+  max-width: 720px;
+  margin: 0;
+  line-height: 1.68;
 }
 
 .role-grid {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 48px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 0;
 }
 
 .role-glass-card {
   position: relative;
-  flex: 1;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  padding: 36px 28px;
+  background: #ffffff;
+  border: 1px solid #e8e6dc;
+  border-radius: 22px;
+  padding: 24px 22px;
   text-align: left;
   cursor: pointer;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  backdrop-filter: blur(12px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 12px 32px rgba(20, 20, 19, 0.05);
 }
 
 .role-glass-card:hover {
-  transform: translateY(-8px);
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  transform: translateY(-4px);
+  border-color: #c3c0ff;
+  box-shadow: 0 18px 44px rgba(58, 56, 139, 0.1);
 }
 
 .card-glow {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(16, 185, 129, 0.1) 0%, transparent 60%);
-  opacity: 0;
-  transition: opacity 0.3s;
+  display: none;
 }
-.role-glass-card:hover .card-glow { opacity: 1; }
 
 .role-icon-box {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
-  margin-bottom: 24px;
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 18px;
+  color: #ffffff;
 }
-.java { background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1)); border: 1px solid rgba(245, 158, 11, 0.3); } /* Amber */
-.web { background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(8, 145, 178, 0.1)); border: 1px solid rgba(6, 182, 212, 0.3); } /* Cyan */
+
+.java {
+  background: linear-gradient(135deg, #3a388b, #5250a4);
+}
+
+.web {
+  background: linear-gradient(135deg, #004c45, #00665d);
+}
 
 .role-glass-card h3 {
-  color: #f8fafc;
-  font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 8px;
+  color: #141413;
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 0 8px;
 }
+
 .role-glass-card p {
-  color: #64748b;
+  color: #5e5d59;
   font-size: 14px;
-  margin-bottom: 24px;
-  line-height: 1.5;
+  margin: 0 0 18px;
+  line-height: 1.6;
 }
 
 .card-footer {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #10b981; /* Emerald */
+  color: #3a388b;
   font-size: 14px;
-  font-weight: 600;
-  opacity: 0.8;
-  transition: transform 0.3s;
+  font-weight: 700;
+  opacity: 0.92;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
-.role-glass-card:hover .card-footer { transform: translateX(4px); opacity: 1; }
+
+.role-glass-card:hover .card-footer {
+  transform: translateX(4px);
+  opacity: 1;
+}
 
 .feature-pills {
   display: flex;
-  justify-content: center;
-  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 12px;
 }
+
 .pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #64748b;
+  color: #5e5d59;
   font-size: 14px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
+  padding: 10px 14px;
+  background: #faf9f5;
+  border: 1px solid #e8e6dc;
+  border-radius: 999px;
 }
-.pill .el-icon { color: #475569; }
 
-/* Mode Selection Dialog */
+.pill .el-icon {
+  color: #3a388b;
+}
+
 .mode-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   padding: 10px 0;
 }
+
 .mode-card {
-  padding: 28px 20px;
+  padding: 22px 18px;
   text-align: center;
-  border-radius: 16px;
-  border: 2px solid #e5e7eb;
+  border-radius: 18px;
+  border: 1px solid #e8e6dc;
   cursor: pointer;
-  transition: all 0.3s;
-  background: #f9fafb;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  background: #faf9f5;
 }
+
 .mode-card:hover {
-  border-color: #409EFF;
+  border-color: #c3c0ff;
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(64, 158, 255, 0.15);
+  box-shadow: 0 16px 34px rgba(58, 56, 139, 0.1);
 }
+
 .mode-card.video {
-  border-color: #d1fae5;
-  background: #f0fdf4;
+  background: #f4fbf9;
 }
-.mode-card.video:hover {
-  border-color: #67C23A;
-  box-shadow: 0 8px 24px rgba(103, 194, 58, 0.15);
-}
+
 .mode-icon {
-  font-size: 40px;
-  margin-bottom: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 12px;
+  font-size: 22px;
+  font-weight: 800;
+  background: #f0eee6;
+  color: #3a388b;
 }
+
+.mode-card.video .mode-icon {
+  color: #004c45;
+  background: rgba(4, 76, 69, 0.12);
+}
+
 .mode-card h3 {
   font-size: 18px;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 8px;
+  font-weight: 800;
+  color: #141413;
+  margin: 0 0 8px;
 }
+
 .mode-card p {
   font-size: 13px;
-  color: #6b7280;
-  line-height: 1.5;
+  color: #5e5d59;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.resume-ask-content {
+  text-align: center;
+  padding: 10px 18px 20px;
+}
+
+.resume-icon {
+  font-size: 48px;
+  color: #3a388b;
+  margin-bottom: 16px;
+}
+
+.resume-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #141413;
   margin-bottom: 12px;
 }
 
-/* Resume Ask Dialog CSS */
-.resume-ask-content {
-  text-align: center;
-  padding: 10px 20px 20px;
-}
-.resume-icon {
-  font-size: 48px;
-  color: #10b981;
-  margin-bottom: 16px;
-}
-.resume-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 12px;
-}
 .resume-desc {
   font-size: 14px;
-  color: #64748b;
+  color: #5e5d59;
   line-height: 1.6;
-  margin-bottom: 24px;
-}
-.resume-upload {
   margin-bottom: 20px;
 }
+
+.resume-upload {
+  margin-bottom: 16px;
+}
+
 .resume-upload :deep(.el-upload-dragger) {
-  border-color: rgba(16, 185, 129, 0.3);
-  background: #f0fdf4;
-  transition: all 0.3s;
+  border-color: #d1cfc5;
+  background: #faf9f5;
+  border-radius: 16px;
+  transition: all 0.2s ease;
 }
+
 .resume-upload :deep(.el-upload-dragger:hover) {
-  border-color: #10b981;
-  background: #d1fae5;
+  border-color: #3a388b;
+  background: #f4f3ff;
 }
+
 .resume-divider {
   display: flex;
   align-items: center;
-  margin: 20px 0;
-  color: #cbd5e1;
+  gap: 12px;
+  margin: 18px 0;
+  color: #b0aea5;
   font-size: 13px;
 }
-.resume-divider::before, .resume-divider::after {
+
+.resume-divider::before,
+.resume-divider::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: #e2e8f0;
+  background: #e8e6dc;
 }
+
 .resume-divider span {
-  padding: 0 10px;
+  padding: 0;
 }
+
 .skip-btn {
   width: 100%;
-  padding: 20px;
+  height: 46px;
   border-radius: 12px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .resume-btn.glass-btn {
-  border-color: rgba(16, 185, 129, 0.3) !important;
+  border-color: #c3c0ff !important;
 }
 
 .use-existing-btn {
   width: 100%;
-  padding: 16px;
+  height: 46px;
   border-radius: 12px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 15px;
 }
 
 .resume-manager-actions {
   margin-bottom: 16px;
 }
+
 .resume-manager-actions .el-button {
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 12px 24px;
+}
+
+:deep(.el-dialog) {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+:deep(.el-dialog__header) {
+  margin-right: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0eee6;
+}
+
+:deep(.el-dialog__body) {
+  background: #faf9f5;
+}
+
+:deep(.el-upload-dragger) {
+  box-shadow: 0 0 0 1px rgba(209, 207, 197, 0.4) inset;
+}
+
+@media (max-width: 1100px) {
+  .hero-content {
+    padding: 24px;
+  }
+
+  .role-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .glass-header {
+    height: auto !important;
+    padding: 16px 20px;
+    flex-wrap: wrap;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .hero-main {
+    padding: 20px;
+  }
+
+  .hero-content {
+    gap: 20px;
+    border-radius: 24px;
+  }
+
+  .feature-pills,
+  .mode-options {
+    width: 100%;
+  }
+
+  .feature-pills {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-title {
+    font-size: 32px;
+  }
+
+  .hero-content {
+    padding: 18px;
+  }
+
+  .role-glass-card {
+    padding: 20px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 </style>

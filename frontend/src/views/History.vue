@@ -1,156 +1,201 @@
 <template>
   <div class="history-page">
-    <div class="page-header">
-      <el-button :icon="ArrowLeft" circle @click="router.push('/')" />
-      <h1 class="page-title">📊 我的面试历史</h1>
-      <div class="header-spacer"></div>
-    </div>
+    <header class="page-header">
+      <div class="brand-cluster">
+        <el-button :icon="ArrowLeft" class="icon-button" circle @click="router.push('/')" />
+        <div class="header-copy">
+          <p class="eyebrow">Architectural Intelligence</p>
+          <h1 class="page-title">面试评估报告</h1>
+          <p class="page-subtitle">把每一次面试整理成可回看的趋势、能力与反馈档案。</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <el-tag effect="plain" type="info" class="status-pill">历史归档</el-tag>
+        <el-button type="primary" class="primary-cta" @click="router.push('/')">开始面试</el-button>
+      </div>
+    </header>
 
     <el-main class="page-body" v-loading="loading">
-      <!-- Empty state -->
-      <el-empty v-if="!loading && historyList.length === 0" description="还没有完成过面试，快去挑战一场吧！">
-        <el-button type="primary" @click="router.push('/')">开始面试</el-button>
-      </el-empty>
+      <template v-if="!loading && historyList.length === 0">
+        <section class="surface-card empty-shell">
+          <el-empty description="还没有完成过面试，快去挑战一场吧！">
+            <el-button type="primary" class="primary-cta" @click="router.push('/')">开始面试</el-button>
+          </el-empty>
+        </section>
+      </template>
 
       <template v-else>
-        <!-- ══ Ability Growth Chart ══ -->
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="chart-header">
-              <span>📈 能力成长曲线（综合得分趋势）</span>
-              <el-radio-group v-model="chartMode" size="small" @change="drawGrowthChart">
-                <el-radio-button value="score">综合得分</el-radio-button>
-                <el-radio-button value="radar">能力热力图</el-radio-button>
-                <el-radio-button value="graph">🪐 知识星图</el-radio-button>
-              </el-radio-group>
+        <section class="surface-card section-shell chart-shell">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Growth Lens</p>
+              <h2 class="section-title">能力成长曲线</h2>
+              <p class="section-desc">在评分、能力热力和知识图谱之间切换，观察长期变化。</p>
             </div>
-          </template>
+            <el-radio-group v-model="chartMode" size="small" class="mode-switch" @change="drawGrowthChart">
+              <el-radio-button value="score">综合得分</el-radio-button>
+              <el-radio-button value="radar">能力热力图</el-radio-button>
+              <el-radio-button value="graph">知识星图</el-radio-button>
+            </el-radio-group>
+          </div>
           <div ref="growthChartRef" class="echarts-growth-container"></div>
-        </el-card>
+        </section>
 
-        <!-- ══ History List ══ -->
-        <el-card class="list-card" shadow="never">
-          <template #header><span>📋 历史面试记录</span></template>
-          <el-table :data="historyList" stripe @row-click="openDetail" row-class-name="table-row">
-            <el-table-column label="日期" width="170">
-              <template #default="{ row }">
-                {{ formatDate(row.createTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="position" label="面试岗位" width="160" />
-            <el-table-column label="模式" width="90" align="center">
-              <template #default="{ row }">
-                <el-tag :type="row.interviewMode === 'video' ? 'success' : 'info'" size="small" effect="plain">
-                  {{ row.interviewMode === 'video' ? '📹 视频' : '📝 文字' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="综合得分" width="120" align="center">
-              <template #default="{ row }">
-                <el-tag :type="getScoreType(row.score)" effect="dark">{{ row.score }} 分</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="语速 WPM" width="110" align="center">
-              <template #default="{ row }">
-                <span class="wpm-val">{{ row.voiceWpm > 0 ? row.voiceWpm : '—' }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="AI 点评摘要">
-              <template #default="{ row }">
-                <span class="feedback-excerpt">{{ excerpt(row.feedback) }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="90" align="center">
-              <template #default="{ row }">
-                <el-button size="small" type="primary" plain @click.stop="openDetail(row)">查看</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
+        <section class="surface-card section-shell list-shell">
+          <div class="section-head compact">
+            <div>
+              <p class="section-kicker">Interview Ledger</p>
+              <h2 class="section-title">历史面试记录</h2>
+            </div>
+          </div>
+          <div class="table-shell">
+            <el-table :data="historyList" stripe @row-click="openDetail" row-class-name="table-row">
+              <el-table-column label="日期" width="170">
+                <template #default="{ row }">
+                  {{ formatDate(row.createTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="position" label="面试岗位" width="160" />
+              <el-table-column label="模式" width="90" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="row.interviewMode === 'video' ? 'success' : 'info'" size="small" effect="plain">
+                    {{ row.interviewMode === 'video' ? '视频' : '文字' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="综合得分" width="120" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="getScoreType(row.score)" effect="dark">{{ row.score }} 分</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="语速 WPM" width="110" align="center">
+                <template #default="{ row }">
+                  <span class="wpm-val">{{ row.voiceWpm > 0 ? row.voiceWpm : '—' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="AI 点评摘要">
+                <template #default="{ row }">
+                  <span class="feedback-excerpt">{{ excerpt(row.feedback) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="90" align="center">
+                <template #default="{ row }">
+                  <el-button size="small" type="primary" plain @click.stop="openDetail(row)">查看</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </section>
       </template>
     </el-main>
 
-    <!-- ══ Detail Drawer ══ -->
-    <el-drawer v-model="drawerOpen" title="面试报告详情" size="620px" direction="rtl">
+    <el-drawer v-model="drawerOpen" title="面试报告详情" size="clamp(320px, 92vw, 620px)" direction="rtl">
       <div v-if="selected" class="drawer-body">
-        <div class="detail-meta">
-          <el-tag size="large" type="info" plain>{{ selected.position }}</el-tag>
-          <el-tag size="large" type="success" effect="dark" style="margin-left:8px">
-            {{ selected.score }} / 100 分
-          </el-tag>
-          <span class="detail-date">{{ formatDate(selected.createTime) }}</span>
-        </div>
-
-        <!-- Mini Radar -->
-        <el-divider content-position="left">六维能力评级</el-divider>
-        <div class="mini-radar-wrap">
-          <div ref="miniRadarRef" class="echarts-mini-radar"></div>
-          <div class="mini-legend">
-            <div v-for="(dim, key) in abilityDimensions" :key="key" class="legend-row">
-              <span class="l-dot" :style="{ background: dim.color }"></span>
-              <span class="l-name">{{ dim.label }}</span>
-              <el-tag :type="getGradeType(selectedAbility[key])" size="small">{{ selectedAbility[key] || '—' }}</el-tag>
-            </div>
+        <div class="drawer-hero">
+          <div class="drawer-heading">
+            <el-tag size="large" type="info" plain>{{ selected.position }}</el-tag>
+            <span class="detail-date">{{ formatDate(selected.createTime) }}</span>
+          </div>
+          <div class="score-badge">
+            <span class="score-label">综合得分</span>
+            <strong>{{ selected.score }}</strong>
+            <span>/ 100</span>
           </div>
         </div>
 
-        <!-- Feedback -->
-        <el-divider content-position="left">AI 综合反馈</el-divider>
-        <div class="feedback-box"><pre class="feedback-text">{{ selected.feedback }}</pre></div>
+        <section class="drawer-panel">
+          <div class="section-head compact">
+            <div>
+              <p class="section-kicker">Radar View</p>
+              <h2 class="section-title">六维能力评级</h2>
+            </div>
+          </div>
+          <div class="mini-radar-wrap">
+            <div ref="miniRadarRef" class="echarts-mini-radar"></div>
+            <div class="mini-legend">
+              <div v-for="(dim, key) in abilityDimensions" :key="key" class="legend-row">
+                <span class="l-dot" :style="{ background: dim.color }"></span>
+                <span class="l-name">{{ dim.label }}</span>
+                <el-tag :type="getGradeType(selectedAbility[key])" size="small">{{ selectedAbility[key] || '—' }}</el-tag>
+              </div>
+            </div>
+          </div>
+        </section>
 
-        <!-- Emotion / Sentiment Analysis -->
+        <section class="drawer-panel">
+          <div class="section-head compact">
+            <div>
+              <p class="section-kicker">AI Review</p>
+              <h2 class="section-title">综合反馈</h2>
+            </div>
+          </div>
+          <div class="feedback-box"><pre class="feedback-text">{{ selected.feedback }}</pre></div>
+        </section>
+
         <template v-if="selectedEmotion && Object.keys(selectedEmotion).length > 0">
-          <el-divider content-position="left">
-            🧠 情感分析
-            <el-tag size="small" :type="selectedEmotion.source === 'video' ? 'success' : 'primary'" effect="plain" style="margin-left: 8px">
-              {{ selectedEmotion.source === 'video' ? '视频模式' : '文本分析' }}
-            </el-tag>
-          </el-divider>
-          <div class="emotion-section">
-            <div class="emotion-metrics">
-              <div class="em-metric">
-                <span class="em-val green">{{ (selectedEmotion.avgConfidence * 100).toFixed(0) }}%</span>
-                <span class="em-label">自信指数</span>
+          <section class="drawer-panel">
+            <div class="section-head compact">
+              <div>
+                <p class="section-kicker">Sentiment</p>
+                <h2 class="section-title">情感分析</h2>
               </div>
-              <div class="em-metric">
-                <span class="em-val orange">{{ emotionLabel(selectedEmotion.dominantEmotion) }}</span>
-                <span class="em-label">主导情绪</span>
-              </div>
-              <div class="em-metric" v-if="selectedEmotion.sampleCount">
-                <span class="em-val blue">{{ selectedEmotion.sampleCount }}</span>
-                <span class="em-label">采样次数</span>
-              </div>
+              <el-tag size="small" :type="selectedEmotion.source === 'video' ? 'success' : 'primary'" effect="plain">
+                {{ selectedEmotion.source === 'video' ? '视频模式' : '文本分析' }}
+              </el-tag>
             </div>
-            <div v-if="selectedEmotion.emotionDistribution" class="emotion-bars">
-              <div v-for="(val, key) in selectedEmotion.emotionDistribution" :key="key" class="em-bar-row">
-                <span class="em-name">{{ emotionLabel(key) }}</span>
-                <div class="em-bar-bg">
-                  <div class="em-bar-fill" :style="{ width: (val * 100) + '%', background: emotionColor(key) }"></div>
+            <div class="emotion-section">
+              <div class="emotion-metrics">
+                <div class="em-metric">
+                  <span class="em-val green">{{ (selectedEmotion.avgConfidence * 100).toFixed(0) }}%</span>
+                  <span class="em-label">自信指数</span>
                 </div>
-                <span class="em-pct">{{ (val * 100).toFixed(0) }}%</span>
+                <div class="em-metric">
+                  <span class="em-val orange">{{ emotionLabel(selectedEmotion.dominantEmotion) }}</span>
+                  <span class="em-label">主导情绪</span>
+                </div>
+                <div class="em-metric" v-if="selectedEmotion.sampleCount">
+                  <span class="em-val blue">{{ selectedEmotion.sampleCount }}</span>
+                  <span class="em-label">采样次数</span>
+                </div>
+              </div>
+              <div v-if="selectedEmotion.emotionDistribution" class="emotion-bars">
+                <div v-for="(val, key) in selectedEmotion.emotionDistribution" :key="key" class="em-bar-row">
+                  <span class="em-name">{{ emotionLabel(key) }}</span>
+                  <div class="em-bar-bg">
+                    <div class="em-bar-fill" :style="{ width: (val * 100) + '%', background: emotionColor(key) }"></div>
+                  </div>
+                  <span class="em-pct">{{ (val * 100).toFixed(0) }}%</span>
+                </div>
+              </div>
+              <div v-if="selectedEmotion.summary" class="emotion-summary-text">
+                <p>{{ selectedEmotion.summary }}</p>
               </div>
             </div>
-            <div v-if="selectedEmotion.summary" class="emotion-summary-text">
-              <p>{{ selectedEmotion.summary }}</p>
-            </div>
-          </div>
+          </section>
         </template>
 
-        <!-- Recommendations -->
-        <el-divider content-position="left">提升建议</el-divider>
-        <el-timeline v-if="selectedRecs.length">
-          <el-timeline-item
-            v-for="(r, i) in selectedRecs"
-            :key="i"
-            :timestamp="r.period"
-            placement="top"
-            :type="['primary','success','warning'][i % 3]"
-          >
-            <div class="rec-action">{{ r.action }}</div>
-            <div class="rec-detail">{{ r.detail }}</div>
-          </el-timeline-item>
-        </el-timeline>
-        <el-empty v-else description="暂无建议" :image-size="60" />
+        <section class="drawer-panel">
+          <div class="section-head compact">
+            <div>
+              <p class="section-kicker">Next Moves</p>
+              <h2 class="section-title">提升建议</h2>
+            </div>
+          </div>
+          <el-timeline v-if="selectedRecs.length">
+            <el-timeline-item
+              v-for="(r, i) in selectedRecs"
+              :key="i"
+              :timestamp="r.period"
+              placement="top"
+              :type="['primary', 'success', 'warning'][i % 3]"
+            >
+              <div class="rec-action">{{ r.action }}</div>
+              <div class="rec-detail">{{ r.detail }}</div>
+            </el-timeline-item>
+          </el-timeline>
+          <el-empty v-else description="暂无建议" :image-size="60" />
+        </section>
       </div>
     </el-drawer>
   </div>
@@ -531,93 +576,478 @@ const drawMiniRadar = () => {
 </script>
 
 <style scoped>
-.history-page { min-height: 100vh; background: #0f172a; display: flex; flex-direction: column; color: #f8fafc; }
-
-.page-header { 
-  display: flex; 
-  align-items: center; 
-  gap: 16px; 
-  padding: 16px 40px; 
-  background: rgba(255,255,255,0.03); 
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255,255,255,0.08); 
-  flex-shrink: 0; 
-}
-.page-title { margin: 0; font-size: 20px; font-weight: 800; background: linear-gradient(90deg, #10b981, #0ea5e9); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-
-.page-body { 
-  flex: 1; 
-  padding: 32px 40px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 24px; 
-  max-width: 1200px; 
-  margin: 0 auto; 
-  width: 100%; 
-  box-sizing: border-box; 
+.history-page {
+  min-height: 100vh;
+  background: #f7f9fb;
+  color: #191c1e;
 }
 
-.chart-card, .list-card { 
-  background: rgba(255,255,255,0.03) !important; 
-  border: 1px solid rgba(255,255,255,0.08) !important; 
-  border-radius: 20px !important; 
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 32px;
+  background: rgba(247, 249, 251, 0.88);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(69, 70, 82, 0.08);
 }
-.chart-card :deep(.el-card__header), .list-card :deep(.el-card__header) { 
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  color: #94a3b8;
-  font-weight: 600;
+
+.brand-cluster {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.icon-button {
+  flex: 0 0 auto;
+}
+
+.header-copy {
+  min-width: 0;
+}
+
+.eyebrow,
+.section-kicker {
+  margin: 0 0 4px;
+  color: #3a388b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #191c1e;
+}
+
+.page-subtitle,
+.section-desc {
+  margin: 6px 0 0;
+  color: #454652;
   font-size: 14px;
+  line-height: 1.6;
 }
-.chart-header { display: flex; justify-content: space-between; align-items: center; }
-.echarts-growth-container { width: 100%; height: 320px; }
-.echarts-mini-radar { width: 280px; height: 280px; flex-shrink: 0; }
-:deep(.el-table) { background: transparent !important; --el-table-tr-bg-color: transparent; --el-table-header-bg-color: rgba(255,255,255,0.02); --el-table-row-hover-bg-color: rgba(255,255,255,0.05); color: #cbd5e1; }
-:deep(.el-table th) { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
-:deep(.el-table td) { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
 
-.table-row { cursor: pointer; }
-.wpm-val { color: #f8fafc; font-weight: 700; }
-.feedback-excerpt { color: #64748b; font-size: 13px; font-style: italic; }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
 
-/* Drawer */
-:deep(.el-drawer) { background: #0f172a; color: #f8fafc; border-left: 1px solid rgba(255,255,255,0.1); }
-:deep(.el-drawer__header) { margin-bottom: 0; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-:deep(.el-drawer__title) { color: #10b981; font-weight: 800; }
+.status-pill {
+  border-color: rgba(58, 56, 139, 0.12);
+  color: #3a388b;
+  background: #eef0ff;
+}
 
-.drawer-body { padding: 20px 0; }
-.detail-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding: 0 4px; }
-.detail-date { color: #475569; font-size: 12px; margin-left: auto; }
+.primary-cta {
+  border-radius: 12px;
+}
 
-.mini-radar-wrap { display: flex; align-items: center; gap: 32px; padding: 16px 0; justify-content: center; }
-.mini-legend { display: flex; flex-direction: column; gap: 12px; }
-.legend-row { display: flex; align-items: center; gap: 10px; width: 150px; }
-.l-dot { width: 10px; height: 10px; border-radius: 50%; }
-.l-name { font-size: 13px; color: #94a3b8; flex: 1; }
+.page-body {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 32px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
+}
 
-.feedback-box { background: rgba(255,255,255,0.02); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); }
-.feedback-text { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.8; color: #cbd5e1; font-family: inherit; }
+.surface-card {
+  background: #ffffff;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(25, 28, 30, 0.04);
+}
 
-.rec-action { font-weight: 700; font-size: 14px; color: #60a5fa; margin-bottom: 4px; }
-.rec-detail { font-size: 13px; color: #64748b; line-height: 1.6; }
+.section-shell {
+  padding: 24px;
+}
 
-:deep(.el-divider__text) { background: #0f172a; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
-:deep(.el-timeline-item__content) { color: #cbd5e1; }
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
 
-/* Emotion Section in Drawer */
-.emotion-section { padding: 12px 0; }
-.emotion-metrics { display: flex; gap: 16px; margin-bottom: 16px; }
-.em-metric { flex: 1; text-align: center; padding: 14px 8px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); }
-.em-val { display: block; font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-.em-val.green { color: #67C23A; }
-.em-val.orange { color: #E6A23C; }
-.em-val.blue { color: #409EFF; }
-.em-label { font-size: 11px; color: #64748b; }
-.emotion-bars { padding: 12px 16px; background: rgba(255,255,255,0.02); border-radius: 12px; }
-.em-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.em-name { min-width: 40px; font-size: 12px; color: #94a3b8; text-align: right; }
-.em-bar-bg { flex: 1; height: 14px; background: rgba(255,255,255,0.06); border-radius: 7px; overflow: hidden; }
-.em-bar-fill { height: 100%; border-radius: 7px; transition: width 0.6s ease; }
-.em-pct { min-width: 35px; font-size: 12px; color: #64748b; }
-.emotion-summary-text { margin-top: 12px; }
-.emotion-summary-text p { color: #64748b; font-size: 13px; line-height: 1.7; margin: 0; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border-left: 3px solid #67C23A; }
+.section-head.compact {
+  margin-bottom: 16px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 800;
+  color: #191c1e;
+}
+
+.mode-switch {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.echarts-growth-container {
+  width: 100%;
+  height: 340px;
+}
+
+.table-shell {
+  overflow-x: auto;
+}
+
+.table-shell :deep(.el-table) {
+  min-width: 920px;
+  background: transparent !important;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: #faf9f5;
+  --el-table-row-hover-bg-color: #f3f4f6;
+  color: #191c1e;
+}
+
+.table-shell :deep(.el-table th),
+.table-shell :deep(.el-table td) {
+  border-bottom: 1px solid rgba(69, 70, 82, 0.08) !important;
+}
+
+.table-row {
+  cursor: pointer;
+}
+
+.wpm-val {
+  color: #191c1e;
+  font-weight: 700;
+}
+
+.feedback-excerpt {
+  color: #454652;
+  font-size: 13px;
+  font-style: italic;
+}
+
+.empty-shell {
+  padding: 48px 24px;
+}
+
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 0 8px;
+}
+
+.drawer-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.drawer-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.score-badge {
+  min-width: 110px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f7f9fb;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+  text-align: right;
+}
+
+.score-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: #454652;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.score-badge strong {
+  font-size: 32px;
+  line-height: 1;
+  color: #3a388b;
+}
+
+.score-badge span:last-child {
+  color: #454652;
+  font-size: 12px;
+}
+
+.drawer-panel {
+  padding-top: 4px;
+}
+
+.mini-radar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  justify-content: space-between;
+}
+
+.echarts-mini-radar {
+  width: 260px;
+  height: 260px;
+  flex-shrink: 0;
+}
+
+.mini-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 160px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.l-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.l-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: #454652;
+}
+
+.feedback-box {
+  background: #faf9f5;
+  border-radius: 14px;
+  padding: 18px;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+}
+
+.feedback-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #191c1e;
+  font-family: inherit;
+}
+
+.rec-action {
+  font-weight: 700;
+  font-size: 14px;
+  color: #3a388b;
+  margin-bottom: 4px;
+}
+
+.rec-detail {
+  font-size: 13px;
+  color: #454652;
+  line-height: 1.6;
+}
+
+:deep(.el-drawer) {
+  background: #ffffff;
+  color: #191c1e;
+}
+
+:deep(.el-drawer__header) {
+  margin-bottom: 0;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(69, 70, 82, 0.08);
+}
+
+:deep(.el-drawer__title) {
+  color: #191c1e;
+  font-weight: 800;
+}
+
+:deep(.el-divider__text) {
+  background: #ffffff;
+  color: #454652;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+:deep(.el-timeline-item__content) {
+  color: #191c1e;
+}
+
+.emotion-section {
+  padding: 6px 0 0;
+}
+
+.emotion-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.em-metric {
+  text-align: center;
+  padding: 14px 10px;
+  background: #faf9f5;
+  border-radius: 14px;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+}
+
+.em-val {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.em-val.green {
+  color: #3c7c5d;
+}
+
+.em-val.orange {
+  color: #9a6b17;
+}
+
+.em-val.blue {
+  color: #3a388b;
+}
+
+.em-label {
+  font-size: 11px;
+  color: #454652;
+}
+
+.emotion-bars {
+  padding: 14px 16px;
+  background: #faf9f5;
+  border-radius: 14px;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+}
+
+.em-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.em-name {
+  min-width: 46px;
+  font-size: 12px;
+  color: #454652;
+  text-align: right;
+}
+
+.em-bar-bg {
+  flex: 1;
+  height: 14px;
+  background: #e9edf3;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.em-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+.em-pct {
+  min-width: 36px;
+  font-size: 12px;
+  color: #454652;
+}
+
+.emotion-summary-text {
+  margin-top: 12px;
+}
+
+.emotion-summary-text p {
+  color: #454652;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0;
+  padding: 12px 14px;
+  background: #ffffff;
+  border-radius: 10px;
+  border-left: 3px solid #3a388b;
+}
+
+@media (max-width: 960px) {
+  .page-header,
+  .section-head,
+  .drawer-hero,
+  .mini-radar-wrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .mode-switch {
+    justify-content: flex-start;
+  }
+
+  .echarts-growth-container {
+    height: 300px;
+  }
+
+  .mini-radar-wrap {
+    align-items: center;
+  }
+
+  .echarts-mini-radar {
+    width: min(100%, 260px);
+  }
+}
+
+@media (max-width: 640px) {
+  .page-header,
+  .page-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .page-body {
+    padding-top: 20px;
+  }
+
+  .section-shell {
+    padding: 18px 16px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .emotion-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-legend {
+    min-width: 0;
+    width: 100%;
+  }
+}
 </style>
