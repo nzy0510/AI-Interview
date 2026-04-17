@@ -1,5 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+const viewModules = import.meta.glob('../views/*.vue')
+const commonModules = import.meta.glob('../components/common/*.vue')
+
+const loadView = (name, fallback = 'RoutePlaceholder') => {
+  return (
+    viewModules[`../views/${name}.vue`] ||
+    commonModules[`../components/common/${fallback}.vue`]
+  )
+}
+
 const routes = [
   {
     path: '/login',
@@ -9,27 +19,44 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/views/Home.vue')
+    component: loadView('Home'),
+    meta: { title: 'Dashboard' }
+  },
+  {
+    path: '/interview/setup',
+    name: 'InterviewSetup',
+    component: loadView('InterviewSetup'),
+    meta: { title: 'Interview Setup' }
   },
   {
     path: '/interview',
     name: 'Interview',
-    component: () => import('@/views/Interview.vue')
+    component: loadView('Interview'),
+    meta: { title: 'Text Interview' }
   },
   {
     path: '/history',
     name: 'History',
-    component: () => import('@/views/History.vue')
+    component: loadView('History'),
+    meta: { title: 'Reports' }
   },
   {
     path: '/resume',
     name: 'Resume',
-    component: () => import('@/views/Resume.vue')
+    component: loadView('Resume'),
+    meta: { title: 'Resume' }
   },
   {
     path: '/video-interview',
     name: 'VideoInterview',
-    component: () => import('@/views/VideoInterview.vue')
+    component: loadView('VideoInterview'),
+    meta: { title: 'Video Interview' }
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: loadView('Settings'),
+    meta: { title: 'Settings' }
   }
 ]
 
