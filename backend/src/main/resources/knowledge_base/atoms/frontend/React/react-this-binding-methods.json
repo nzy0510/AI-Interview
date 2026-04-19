@@ -1,0 +1,24 @@
+{
+  "id": "react-this-binding-methods",
+  "subject": "React 类组件中 this 的绑定方法",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "类组件",
+    "事件处理",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "在 React 类组件中，处理事件处理函数的 `this` 绑定有多种方式：\n1. 构造函数中绑定：`this.handleClick = this.handleClick.bind(this);` 这是传统方式，确保每次实例化时绑定一次。\n2. 类字段 + 箭头函数：将方法直接定义为类的实例属性，利用箭头函数自动绑定当前实例的 `this`。例如：`handleClick = () => { console.log(this); };` 这是目前类组件中推荐的方式，语法简洁。\n3. JSX 中内联绑定：在传递回调时直接使用 `.bind(this)` 或箭头函数包裹，例如 `onClick={this.handleClick.bind(this)}` 或 `onClick={() => this.handleClick()}`。但这种方式每次渲染都会创建新函数，如果 prop 传递给子组件，可能导致子组件不必要的重渲染，性能不友好。\n4. 使用函数组件和 Hooks：现代 React 开发中，使用函数组件配合 `useCallback` 等 Hook 可以完全避免 `this` 绑定问题。例如：`const handleClick = useCallback(() => { ... }, []);`。",
+    "pitfalls": [
+      "在 JSX 中使用内联箭头函数或 `.bind` 导致性能问题，因为每次渲染都会生成新的函数引用，可能破坏基于 `React.memo` 或 `shouldComponentUpdate` 的优化。",
+      "误以为类字段箭头函数方法在每次渲染时也会创建新函数（实际上它是在实例化时创建的，每个实例一份）。",
+      "在继承或混入场景下，错误理解 `this` 的绑定时机和上下文。"
+    ],
+    "follow_up_paths": [
+      "如果候选人提到性能问题，可以追问：如何测量和验证内联绑定导致的子组件重渲染？有哪些工具或方法？",
+      "可以深入：在类组件中，使用类字段箭头函数和构造函数绑定，在 React 生命周期（如组件卸载、重新挂载）中有什么细微差别？",
+      "扩展到 Hooks：在函数组件中，`useCallback` 的依赖数组如何影响函数引用和性能？如果不使用 `useCallback` 会有什么后果？"
+    ]
+  }
+}

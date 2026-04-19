@@ -1,0 +1,24 @@
+{
+  "id": "react-createclass-vs-component",
+  "subject": "React.createClass 与 extends Component 的区别与演进",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "组件定义",
+    "历史API",
+    "ES6"
+  ],
+  "content": {
+    "principles": "1. 语法结构：`React.createClass` 是一个工厂函数，接收一个配置对象（包含 render、propTypes、getDefaultProps 等方法）。`extends React.Component` 是 ES6 类语法，逻辑更清晰。\n2. this 绑定：`createClass` 自动将方法中的 this 绑定到组件实例。`class` 组件不会自动绑定，需在构造函数中手动 bind 或使用箭头函数。\n3. 默认属性与类型检查：`createClass` 中使用 `getDefaultProps` 和 `propTypes` 作为对象属性。`class` 组件中，`defaultProps` 和 `propTypes` 是类的静态属性。\n4. 功能扩展：`createClass` 支持 mixins 但易导致命名冲突和依赖混乱。`class` 组件天然支持继承、高阶组件（HOC）和 Hook，扩展性更强。\n`React.createClass` 已在 React 16 中移除，现在通过独立的 `create-react-class` 包提供以兼容老代码。",
+    "pitfalls": [
+      "在 class 组件中忘记绑定事件处理函数的 this，导致函数内 this 为 undefined。",
+      "误以为 `createClass` 和 `class` 组件在生命周期和行为上完全一致，实际上内部实现和细节（如自动绑定）有差异。",
+      "在新项目中仍考虑使用 `createClass`，而不知其已被官方废弃。"
+    ],
+    "follow_up_paths": [
+      "为什么 React 最终放弃了 `createClass` 和 mixins 模式？（引导到组合优于继承、HOC 和 Hook 的设计哲学）",
+      "在函数组件成为主流的今天，`class` 组件还有哪些不可替代的应用场景？",
+      "如何将一段使用 `createClass` 和 mixins 的老代码重构为使用 Hooks 的函数组件？"
+    ]
+  }
+}

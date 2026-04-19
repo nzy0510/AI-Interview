@@ -1,0 +1,24 @@
+{
+  "id": "vue-router-hash-history-diff",
+  "subject": "Vue Router 的 hash 模式与 history 模式的区别",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "Vue Router",
+    "路由模式",
+    "前端路由"
+  ],
+  "content": {
+    "principles": "Vue Router 的路由模式选择本质是前端路由如何映射 URL 与页面状态。hash 模式依赖 URL 中 # 后面的部分（如 example.com/#/home），其变化不会触发浏览器向服务器发起请求，完全由前端控制，兼容性好（支持 IE8）。history 模式使用标准路径（如 example.com/home），依赖 HTML5 History API（pushState, replaceState）修改 URL 而不刷新页面，用户体验更佳。但 history 模式要求后端配置支持，所有路由需指向同一个入口文件（如 index.html），否则直接访问路径会导致 404。Nginx 需配置 `try_files $uri $uri/ /index.html;`，Node.js 服务需处理通配路由。代码切换：`const router = new VueRouter({ mode: 'history', // 或 'hash' routes })`。",
+    "pitfalls": [
+      "误以为 history 模式无需后端配合，导致部署后刷新页面或直接访问路径出现 404 错误。",
+      "混淆 hash 模式中 # 的作用，它本是锚点标识，用于页面内定位，被 Vue Router 用于路由控制。",
+      "在无法配置服务端 fallback 路由的环境（如某些静态托管服务）强行使用 history 模式，导致资源加载失败。"
+    ],
+    "follow_up_paths": [
+      "hash 模式 URL 中的 # 符号是如何被 Vue Router 监听和处理的？",
+      "除了 Nginx，还有哪些常见的服务器（如 Apache、Express）如何配置以支持 history 模式？",
+      "history 模式下，如何在前端处理 404 页面？与 hash 模式有何不同？"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "react-arrow-functions-usage",
+  "subject": "React 中箭头函数的适用场景",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "ES6",
+    "类组件",
+    "事件处理",
+    "This绑定"
+  ],
+  "content": {
+    "principles": "在 React 类组件中，箭头函数常用于定义实例方法（特别是事件处理函数），因为它能自动绑定定义时的 `this` 上下文到组件实例，无需在构造函数中手动 `bind(this)`。例如：`handleClick = () => { console.log(this.props.value); }`。这简化了代码，避免了因 `this` 指向丢失而引发的错误。箭头函数也常用于内联回调（如 `onClick={() => doSomething()}`），但需注意每次渲染都会创建新函数，可能对性能优化（如 `shouldComponentUpdate` 或 `React.memo`）造成影响，此时应将函数定义移至外部或使用 `useCallback`。",
+    "pitfalls": [
+      "在类组件中，将普通方法作为事件处理函数而未绑定 `this`，导致函数内部 `this` 为 `undefined`。",
+      "过度使用内联箭头函数，导致子组件因 props 函数引用变化而产生不必要的重渲染。"
+    ],
+    "follow_up_paths": [
+      "除了使用箭头函数类属性，还有哪些方法可以在类组件中正确绑定事件处理函数的 `this`？（考察构造函数bind、内联箭头函数、实验性public class fields的差异）",
+      "在函数组件中，如何结合 `useCallback` 来优化使用箭头函数定义的回调，以避免传递给子组件的函数引用频繁变化？"
+    ]
+  }
+}

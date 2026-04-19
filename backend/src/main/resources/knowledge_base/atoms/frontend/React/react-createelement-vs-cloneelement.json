@@ -1,0 +1,24 @@
+{
+  "id": "react-createelement-vs-cloneelement",
+  "subject": "React.createElement 与 React.cloneElement 的区别与用途",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "React API",
+    "元素创建",
+    "Props操作"
+  ],
+  "content": {
+    "principles": "React.createElement(type, props, ...children) 是创建 React 元素的基础 API，JSX 语法最终会被转译成此方法的调用。每次调用都会创建一个全新的 React 元素对象。React.cloneElement(element, additionalProps, ...children) 则是在已有 React 元素的基础上，浅合并（shallow merge）新的 props 并返回一个新元素，原有元素保持不变。它不会重新创建底层组件。cloneElement 常用于高阶组件、布局组件或工具组件中，需要动态增强子元素能力（如统一添加属性、事件处理器或样式）而又不想破坏子元素原有 props 的场景。注意：如果 additionalProps 与原有 props 有同名属性，传入的会覆盖原有的；对于事件处理器，通常需要手动合并以避免被替换。",
+    "pitfalls": [
+      "误用 cloneElement 来创建全新的、与现有元素无关的组件。",
+      "在合并事件处理器（如 onClick）时，直接覆盖了子元素原有的处理逻辑，导致 bug。",
+      "不理解 React 元素的不可变性，试图直接修改 element.props。"
+    ],
+    "follow_up_paths": [
+      "请写一个例子，展示如何使用 cloneElement 给一组子按钮统一添加一个 loading 属性。",
+      "在什么情况下应该使用 React.createElement 而不是 JSX？",
+      "除了 cloneElement，还有哪些方法可以动态地向子组件传递或修改 props？"
+    ]
+  }
+}

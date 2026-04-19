@@ -1,0 +1,24 @@
+{
+  "id": "vue-router-core-components",
+  "subject": "Vue Router 的核心作用与核心组件",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Vue Router",
+    "SPA",
+    "核心组件"
+  ],
+  "content": {
+    "principles": "Vue Router 是 Vue.js 的官方路由管理器，用于构建单页面应用（SPA）。它使得页面切换无需重新加载整个页面，而是根据当前 URL 动态渲染对应的组件，提升用户体验。其核心是通过一个路由配置数组来定义路径与组件之间的映射关系。Vue Router 提供两个核心组件：1) `<router-link>`：用于声明式导航，替代原生 `<a>` 标签。点击时通过 JavaScript 更新视图和浏览器历史记录，而不会发起网络请求。2) `<router-view>`：作为路由组件的渲染出口（占位符），路由匹配到的组件会渲染在此处。导航方式分为声明式（`<router-link>`）和编程式（`router.push()`、`router.replace()` 等），后者更适用于需要逻辑判断的跳转场景。",
+    "pitfalls": [
+      "将 `<router-link>` 用于复杂的交互（如先弹窗再跳转），应使用编程式导航。",
+      "在嵌套路由中，未在父级组件中放置 `<router-view>` 导致子路由组件无法渲染。",
+      "不理解 `<router-link>` 的 `tag` 属性（Vue Router 3）或 `v-slot` API（Vue Router 4）来自定义渲染标签。"
+    ],
+    "follow_up_paths": [
+      "`<router-link>` 和 `router.push` 在实现上有何本质区别？（声明式 vs 命令式）",
+      "如何实现一个活动链接的高亮样式？（使用 `active-class` 属性或 `v-slot`）",
+      "在大型应用中，如何管理庞大的路由配置？（模块化、懒加载）"
+    ]
+  }
+}

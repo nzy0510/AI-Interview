@@ -1,0 +1,24 @@
+{
+  "id": "react-componentwillupdate-state-modification",
+  "subject": "为何不能在 componentWillUpdate 中直接修改 state",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "生命周期",
+    "过时API",
+    "副作用"
+  ],
+  "content": {
+    "principles": "componentWillUpdate(nextProps, nextState) 是 React 的旧生命周期方法，在 React 16.3 中被标记为 unsafe，并在后续版本中移除。在此方法中直接调用 setState 是禁止的，因为它会触发一个无限更新循环：setState 导致新一轮更新，进而再次触发 componentWillUpdate。这会使组件状态变得不可预测，并可能在异步渲染模式下引发数据不一致或内存泄漏等问题。React 设计上要求副作用（如数据获取、DOM 操作、状态更新）应放在 commit 阶段的生命周期中，如 componentDidUpdate。对于需要根据 props 变化派生 state 的场景，应使用静态方法 getDerivedStateFromProps（Class 组件）或 useEffect Hook（函数组件）配合依赖项来声明式地管理。",
+    "pitfalls": [
+      "不清楚 componentWillUpdate 已被废弃，仍在代码中使用。",
+      "试图在 componentWillUpdate 中基于新的 props/state 执行有副作用的操作（如 setState）。",
+      "混淆了 componentWillUpdate 和 componentDidUpdate 的适用场景。"
+    ],
+    "follow_up_paths": [
+      "请说明 getDerivedStateFromProps 的用途，并对比它与 componentWillReceiveProps 的区别。",
+      "在函数组件中，如何使用 useEffect 来模拟 componentDidUpdate 的行为？",
+      "React 为何要将 componentWillUpdate 等生命周期标记为‘不安全’并最终移除？"
+    ]
+  }
+}

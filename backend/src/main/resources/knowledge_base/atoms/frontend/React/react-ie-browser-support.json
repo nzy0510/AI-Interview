@@ -1,0 +1,23 @@
+{
+  "id": "react-ie-browser-support",
+  "subject": "React 对 IE 浏览器的支持版本",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "浏览器兼容性",
+    "版本"
+  ],
+  "content": {
+    "principles": "React 15 官方支持到 IE9 及以上版本，通常需要配合 babel-polyfill 或 es5-shim 等垫片。React 16 开始，官方只保证兼容到 IE11。React 16+ 的底层代码、配套工具链（如打包配置、默认 JSX 编译输出）不再主动照顾 IE9/IE10，在这些旧版本中运行容易出现脚本错误（尤其在事件系统和 refs 部分）。如果项目必须支持 IE9/IE10，稳妥方案是停留在 React 15，或在 React 16+ 上投入额外成本做降级处理（如引入 react-app-polyfill 并精细控制 babel 配置）。此调整与浏览器使用率下降及 React 架构升级（如引入 Fiber）优先保障现代浏览器体验有关。",
+    "pitfalls": [
+      "误以为 React 16 也能在 IE9/IE10 中完美运行。",
+      "在需要支持旧版 IE 的项目中直接升级到 React 16+ 而未做兼容性处理。",
+      "不了解为何 React 团队会做出放弃对旧版 IE 主动支持的决策。"
+    ],
+    "follow_up_paths": [
+      "除了 React 本身，还有哪些现代前端库或框架对 IE 的支持策略类似？",
+      "如果要在 React 17/18 的项目中支持 IE11，具体需要配置哪些 polyfill 和 Babel 插件？",
+      "React 引入 Fiber 架构后，为什么对旧浏览器的支持变得更困难？"
+    ]
+  }
+}

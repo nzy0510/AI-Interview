@@ -1,0 +1,22 @@
+{
+  "id": "dart-final-vs-const",
+  "subject": "Dart 中 final 与 const 的区别",
+  "category": "Flutter",
+  "difficulty": "简单",
+  "tags": [
+    "Dart",
+    "常量",
+    "变量"
+  ],
+  "content": {
+    "principles": "`final`和`const`都用于声明不可变的变量，但初始化的时机和作用范围有本质区别：\n1. **const（编译时常量）**：\n   - 值必须在**编译时**就能确定。\n   - 只能用于字面量、其他const常量或常量表达式。\n   - 示例：`const int a = 1 + 2;` （有效）\n   - 示例：`const time = DateTime.now();` （无效，因为DateTime.now()是运行时调用）\n2. **final（运行时常量）**：\n   - 值在**运行时**第一次访问时初始化，之后不可变。\n   - 可以依赖运行时的数据。\n   - 示例：`final time = DateTime.now();` （有效，每次对象创建可能得到不同值）\n3. **类中的使用**：\n   class Config {\n     static final url = 'https://api.example.com'; // 运行时常量\n     static const version = '1.0.0'; // 编译时常量\n   }\n关键区别：`const`创建的是编译时常量，在内存中只有一份；`final`变量每个实例可以有不同的值，但初始化后不可变。",
+    "pitfalls": [
+      "试图用`const`声明一个需要运行时计算的值（如调用函数或读取变量）。",
+      "混淆实例变量上`final`和`const`的使用，`const`不能用于修饰实例变量（除非是static）。"
+    ],
+    "follow_up_paths": [
+      "在什么场景下，使用`const`构造对象（如`const Text('Hello')`）能带来性能优势？",
+      "Dart的`const`构造函数有什么特殊要求？如何定义一个`const`构造函数？"
+    ]
+  }
+}

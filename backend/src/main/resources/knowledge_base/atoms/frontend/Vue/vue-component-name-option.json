@@ -1,0 +1,22 @@
+{
+  "id": "vue-component-name-option",
+  "subject": "Vue 组件中 name 选项的作用与使用场景",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "组件",
+    "递归组件",
+    "开发工具"
+  ],
+  "content": {
+    "principles": "Vue 组件的 `name` 选项主要有以下作用：1. **递归组件自引用**：在组件模板中调用自身时，需要通过 `name` 来识别。2. **开发工具标识**：在 Vue DevTools 中显示组件树时，使用 `name` 作为组件名称，便于调试。3. **Keep-alive 缓存**：`<keep-alive>` 的 `include` 和 `exclude` 属性依赖组件 `name` 进行匹配。4. **Vue Router 导航守卫**：路由组件内的守卫（如 `beforeRouteLeave`）有时需要组件名称。5. **热重载（HMR）**：在开发环境下，Vue 通过 `name` 识别组件以保持其状态在热更新时不丢失。虽然单文件组件可以通过文件名推断，但显式声明 `name` 更可靠，尤其是在构建后文件名可能被压缩的情况下。",
+    "pitfalls": [
+      "认为 `name` 选项只是可有可无的标识，不清楚其具体应用场景。",
+      "在递归组件中未定义 `name` 导致无法自引用。"
+    ],
+    "follow_up_paths": [
+      "在 Vue 3 的 `<script setup>` 语法糖中，如何定义组件的 name？",
+      "除了 `name`，还有哪些方式可以影响 Vue DevTools 中显示的组件名称？"
+    ]
+  }
+}

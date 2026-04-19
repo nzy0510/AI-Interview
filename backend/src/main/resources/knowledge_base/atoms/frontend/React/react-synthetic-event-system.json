@@ -1,0 +1,24 @@
+{
+  "id": "react-synthetic-event-system",
+  "subject": "React 合成事件（SyntheticEvent）机制",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "事件机制",
+    "性能优化",
+    "底层原理"
+  ],
+  "content": {
+    "principles": "React 的事件机制基于合成事件（SyntheticEvent）系统，并非直接绑定原生 DOM 事件。核心原理包括：1) 事件委托：React 将所有事件统一委托绑定到 document（React 17 后改为 root 容器）进行管理，而非每个 DOM 节点，以此减少内存消耗并提升性能。2) 合成事件封装：创建 SyntheticEvent 实例封装原生事件，抹平浏览器差异，提供一致 API。该对象会被池化以提升性能，因此其属性（如 event.target）在异步代码中可能被清空，不可异步访问。3) 事件生命周期：分为收集阶段（从触发元素向上收集事件处理函数）、合成阶段（创建 SyntheticEvent）和派发阶段（按 React 组件树冒泡规则执行回调）。注意：阻止默认行为需调用 event.preventDefault()，而非 return false。",
+    "pitfalls": [
+      "试图在异步操作（如 setTimeout、Promise）中访问 event 对象的属性，导致报错或获取到 null。",
+      "混淆 React 事件冒泡与原生 DOM 事件冒泡的机制，尤其在事件阻止传播时。",
+      "误以为事件监听器直接绑定在目标元素上，对性能优化原理理解不清。"
+    ],
+    "follow_up_paths": [
+      "React 17 中事件委托的绑定目标从 document 改为 root 容器，这一变化解决了什么问题？",
+      "请解释 SyntheticEvent 事件池（event pooling）机制及其被废弃（React 17）的原因。",
+      "如何在 React 中监听原生 DOM 事件？与合成事件混用时需要注意什么？"
+    ]
+  }
+}

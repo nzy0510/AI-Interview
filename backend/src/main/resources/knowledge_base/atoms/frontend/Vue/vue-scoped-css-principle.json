@@ -1,0 +1,25 @@
+{
+  "id": "vue-scoped-css-principle",
+  "subject": "Vue 组件 Scoped CSS 的原理与深度选择器",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "样式隔离",
+    "单文件组件",
+    "编译原理"
+  ],
+  "content": {
+    "principles": "在 `<style>` 标签上添加 `scoped` 属性可实现组件级样式隔离。其原理是：Vue 编译器会为当前组件的每个 DOM 元素添加一个唯一的 data 属性（如 `data-v-f3f4394e`），同时将样式选择器改写成带此属性的形式（如 `.example[data-v-f3f4394e]`），从而确保样式只作用于当前组件内的元素。对于需要影响子组件内部样式的场景，需使用深度选择器 `:deep()` 进行包裹（如 `:deep(.el-button) { margin: 10px; }`）。通过 `v-html` 动态插入的内容不会自动获得该属性，样式不受 scoped 控制。",
+    "pitfalls": [
+      "误以为 scoped 是绝对的样式隔离，不了解其通过属性选择器实现的原理。",
+      "需要修改子组件样式时，错误地直接写选择器而未使用 `:deep()`。",
+      "对动态插入的内容（v-html）期望 scoped 样式生效。",
+      "混淆 `:deep()`、`>>>` 和 `/deep/` 等不同版本深度选择器的写法。"
+    ],
+    "follow_up_paths": [
+      "Scoped CSS 的 data 属性是如何生成的？如何保证其唯一性？",
+      "除了 scoped，还有哪些方案可以实现 Vue 组件的样式隔离？",
+      "在 Vue 3 的 `<script setup>` 中，使用 scoped 样式有什么特别需要注意的吗？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "vue-lifecycle-dom-rendered",
+  "subject": "Vue 生命周期中 DOM 渲染完成的时机",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "生命周期",
+    "DOM",
+    "mounted"
+  ],
+  "content": {
+    "principles": "Vue 组件的模板编译后生成的 VNode 会经过 patch 过程转换为真实 DOM，这个过程在 `mounted` 生命周期钩子触发前完成。当 `mounted` 被调用时，组件已挂载到页面上，对应的 DOM 节点已存在，可以安全进行 DOM 操作（如访问 `this.$el`）。对于由响应式数据变化导致的后续更新，DOM 的重新渲染发生在 `updated` 钩子之前。但首次渲染完成的标志是 `mounted`。注意：如果组件内有异步请求驱动的视图更新，或使用了 `nextTick`，需在 `this.$nextTick()` 的回调中确保拿到最新 DOM 结构。对于包含子组件的情况，父组件的 `mounted` 不保证所有子组件也已挂载完成，需使用 `this.$nextTick` 或结合 `app.mount()` 后的逻辑控制。",
+    "pitfalls": [
+      "误以为在 `created` 或 `beforeMount` 钩子中就能操作 DOM。",
+      "忽略异步操作（如 API 请求）对 DOM 渲染时机的影响，未正确使用 `$nextTick`。",
+      "认为父组件的 `mounted` 执行时，其所有子组件也一定已完成挂载。"
+    ],
+    "follow_up_paths": [
+      "`$nextTick` 的原理是什么？它与 `setTimeout(fn, 0)` 有何区别？",
+      "在 Composition API 的 `setup` 函数中，如何等效地执行 `mounted` 钩子中的 DOM 操作？",
+      "如果子组件是异步组件，父组件的 `mounted` 和子组件的挂载顺序是怎样的？"
+    ]
+  }
+}

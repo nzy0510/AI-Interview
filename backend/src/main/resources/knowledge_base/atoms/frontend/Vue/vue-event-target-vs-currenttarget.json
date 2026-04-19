@@ -1,0 +1,23 @@
+{
+  "id": "vue-event-target-vs-currenttarget",
+  "subject": "Vue 事件处理中 `e.target` 与 `e.currentTarget` 的区别与应用",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "事件处理",
+    "DOM"
+  ],
+  "content": {
+    "principles": "在 Vue 事件处理函数中，`e.target` 和 `e.currentTarget` 是原生 DOM 事件对象的属性，指向不同的元素。\n1.  **`e.target`**：指向**实际触发**事件的元素，即事件冒泡起点。例如，点击一个按钮内部的 `<span>` 文本，`e.target` 就是那个 `<span>` 元素。\n2.  **`e.currentTarget`**：指向**绑定**事件处理函数的元素。无论事件在哪个子元素上触发，它始终是模板中 `@click` 等指令所在的元素。\n典型场景：在 `<div @click=\"handler\"><span>点我</span></div>` 中，点击 `span`，`e.target` 是 `span`，`e.currentTarget` 是 `div`。\n应用：\n- 若需确保操作绑定事件的元素本身，应使用 `e.currentTarget`。\n- 在事件委托模式中，需根据 `e.target` 来判断具体是哪个子元素被点击，以进行差异化处理。",
+    "pitfalls": [
+      "误用 `e.target` 来获取绑定事件的元素，当点击子元素时得到错误引用。",
+      "认为在 Vue 的事件修饰符（如 `.stop`, `.prevent`）处理后，这两个属性的指向会发生变化（实际上不会）。",
+      "在组件自定义事件中，混淆原生 DOM 事件对象和 Vue 组件自定义事件对象。"
+    ],
+    "follow_up_paths": [
+      "在事件委托场景下，如何利用 `e.target` 和 `e.currentTarget` 高效处理列表项的点击事件？",
+      "Vue 的事件修饰符 `.native` 的作用是什么？它如何影响事件对象的获取？",
+      "在 Vue 3 中，如果事件处理函数使用箭头函数，对 `this` 和事件对象访问有何影响？"
+    ]
+  }
+}

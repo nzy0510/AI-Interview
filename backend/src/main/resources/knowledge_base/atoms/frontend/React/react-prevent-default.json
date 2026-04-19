@@ -1,0 +1,21 @@
+{
+  "id": "react-prevent-default",
+  "subject": "React 中阻止事件的默认行为",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "事件处理",
+    "合成事件"
+  ],
+  "content": {
+    "principles": "在 React 中，通过调用合成事件对象 `event` 的 `preventDefault()` 方法来阻止事件的默认行为。这是跨浏览器兼容的。常见应用场景包括阻止链接跳转（`<a>` 标签的 `onClick`）和阻止表单提交刷新页面（`<form>` 标签的 `onSubmit`）。`preventDefault()` 仅阻止默认行为，不阻止事件冒泡；如需阻止冒泡，需额外调用 `stopPropagation()`。",
+    "pitfalls": [
+      "忘记传递 `event` 参数到事件处理函数，导致无法调用 `preventDefault()`。",
+      "混淆 `preventDefault()`（阻止默认行为）和 `stopPropagation()`（阻止事件冒泡）的作用。"
+    ],
+    "follow_up_paths": [
+      "React 合成事件中的 `event.persist()` 方法是做什么用的？为什么有时需要调用它？",
+      "在 React 中，如何实现事件委托？它与直接在元素上绑定事件监听器在性能上有何差异？"
+    ]
+  }
+}

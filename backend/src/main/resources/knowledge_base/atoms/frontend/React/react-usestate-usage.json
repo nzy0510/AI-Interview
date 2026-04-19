@@ -1,0 +1,24 @@
+{
+  "id": "react-usestate-usage",
+  "subject": "React useState Hook 的用法与注意事项",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React Hooks",
+    "状态管理"
+  ],
+  "content": {
+    "principles": "useState 是函数组件中声明状态变量的 Hook。调用后返回一个数组，包含当前状态值和一个用于更新它的 setter 函数。状态更新会触发组件重新渲染。初始值可以是任意类型。更新对象或数组时，必须返回一个新对象/数组（使用扩展运算符或类似方法），直接修改原对象不会触发更新。setter 支持函数式更新（`setCount(prev => prev + 1)`），适用于新状态依赖于旧状态的场景，能避免闭包问题。建议将不相关的状态拆分为多个 useState 调用，以保持逻辑清晰。状态更新是异步的，在本次渲染中无法立即获取更新后的值。",
+    "pitfalls": [
+      "直接修改状态对象（如 `state.obj.key = newValue`）并期望触发重新渲染。",
+      "在循环或条件语句中调用 useState，违反 Hook 的规则。",
+      "误以为 setState 后能立即同步读取到新状态值。",
+      "将大量关联性不强的状态塞进一个 useState 对象，导致更新逻辑复杂。"
+    ],
+    "follow_up_paths": [
+      "useState 的函数式更新在什么场景下是必须的？（闭包、异步更新）",
+      "useState 的初始值可以是一个函数吗？这有什么用处？（惰性初始 state）",
+      "如何用 useState 模拟 class 组件中 `this.setState` 的合并更新行为？"
+    ]
+  }
+}

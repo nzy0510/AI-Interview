@@ -1,0 +1,24 @@
+{
+  "id": "vue-router-vs-location-href",
+  "subject": "Vue Router 跳转与 location.href 的核心区别",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Vue Router",
+    "导航",
+    "SPA"
+  ],
+  "content": {
+    "principles": "Vue Router 的跳转（如 router.push）是单页应用（SPA）内部的前端路由导航，通过路由实例动态切换视图组件，更新 router-view 内容，URL 变化但页面不刷新，能保留组件状态、Vuex 数据和滚动位置。location.href 改变会触发浏览器向服务器发起全新请求，导致页面完全重新加载，JavaScript 上下文丢失，所有资源重新下载解析，用户体验为白屏刷新。在 SEO 和 SSR 场景下，两者行为可能趋同，但 Vue Router 在客户端导航时仍能避免不必要的 SSR 请求。",
+    "pitfalls": [
+      "混淆两者，在 SPA 中错误使用 location.href 导致页面刷新和状态丢失。",
+      "认为 location.href 在 SPA 中也能保留应用状态。",
+      "不了解 Vue Router 跳转时浏览器历史记录的管理机制。"
+    ],
+    "follow_up_paths": [
+      "Vue Router 的 history 模式是如何实现无刷新改变 URL 的？",
+      "使用 location.href 跳转后，Vue 应用的生命周期会经历什么？",
+      "在什么场景下，即使使用 Vue Router，也可能需要用到 location.href 或 window.open？"
+    ]
+  }
+}

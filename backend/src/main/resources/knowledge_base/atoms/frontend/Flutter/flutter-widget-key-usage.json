@@ -1,0 +1,24 @@
+{
+  "id": "flutter-widget-key-usage",
+  "subject": "Flutter 中 Key 的作用与使用场景",
+  "category": "Flutter",
+  "difficulty": "困难",
+  "tags": [
+    "Widget",
+    "核心机制",
+    "性能"
+  ],
+  "content": {
+    "principles": "Key 是 Widget 的唯一标识符，用于帮助 Flutter 框架在 UI 树重建时，正确匹配和复用对应的 Element 和 RenderObject。Widget 是 immutable 的配置，重建时会产生新实例。框架通过比较 Widget 的 `runtimeType` 和 `key` 来决定是复用现有 Element（状态得以保留）还是新建一个。关键使用场景：1. 控制有状态 Widget 的生命周期：例如，在列表或条件渲染中交换两个同类型 Widget（如 TextField）的位置，若不使用唯一 Key，框架会复用 Element 导致状态（焦点、文本）错误地跟随 Widget “移动”；使用唯一 Key（如 ValueKey）则框架能识别出身份变化，从而重建正确的状态。2. 在列表（List）中精确追踪项目：使用 Key（如 ValueKey(id)）可使 Flutter 在列表项排序、增删时，正确维护每个项的状态和动画。3. 使用 GlobalKey 跨组件访问 State 或 Context：例如获取 FormState 以进行全局验证。Key 的比对有开销，不应滥用，无状态或静态结构的 Widget 通常不需要。",
+    "pitfalls": [
+      "认为 Key 是用于性能优化的通用手段，在不必要时添加反而降低性能。",
+      "混淆不同类型的 Key（如 LocalKey 与 GlobalKey）的用途和影响范围。",
+      "在列表中使用非唯一或会变化的 Key（如索引 index），导致状态混乱。"
+    ],
+    "follow_up_paths": [
+      "LocalKey 的几种子类（ValueKey, ObjectKey, UniqueKey）分别适用于什么场景？",
+      "GlobalKey 为什么开销大？滥用 GlobalKey 可能导致什么问题？",
+      "请解释在 `AnimatedList` 或 `Dismissible` 中，Key 是如何起关键作用的？"
+    ]
+  }
+}

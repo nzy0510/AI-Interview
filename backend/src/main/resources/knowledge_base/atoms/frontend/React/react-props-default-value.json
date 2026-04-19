@@ -1,0 +1,24 @@
+{
+  "id": "react-props-default-value",
+  "subject": "React 组件属性的默认值",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "Props",
+    "函数组件",
+    "类组件"
+  ],
+  "content": {
+    "principles": "当 React 组件的属性没有传值时，其默认值是 `undefined`。JSX 在转换为 `React.createElement` 调用时，未传递的 prop 不会出现在 props 对象中。有两种主要方式设置默认值：\n1. 函数组件：使用 ES6 解构赋值的默认参数。例如：`function Button({ size = 'small', enabled = true }) { ... }`。当 `size` 或 `enabled` 未传或显式传入 `undefined` 时，会触发解构的默认值。\n2. 类组件：使用 `defaultProps` 静态属性。例如：`Alert.defaultProps = { type: 'info' };`。React 在实例化时会使用 `defaultProps` 作为兜底。\n注意：`defaultProps` 在现代 React 中逐渐被解构默认值替代，因为后者更直观、支持 tree-shaking 且对 TypeScript 友好。另外，传入 `null` 不会触发默认值逻辑，需要组件内部自行处理。",
+    "pitfalls": [
+      "混淆 `undefined` 和 `null` 的行为：只有属性未传或显式传入 `undefined` 才会触发默认值，传入 `null` 则不会。",
+      "误以为 `defaultProps` 是运行时动态计算的，它是在组件实例化时静态应用的。",
+      "在函数组件中，将默认值写在函数体内部（如 `const size = props.size || 'small'`）而非解构参数中，可能导致逻辑冗余或重复执行。"
+    ],
+    "follow_up_paths": [
+      "如果候选人提到 `defaultProps`，可以追问：为什么 React 官方文档现在更推荐使用函数组件的默认参数？这与 tree-shaking 和 TypeScript 集成有什么关系？",
+      "如果候选人只提到一种方式，可以问：除了这两种，还有没有其他设置默认值的方法（例如高阶组件）？它们各自的优缺点是什么？",
+      "可以深入探讨：在严格模式（Strict Mode）或并发特性（Concurrent Features）下，这些默认值机制是否有任何潜在问题？"
+    ]
+  }
+}

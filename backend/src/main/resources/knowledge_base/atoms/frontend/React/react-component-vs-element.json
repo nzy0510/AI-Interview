@@ -1,0 +1,21 @@
+{
+  "id": "react-component-vs-element",
+  "subject": "React 组件与元素的区别",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React 基础",
+    "虚拟DOM"
+  ],
+  "content": {
+    "principles": "React 元素是一个轻量级的普通对象，用于描述你想在页面上看到什么（如 `{ type: 'h1', props: { children: 'Hello' } }`）。它不是真实的 DOM 节点，也不是组件实例。每次渲染，React 都会生成新的元素树，用于和上次对比以找出变化（Diffing）。\n\nReact 组件（函数或类）是一个接收输入（props）并返回 React 元素的“配方”。例如，函数组件 `function Welcome(props) { return <h1>Hello {props.name}</h1>; }` 中，`Welcome` 是组件，而它返回的 `<h1>Hello</h1>` 才是元素。\n\n渲染时，React 遇到组件就会调用它，获取其返回的元素，并递归此过程，直到全是原生标签对应的元素，最后才转换成真实 DOM。因此，组件负责逻辑和复用，元素负责描述结构。",
+    "pitfalls": [
+      "混淆组件和元素，将组件实例或 JSX 标签直接称为元素。",
+      "不理解元素是每次渲染新创建的普通对象，误以为它是持久的实例。"
+    ],
+    "follow_up_paths": [
+      "React 如何通过元素树进行 Diff 和协调（Reconciliation）？",
+      "类组件实例和函数组件调用返回的元素在 React 内部处理上有何不同？"
+    ]
+  }
+}

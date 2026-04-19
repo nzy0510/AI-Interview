@@ -1,0 +1,23 @@
+{
+  "id": "react-element-vs-component",
+  "subject": "React Element 与 Component 的核心区别",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "核心概念",
+    "Virtual DOM",
+    "JSX"
+  ],
+  "content": {
+    "principles": "React Element 是一个普通的 JavaScript 对象，用于描述希望在屏幕上看到的内容。它是轻量、不可变的 UI 描述符，不是真实的 DOM 节点。JSX 语法 `<div>Hello</div>` 经编译后调用 `React.createElement`，生成类似 `{ type: 'div', props: { children: 'Hello' } }` 的对象。React Component 则是一个函数或类，它接收 props 作为输入，并返回一个 React Element 树。函数组件是返回 Element 的函数；类组件是包含 `render` 方法的类。Component 是生产 Element 的“工厂”或“模板”，而 Element 是每次渲染时产生的具体描述。React 的协调（Reconciliation）过程比较的是前后两次渲染产生的 Element 树。",
+    "pitfalls": [
+      "混淆 Element 和 Component 实例，误以为 Element 是组件实例或 DOM 节点。",
+      "不理解 JSX 只是 `React.createElement` 的语法糖，其执行结果是一个对象。"
+    ],
+    "follow_up_paths": [
+      "`React.createElement` 函数的参数分别是什么？它和 `React.cloneElement` 有何区别？",
+      "为什么说 React Element 是不可变的？这对 React 的渲染优化有何意义？",
+      "如何通过 `React.Children` API 操作 Element 的 `props.children`？"
+    ]
+  }
+}

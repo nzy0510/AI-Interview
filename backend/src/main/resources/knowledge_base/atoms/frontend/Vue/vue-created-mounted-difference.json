@@ -1,0 +1,25 @@
+{
+  "id": "vue-created-mounted-difference",
+  "subject": "created 与 mounted 生命周期钩子的区别与使用场景",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "生命周期",
+    "DOM操作",
+    "异步请求"
+  ],
+  "content": {
+    "principles": "`created` 钩子在 Vue 实例创建完成后立即调用，此时已完成数据观测、计算属性、方法等配置，响应式系统已建立，但 `$el` 属性尚不可用，即真实 DOM 还未生成。适合进行不依赖 DOM 的初始化操作，如发起异步数据请求、初始化非 DOM 相关的状态。`mounted` 钩子在 Vue 实例被挂载到 DOM 后调用，此时 `$el` 已指向真实 DOM 元素。适合进行所有需要操作 DOM 的初始化，如使用 `document.querySelector`、初始化第三方库（ECharts、Swiper）。在服务端渲染 (SSR) 中，`mounted` 仅在客户端执行。",
+    "pitfalls": [
+      "在 `created` 中尝试访问或操作 DOM 元素，得到 `null` 或 `undefined`。",
+      "将依赖 DOM 的第三方库初始化放在 `created` 中。",
+      "不了解服务端渲染场景下 `mounted` 的执行时机差异。",
+      "混淆两者执行顺序，误以为 `mounted` 一定在数据请求返回后才执行。"
+    ],
+    "follow_up_paths": [
+      "如果在 `created` 中修改了响应式数据，DOM 会在哪个阶段更新？",
+      "`mounted` 钩子能保证所有子组件也都挂载完成吗？如果不能，应该用什么钩子？",
+      "在 Vue 3 的 Composition API 中，如何模拟 `created` 和 `mounted` 的行为？"
+    ]
+  }
+}

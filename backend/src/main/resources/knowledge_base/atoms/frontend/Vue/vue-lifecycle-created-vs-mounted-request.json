@@ -1,0 +1,24 @@
+{
+  "id": "vue-lifecycle-created-vs-mounted-request",
+  "subject": "Vue 生命周期 created 与 mounted 中发起请求的时机考量",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "生命周期",
+    "异步请求",
+    "SSR"
+  ],
+  "content": {
+    "principles": "created 钩子在 Vue 实例创建完成后立即调用，此时数据观测、计算属性、方法、watch/event 回调已配置完成，但 DOM 尚未生成或挂载（$el 不可用）。在此阶段发起异步请求可以尽早获取数据，缩短整体加载时间。mounted 钩子在组件挂载到 DOM 后调用，此时 $el 可用，可以操作 DOM 或依赖 DOM 尺寸/布局。对于不依赖 DOM 的纯数据请求，推荐在 created 中发起以提升感知速度。在服务端渲染 (SSR) 中，created 会在服务端和客户端都被调用，而 mounted 只在客户端执行。",
+    "pitfalls": [
+      "将所有请求都放在 mounted，导致数据加载延迟，影响用户体验。",
+      "在 created 中尝试操作 DOM 或访问 $el。",
+      "在 SSR 应用中，将仅客户端逻辑错误地放在 mounted 中，导致服务端渲染异常或内容不一致。"
+    ],
+    "follow_up_paths": [
+      "如果请求依赖于 props，应该放在哪个生命周期？为什么？",
+      "在 setup() 或 Composition API 中，如何模拟在 created 阶段发起请求？",
+      "SSR 场景下，如何确保在 created 中发起的请求数据能被正确注入到服务端渲染的 HTML 中？"
+    ]
+  }
+}

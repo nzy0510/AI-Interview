@@ -1,0 +1,23 @@
+{
+  "id": "vue-data-methods-name-conflict",
+  "subject": "Vue 中 data 属性与 methods 方法同名会导致什么问题？",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "属性冲突",
+    "实例挂载",
+    "开发警告"
+  ],
+  "content": {
+    "principles": "当 data 中的属性名与 methods 中的方法名相同时，Vue 在开发环境下会发出警告：'Method \\\"xxx\\\" has already been defined as a data property.'。在挂载到 Vue 实例时，methods 中定义的方法会覆盖 data 中同名的属性。最终 this.xxx 指向的是方法函数。如果在模板中使用 {{ xxx }}，Vue 会尝试执行该方法并渲染其返回值（若无返回值则渲染 undefined），这可能与预期显示一个属性值的行为不符，导致逻辑错误和难以调试。",
+    "pitfalls": [
+      "忽略控制台警告，导致运行时出现非预期的函数调用或 undefined 显示。",
+      "当 data 属性是一个对象且与方法同名时，尝试访问 this.xxx.yyy 会报错，因为 this.xxx 已是一个函数。"
+    ],
+    "follow_up_paths": [
+      "Vue 实例的属性和方法挂载顺序是怎样的？为什么是 methods 覆盖 data？",
+      "如果 computed 也与 data 或 methods 同名，会发生什么？（computed 也会覆盖 data）",
+      "如何利用 ESLint 等工具在开发阶段规避此类命名冲突？"
+    ]
+  }
+}

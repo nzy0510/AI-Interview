@@ -1,0 +1,23 @@
+{
+  "id": "vue-reserved-property-prefix",
+  "subject": "Vue 中 data 属性以 _ 或 $ 开头有何特殊处理？如何访问？",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "实例属性",
+    "命名规范",
+    "响应式系统"
+  ],
+  "content": {
+    "principles": "Vue 会跳过对 data 函数返回对象中以 _ 或 $ 开头的属性进行响应式代理。_ 开头是为了避免与 Vue 内部私有属性（如 _data, _uid）冲突；$ 开头是 Vue 实例自身方法和属性的保留前缀（如 $emit, $refs）。这些属性不会被挂载到 Vue 实例（this）上，因此通过 this._xxx 或 this.$xxx 访问为 undefined。但它们仍然存在于原始的 $data 对象中，可以通过 this.$data._xxx 或 this.$data.$xxx 进行访问。",
+    "pitfalls": [
+      "在模板或方法中尝试通过 this 直接访问这些属性，得到 undefined 导致错误。",
+      "误用 $ 前缀定义自己的属性，可能与未来 Vue 版本新增的实例属性冲突。"
+    ],
+    "follow_up_paths": [
+      "Vue 内部是如何实现这层属性代理和过滤的？可以结合源码初始化流程说明。",
+      "除了 _ 和 $，Vue 实例上还有哪些保留的属性和方法名需要避免冲突？",
+      "这种设计对 Vue 的响应式系统和组件封装有何好处？"
+    ]
+  }
+}

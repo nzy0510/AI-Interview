@@ -1,0 +1,23 @@
+{
+  "id": "vue-router-navigation-methods",
+  "subject": "Vue Router 的路由跳转方式与导航守卫",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "Vue Router",
+    "导航",
+    "守卫"
+  ],
+  "content": {
+    "principles": "Vue Router 提供了声明式和编程式两种路由跳转方式。1) 声明式导航：使用 `<router-link to=\"...\">` 组件，底层调用编程式方法。2) 编程式导航：通过路由实例方法：`$router.push(location)` 添加新历史记录并跳转；`$router.replace(location)` 替换当前历史记录，不产生后退记录；`$router.go(n)` 在历史记录中前进或后退 n 步，`$router.back()` 等价于 `go(-1)`。跳转过程可通过导航守卫进行控制：全局守卫 `beforeEach` 常用于权限验证（如登录检查）；组件内守卫 `beforeRouteLeave` 可用于阻止跳转（如表单未保存确认）。`push` 最常用，`replace` 适用于无痕跳转（如登录后跳首页），`go`/`back` 用于控制浏览历史。",
+    "pitfalls": [
+      "混淆 `$router` 和 `$route`，`$router` 是路由实例用于操作导航，`$route` 是当前路由信息对象。",
+      "在导航守卫中进行异步操作（如请求）时，未正确调用 `next` 函数，导致导航挂起。",
+      "使用 `params` 传参时，若目标路由未定义该参数，刷新页面后参数会丢失（需配合路由定义）。"
+    ],
+    "follow_up_paths": [
+      "`$router.push` 和 `<router-link>` 的 `to` 属性在传递参数（params vs query）时有何区别和注意事项？",
+      "导航守卫的执行顺序是怎样的（全局、路由独享、组件内）？如果多个全局 `beforeEach` 守卫存在，如何执行？"
+    ]
+  }
+}

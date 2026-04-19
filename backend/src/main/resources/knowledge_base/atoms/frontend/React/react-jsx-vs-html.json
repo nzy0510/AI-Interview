@@ -1,0 +1,24 @@
+{
+  "id": "react-jsx-vs-html",
+  "subject": "JSX 与 HTML 的核心区别",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "JSX",
+    "HTML",
+    "虚拟DOM",
+    "属性命名"
+  ],
+  "content": {
+    "principles": "JSX 是 JavaScript 的语法糖，最终会被编译为 React.createElement() 调用，生成 React 元素对象。浏览器不原生支持 JSX，需通过 Babel 等工具转译。与 HTML 的主要区别包括：1) 属性命名遵循驼峰规则（如 className, onClick）；2) 可以嵌入 JavaScript 表达式（用 {} 包裹）；3) 组件首字母必须大写；4) 描述的是虚拟 DOM 结构，由 React 负责高效更新真实 DOM，而 HTML 直接作用于文档流。",
+    "pitfalls": [
+      "在 JSX 中错误使用 HTML 属性名（如 class, for）",
+      "混淆 JSX 表达式 {} 与模板字符串 `${}` 的用法",
+      "不理解 JSX 只是创建 React 元素的语法，而非模板语言"
+    ],
+    "follow_up_paths": [
+      "为什么 React 选择使用 JSX 而不是纯粹的模板语法？",
+      "JSX 中的 key 属性有什么特殊作用？为什么在列表渲染中很重要？"
+    ]
+  }
+}

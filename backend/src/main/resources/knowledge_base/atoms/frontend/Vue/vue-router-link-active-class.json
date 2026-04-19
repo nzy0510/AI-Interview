@@ -1,0 +1,24 @@
+{
+  "id": "vue-router-link-active-class",
+  "subject": "Vue Router 中 router-link 的 active-class 属性",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Vue Router",
+    "router-link",
+    "样式"
+  ],
+  "content": {
+    "principles": "active-class 是 Vue Router 内置组件 <router-link> 的属性，用于自定义当链接匹配当前路由时应用到元素上的 CSS 类名。默认情况下，激活的 <router-link> 会添加 'router-link-active' 类。通过设置 active-class，可以覆盖此默认类名，便于实现自定义高亮样式（如导航菜单）。还有一个相关属性 exact-active-class，用于配置精确匹配（完全匹配）路由时的类名。此属性仅对 <router-link> 生效，普通组件或 <a> 标签需手动通过 $route 判断来实现类似功能。",
+    "pitfalls": [
+      "误以为 active-class 是任何 Vue 组件都有的属性。",
+      "混淆 router-link-active 和 exact-active-class 的应用场景。",
+      "在非 <router-link> 组件上尝试使用此属性。"
+    ],
+    "follow_up_paths": [
+      "router-link-active 和 exact-active-class 在什么情况下会产生不同的效果？",
+      "如果不使用 <router-link>，如何手动实现一个具有激活状态样式的导航链接？",
+      "active-class 的原理是什么？Vue Router 是如何判断一个链接是否激活的？"
+    ]
+  }
+}

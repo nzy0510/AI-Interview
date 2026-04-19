@@ -1,0 +1,24 @@
+{
+  "id": "flutter-listview-builder-optimization",
+  "subject": "Flutter 长列表性能优化与 ListView.builder 原理",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "列表",
+    "性能优化",
+    "渲染"
+  ],
+  "content": {
+    "principles": "优化列表性能的核心是减少构建和布局开销。`ListView.builder` 采用懒加载（按需构建）和缓存复用机制。它不会一次性构建所有子项，只构建当前视口（viewport）内的 item。滚动时，移出视口的 Widget 被回收（Element 可能被复用），新进入视口的 item 触发 `itemBuilder` 回调构建。这类似于 RecyclerView 的 ViewHolder 模式，极大降低了内存和渲染压力。优化手段包括：1. 对 item Widget 使用 `const` 构造函数，避免重复创建。2. 为 item 指定 `itemExtent` 固定高度，避免滚动时频繁执行昂贵的布局测量。3. 使用 `cached_network_image` 等库优化图片加载。4. 对于超长列表，结合分页加载。若遇到列表嵌套滑动冲突，可使用 `NestedScrollView` 或为内层列表设置 `physics: NeverScrollableScrollPhysics()`。",
+    "pitfalls": [
+      "在 `itemBuilder` 中执行耗时操作（如同步计算或网络请求），导致滚动卡顿。",
+      "未使用 `const` 导致每次滚动都重建相同的 Widget，增加垃圾回收压力。",
+      "误以为 `ListView.builder` 会自动处理所有分页和内存问题。"
+    ],
+    "follow_up_paths": [
+      "`ListView.builder` 的缓存池（item 复用）机制在 Element 树层面是如何实现的？",
+      "如何实现一个带有不同 item 类型（如头部、普通项、底部）的高性能列表？",
+      "`Sliver` 系列组件（如 `SliverList`, `SliverGrid`）与 `ListView`/`GridView` 是什么关系？它们在 `CustomScrollView` 中如何协作？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "vue-router-route-vs-router",
+  "subject": "Vue Router 中 $route 与 $router 的核心区别与用途",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Vue Router",
+    "路由实例",
+    "路由信息"
+  ],
+  "content": {
+    "principles": "$router 是路由实例（通过 createRouter 创建），是整个应用的路由控制器，提供了编程式导航方法（如 push、replace、go）。$route 是当前激活的路由信息对象，是只读的，包含了当前 URL 解析后的信息，如 path、params、query、hash 等。简单比喻：$router 是导航系统（地图App），用于指挥跳转；$route 是当前位置的详细信息（位置详情页）。在 Composition API 中，分别通过 useRouter() 和 useRoute() 获取。常见的错误是试图调用 $route.push（不存在）来进行跳转。",
+    "pitfalls": [
+      "混淆两者，试图在 $route 上调用导航方法。",
+      "误以为 $route 是可写的，试图直接修改其属性来改变路由。",
+      "在非组件或 setup 函数中，不知道如何正确获取 $router 或 $route 实例。"
+    ],
+    "follow_up_paths": [
+      "在导航守卫中，如何访问 $router 和 $route？",
+      "$route 对象中除了 path、params、query，还有哪些常用属性？",
+      "为什么 $route 是响应式的？这在开发中有什么便利和需要注意的地方？"
+    ]
+  }
+}

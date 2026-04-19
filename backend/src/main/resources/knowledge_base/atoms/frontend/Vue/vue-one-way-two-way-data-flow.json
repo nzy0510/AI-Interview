@@ -1,0 +1,25 @@
+{
+  "id": "vue-one-way-two-way-data-flow",
+  "subject": "Vue 的单向数据流与双向数据流（v-model）的本质",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "数据流",
+    "Props",
+    "v-model",
+    "事件"
+  ],
+  "content": {
+    "principles": "Vue 遵循单向数据流原则：数据通过 props 从父组件流向子组件，子组件不能直接修改 props。如需修改，子组件必须通过 $emit 触发事件通知父组件，父组件响应事件并更新数据，新数据再次下传。双向数据流（如 v-model）是语法糖，本质仍是单向数据流。`v-model=\"msg\"` 等价于 `:modelValue=\"msg\" @update:modelValue=\"msg = $event\"`。自定义组件实现 v-model 需在子组件内绑定 `:value=\"modelValue\"` 并监听输入事件 `@input=\"$emit('update:modelValue', $event.target.value)\"`。Vue 通过事件驱动维持数据流向的清晰和可追踪性，不建议使用 ref 直接修改子组件状态破坏单向流。",
+    "pitfalls": [
+      "误以为 v-model 是真正的双向数据绑定（共享内存引用）。",
+      "在子组件中直接修改 props 的值。",
+      "不清楚如何为自定义组件实现 v-model 或支持多个 v-model 绑定。"
+    ],
+    "follow_up_paths": [
+      "如何在 Vue 3 中为一个组件实现多个 v-model 绑定？",
+      ".sync 修饰符在 Vue 2 中的作用是什么？它与 v-model 有何异同？",
+      "在大型应用中，如何设计状态管理（如 Vuex/Pinia）来更好地维护单向数据流？"
+    ]
+  }
+}

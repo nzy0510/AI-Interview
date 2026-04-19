@@ -1,0 +1,24 @@
+{
+  "id": "html5-appcache-vs-serviceworker",
+  "subject": "HTML5 离线存储：Application Cache 的废弃与 Service Worker 的替代方案",
+  "category": "HTML",
+  "difficulty": "中等",
+  "tags": [
+    "离线存储",
+    "PWA",
+    "缓存策略",
+    "HTML5"
+  ],
+  "content": {
+    "principles": "HTML5 的离线存储最初通过 Application Cache (AppCache) 实现，但已被废弃。AppCache 的工作原理：页面通过 `<html manifest=\"cache.manifest\">` 属性声明，浏览器请求 manifest 文件，其中列出 CACHE（必须缓存的文件）、NETWORK（必须走网络的资源）、FALLBACK（网络失败时的备用页）三类资源。首次访问缓存 CACHE 列表资源，之后直接从本地加载，除非 manifest 文件内容（而非时间戳）发生变化。其致命缺陷包括：任何一个资源下载失败会导致整个缓存更新失败；更新机制不透明，用户可能卡在旧版本；与浏览器默认缓存策略冲突。现代标准方案是 Service Worker 配合 Cache API 和 IndexedDB。Service Worker 是一个在后台运行的脚本，可拦截网络请求实现精细化的缓存控制。基本使用流程：1. 在主线程注册 Service Worker：`if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); }); }`。2. 在 sw.js 中监听 fetch 事件实现缓存策略，例如：`self.addEventListener('fetch', (e) => { e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request))); });`。这是现代 PWA（渐进式 Web 应用）的基础，优势在于完全可控、可后台同步、更新灵活。",
+    "pitfalls": [
+      "候选人可能混淆 AppCache 和 Service Worker，或者认为 AppCache 仍是可用技术。",
+      "可能只答出 AppCache 的基本流程，而不知道其已被废弃的原因及具体缺陷（如更新失败、卡死）。",
+      "在回答 Service Worker 时，可能忽略其生命周期管理、更新策略等高级话题。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：Service Worker 的更新流程是怎样的？如何实现 stale-while-revalidate 等高级缓存策略？",
+      "如果候选人答得不好，可以引导：如果让你设计一个简单的离线页面，只用 AppCache 会面临哪些具体问题？Service Worker 如何解决这些问题？"
+    ]
+  }
+}

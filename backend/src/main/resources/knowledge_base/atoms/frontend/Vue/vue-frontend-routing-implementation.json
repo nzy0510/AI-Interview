@@ -1,0 +1,23 @@
+{
+  "id": "vue-frontend-routing-implementation",
+  "subject": "Vue 前端路由的实现原理（Hash vs History）",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "Vue Router",
+    "路由原理",
+    "SPA"
+  ],
+  "content": {
+    "principles": "前端路由的核心是在不刷新页面的情况下，根据 URL 变化切换视图。Vue Router 主要支持两种模式：1) Hash 模式：利用 URL 中 `#` 后面的部分（hash）的变化不会触发页面刷新的特性。通过监听 `window` 的 `hashchange` 事件来捕获路由变化，并匹配渲染对应组件。兼容性好。2) History 模式：利用 HTML5 History API 的 `pushState` 和 `replaceState` 方法修改 URL，并通过监听 `popstate` 事件来处理浏览器前进后退。URL 更美观，但需要服务器端支持：当用户直接访问或刷新一个 History 模式下的路由时，服务器需配置将所有请求重定向到单页应用的入口文件（如 `index.html`），否则会返回 404。Vue Router 内部维护路由映射和当前状态，通过声明式或编程式导航触发 URL 变化，进而更新对应的组件视图。",
+    "pitfalls": [
+      "在 History 模式下开发时正常，但部署后刷新非根路径页面出现 404，未配置服务器回退规则。",
+      "误以为 `popstate` 事件能监听 `pushState` 和 `replaceState` 的调用（实际上不能，它只响应浏览器操作如前进后退）。",
+      "在 Hash 模式下，对 URL 中 `#` 之后包含的路径处理不当，如忽略 base 路径。"
+    ],
+    "follow_up_paths": [
+      "除了 Hash 和 History，还有哪些前端路由的实现思路？（如基于 `iframe` 或 `location.hash` 模拟）",
+      "在微前端架构中，主应用和子应用的路由如何共存与隔离？Vue Router 如何适配这种场景？"
+    ]
+  }
+}

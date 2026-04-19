@@ -1,0 +1,24 @@
+{
+  "id": "vue-component-naming-conventions",
+  "subject": "Vue 组件命名规范与最佳实践",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "代码规范",
+    "可维护性",
+    "团队协作"
+  ],
+  "content": {
+    "principles": "规范的 Vue 组件命名提升项目可维护性和团队协作效率。核心原则是语义清晰、结构一致。\n1.  **命名格式**：推荐使用 **PascalCase**（大驼峰），如 `UserProfile`。这能在模板中清晰区分自定义组件和原生 HTML 标签。虽然 kebab-case（如 `user-profile`）也合法，但在 JS 上下文中不如 PascalCase 直观和一致。\n2.  **命名语义**：使用**单词组合**描述功能，避免单一泛用名词。例如用 `SearchInput` 而非 `Input`，用 `UserList` 而非 `List`。便于理解和全局搜索。\n3.  **模块前缀**：大型项目中，可为组件添加模块前缀以避免命名冲突，如 `AdminUserTable`、`ReportDownloadBtn`。\n4.  **特定类型组件**：\n    - 根组件通常命名为 `App`。\n    - 页面级组件可带 `Page` 后缀，如 `HomePage`。\n    - 高阶组件或抽象封装可体现行为，如 `WithLoading`、`ModalWrapper`。\n5.  **强制约束**：建议通过 ESLint 插件（如 `vue/multi-word-component-names`）在团队中强制执行命名规范，保持代码风格统一。",
+    "pitfalls": [
+      "混合使用 PascalCase 和 kebab-case，导致代码风格混乱。",
+      "使用过于简单或模糊的组件名（如 `Box`、`Item`），难以理解其具体职责。",
+      "忽略命名规范，导致在 JSX 或动态组件中引用组件时出现错误。"
+    ],
+    "follow_up_paths": [
+      "在单文件组件（.vue）中，`<script setup>` 语法糖下，组件名是如何确定的？如何显式指定？",
+      "为什么 Vue 官方风格指南强烈推荐使用多单词组件名？单单词组件名可能引发什么问题？",
+      "在异步组件或通过 `defineAsyncComponent` 加载组件时，命名规范有何特别需要注意的地方？"
+    ]
+  }
+}

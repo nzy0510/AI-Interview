@@ -1,0 +1,24 @@
+{
+  "id": "react-core-philosophy",
+  "subject": "React 框架的核心设计思想",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "React",
+    "设计理念",
+    "虚拟DOM"
+  ],
+  "content": {
+    "principles": "React 的核心思想是解决 UI 与状态同步的问题。1. 组件化：将 UI 拆分为独立、可复用的组件，每个组件封装自己的结构、样式和逻辑。2. 数据驱动视图：开发者只需关心状态（state）的变化，React 自动将状态映射到 UI 并高效更新。3. 虚拟 DOM 与协调（Reconciliation）：在内存中构建轻量的虚拟 DOM 树来描述 UI，通过 Diff 算法比较新旧虚拟树，计算出最小变更并批量更新到真实 DOM，以提升性能。4. 单向数据流：数据通过 props 从父组件流向子组件，子组件通过事件通知父组件状态变化，使数据流清晰、可预测。5. 函数组件与 Hooks：现代 React 推崇使用函数组件和 Hooks（如 useState, useEffect）来管理状态和副作用，使逻辑更直观、复用更方便。",
+    "pitfalls": [
+      "将 React 简单地理解为“一个操作虚拟 DOM 的库”，而忽略了其声明式和组件化的核心理念。",
+      "不理解单向数据流的好处，在组件间随意修改共享数据，导致状态难以追踪。",
+      "混淆虚拟 DOM 的性能优势来源，误以为虚拟 DOM 一定比直接操作真实 DOM 快。（关键在于 Diff 和批量更新）"
+    ],
+    "follow_up_paths": [
+      "React 的 Diff 算法具体是如何工作的？Key 的作用是什么？",
+      "除了性能，虚拟 DOM 还为 React 带来了哪些能力？（如服务端渲染 SSR）",
+      "如何理解“React 是声明式的”？与 jQuery 这类命令式操作 DOM 的方式对比有何优劣？"
+    ]
+  }
+}

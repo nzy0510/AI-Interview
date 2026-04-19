@@ -1,0 +1,26 @@
+{
+  "id": "react-component-instance",
+  "subject": "React 组件实例：类组件与函数组件的区别",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "类组件",
+    "函数组件",
+    "实例",
+    "Fiber",
+    "ref"
+  ],
+  "content": {
+    "principles": "1. 类组件：每个类组件在渲染时会创建 JavaScript 类的实例，该实例持有 this.state、this.props 和生命周期方法。可以通过 React.createRef 或回调 ref 获取该实例，并调用其方法。\n2. 函数组件：本身是一个纯 JavaScript 函数，没有构造过程，没有 this，因此没有传统意义上的“实例”。每次渲染都是重新执行函数。\n3. useRef 和 forwardRef：useRef 返回一个可变的 ref 对象，其 .current 属性在组件生命周期内持久化，常用于访问 DOM 节点或存储任意可变值，但这不是组件实例。forwardRef 用于将 ref 向下传递，通常用于访问子组件的 DOM 节点或暴露命令式方法。\n4. Fiber 节点：在 React 内部，无论是类组件还是函数组件，在渲染时都会对应一个 Fiber 节点。Fiber 是 React 调和（Reconciliation）算法的工作单元，记录了组件类型、状态、副作用等信息，是 React 内部调度的真实载体，但不直接暴露给开发者。",
+    "pitfalls": [
+      "误以为函数组件通过 useRef 或 forwardRef 拥有了类似类组件的实例。",
+      "试图在函数组件中通过 this 访问实例属性或方法。",
+      "混淆开发者可操作的“组件实例”与 React 内部维护的“Fiber 节点”。"
+    ],
+    "follow_up_paths": [
+      "React 的 Fiber 架构是如何通过 Fiber 节点来调度和中断更新的？",
+      "在函数组件中，如何模拟类组件的实例变量（除了 useRef）？",
+      "forwardRef 与 useImperativeHandle 配合使用，可以暴露哪些命令式 API？这与类组件的实例方法有何异同？"
+    ]
+  }
+}

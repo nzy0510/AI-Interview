@@ -1,0 +1,24 @@
+{
+  "id": "vue-computed-vs-methods",
+  "subject": "Vue 中 computed 与 methods 的区别与适用场景",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Computed",
+    "Methods",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "computed 是计算属性，具有缓存机制。只有当其依赖的响应式数据发生变化时，才会重新计算。methods 是方法，每次调用都会执行函数体，没有缓存。在模板中频繁引用的计算逻辑应使用 computed，以避免不必要的重复计算和性能损耗。computed 适用于依赖响应式数据的计算场景（如字符串拼接、列表过滤）。methods 适用于事件处理、网络请求等不需要缓存、每次都需要执行的操作。",
+    "pitfalls": [
+      "在模板中频繁调用 methods 中的耗时计算函数，导致渲染性能下降。",
+      "误以为 methods 也能像 computed 一样自动追踪依赖并缓存结果。",
+      "在 computed 中执行带有副作用的操作（如异步请求、修改DOM），这违背了其设计初衷。"
+    ],
+    "follow_up_paths": [
+      "computed 的缓存机制是如何实现的？可以结合源码或响应式原理谈谈。",
+      "如果 computed 依赖的数据是一个非响应式的变量，会有什么问题？",
+      "在什么情况下，即使依赖没变，computed 也会重新计算？（例如，依赖数组内部对象属性变化）"
+    ]
+  }
+}
