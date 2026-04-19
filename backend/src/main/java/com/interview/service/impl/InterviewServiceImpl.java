@@ -317,6 +317,10 @@ public class InterviewServiceImpl implements InterviewService {
                         .or(metadataKey("category").isEqualTo("common"))
                 : position.contains("前端")
                         ? metadataKey("category").isEqualTo("hot200")
+                                .or(metadataKey("category").isEqualTo("React"))
+                                .or(metadataKey("category").isEqualTo("Vue"))
+                                .or(metadataKey("category").isEqualTo("Flutter"))
+                                .or(metadataKey("category").isEqualTo("HTML"))
                                 .or(metadataKey("category").isEqualTo("common"))
                         : metadataKey("category").isEqualTo("common");
 
