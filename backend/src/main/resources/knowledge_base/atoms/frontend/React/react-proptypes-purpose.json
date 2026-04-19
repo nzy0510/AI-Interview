@@ -1,0 +1,22 @@
+{
+  "id": "react-proptypes-purpose",
+  "subject": "React PropTypes 的作用与机制",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "类型检查",
+    "Props",
+    "开发工具"
+  ],
+  "content": {
+    "principles": "PropTypes 是 React 的一种运行时类型检查机制，用于验证组件接收的 props 是否符合预期。在开发环境下，React 会自动检查传入的 prop 类型，若类型不匹配或缺失 required 的 prop，会在控制台输出警告。例如：`UserCard.propTypes = { name: PropTypes.string.isRequired, age: PropTypes.number };`。\n\n其主要作用是在项目早期暴露接口不一致的问题，为组件提供文档和校验。但 PropTypes 不影响生产环境，在构建时这些检查代码会被移除，因此不会影响性能。\n\n当前趋势是使用 TypeScript 进行编译时类型检查，它更早、更安全。但在纯 JavaScript 项目中，PropTypes 仍是提升代码健壮性的重要工具。",
+    "pitfalls": [
+      "误以为 PropTypes 在生产环境也生效，或会影响性能。",
+      "在已使用 TypeScript 的项目中仍大量配置 PropTypes，造成冗余。"
+    ],
+    "follow_up_paths": [
+      "PropTypes 与 TypeScript 接口/类型在开发和维护体验上有何优劣？",
+      "如何为自定义的复杂数据结构（如特定形状的对象）定义 PropTypes？"
+    ]
+  }
+}

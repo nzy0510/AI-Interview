@@ -1,0 +1,24 @@
+{
+  "id": "flutter-navigator-routing",
+  "subject": "Flutter 路由导航机制与 Navigator 组件",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "导航",
+    "核心组件",
+    "页面栈"
+  ],
+  "content": {
+    "principles": "Flutter 的路由导航由 Navigator 组件管理，其核心是一个路由栈（Route Stack），遵循后进先出（LIFO）原则。\n1. 基本跳转：使用 `Navigator.push(context, route)` 将新页面（封装为 Route 对象，如 MaterialPageRoute）压入栈顶；使用 `Navigator.pop(context, [result])` 将当前页面弹出栈，并可返回数据。\n2. 命名路由：在 MaterialApp 的 `routes` 属性中预定义路由表，通过 `Navigator.pushNamed(context, '/detail')` 跳转，便于统一管理和维护。\n3. 路由拦截与生成：通过 MaterialApp 的 `onGenerateRoute` 属性可以统一处理路由生成逻辑，实现权限校验、动态路由、404页面等高级功能。\n4. 底层原理：Navigator 是 StatefulWidget，其 State（NavigatorState）持有 Overlay，通过 OverlayEntry 来动态管理页面（Route）的叠加显示。页面切换动画由 PageRoute（如 MaterialPageRoute）的 `buildTransitions` 方法控制。",
+    "pitfalls": [
+      "在非 Widget 构建上下文中错误使用 `Navigator.of(context)`，导致找不到最近的 Navigator。",
+      "混淆 `push` 和 `pushReplacement` 等不同导航方法的行为。",
+      "在命名路由中传递复杂对象参数时，未正确使用 `arguments` 和 `ModalRoute.of(context).settings.arguments`。"
+    ],
+    "follow_up_paths": [
+      "如何实现一个无需上下文（Context）的全局路由跳转方案？其原理和潜在问题是什么？",
+      "`Navigator.push` 和 `Navigator.pushReplacement` 对路由栈的影响有何不同？请举例说明适用场景。",
+      "如何监听整个应用的路由变化（例如，用于埋点或页面生命周期管理）？"
+    ]
+  }
+}

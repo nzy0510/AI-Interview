@@ -1,0 +1,24 @@
+{
+  "id": "react-event-passing-to-child",
+  "subject": "向子组件传递事件处理函数",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "Props",
+    "组件通信",
+    "事件处理"
+  ],
+  "content": {
+    "principles": "父组件通过 props 将事件处理函数传递给子组件，这是 React 中最直接和推荐的事件传递方式。子组件接收该函数并绑定到其内部的交互元素（如按钮）上。这种方式保持了组件间的低耦合和数据/行为的单向流动。对于深层嵌套的组件，逐层传递 props 可能繁琐，此时可考虑使用 Context API (useContext) 结合 useCallback 来共享函数，以避免中间组件的转发。在大多数情况下，props 传递是首选方案。更复杂的跨组件通信可能需要状态管理库（如 Zustand、Redux），但这已超出单纯的事件传递范畴。",
+    "pitfalls": [
+      "在深层嵌套组件中逐层传递函数导致代码冗余（Props Drilling）。",
+      "未使用 useCallback 包装函数，导致子组件因 props 变化而频繁重新渲染。",
+      "混淆了事件传递与状态提升的概念。"
+    ],
+    "follow_up_paths": [
+      "如何优化深层嵌套组件中的事件传递？",
+      "使用 Context 传递函数时，如何避免不必要的重渲染？",
+      "事件传递与状态提升在什么场景下需要结合使用？"
+    ]
+  }
+}

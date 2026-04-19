@@ -1,0 +1,22 @@
+{
+  "id": "flutter-build-release-size-reduction",
+  "subject": "Flutter 应用打包发布流程与体积优化（瘦身）",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "构建",
+    "部署",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "Flutter 发布流程：使用 `flutter build` 命令（如 `flutter build apk --release` 或 `flutter build appbundle` 用于 Android，`flutter build ios --release` 用于 iOS），Dart 代码会被 AOT 编译为原生指令。体积优化主要从三方面入手：1) **Dart 代码**：利用 Dart 的 **Tree Shaking**（摇树优化）自动移除未使用的代码，避免引入整个大型库而只使用其中一小部分。2) **图片资源**：是 APK/IPA 体积的主要部分，需压缩图片，使用合适的格式（如 WebP），并考虑按分辨率分发。3) **原生库与资源**：移除未使用的原生依赖、字体文件等。还可通过分析 `flutter build apk --analyze-size` 或使用 `--split-per-abi` 生成分架构 APK 来进一步减小体积。",
+    "pitfalls": [
+      "引入庞大的第三方库但只使用其极小功能，导致 Tree Shaking 效果有限",
+      "未对图片资源进行压缩或未使用更高效的格式，导致应用体积臃肿"
+    ],
+    "follow_up_paths": [
+      "如何分析 Flutter 发布产物的体积构成，找出‘体积大头’？",
+      "对于支持多语言的 App，如何配置 Flutter 以仅打包应用实际需要的语言资源？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "react-controlled-component-principle",
+  "subject": "React 受控组件的原理、实现与应用场景",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "表单",
+    "受控组件",
+    "状态管理"
+  ],
+  "content": {
+    "principles": "受控组件是指表单元素（如 input, textarea, select）的值由 React 组件的 state 驱动，并通过 onChange 等事件回调来更新 state，从而形成单向数据流。state 是唯一数据源，视图是 state 的映射。用户输入会触发 onChange 事件，调用 setState 更新 state，进而触发重新渲染并更新表单值。这确保了 React 状态与 UI 的完全同步。典型应用场景包括表单验证、实时搜索、动态表单等需要即时反馈或复杂状态逻辑的场景。与受控组件相对的是非受控组件，其表单数据由 DOM 自身管理（通过 ref 获取）。受控组件符合 React 声明式哲学，但会为每个输入都引入状态更新，可能对性能有细微影响。",
+    "pitfalls": [
+      "在受控组件中试图直接修改 input 的 value 属性（如 `input.value = 'new'`），这会被后续渲染覆盖。",
+      "未给受控组件提供 onChange 处理函数，或将 value 设置为 undefined/null，导致组件变成只读或警告。",
+      "混淆受控与非受控组件的使用场景，在简单场景下过度使用受控组件带来不必要的复杂度。"
+    ],
+    "follow_up_paths": [
+      "受控组件和非受控组件各自的优缺点是什么？如何根据场景进行选择？",
+      "对于包含大量表单字段的页面，使用受控组件可能导致性能问题，有哪些优化策略？",
+      "如何利用受控组件的特性实现复杂的表单逻辑，如联动、动态增减表单项、实时校验？"
+    ]
+  }
+}

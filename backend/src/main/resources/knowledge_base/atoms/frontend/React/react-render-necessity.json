@@ -1,0 +1,24 @@
+{
+  "id": "react-render-necessity",
+  "subject": "React 组件中 render 函数的必要性",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "render",
+    "组件生命周期",
+    "虚拟DOM"
+  ],
+  "content": {
+    "principles": "在 React 中，`render` 函数（或函数组件的函数体）是必需的，它是组件渲染逻辑的最终出口，负责返回描述 UI 的 React 元素（虚拟 DOM）。在协调（Reconciliation）过程中，React 必须调用它来生成或更新虚拟 DOM 树。对于类组件，必须显式定义 `render` 方法，否则实例化后将无法获取要渲染的内容，React 会抛出错误。对于函数组件，函数体本身即承担了 `render` 的职责。无论是 `ReactDOM.render` 还是新的 `createRoot().render()`，都是从根组件开始递归调用各个组件的 `render` 逻辑来构建整个 UI 树。",
+    "pitfalls": [
+      "认为函数组件没有 `render` 方法，所以 `render` 是可选的（实际上函数体就是 `render`）。",
+      "在类组件中忘记定义 `render` 方法，导致运行时错误。",
+      "不理解 `render` 函数在 React 更新机制中的核心作用。"
+    ],
+    "follow_up_paths": [
+      "React 的协调（Reconciliation）过程具体是如何工作的？`render` 函数返回的虚拟 DOM 在其中扮演什么角色？",
+      "如果一个类组件的 `render` 方法返回 `null` 或 `false`，会发生什么？",
+      "在函数组件中，如果没有任何返回（或返回 `undefined`），React 会如何处理？"
+    ]
+  }
+}

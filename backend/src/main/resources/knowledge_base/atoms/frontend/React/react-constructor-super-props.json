@@ -1,0 +1,24 @@
+{
+  "id": "react-constructor-super-props",
+  "subject": "React 类组件中 super() 与 super(props) 的区别",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "类组件",
+    "生命周期",
+    "ES6"
+  ],
+  "content": {
+    "principles": "在 React 类组件的构造函数中，super() 与 super(props) 的区别在于 this.props 的初始化时机。1) super(props)：将 props 参数传递给父类 React.Component 的构造函数，确保在构造函数内可立即访问 this.props。若构造函数中需要基于 props 初始化 state，则必须使用 super(props)。2) super()：仅调用父类构造函数，创建 this 上下文，但未传递 props，导致在构造函数内 this.props 为 undefined。React 内部会在后续流程中正确注入 props，因此不影响渲染周期中的使用。官方建议始终使用 super(props) 以避免潜在错误。若构造函数为空，可省略，React 会自动处理。",
+    "pitfalls": [
+      "在构造函数中使用了 this.props 但未调用 super(props)，导致运行时错误。",
+      "误以为 super() 与 super(props) 对组件功能无影响，忽略初始化顺序的细节。",
+      "不清楚 React 内部如何管理 props 传递，对类组件初始化流程理解模糊。"
+    ],
+    "follow_up_paths": [
+      "在构造函数中，除了初始化 state，还有哪些操作可能依赖 this.props？",
+      "函数组件和 Hooks 的出现如何改变了这种初始化模式？请对比说明。",
+      "如果使用 ES6 类但不继承 React.Component，super() 的行为会有什么不同？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "vue-ref-access-child-instance",
+  "subject": "使用 ref 访问子组件实例与 DOM 元素",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "组件通信",
+    "DOM操作",
+    "ref"
+  ],
+  "content": {
+    "principles": "通过 `ref` 属性可以获取子组件实例或子 DOM 元素的引用，用于命令式操作。\n1.  **基本用法**：在模板中为目标元素或组件添加 `ref=\"xxx\"` 属性，在 JavaScript 中通过 `this.$refs.xxx` 访问。\n2.  **访问子组件**：`ref` 指向子组件的 Vue 实例，可以调用其方法或访问其数据/属性。例如，父组件触发子表单验证：`this.$refs.formRef.validate()`。\n3.  **访问 DOM 元素**：如果 `ref` 用在原生 HTML 元素上，`this.$refs.xxx` 获取的是该 DOM 节点，可进行焦点控制、属性修改等操作。\n4.  **时机与注意**：`$refs` 只在组件**渲染完成后**才被填充，初始渲染时为 `undefined` 或 `null`。安全的使用时机是在 `mounted` 及其之后的生命周期。应避免过度依赖 `$refs` 进行数据通信，以免破坏组件的封装性。优先使用 `props`/`events` 进行父子通信。`ref` 更适合焦点控制、动画触发、直接调用子组件方法等命令式场景。",
+    "pitfalls": [
+      "在 `created` 或 `setup` 的早期阶段尝试访问 `$refs`，得到 `undefined`。",
+      "滥用 `$refs` 直接修改子组件内部状态，破坏了单向数据流和组件的可预测性。",
+      "在 `v-for` 循环中动态生成 `ref` 时，`$refs` 会成为一个数组，处理不当容易出错。"
+    ],
+    "follow_up_paths": [
+      "在 Vue 3 的 Composition API 和 `<script setup>` 中，如何使用 `ref` 和 `defineExpose` 来暴露子组件的方法？",
+      "当 `ref` 用于动态组件（`<component :is=\"...\">`）时，`$refs` 的值是什么？如何安全地访问？",
+      "对比 `$refs` 和 `$parent` / `$children` API 的优缺点和使用场景。"
+    ]
+  }
+}

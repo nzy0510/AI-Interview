@@ -1,0 +1,25 @@
+{
+  "id": "img-srcset-sizes-usage",
+  "subject": "img 标签的 srcset 和 sizes 属性",
+  "category": "HTML",
+  "difficulty": "中等",
+  "tags": [
+    "响应式图片",
+    "性能优化",
+    "DPR",
+    "视口"
+  ],
+  "content": {
+    "principles": "srcset 属性允许浏览器根据设备特性（如屏幕密度或视口宽度）自动选择最合适的图像资源。有两种主要用法：1) 基于设备像素比（DPR）：使用 x 描述符（如 1x, 2x, 3x）。例如：srcset=\"logo-2x.png 2x, logo-3x.png 3x\"，浏览器会为高 DPR 屏幕选择更高清的图片，src 属性提供兜底图。2) 基于视口宽度：使用 w 描述符（图片的固有宽度）并配合 sizes 属性。sizes 定义了一系列媒体条件及对应的图片显示宽度。浏览器根据当前视口宽度、sizes 条件以及 srcset 中图片的 w 值，计算并选择最合适的图片下载。例如：srcset=\"small.jpg 480w, medium.jpg 800w, large.jpg 1200w\" sizes=\"(max-width: 600px) 480px, 800px\"。这能有效实现响应式图片，节省带宽并提升性能。",
+    "pitfalls": [
+      "混淆 x 描述符和 w 描述符的使用场景，或错误地混合使用。",
+      "使用 w 描述符时遗漏或错误编写 sizes 属性，导致浏览器无法正确选择图片。",
+      "认为 srcset 可以完全替代 CSS 媒体查询进行图片响应式处理。"
+    ],
+    "follow_up_paths": [
+      "浏览器在选择图片时，除了 DPR 和视口宽度，还会考虑哪些因素（如网络条件）？",
+      "<picture> 元素与 srcset/sizes 有何区别？分别在什么场景下使用？",
+      "如何为 WebP 等现代图片格式提供向后兼容的降级方案？"
+    ]
+  }
+}

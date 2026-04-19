@@ -1,0 +1,22 @@
+{
+  "id": "vue-vhtml-filter-alternative",
+  "subject": "Vue中v-html指令的过滤器替代方案与HTML内容处理",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "指令",
+    "v-html",
+    "过滤器"
+  ],
+  "content": {
+    "principles": "Vue 2的`v-html`指令不支持使用过滤器（Vue 3已移除过滤器概念）。处理动态HTML内容的现代方法是：在JavaScript中预处理数据，将需要展示的HTML字符串提前拼接或转换好，然后通过`v-html`绑定。例如，从API获取富文本内容后，可以使用`DOMPurify`等库进行 sanitize（消毒）以防止XSS攻击，再将安全的HTML字符串绑定到元素。",
+    "pitfalls": [
+      "试图在`v-html`中直接使用已废弃的过滤器语法。",
+      "直接将未经验证的用户输入通过`v-html`渲染，导致XSS安全漏洞。"
+    ],
+    "follow_up_paths": [
+      "除了`DOMPurify`，还有哪些库或浏览器API可以用于HTML内容的消毒和安全渲染？",
+      "在Vue 3中，如果需要在模板内对数据进行格式化，推荐用什么替代过滤器？"
+    ]
+  }
+}

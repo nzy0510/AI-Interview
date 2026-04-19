@@ -1,0 +1,25 @@
+{
+  "id": "react-router-environment-choice",
+  "subject": "React Router 不同环境下的选择（BrowserRouter, HashRouter, MemoryRouter, StaticRouter）",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React Router",
+    "路由",
+    "SSR",
+    "测试"
+  ],
+  "content": {
+    "principles": "React Router 提供了多种路由器组件以适应不同运行环境。BrowserRouter 使用 HTML5 History API，适用于支持服务端配置的现代浏览器环境。HashRouter 使用 URL 的 hash 部分，适用于静态文件服务器或无法配置服务端重定向的环境。MemoryRouter 将路由状态保存在内存中，不改变 URL，适用于测试环境或非浏览器环境（如 React Native）。StaticRouter 用于服务端渲染（SSR），根据传入的 location 属性确定初始路由，由框架（如 Next.js）封装，开发者通常不直接使用。选择依据是运行环境：浏览器优先用 BrowserRouter，部署受限用 HashRouter，单元测试用 MemoryRouter。",
+    "pitfalls": [
+      "混淆 BrowserRouter 和 HashRouter 的使用场景，例如在静态站点上使用 BrowserRouter 导致刷新 404。",
+      "在服务端渲染时错误地使用 BrowserRouter 或 HashRouter。",
+      "不理解 MemoryRouter 的用途，在测试中直接使用 BrowserRouter 导致测试复杂化。"
+    ],
+    "follow_up_paths": [
+      "BrowserRouter 和 HashRouter 在底层实现上有什么区别？它们各自如何处理路由变化？",
+      "在服务端渲染（SSR）时，为什么需要使用 StaticRouter？它和客户端的水合过程是如何配合的？",
+      "使用 MemoryRouter 进行单元测试时，如何模拟路由跳转和断言当前路由状态？"
+    ]
+  }
+}

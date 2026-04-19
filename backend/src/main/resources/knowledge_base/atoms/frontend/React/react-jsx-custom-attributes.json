@@ -1,0 +1,22 @@
+{
+  "id": "react-jsx-custom-attributes",
+  "subject": "JSX 中自定义属性的使用规则",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "JSX",
+    "DOM",
+    "属性"
+  ],
+  "content": {
+    "principles": "在 JSX 中，为原生 DOM 元素添加自定义属性必须使用 `data-*` 前缀（如 `data-user-id=\"123\"`），React 会将其原样透传到渲染的 DOM 元素上，符合 HTML 标准。若使用非 `data-` 前缀的自定义属性（如 `my-prop=\"abc\"`），React 会忽略该属性并在控制台发出警告。对于自定义 React 组件，可以传递任意命名的 props（如 `userName=\"Alice\"`），因为它们作为 JavaScript 对象属性被组件接收，不与真实 DOM 属性直接对应。关键在于区分操作的是原生 DOM 元素还是传递组件 props。",
+    "pitfalls": [
+      "混淆原生 DOM 元素与自定义组件的属性传递规则，在 DOM 元素上使用非标准属性导致警告或属性丢失。",
+      "误以为所有自定义属性都会透传到 DOM，忽略了 React 对非 `data-*` 属性的过滤。"
+    ],
+    "follow_up_paths": [
+      "如果组件需要接收一个非 `data-*` 的自定义属性并希望它出现在 DOM 上，应该如何实现？（考察 `aria-*` 或自定义属性透传的变通方案）",
+      "在 TypeScript 中，如何为自定义组件定义 props 类型，以包含允许的 `data-*` 属性？"
+    ]
+  }
+}

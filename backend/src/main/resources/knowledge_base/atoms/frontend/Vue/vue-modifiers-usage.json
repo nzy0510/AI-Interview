@@ -1,0 +1,25 @@
+{
+  "id": "vue-modifiers-usage",
+  "subject": "Vue 常用修饰符及其应用场景",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "指令",
+    "修饰符",
+    "表单",
+    "事件"
+  ],
+  "content": {
+    "principles": "Vue 修饰符是以点 (.) 开头的特殊后缀，用于指示指令应以特殊方式绑定。主要分类：1. v-model 修饰符：.lazy（将 input 事件转为 change 事件，失焦后同步）、.number（将输入自动转为 Number 类型）、.trim（自动过滤输入的首尾空格）。2. 事件修饰符：.stop（阻止事件冒泡）、.prevent（阻止默认行为）、.self（仅当事件是从事件绑定的元素本身触发时才触发回调）、.once（事件只触发一次）、.capture（使用事件捕获模式）。3. 按键修饰符：.enter、.esc、.tab 等监听特定键盘事件，组合键如 .ctrl.c。4. 系统修饰符：.ctrl、.alt、.shift、.meta。5. 表单修饰符（历史）：.native（在组件上监听原生事件）、.sync（父子组件双向绑定的语法糖，Vue 3 中整合进 v-model）。",
+    "pitfalls": [
+      "混淆 .stop 和 .self 的作用，.self 不阻止冒泡，只是限制触发源。",
+      "在自定义组件上使用 .native 监听事件，但组件内部未 emit 该原生事件导致监听失败。",
+      "过度依赖 .sync（Vue 2）实现双向绑定，导致数据流不清晰。"
+    ],
+    "follow_up_paths": [
+      ".sync 修饰符在 Vue 2 中的实现原理是什么？它与 Vue 3 中 v-model 的参数形式有何异同？",
+      "如何自定义一个修饰符？例如，实现一个 .throttle 的事件修饰符。",
+      "在 Vue 3 中，v-model 的修饰符行为有何变化？（如自定义组件的 modelModifiers）"
+    ]
+  }
+}

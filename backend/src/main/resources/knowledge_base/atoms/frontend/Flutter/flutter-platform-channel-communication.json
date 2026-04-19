@@ -1,0 +1,21 @@
+{
+  "id": "flutter-platform-channel-communication",
+  "subject": "Flutter 与原生平台通信：Platform Channel 原理与使用",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "平台交互",
+    "架构"
+  ],
+  "content": {
+    "principles": "Flutter 与原生（Android/iOS）通信主要通过 **Platform Channel**，它是一个基于异步消息传递的双向通道。核心类型：1) **MethodChannel**：最常用，用于调用方法并传递数据。2) **EventChannel**：用于从原生端向 Flutter 端持续发送事件流（如传感器数据）。3) **BasicMessageChannel**：用于基本的字符串或二进制消息通信。底层依赖 **BinaryMessenger** 进行二进制数据序列化与传递。Dart 端消息通过引擎传递到平台层（Android 通过 FlutterJNI，iOS 通过 FlutterEngine 回调）。默认使用 `StandardMessageCodec` 编解码，支持基本类型、List、Map。通信是异步的，不会阻塞 UI 线程，但处理逻辑默认在平台 UI 线程执行，应避免耗时操作。",
+    "pitfalls": [
+      "Dart 端与原生端的 Channel 名称或方法名不一致，导致调用失败",
+      "在 Platform Channel 的处理方法中执行同步耗时操作，影响原生端 UI 响应"
+    ],
+    "follow_up_paths": [
+      "如何通过 Platform Channel 传递自定义的复杂对象？需要实现什么？",
+      "高频、大数据量的平台通信有什么潜在性能问题？如何优化（如结合 Isolate）？"
+    ]
+  }
+}

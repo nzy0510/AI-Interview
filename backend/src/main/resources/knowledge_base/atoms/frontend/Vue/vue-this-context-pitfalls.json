@@ -1,0 +1,25 @@
+{
+  "id": "vue-this-context-pitfalls",
+  "subject": "Vue 中 `this` 上下文的常见陷阱与正确使用",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "this 指向",
+    "选项式 API",
+    "组合式 API",
+    "箭头函数"
+  ],
+  "content": {
+    "principles": "在 Vue 选项式 API 中，`this` 默认指向当前组件实例。但在某些情况下容易丢失上下文：1) 在 `methods` 中定义方法时使用箭头函数，箭头函数会绑定父级作用域的 `this`，导致无法访问组件实例的响应式数据和其它方法。2) 在 `watch` 的回调函数中使用箭头函数，同样会导致 `this` 指向错误。3) 在事件回调或异步操作（如 `setTimeout`、`addEventListener`）中，如果将 `methods` 里的普通函数直接传递，其 `this` 会丢失（指向 `window` 或 `undefined`），需要手动 `bind(this)` 或使用箭头函数包裹。4) 在 Vue 3 的组合式 API 的 `setup()` 函数中，`this` 的值为 `undefined`，不应再依赖 `this` 来访问状态或方法，所有状态和逻辑都应通过 `ref`、`reactive` 等 API 创建并从 `setup` 返回。",
+    "pitfalls": [
+      "在 `methods` 中使用箭头函数定义方法，导致模板中调用时 `this` 为 `undefined` 或指向错误对象。",
+      "在 `setTimeout` 或事件监听器回调中直接传递 `methods` 中的普通函数名，未绑定 `this`。",
+      "在组合式 API 的 `setup` 中尝试使用 `this` 访问选项式 API 中定义的属性。"
+    ],
+    "follow_up_paths": [
+      "为什么在 `methods` 中使用箭头函数会导致 `this` 指向问题？这与 JavaScript 的 `this` 绑定规则有何关系？",
+      "在组合式 API 中，如何访问组件实例的上下文（如 `attrs`、`slots`、`emit`）？（使用 `setup` 的第二个参数 `context`）",
+      "如何设计一个工具函数，使其在选项式 API 和组合式 API 中都能安全地访问到组件上下文？"
+    ]
+  }
+}

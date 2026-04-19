@@ -1,0 +1,22 @@
+{
+  "id": "flutter-statefulwidget-vs-statelesswidget",
+  "subject": "StatefulWidget 与 StatelessWidget 的正确使用场景",
+  "category": "Flutter",
+  "difficulty": "简单",
+  "tags": [
+    "Widget",
+    "状态管理",
+    "性能"
+  ],
+  "content": {
+    "principles": "StatefulWidget 用于需要维护可变状态（记忆）的组件，其内部通过 `setState` 方法触发 UI 重建。StatelessWidget 用于静态 UI，其属性在构建后不可变。滥用 StatefulWidget 会带来不必要的状态管理和生命周期开销。最佳实践是：静态 UI 一律使用 StatelessWidget，只有真正需要内部可变状态时才使用 StatefulWidget。",
+    "pitfalls": [
+      "误以为所有需要变化的 UI 都必须用 StatefulWidget（实际上可以通过父 Widget 传递数据来驱动 StatelessWidget 重建）",
+      "在 StatefulWidget 的 `build` 方法中创建新的回调函数或对象，导致子 Widget 不必要的重建"
+    ],
+    "follow_up_paths": [
+      "StatefulWidget 的生命周期方法有哪些？`initState` 和 `didUpdateWidget` 分别在什么时机调用？",
+      "如何设计一个组件，使其状态变化时，只重建必要的子 Widget 部分？"
+    ]
+  }
+}

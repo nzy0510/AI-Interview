@@ -1,0 +1,24 @@
+{
+  "id": "react-controlled-component",
+  "subject": "React 受控组件",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "组件",
+    "状态管理",
+    "表单"
+  ],
+  "content": {
+    "principles": "受控组件是指其表单数据（如输入框的值）完全由 React 的 state 驱动。用户输入会触发事件处理函数（如 onChange），通过 setState 或 useState 的 setter 更新 state，再由 state 驱动视图刷新。state 是唯一数据源，不能直接操作 DOM（如 input.value = 'xxx'），否则会被 React 的渲染机制覆盖。典型实现是使用 useState 存储输入值，并在 onChange 中调用 setter。",
+    "pitfalls": [
+      "误以为可以直接修改 DOM 元素的值来更新 React 组件。",
+      "忘记在 onChange 中更新 state，导致输入框变成只读。",
+      "在复杂表单中，仅使用多个 useState 导致样板代码过多，不知道可以使用 useReducer 或 react-hook-form 等库来管理。"
+    ],
+    "follow_up_paths": [
+      "受控组件和非受控组件的核心区别是什么？分别在什么场景下使用？",
+      "在受控组件的 onChange 事件中实现防抖或节流时需要注意什么？",
+      "如果在一个大型表单中全部使用受控组件，可能会遇到什么性能问题？如何优化？"
+    ]
+  }
+}

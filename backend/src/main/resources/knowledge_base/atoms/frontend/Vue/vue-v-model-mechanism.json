@@ -1,0 +1,25 @@
+{
+  "id": "vue-v-model-mechanism",
+  "subject": "Vue v-model 的本质与实现机制",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "v-model",
+    "双向绑定",
+    "语法糖",
+    "表单"
+  ],
+  "content": {
+    "principles": "v-model 是 Vue 中实现表单元素双向数据绑定的语法糖。其本质是 `:value`（属性绑定）和 `@input`（事件监听）的组合。对于原生表单元素，Vue 会根据元素类型自动选择正确的属性和事件（如 input 用 `value` 和 `input`，checkbox 用 `checked` 和 `change`）。在自定义组件上使用 v-model 时，默认会传递一个名为 `modelValue` 的 prop，并监听 `update:modelValue` 事件。可以通过参数自定义名称，如 `v-model:title` 对应 `title` prop 和 `update:title` 事件。组件内部需声明相应的 prop 和 emit，并在适当时机触发更新事件。在 Composition API 的 `<script setup>` 中，常结合 `computed` 的 getter/setter 实现更复杂的双向同步逻辑。",
+    "pitfalls": [
+      "误以为 v-model 是 Vue 独有的魔法，不理解其底层是 prop + event 的语法糖。",
+      "在自定义组件上使用 v-model 时，忘记在子组件中触发 `update:modelValue` 事件，导致数据无法同步回父组件。",
+      "混淆 `v-model` 和 `.sync` 修饰符（Vue 2 中 `.sync` 是类似功能的语法糖，Vue 3 中已统一为 v-model 参数形式）。"
+    ],
+    "follow_up_paths": [
+      "如何在自定义组件上实现多个 v-model 绑定（例如 `v-model:first-name` 和 `v-model:last-name`）？",
+      "v-model 有哪些内置的修饰符（如 `.lazy`, `.number`, `.trim`）？它们的实现原理是什么？",
+      "如果不用 v-model，如何用 Composition API 的 `ref` 和自定义事件手动实现一个完全等效的双向绑定？"
+    ]
+  }
+}

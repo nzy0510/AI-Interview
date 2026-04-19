@@ -1,0 +1,25 @@
+{
+  "id": "vue-core-concept-advantages",
+  "subject": "Vue 的核心理解与相较于原生开发的优点",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "核心概念",
+    "响应式",
+    "组件化",
+    "框架优势"
+  ],
+  "content": {
+    "principles": "Vue 是一个用于构建用户界面的渐进式 JavaScript 框架，核心是数据驱动视图和组件化。通过响应式系统自动追踪数据依赖，在数据变化时精准更新视图，无需手动操作 DOM。开发者只需关注状态变化，UI 自动同步（如使用 `ref`/`reactive` 定义数据，模板中插值）。主要优点包括：1) 组件化：将 UI 拆分为独立、可复用的单元，每个组件封装结构、样式和逻辑，便于维护和复用（如 Element Plus 等 UI 库）。2) 指令系统：简化 DOM 操作，如 `v-model` 实现表单双向绑定，`v-for` 渲染列表，比原生频繁操作 `addEventListener` 和 `innerHTML` 更高效。3) 完整生态：配套工具链完善，如 Vue Router 管理路由、Pinia 管理全局状态、Vite 提供流畅开发体验。相较于原生开发，Vue 在项目规模增大时能提供约定大于配置的结构，避免代码散落和依赖混乱，提升团队协作效率和项目可维护性。对比 React，Vue 的 Options API 更直观，Composition API 提供了强大的逻辑复用能力，学习曲线相对平缓。",
+    "pitfalls": [
+      "将 Vue 简单理解为“一个模板引擎”，忽略其完整的响应式系统和组件化架构。",
+      "在极小型项目或对性能有极致要求的场景中，误用 Vue 导致不必要的开销，而原生 DOM 操作可能更轻量。",
+      "混淆“渐进式”的含义，误以为必须一次性引入所有特性。"
+    ],
+    "follow_up_paths": [
+      "Vue 的响应式系统在底层是如何实现的（针对 Vue 2 的 `Object.defineProperty` 和 Vue 3 的 `Proxy`）？",
+      "请举例说明，在什么业务场景下，使用原生 JavaScript 开发可能比使用 Vue 更合适？",
+      "Vue 的“渐进式”具体体现在哪些方面？如何从一个简单的页面交互开始逐步引入 Vue 的特性？"
+    ]
+  }
+}

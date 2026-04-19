@@ -1,0 +1,21 @@
+{
+  "id": "react-class-lifecycle",
+  "subject": "React 类组件生命周期",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "生命周期",
+    "类组件"
+  ],
+  "content": {
+    "principles": "React 类组件的生命周期分为三个阶段：挂载（Mounting）、更新（Updating）、卸载（Unmounting）。\n1. 挂载阶段：`constructor` -> `static getDerivedStateFromProps` -> `render` -> `componentDidMount`。`componentDidMount` 是发起网络请求、订阅事件的常用位置。\n2. 更新阶段：`static getDerivedStateFromProps` -> `shouldComponentUpdate` -> `render` -> `getSnapshotBeforeUpdate` -> `componentDidUpdate`。`shouldComponentUpdate` 可用于性能优化。\n3. 卸载阶段：`componentWillUnmount`，用于清理定时器、取消请求、移除监听器等副作用。",
+    "pitfalls": [
+      "在 `componentDidUpdate` 中忘记添加条件判断，导致无限循环更新。",
+      "混淆 `getDerivedStateFromProps` 和 `componentWillReceiveProps`（已废弃）的用法。"
+    ],
+    "follow_up_paths": [
+      "如何使用 `useEffect` Hook 来模拟类组件的 `componentDidMount`、`componentDidUpdate` 和 `componentWillUnmount`？",
+      "`getSnapshotBeforeUpdate` 和 `componentDidUpdate` 如何配合使用？请举一个实际例子（如保存滚动位置）。"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "react-component-naming-convention",
+  "subject": "React 组件名首字母必须大写的约定与原理",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "JSX",
+    "编译原理",
+    "约定"
+  ],
+  "content": {
+    "principles": "组件名首字母大写是 React 的强制约定，源于 JSX 的编译机制。JSX 会被 Babel 等工具编译为 `React.createElement(type, props, children)` 调用。`type` 参数的处理规则：1) **小写字母开头**：被视为内置的 HTML/SVG 标签字符串，如 `<div>` 编译为 `React.createElement('div')`。2) **大写字母开头**：被视为自定义的 React 组件（变量），如 `<MyComponent>` 编译为 `React.createElement(MyComponent)`，此时会去当前作用域查找同名变量或导入。如果组件名小写，React 会尝试将其作为原生 DOM 标签渲染，导致组件无法被正确识别和渲染，且可能不报错，难以调试。",
+    "pitfalls": [
+      "将组件变量命名为小写，但在 JSX 中使用了大写标签，导致“变量未定义”错误。",
+      "误以为这是 JavaScript 的语法要求，而非 React/JSX 的编译约定。",
+      "在动态渲染组件时（如 `const Tag = condition ? CompA : CompB`），未确保最终变量名符合约定。"
+    ],
+    "follow_up_paths": [
+      "JSX 编译后的 `React.createElement` 调用，其 `type` 参数除了字符串和组件引用，还可以是什么？（如 Fragment, Context.Provider）",
+      "如何实现一个动态标签名的组件？（例如 `<DynamicTag is=\"h1\">`）",
+      "TypeScript 或 PropTypes 如何利用此约定进行类型检查或验证？"
+    ]
+  }
+}

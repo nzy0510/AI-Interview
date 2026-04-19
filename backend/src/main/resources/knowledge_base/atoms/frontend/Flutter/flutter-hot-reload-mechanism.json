@@ -1,0 +1,24 @@
+{
+  "id": "flutter-hot-reload-mechanism",
+  "subject": "Flutter 热重载（Hot Reload）的工作原理与限制",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "开发工具",
+    "Dart VM",
+    "状态保持"
+  ],
+  "content": {
+    "principles": "Flutter 的热重载是一种在保持应用当前运行状态（State）的前提下，快速注入修改后代码的开发工具。其核心依赖于：\n1. Dart 的 JIT（Just-In-Time）编译模式：开发模式下，Dart 代码以 Kernel 字节码（.dill 文件）形式运行在 VM 中，支持增量编译和动态加载。\n2. Widget 树的声明式重建与 State 分离：Flutter UI 由不可变的 Widget 树描述。热重载触发后，根 Widget 的 `build` 方法被重新调用，重建 Widget 树。由于 StatefulWidget 对应的 State 对象被框架持有且未重新创建，其内部状态（如计数器数值、表单数据）得以保留。\n3. 增量代码推送：IDE/工具将修改的 Dart 文件增量编译后，通过 VM Service 协议将新的 Kernel 文件推送到运行中的 Dart VM。VM 更新内存中的类和方法定义，但不重启 Isolate。\n限制：以下修改无法通过热重载生效，需要完全重启（Hot Restart）：\n- 修改 `main()` 函数。\n- 修改全局变量或静态字段的初始化器。\n- 修改类的继承关系或类型声明。\n- 修改原生平台通道（Platform Channel）的代码。",
+    "pitfalls": [
+      "误以为热重载可以更新所有类型的代码修改。",
+      "在 State 的初始化（initState）中执行了依赖外部资源的操作，热重载后可能导致资源未释放或重复初始化。",
+      "不理解热重载与热重启（Hot Restart）在状态保留上的根本区别。"
+    ],
+    "follow_up_paths": [
+      "热重载过程中，Dart VM 是如何保证修改后的新类定义与现有对象实例兼容的？",
+      "如果修改了一个 StatelessWidget 为 StatefulWidget，热重载能生效吗？为什么？",
+      "请解释 Flutter 发布（Release）模式为什么没有热重载功能？AOT 编译与 JIT 编译的根本区别是什么？"
+    ]
+  }
+}

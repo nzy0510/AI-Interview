@@ -1,0 +1,24 @@
+{
+  "id": "vue-reset-component-data",
+  "subject": "重置 Vue 组件 data 状态的几种方法",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "状态管理",
+    "组件",
+    "Composition API"
+  ],
+  "content": {
+    "principles": "Vue 没有内置的 `resetData` 方法，但可通过以下方式将组件数据重置为初始状态。\n1.  **Options API**：通过访问组件实例的 `$options.data()` 函数重新执行，并将结果赋值给 `$data`。\n    ```javascript\n    resetData() {\n      this.$data = this.$options.data.call(this);\n    }\n    ```\n    注意需使用 `.call(this)` 确保 `data` 函数内的 `this` 指向当前实例，尤其在混入 (mixin) 场景下。\n2.  **Composition API**：由于没有 `this` 和 `$options`，通常手动维护状态和重置函数。\n    ```javascript\n    import { ref } from 'vue';\n    const initialState = { name: '', count: 0 };\n    const state = ref({ ...initialState });\n    const resetState = () => { state.value = { ...initialState }; };\n    ```\n    或使用 `reactive` 配合工具函数。\n3.  **注意事项**：\n    - 避免直接修改 `$data` 外部引用而不触发响应式更新。\n    - 对于深层嵌套的复杂对象，简单赋值可能无法完全重置（需考虑深拷贝）。\n    - 区分组件局部状态和全局状态（如 Vuex/Pinia），重置逻辑应分开处理。\n4.  **最佳实践**：对于高频使用的表单组件，可封装自定义 Hook（如 `useReset`）统一管理重置逻辑。",
+    "pitfalls": [
+      "在 Options API 中直接 `this.$data = this.$options.data`（缺少函数调用和 `call(this)`），导致 `this` 指向错误或数据非响应式。",
+      "在 Composition API 中，直接对 `reactive` 对象进行重新赋值 (`state = reactive({...})`)，丢失了原始响应式引用。",
+      "重置时未考虑表单验证状态、UI 状态（如加载中）的同步重置。"
+    ],
+    "follow_up_paths": [
+      "如果组件的初始数据 `data()` 依赖于 `props`，重置逻辑应该如何调整？",
+      "如何实现一个支持“撤销/重做”功能的数据重置机制？",
+      "在使用了 `Vuex` 或 `Pinia` 的项目中，如何协调组件局部状态重置和全局状态管理？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "react-state-immutability-setstate",
+  "subject": "React 状态不可变性与 setState 的正确使用",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "state",
+    "不可变性",
+    "setState",
+    "更新机制"
+  ],
+  "content": {
+    "principles": "React 强烈反对直接修改 state（如 this.state.count++），因为：\n1. 核心机制：React 依赖于状态不可变性来追踪变化。直接修改 state 对象不会触发组件的重新渲染，因为 React 的更新流程（如 diff 算法、调度）依赖于 setState 调用。\n2. 正确做法：必须使用 setState 方法（类组件）或状态设置函数（函数组件）来更新状态。这确保了状态变更可预测，并进入 React 的更新队列。\n3. 函数式更新：在依赖前一个状态时，应使用函数式更新以避免闭包问题，例如 setCount(prevCount => prevCount + 1)。\n4. 设计理念：此模式借鉴了函数式编程思想，类似于 Redux 要求通过 dispatch action 变更状态，保证了数据流的清晰和可调试性。",
+    "pitfalls": [
+      "在数组或对象状态中，直接修改原数组/对象（如 push, splice）后调用 setState，导致渲染不更新或副作用错误。",
+      "在异步回调（如 setTimeout、Promise）中直接修改 state，然后期望 UI 更新。",
+      "混淆了状态不可变性与性能优化（如 shouldComponentUpdate 的浅比较）。"
+    ],
+    "follow_up_paths": [
+      "为什么 React 的浅比较（shallow compare）依赖于不可变性？请举例说明。",
+      "在函数组件中，使用 useState 时，直接修改状态变量再调用设置函数，会有什么后果？",
+      "如何正确地更新一个嵌套层次很深的对象状态？有哪些库或原生方法可以帮助实现不可变更新？"
+    ]
+  }
+}

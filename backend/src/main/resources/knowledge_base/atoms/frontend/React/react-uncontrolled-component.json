@@ -1,0 +1,25 @@
+{
+  "id": "react-uncontrolled-component",
+  "subject": "React 非受控组件及其应用场景",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "表单",
+    "Ref",
+    "DOM操作",
+    "文件上传"
+  ],
+  "content": {
+    "principles": "非受控组件是指表单元素（如 `<input>`）的值不由 React 的 `state` 管理，而是由 DOM 自身维护。开发者通过 `ref` 在需要时（如表单提交时）直接从 DOM 节点获取当前值。这与原生 HTML 表单行为一致。其核心应用场景包括：1) 文件上传 (`<input type=\"file\"/>`)，因为其值只能由用户设置，无法通过 JavaScript 编程赋值；2) 需要集成第三方库或直接操作原生 DOM 的场合（如富文本编辑器）。非受控组件代码简单，但状态变化不易追踪和验证。",
+    "pitfalls": [
+      "将非受控组件与受控组件的概念混淆，错误地在非受控组件上设置 `value` 和 `onChange`。",
+      "过度使用非受控组件处理复杂表单逻辑，导致状态管理混乱，难以实现实时验证或联动。",
+      "不理解 `ref` 在函数组件 (`useRef`) 和类组件 (`createRef`) 中的使用差异。"
+    ],
+    "follow_up_paths": [
+      "受控组件与非受控组件在实现原理和适用场景上有何本质区别？",
+      "如何结合使用 `ref` 和 `defaultValue`/`defaultChecked` 属性来初始化一个非受控组件？",
+      "像 `react-hook-form` 这样的库是如何在内部混合使用受控和非受控模式的？"
+    ]
+  }
+}

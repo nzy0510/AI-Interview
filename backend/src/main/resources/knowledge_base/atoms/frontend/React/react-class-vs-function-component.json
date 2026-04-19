@@ -1,0 +1,24 @@
+{
+  "id": "react-class-vs-function-component",
+  "subject": "React 类组件与函数式组件的核心区别",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "组件模型",
+    "Hooks",
+    "生命周期"
+  ],
+  "content": {
+    "principles": "类组件与函数式组件的根本区别在于语法形态、状态/副作用管理方式和心智模型。1) **类组件**：基于 ES6 class，继承 `React.Component`。状态存储在 `this.state`，通过 `this.setState` 更新。生命周期方法（如 `componentDidMount`, `shouldComponentUpdate`）显式定义，逻辑分散在各个方法中，易导致“生命周期地狱”和逻辑耦合。2) **函数式组件**：本质是纯函数，接收 `props` 返回 JSX。React 16.8 引入 Hooks 后，可通过 `useState` 管理状态，`useEffect` 处理副作用。逻辑复用更灵活（自定义 Hook），代码更简洁，更符合函数式编程思想。React 团队推荐使用函数组件+Hooks，但类组件在旧代码库中仍常见。",
+    "pitfalls": [
+      "在函数组件中错误地使用 `this`（函数组件没有实例，`this` 为 `undefined`）。",
+      "将类组件的生命周期方法一对一映射到 `useEffect` 的依赖数组中，误解了 Hooks 的思维模式。",
+      "认为 Hooks 可以完全替代所有类组件特性（如 `getSnapshotBeforeUpdate`, `Error Boundaries` 仍需类组件）。"
+    ],
+    "follow_up_paths": [
+      "Hooks 的引入如何解决了类组件的哪些经典问题？（逻辑复用、巨型组件、`this` 绑定困惑）",
+      "`useEffect` 与 `componentDidMount`/`componentDidUpdate` 在执行时机上有何细微差别？",
+      "在性能优化方面，`React.memo` 与类组件的 `PureComponent`/`shouldComponentUpdate` 有何异同？"
+    ]
+  }
+}

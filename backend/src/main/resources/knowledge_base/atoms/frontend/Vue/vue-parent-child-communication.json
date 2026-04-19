@@ -1,0 +1,27 @@
+{
+  "id": "vue-parent-child-communication",
+  "subject": "Vue 父子组件通信的多种方式与选型",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "组件通信",
+    "Props",
+    "Emit",
+    "Provide/Inject",
+    "Ref"
+  ],
+  "content": {
+    "principles": "1. **Props + Events (`$emit`)**：最基础的通信方式。父通过 `props` 向下传递数据，子通过 `$emit` 触发事件向上传递信息。遵循单向数据流。\n2. **`provide` / `inject`**：用于祖先组件向后代组件跨层级传递数据。默认非响应式，若需响应性，需传递一个响应式对象（如 `ref` 或 `reactive` 包装的对象）。\n3. **`ref`**：父组件通过给子组件设置 `ref` 属性，可直接访问子组件实例，调用其方法或访问其属性。会导致紧耦合，应谨慎使用，适用于表单提交、弹窗控制等明确操作。\n4. **事件总线（Event Bus） / 全局状态管理（Vuex/Pinia）**：适用于非父子或远距离组件通信。对于简单父子通信，应优先使用前三种方式，避免过度设计。",
+    "pitfalls": [
+      "在子组件中直接修改通过 `props` 接收的对象或数组，破坏了单向数据流。",
+      "过度使用 `ref` 进行通信，导致组件耦合度过高，难以维护。",
+      "误以为 `provide` / `inject` 默认是响应式的。",
+      "在简单父子通信场景下，不必要地引入 Vuex 或 Pinia。"
+    ],
+    "follow_up_paths": [
+      "如何实现 `provide` / `inject` 的响应式传递？",
+      "在 Vue 3 的 `<script setup>` 中，如何使用 `defineProps`、`defineEmits` 和 `defineExpose` 来简化通信？",
+      "请设计一个场景，说明为什么有时必须使用 `ref` 来访问子组件。"
+    ]
+  }
+}

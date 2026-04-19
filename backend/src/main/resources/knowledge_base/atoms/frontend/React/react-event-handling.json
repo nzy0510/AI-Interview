@@ -1,0 +1,21 @@
+{
+  "id": "react-event-handling",
+  "subject": "React 事件处理",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "事件处理",
+    "合成事件"
+  ],
+  "content": {
+    "principles": "React 事件处理采用驼峰命名法，传入的是函数引用而非字符串。事件处理函数可以是组件内部定义的函数或内联箭头函数。React 使用合成事件系统，将事件委托到 document 根节点，实现跨浏览器兼容和性能优化。事件对象（SyntheticEvent）会自动传递给处理函数，与原生的 DOM 事件对象接口一致但更安全。",
+    "pitfalls": [
+      "在绑定事件时错误地加上了括号 `onClick={handleClick()}`，导致函数在渲染时立即执行，而非点击时触发。",
+      "在需要传递额外参数时，忘记使用箭头函数包裹 `onClick={() => handleDelete(id)}`，导致参数传递错误或函数立即执行。"
+    ],
+    "follow_up_paths": [
+      "React 合成事件和原生 DOM 事件有什么区别？事件委托机制是如何实现的？",
+      "为什么在类组件中需要手动绑定 `this`，而在函数组件中不需要？请解释 `bind` 方法和箭头函数在事件处理中的区别。"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "vue-router-router-link",
+  "subject": "Vue Router 的 router-link 组件",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Vue Router",
+    "导航",
+    "router-link"
+  ],
+  "content": {
+    "principles": "`router-link` 是 Vue Router 提供的声明式导航组件，用于替代普通的 `<a>` 标签实现单页应用内的路由跳转，点击后页面不刷新，通过 Vue Router 的内部逻辑更新 URL 和视图。它最终渲染为 `<a>` 标签。核心属性包括：1) `to`：指定目标路径，支持字符串或对象形式（如 `:to=\"{ name: 'User', params: { id: 8 } }\"`）。2) `tag`（Vue 2 特性，Vue 3 中已移除）：指定渲染的标签。3) `active-class`：控制激活状态（当前路由匹配时）的 CSS 类名，默认为 `router-link-active`；对于精确匹配的路由，还会自动添加 `router-link-exact-active` 类。其内部自动处理了路由匹配和高亮逻辑。代码示例：`<router-link to=\"/home\">首页</router-link>` 等价于编程式导航 `router.push('/home')`，但更简洁直观。常用于构建菜单、分页切换、面包屑导航等。通过 `replace` 属性可触发 `router.replace()` 导航，不会留下历史记录。",
+    "pitfalls": [
+      "在 Vue 3 中仍尝试使用 `tag` 属性，导致错误或警告。",
+      "不理解 `router-link-active` 与 `router-link-exact-active` 的区别，尤其在嵌套路由中。",
+      "在需要复杂点击逻辑或权限控制时，仍过度依赖 `router-link` 而不知使用编程式导航。"
+    ],
+    "follow_up_paths": [
+      "`router-link` 组件内部是如何阻止默认的 `<a>` 标签跳转行为并调用 `router.push` 的？",
+      "如何自定义 `router-link` 的渲染内容（例如使用作用域插槽）？",
+      "在导航守卫中，点击 `router-link` 和调用 `router.push` 的行为有何异同？"
+    ]
+  }
+}

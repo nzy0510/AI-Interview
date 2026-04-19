@@ -1,0 +1,24 @@
+{
+  "id": "react-event-handling-synthetic-event",
+  "subject": "React 中的事件处理：绑定、传参与合成事件机制",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "事件处理",
+    "合成事件",
+    "this 绑定"
+  ],
+  "content": {
+    "principles": "React 事件处理采用驼峰命名（如 onClick），传递函数引用而非字符串。事件处理函数可以是组件内定义或外部传入。注意不能写成 `onClick={handleClick()}`，这会导致渲染时立即执行。传递参数时，常用箭头函数包裹：`onClick={() => handleDelete(id)}`。React 使用事件委托机制，将所有事件统一附加到根容器，通过合成事件（SyntheticEvent）对象派发，提高了性能并简化了事件解绑。在类组件中，需注意事件处理函数的 this 指向。解决方法包括：在 constructor 中 bind、使用类属性箭头函数（`handleClick = () => {}`）、或在回调中使用箭头函数。合成事件是跨浏览器包装器，与原生事件接口一致但具有事件池机制，如需异步访问事件属性，需调用 `event.persist()`。",
+    "pitfalls": [
+      "在事件属性中错误地调用函数（如 `onClick={handleClick()}`）导致无限渲染或逻辑错误。",
+      "在类组件中使用普通方法作为事件处理函数，未绑定 this，导致函数内 this 为 undefined。",
+      "在异步操作中直接使用合成事件的属性，因事件池重用导致属性失效。"
+    ],
+    "follow_up_paths": [
+      "React 的合成事件机制是如何实现的？与原生事件委托相比有何优势和劣势？",
+      "为什么需要在类组件中绑定 this？函数组件中是否存在同样的问题？",
+      "`event.persist()` 的作用是什么？在什么场景下必须使用它？"
+    ]
+  }
+}

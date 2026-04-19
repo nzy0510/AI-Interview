@@ -1,0 +1,24 @@
+{
+  "id": "react-babel-reactdom-role",
+  "subject": "React、Babel 与 ReactDOM 的职责与关系",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "工具链",
+    "JSX",
+    "渲染"
+  ],
+  "content": {
+    "principles": "三者分工明确：1) React：核心库，负责定义组件逻辑和状态管理，提供组件、Hooks、上下文等抽象。开发者编写的 JSX 语法本质是 React.createElement 的语法糖。2) Babel：JavaScript 编译器，负责将 JSX 和现代 JavaScript 语法（如 ES6+）转译为旧版本浏览器可执行的 ES5 代码。它将 JSX 转换为 React.createElement(...) 调用。3) ReactDOM：渲染器，负责将 React 组件（虚拟 DOM）挂载到浏览器的真实 DOM 上，并处理后续的更新、事件绑定等。ReactDOM 调用 document.createElement 等浏览器 API。服务端渲染使用 react-dom/server，原生应用使用 react-native。总结：React 定义 UI，Babel 编译代码，ReactDOM 负责浏览器环境渲染。",
+    "pitfalls": [
+      "混淆 React 和 ReactDOM 的职责，误以为 React 本身能直接操作 DOM。",
+      "不清楚 JSX 必须经过 Babel（或类似工具）编译才能运行。",
+      "认为 ReactDOM 是 React 的唯一渲染器，不了解跨平台渲染器的存在。"
+    ],
+    "follow_up_paths": [
+      "如果不使用 Babel，有哪些替代方案可以处理 JSX 编译？",
+      "React 18 中新的 ReactDOM.createRoot API 带来了哪些变化？",
+      "请解释 React 的“渲染器”（Renderer）概念，并举例说明其他渲染器（如 React Three Fiber）。"
+    ]
+  }
+}

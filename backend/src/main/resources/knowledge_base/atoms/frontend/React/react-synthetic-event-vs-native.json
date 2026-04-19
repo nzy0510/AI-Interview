@@ -1,0 +1,24 @@
+{
+  "id": "react-synthetic-event-vs-native",
+  "subject": "React 合成事件与原生事件的区别",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "合成事件",
+    "事件机制",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "React 使用合成事件（SyntheticEvent），并非直接绑定到 DOM 元素的原生事件。React 在组件挂载时，将所有事件统一委托到根节点（React 17 之前是 document，之后是 React 树的根容器），通过事件委托机制处理。这带来了性能优势和跨浏览器一致性。区别包括：1) 命名：React 使用驼峰式（如 onClick），HTML 使用小写（onclick）。2) 传值：React 传入函数引用，HTML 传入字符串。3) 阻止默认行为：React 必须显式调用 e.preventDefault()，不能使用 return false。4) 事件对象池化：SyntheticEvent 对象会被复用，异步访问其属性前需进行缓存（如 const target = e.target）。",
+    "pitfalls": [
+      "尝试在异步回调（如 setTimeout）中直接访问事件对象的属性，因对象池化导致属性丢失。",
+      "误以为合成事件与原生的 stopPropagation 和 preventDefault 行为完全一致。",
+      "不了解 React 17 前后事件委托根节点的变化。"
+    ],
+    "follow_up_paths": [
+      "React 17 中事件委托机制有什么变化？为什么？",
+      "如何在 React 中监听原生事件？需要注意什么？",
+      "合成事件对象池化机制是如何提升性能的？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "react-createclass-implementation",
+  "subject": "React.createClass 的实现原理与历史意义",
+  "category": "React",
+  "difficulty": "困难",
+  "tags": [
+    "内部原理",
+    "历史演进",
+    "工厂模式"
+  ],
+  "content": {
+    "principles": "`React.createClass` 是一个工厂函数，接收一个配置对象，返回一个可被 React 渲染的组件类（构造函数）。其核心实现包括：\n1. 内部创建一个构造函数，用于实例化组件，并将传入对象上的方法（如 render）挂载到该构造函数的原型上。\n2. 自动进行方法绑定：遍历对象中的方法，通过类似 `method.bind(instance)` 的方式，确保方法内部的 this 始终指向组件实例，避免了手动绑定的麻烦。\n3. 支持 mixins：通过合并多个 mixin 对象和主配置对象来实现逻辑复用，但这也导致了潜在的命名冲突和依赖关系不清晰的问题。\n4. 处理默认 props 和 propTypes：将 `getDefaultProps` 的返回值作为构造函数的 `defaultProps`，将 `propTypes` 直接挂载。\n历史意义：在 ES6 class 普及前，它统一了组件定义方式，封装了生命周期管理、props 处理和 this 绑定等底层细节，让开发者专注于 UI 描述，是 React 早期组件模型的核心。",
+    "pitfalls": [
+      "认为 `createClass` 只是语法糖，忽略其在 this 自动绑定和 mixins 实现上的复杂性和历史背景。",
+      "不理解 mixins 带来的问题（如隐式依赖、命名冲突），从而无法理解为何 React 转向 HOC 和 Hooks。",
+      "混淆 `createClass` 返回的“类”与 ES6 class 在原型链和实例化过程上的细微差别。"
+    ],
+    "follow_up_paths": [
+      "从源码角度，`createClass` 的自动绑定是如何实现的？与手动 `bind` 或箭头函数在性能上有何差异？（深入 V8 函数优化）",
+      "Mixins 模式具体导致了哪些设计问题？能否举一个由 Mixins 引起 bug 的典型案例？",
+      "为什么说 `createClass` 的工厂模式为后来 React 的元素（React Element）和组件（Component）的分离奠定了基础？"
+    ]
+  }
+}

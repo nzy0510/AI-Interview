@@ -1,0 +1,24 @@
+{
+  "id": "vue-router-modes",
+  "subject": "Vue Router 的 hash 模式与 history 模式区别",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "Vue Router",
+    "路由模式",
+    "SPA"
+  ],
+  "content": {
+    "principles": "Vue Router 支持两种主要路由模式：1) hash 模式：利用 URL 的 hash (#) 部分。特点：URL 形如 `http://example.com/#/user`。hash 变化不会触发浏览器向服务器发起请求，完全由前端控制。兼容性好（支持 IE9），无需服务器特殊配置。2) history 模式：利用 HTML5 History API (pushState, replaceState)。特点：URL 形如 `http://example.com/user`，更美观。但用户直接访问或刷新页面时，浏览器会向服务器请求该 URL，因此需要服务器端配置，将所有路由请求重定向到单页应用的入口文件 (如 index.html)，否则返回 404。选择：追求美观和现代浏览器体验用 history 模式；需兼容旧浏览器或无法配置服务器时用 hash 模式。",
+    "pitfalls": [
+      "使用 history 模式但未配置服务器，导致直接访问或刷新非根路由时出现 404 错误。",
+      "误以为 hash 模式的路由参数 (# 后的部分) 会被发送到服务器。",
+      "在 history 模式下，处理静态资源路径时未考虑基路径（publicPath）可能导致资源加载失败。"
+    ],
+    "follow_up_paths": [
+      "history 模式下，如何配置常见的服务器（如 Nginx, Apache, Node.js）以实现路由回退？",
+      "hash 模式有哪些局限性？（例如，SEO 不友好，无法使用锚点定位）",
+      "Vue Router 的 abstract 模式是什么？用在什么场景？"
+    ]
+  }
+}

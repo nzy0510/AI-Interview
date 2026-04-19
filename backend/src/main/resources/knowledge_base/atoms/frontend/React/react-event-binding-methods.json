@@ -1,0 +1,24 @@
+{
+  "id": "react-event-binding-methods",
+  "subject": "React 类组件中的事件绑定方法",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "事件处理",
+    "性能",
+    "this绑定"
+  ],
+  "content": {
+    "principles": "React 类组件中事件绑定主要有四种方式，核心区别在于 `this` 的绑定时机和性能影响：\n1. 构造函数中 bind：`this.handleClick = this.handleClick.bind(this)`。在实例化时绑定，`this` 指向明确，但代码冗长。\n2. JSX 中 bind：`onClick={this.handleClick.bind(this)}`。写法直接，但每次渲染都创建新函数，可能影响性能（尤其是传递给子组件时易导致不必要的重渲染）。\n3. JSX 内联箭头函数：`onClick={() => this.handleClick()}`。利用箭头函数自动绑定 `this`，写法简洁，但同样每次渲染生成新函数，不适合高频更新组件。\n4. 类属性箭头函数（推荐）：`handleClick = () => { ... }`。将方法定义为类的箭头函数属性，天然绑定 `this`，只生成一个函数实例，兼顾可读性和性能，适合传递给子组件或配合 `shouldComponentUpdate` 优化。现代项目基本采用第4种方式。",
+    "pitfalls": [
+      "在 JSX 中使用 bind 或内联箭头函数，导致子组件因接收到新函数引用而进行不必要的重渲染。",
+      "不理解为什么在类组件中需要手动绑定 `this`。",
+      "混淆了不同绑定方式对性能的影响，在性能敏感场景使用了错误的方法。"
+    ],
+    "follow_up_paths": [
+      "在函数组件中使用 `useCallback` 优化事件处理函数，与类组件的这些方法有何异同？",
+      "为什么箭头函数作为类属性可以自动绑定 `this`？其底层原理是什么？",
+      "如果使用第2或第3种方式，如何配合 `React.memo` 或 `PureComponent` 来避免子组件不必要的更新？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "html5-vs-html4-differences",
+  "subject": "HTML5 与 HTML4 的核心区别",
+  "category": "HTML",
+  "difficulty": "中等",
+  "tags": [
+    "HTML5",
+    "语义化",
+    "API",
+    "标准"
+  ],
+  "content": {
+    "principles": "HTML5 是 HTML 标准的重大跃迁，核心区别包括：1) 语义化标签（如 header, nav, section, article, aside, footer）成为标准，提升结构清晰度、SEO 和无障碍访问。2) 原生多媒体支持，通过 <video> 和 <audio> 标签摆脱对 Flash 等插件的依赖。3) 表单能力增强，新增 email, url, date, number, range, search 等输入类型，以及 placeholder, required, autofocus 等属性，提供更友好的验证和用户体验。4) 丰富的 JavaScript API，如 localStorage, sessionStorage, canvas, 地理定位, 拖拽 API, Web Workers, WebSocket 等，使网页能力接近原生应用。5) 离线能力提升，通过 Application Cache（已废弃）和 Service Worker 配合 Cache API 实现离线访问，是 PWA 的基础。6) 更强的兼容性和容错性，即使老浏览器不识别新标签，也可通过 JavaScript 创建元素来触发样式渲染。",
+    "pitfalls": [
+      "混淆 HTML5 仅是标签新增，而忽略其是涵盖语义、API、离线能力等一整套 Web 应用开发模型的升级。",
+      "误认为所有新标签在老浏览器中完全不可用，不了解通过 JavaScript 创建元素可触发样式渲染的兼容技巧。",
+      "将 Application Cache 视为当前推荐的离线方案，而不知其已被废弃，应由 Service Worker 替代。"
+    ],
+    "follow_up_paths": [
+      "请详细解释 localStorage 和 sessionStorage 的区别、容量限制以及同源策略。",
+      "Service Worker 是如何实现离线缓存和网络代理的？它与 Application Cache 相比有哪些优势？",
+      "除了提到的标签，HTML5 还引入了哪些语义化标签（如 figure, figcaption, time, mark 等）？它们分别在什么场景下使用？"
+    ]
+  }
+}

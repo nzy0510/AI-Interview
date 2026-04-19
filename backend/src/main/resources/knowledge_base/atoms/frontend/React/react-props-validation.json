@@ -1,0 +1,24 @@
+{
+  "id": "react-props-validation",
+  "subject": "React 中 Props 的类型验证（PropTypes）",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "props",
+    "PropTypes",
+    "类型检查",
+    "运行时校验"
+  ],
+  "content": {
+    "principles": "在 React 中，可以使用 PropTypes 库对组件接收的 props 进行运行时类型校验。通过定义 propTypes 对象（如 `MyComponent.propTypes = { name: PropTypes.string.isRequired }`），可以在开发阶段捕获调用方传入错误类型或缺失必需 prop 的问题，控制台会输出 warning。PropTypes 支持基本类型、数组、对象、函数等，也支持自定义验证函数。虽然 TypeScript 提供编译时检查，但 PropTypes 在纯 JavaScript 项目或需要为 JS 用户提供兜底校验时仍有价值。",
+    "pitfalls": [
+      "混淆 PropTypes 与 TypeScript 的类型定义，或认为两者功能完全重叠",
+      "在生产环境打包时未移除 PropTypes 校验代码（可能影响性能）",
+      "仅依赖 PropTypes 而缺乏其他防御性代码"
+    ],
+    "follow_up_paths": [
+      "PropTypes 和 TypeScript 接口/类型在 React 项目中的最佳实践是什么？如何选择？",
+      "如何编写一个自定义的 PropTypes 验证函数？"
+    ]
+  }
+}
