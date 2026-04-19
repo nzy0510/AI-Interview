@@ -1,167 +1,305 @@
-# AI 模拟面试系统 (AI Mock Interview System)
+# InterWise AI 模拟面试系统
 
-基于**大语言模型 (LLM)** 构建的专业技术模拟面试平台。该系统能够让候选人体验沉浸式的真实面试流程，支持多岗位选择、实时打字机流式问答对话，并在面试结束后由 AI 面试官出具全方位的求职评估报告。
+基于 `Spring Boot 3 + Vue 3 + LangChain4j + DeepSeek` 的多智能体 AI 模拟面试平台，支持文字/视频面试、RAG 检索增强追问、简历画像分析、知识星图、历史成长分析，以及基于 Redis 的会话缓存与 Docker 一键部署。
 
----
+## 项目简介
 
-##  项目概览 (Project Overview)
+InterWise 的目标不是做一个“会提问题的聊天机器人”，而是尽量还原一场完整、连续、可复盘的技术面试过程。系统当前已经打通以下主链路：
 
-本项目旨在利用 AI 技术帮助求职者降低面试紧张感，提升技术表达能力。系统通过角色扮演 (Role-Playing) 技术，使大模型化身为专业面试官。候选人可以在模拟环境中不断试错，并在最后得到一份包含具体评分、能力雷达图与改进建议的报告。
+- 多智能体轮转面试：主考官 `Coordinator`、技术官 `TechLead`、`HR BP` 按轮次自动切换。
+- 岗位化 RAG 追问：基于重构后的知识原子库进行语义检索，并按岗位路由追问。
+- 文字与视频双模式：支持普通文字面试，也支持摄像头 + 麦克风的视频模式。
+- 端侧情感分析：使用 `face-api.js` 在浏览器本地完成表情识别，减少敏感数据外传。
+- 简历解析画像：上传 PDF 简历后生成结构化画像、匹配度评估和定制追问题。
+- 面试报告与历史成长：生成六维能力评级、知识星图、成长热力图、综合得分趋势等结果。
 
-### 主要功能模块
-1. **📹 全双工视频面试**：支持开启摄像头，AI 具备定制化语音 (TTS) 与专属音色，你的声音会被静音识别并自动发送。
-2. **🧠 岗位精准 RAG & 自适应难度**：基于本地知识库检索增强，且 AI 面试官会根据你的回答质量动态调整下一问的难度（深深挖或降维）。
-3. **📄 专属简历靶向解析**：候选人由于可直接上传 PDF 简历，后端使用 `Apache PDFBox` 将文本交给 DeepSeek 提取出高维特征（匹配度仪、专属技能词云），并反向生成 3-5 道“专属于你的”杀手级考题。
-4. **💬 动态多智能体演变调度**：面试全流程打破死板轮次，支持由 组长 → 技术面试官 → HR BP 自然过渡！由于系统实现了底层记忆流截断：若 AI 对求职者答复极其欣赏，甚至会触发“免死金牌”，输出 `[SWITCH_TO_HR]` 对 UI 和音轨引擎立刻进行无缝接管，提前直通 HR 终面！
-5. **📊 面试诊断与情感分析**：面试结束后，不仅出具 A/B/C/D/E 六维雷达图评级与技能提升计划，还通过前端 `face-api.js` 在端侧生成情绪波动与自信指数报告。
-6. **📈 星系全景图轨迹 (Knowledge Universe)**：除了能力图表外，后端会细粒度追踪每一场谈话提及的技术点，前端辅以 ECharts Force Graph （原力导向图），将你的所有薄弱/精通技能点连成一片繁星大海。
+## 当前版本亮点
 
-### 适用受众 (Target Audience)
-- **高校应届生**：春招/秋招前用于克服面试恐惧，整理八股文表述结构。
-- **初/中级开发人员**：在跳槽前用来检测技术盲区，熟悉新岗位的常见面试套路。
-- **非开发类岗位求职者**：可通过后台扩展岗位配置，快速平移至产品经理、HR 面试练习等场景。
+- 知识库已重构为 `knowledge_base/atoms` 原子化目录结构，便于岗位级检索与扩展。
+- 后端已接入 `Redis 7`，用于会话缓存与容灾降级。
+- JWT 鉴权已适配普通接口与 SSE 场景。
+- 简历画像已落库到 `resume_profile` 表，不再只依赖本地缓存。
+- 历史分析页已支持综合得分、热力图、知识星图三种视图切换。
 
----
+## 功能概览
 
-## 🛠 技术栈与架构 (Tech Stack)
+### 1. 智能面试主流程
 
-### 核心架构图 (Conceptual Architecture)
+- 主考官开场，自我介绍与岗位确认。
+- 技术官进入多轮技术压测，结合 RAG 与简历题库动态追问。
+- HR BP 负责职业规划、沟通协作、稳定性等软技能考察。
+- 面试结束后自动生成结构化报告。
+
+### 2. RAG 检索增强
+
+- 使用 `AllMiniLmL6V2` 对知识原子进行向量化。
+- 使用 `InMemoryEmbeddingStore` 进行内存级语义检索。
+- 使用 `Metadata Filter` 按岗位隔离知识范围。
+- 支持已使用原子黑名单，避免重复追问同一知识点。
+
+### 3. 多模态交互
+
+- `SSE` 流式输出 AI 回复。
+- `Web Speech API` 实现语音识别与语音播报。
+- `face-api.js` 实现端侧表情识别与情感分布统计。
+
+### 4. 简历画像分析
+
+- 解析 PDF 简历内容。
+- 生成匹配度评估、技能云、项目摘要、定制追问题。
+- 持久化存储到 `resume_profile` 表，后续可直接复用。
+
+### 5. 报告与复盘
+
+- 六维能力评级。
+- 情感分析报告。
+- 历史成长热力图。
+- 综合得分趋势图。
+- 知识星图。
+
+## 技术栈
+
+### 后端
+
+- Java 17
+- Spring Boot 3.2.4
+- MyBatis-Plus 3.5.5
+- LangChain4j 0.29.1
+- DeepSeek API
+- AllMiniLmL6V2 Embedding Model
+- Fastjson2 2.0.47
+- JJWT 0.9.1
+- Apache PDFBox 2.0.29
+- Redis 7
+- MySQL 5.7
+
+### 前端
+
+- Vue 3.5.25
+- Vite 7.3.1
+- Element Plus 2.13.5
+- Axios 1.13.6
+- ECharts 6.0.0
+- `echarts-wordcloud`
+- `face-api.js` 0.22.2
+- Web Speech API
+
+### 部署
+
+- Docker Compose
+- Nginx
+- 四容器编排：`frontend + backend + db + redis`
+
+## 架构示意
+
 ```mermaid
 graph LR
-    User(候选人) <--> Vue3[Vue 3 Frontend]
-    Vue3 <--> SSE[SSE Stream Channel]
-    SSE <--> SpringBoot[Spring Boot Service]
-    SpringBoot <--> LC4J[Langchain4j Orchestrator]
-    LC4J <--> LLM(DeepSeek AI)
-    LC4J <--> RAG[Vector Knowledge Base]
+    U[用户] --> F[Vue 3 前端]
+    F -->|HTTP / SSE| B[Spring Boot 后端]
+    B --> A[LangChain4j 多智能体编排]
+    A --> LLM[DeepSeek]
+    B --> RAG[知识原子库 + 向量检索]
+    B --> DB[(MySQL)]
+    B --> C[(Redis)]
+    F --> M[Web Speech API / face-api.js]
 ```
 
-### 技术实现深度
+## 快速开始
 
-#### 1. 前端架构 (Vue 3 & 浏览器原生能力)
-*   **实时流式呈现**: 基于 `EventSource` 封装轻量级 SSE 客户端，无缝承接后端 LLM 打字机输出流，配合自研的光标跟进算法，实现极低延迟的文字渲染。
-*   **端侧多模态感知**: 
-    *   **视觉（情绪）**: 深度集成轻量级计算机视觉库 `face-api.js`，完全在浏览器本地（端侧）进行实时人脸捕捉与 7 种情绪概率（Happy、Neutral、Sad 等）的矩阵运算，保护隐私且零网络开销。
-    *   **听觉（语音）**: 接入 W3C `Web Speech API` 进行实时语音识别（Speech-to-Text）和静音帧检测（Silence Detection），自动打包语音区间并发送。
-*   **数据可视化**: 封装 `ECharts` 引擎组件，将后端下发的离散情感点与能力维度的 JSON 数据映射为动态调整的雷达图与多维词云。
+### 1. 准备环境
 
-#### 2. 后端核心 (Spring Boot 3 & LangChain4j)
-*   **多职能 Agent 状态机**: 抛弃单一的 System Prompt，后端会根据 `history.size()` 计算面试轮数，动态无缝切换协调员（开场）、技术长（硬实力追问）、HR（价值观定性）三套核心提示词模板。
-*   **高斯向量 RAG (Retrieval-Augmented Generation)**: 借助 LangChain4j 内置的高性能内存向量库（In-Memory Embedding Store），对企业本地岗位题库进行切片向量化。通过 Metadata Filter 确保技术候选人与对应领域上下文的 100% 隔离。
-*   **弹性会话状态机 (Dual-Mode Cache)**: 抽象出了底层 `ChatMemory` 接口，面对高并发的无状态 SSE 请求，系统优先将上下文序列化并托管至 `Redis` 集群存放（带 2小时 TTL）；并在检测不到 Redis 节点时，毫秒级降级至本地 JVM `ConcurrentHashMap`，兼顾了单节点极简调试与 K8s 集群弹性扩容。
+需要安装：
 
-#### 3. 架构工程与安全防护
-*   **多范式鉴权体系**: 由于 EventSource 原生不支持携带 `Authorization` Header，后端的 `JwtInterceptor` 拦截器采用了复合探针设计（Header / URL Query 兼顾），通过 `ThreadLocal` 替代属性传递给下游 Controller，实现了多并发下的身份隔离。
-*   **履历画像解析管道**: 支持 PDF 二进制流的上传分析。系统利用策略模式解析简历特征，随后通过 JSON 结构化抽取能力项以 UPSERT（有则更新，无则创建）模式存入 `resume_profile` 关系型数据表，实现持久化用户画像与“杀手级”定制跟问题库。
-*   **DBA 自动化迭代**: 考虑到模型数据字段膨胀迅速，底层封装了 `DatabaseUpdater` 轻量级迁移脚本，基于 JDBC 静默扫描 `information_schema` 实现字段表的幂等添加，告别烦人的 `SQLSyntaxErrorException`。
+- Docker
+- Docker Compose / Docker Desktop
 
----
+### 2. 配置 `.env`
 
-##  快速开始 (推荐使用 Docker)
+项目根目录已经提供 `.env.example`：
 
-如果你安装了 **Docker** 和 **Docker Desktop**，可以使用以下命令实现“秒级”部署，一次性解决 MySQL、Redis、Java、Node、Nginx 的环境阵痛！
-
-### 1. 克隆项目
-```bash
-git clone https://github.com/<your-username>/interview.git
-cd interview
+```powershell
+Copy-Item .env.example .env
 ```
 
-### 2. 准备配置文件
-项目中的敏感配置已通过 `.gitignore` 隐藏，你需要从模板创建自己的配置：
+至少需要补齐以下配置：
 
-```bash
-# 复制环境变量模板
-cp .env.example .env
-
-# 复制 Docker Compose 配置模板
-cp docker-compose.example.yml docker-compose.yml
-```
-
-打开 `.env` 文件，按注释提示填写以下关键配置：
-```properties
-DB_USERNAME=root                              # 数据库用户名
-DB_PASSWORD=your_password_here                # 设置你的数据库密码
-DEEPSEEK_API_KEY=your_deepseek_api_key_here   # DeepSeek API Key (必填，申请地址: https://platform.deepseek.com/)
-
-MAIL_HOST=smtp.qq.com                         
+```env
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+MAIL_HOST=smtp.qq.com
 MAIL_PORT=587
-MAIL_USERNAME=your_email@qq.com               #qq邮箱
-MAIL_PASSWORD=your_smtp_authorization_code    #授权码
+MAIL_USERNAME=your_email@qq.com
+MAIL_PASSWORD=your_smtp_authorization_code
 ```
 
-### 3. 一键启动
-在终端执行以下命令：
-```bash
-docker-compose up -d
+如果直接使用当前 `docker-compose.yml`，建议同时确认数据库用户名与密码配置一致。
+
+### 3. 启动项目
+
+```powershell
+docker-compose up -d --build
 ```
-> [!TIP]
-> 如果你是代码变更后需要更新容器，执行 `docker-compose up --build -d`。
 
-### 4. 开始使用
-- **访问地址**: `http://localhost`
-- **默认管理员账号**: `admin`
-- **默认初始密码**: `123456`
+启动后默认访问地址：
 
----
+- 前端：`http://localhost`
+- 后端：`http://localhost:8080`
+- MySQL（宿主机端口）：`3307`
+- Redis：`6379`
 
-##  本地手动开发环境 (Manual Setup)
+### 4. 默认账号
 
-如果您需要修改代码并进行本地调试，可以参考以下步骤：
+- 用户名：`admin`
+- 密码：`123456`
 
-### 1. 环境依赖
-- **JDK 17+** | **Maven 3.6+**
-- **Node.js 20+** | **NPM**
-- **MySQL 5.7+** (推荐使用 Docker 内部数据库或小皮面板)
-- **Redis 7+** (可选，未安装时系统自动降级为本地内存缓存)
+## 本地开发
 
-### 2. 数据库准备
-1. 创建数据库 `ai_interview_ds`。
-2. 导入初始化脚本：`mysql/init/init.sql`。
+### 1. 基础依赖
 
-### 3. 后端配置与启动 (Spring Boot)
-1. 用 IDE 打开 `backend` 目录。
-2. 复制配置模板并填入你的信息：
-   ```bash
-   cp backend/src/main/resources/application.yml.example backend/src/main/resources/application.yml
-   ```
-3. 编辑 `application.yml`，修改数据库连接与 DeepSeek API Key：
-   ```yaml
-   spring:
-     datasource:
-       username: root                    # 你的数据库用户名
-       password: your_password_here      # 你的数据库密码
-   langchain4j:
-     open-ai:
-       chat-model:
-         api-key: your_deepseek_api_key  # 你的 DeepSeek API Key
-   ```
-4. 运行主类，成功后看到 `====== AI Interview Backend Started ======`。
+- JDK 17+
+- Maven 3.9+
+- Node.js 20+
+- MySQL 5.7+
+- Redis 7+（可选，不启用时系统会降级到本地内存缓存）
 
-### 4. 前端启动 (Vue 3)
-```bash
+### 2. 初始化数据库
+
+执行：
+
+```sql
+mysql/init/init.sql
+```
+
+该脚本会创建并初始化：
+
+- `user`
+- `interview_record`
+- `resume_profile`
+
+### 3. 启动后端
+
+复制配置文件：
+
+```powershell
+Copy-Item backend/src/main/resources/application.yml.example backend/src/main/resources/application.yml
+```
+
+然后修改：
+
+- 数据库连接
+- Redis 连接
+- `DEEPSEEK_API_KEY`
+- 邮件服务配置
+
+启动后端：
+
+```powershell
+cd backend
+mvn spring-boot:run
+```
+
+### 4. 启动前端
+
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
----
+开发环境默认是 Vite 本地服务，前端通过 `VITE_API_BASE_URL` 指向后端接口。
 
-##  项目结构
+## 目录结构
+
 ```text
 .
-├── backend/                # Spring Boot 核心，包含 LC4J 知识库和所有核心逻辑
-├── frontend/               # Vue3 + Element Plus 的纯净重写界面
-├── mysql/                  # 初始化元初数据脚本
-├── document/               # 默认技术岗位知识库源文档，及PDFBox解析插件
-├── image/                  # 项目截图
-├── docker-compose.example.yml   # Docker Compose 配置模板（复制为 docker-compose.yml 使用）
-├── .env.example                 # 环境变量模板（复制为 .env 使用）
-└── backend/src/main/resources/
-    └── application.yml.example  # Spring Boot 配置模板（本地开发时复制为 application.yml）
+├── backend/                          # Spring Boot 后端
+│   ├── src/main/java/com/interview/
+│   │   ├── agent/                    # 多智能体角色定义
+│   │   ├── config/                   # JWT / Redis / Chat 配置
+│   │   ├── controller/               # REST API
+│   │   ├── entity/                   # 数据实体
+│   │   ├── mapper/                   # MyBatis-Plus Mapper
+│   │   ├── service/                  # 业务服务
+│   │   └── utils/                    # JWT 等工具类
+│   └── src/main/resources/
+│       ├── application.yml.example
+│       └── knowledge_base/
+│           ├── archive_original/     # 原始知识资料
+│           └── atoms/                # 当前知识原子库
+├── frontend/                         # Vue 3 前端
+│   └── src/views/                    # 登录、首页、面试、历史、简历分析等页面
+├── mysql/
+│   └── init/init.sql                 # 初始化数据库脚本
+├── scripts/
+│   └── atomizer.py                   # 原始资料 -> 知识原子 JSON
+├── document/                         # 项目文档与方案材料
+├── image/                            # 截图、图表与文档配图
+├── docker-compose.yml                # 当前 Docker 编排配置
+├── docker-compose.example.yml        # Docker 编排模板
+├── .env.example                      # 环境变量模板
+└── README.md
 ```
 
----
+## 知识库说明
 
-##  扩展说明
-- **岗位扩展**: 在 `backend/src/main/resources/knowledge` 下添加文件夹（如 `python`）并放入文档，系统会自动向量化。
+当前知识库采用“知识原子”方案，目录位于：
+
+```text
+backend/src/main/resources/knowledge_base/atoms/
+```
+
+典型结构如下：
+
+```text
+atoms/
+├── common/
+├── frontend/
+│   └── hot200/
+└── java_backend/
+    ├── hot200/
+    ├── mysql/
+    ├── redis/
+    ├── spring/
+    ├── springboot/
+    ├── 并发/
+    └── 操作系统/
+```
+
+每个知识原子都是一个 JSON 文件，包含：
+
+- `id`
+- `subject`
+- `category`
+- `difficulty`
+- `tags`
+- `content.principles`
+- `content.pitfalls`
+- `content.follow_up_paths`
+
+## 扩展知识库
+
+如果要把新的 PDF / DOCX / TXT / MD 文档转换成知识原子，可以使用：
+
+```powershell
+python scripts/atomizer.py -f "你的文档路径" -c "目标分类"
+```
+
+例如：
+
+```powershell
+python scripts/atomizer.py -f "docs/mysql.pdf" -c "mysql"
+```
+
+生成后的 JSON 会写入：
+
+```text
+backend/src/main/resources/knowledge_base/atoms/<category>/
+```
+
+重启后端后会自动被加载进向量检索流程。
+
+## 说明
+
+- 视频模式依赖浏览器麦克风和摄像头权限。
+- 邮件注册 / 忘记密码依赖有效 SMTP 配置。
+- DeepSeek API Key 未配置时，面试主流程无法正常工作。
+- Redis 未启动时，系统会自动降级，但不建议在演示环境长期关闭。
