@@ -1,0 +1,25 @@
+{
+  "id": "create-react-app-benefits",
+  "subject": "Create React App (CRA) 的优势与定位",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "脚手架",
+    "构建工具",
+    "开发环境",
+    "最佳实践"
+  ],
+  "content": {
+    "principles": "Create React App (CRA) 是 React 官方维护的零配置构建工具链，用于快速搭建现代化的 React 单页应用。其核心优势包括：1) **开箱即用**：通过 `npx create-react-app my-app` 一键生成项目，预配置了 Webpack、Babel、ESLint、Jest 等，无需手动配置构建流程。2) **隐藏配置**：将复杂的构建配置（通过 `react-scripts` 封装）抽象化，让开发者专注于业务代码，同时支持 `eject` 以暴露完整配置。3) **集成最佳实践**：内置开发服务器（热重载）、生产优化（代码分割、压缩）、测试运行器（Jest）和代码质量工具（ESLint）。4) **生态兼容性好**：生成的项目结构被主流开发工具和测试框架广泛支持。它适用于快速原型开发和中小型项目，但对于需要深度自定义构建配置（如微前端、服务端渲染、自定义 Webpack 插件）的大型项目，可能需要转向 Vite、Next.js 或手动配置。",
+    "pitfalls": [
+      "误以为 CRA 适用于所有 React 项目，在需要高度定制化构建时才发现配置被隐藏，而 `eject` 操作不可逆且复杂。",
+      "不熟悉 CRA 背后的 `react-scripts`，在遇到构建问题时不知如何调试或覆盖默认配置。",
+      "在大型项目中，CRA 的构建速度可能不及基于 Vite 或 ESBuild 的现代工具链。"
+    ],
+    "follow_up_paths": [
+      "CRA 的 `eject` 命令做了什么？为什么说它是一个“单向操作”？在什么情况下应该考虑使用它？",
+      "与 Vite 相比，CRA 在开发体验和构建性能上有哪些主要差异？",
+      "如何在 CRA 项目中集成 TypeScript、Sass 或环境变量，而不需要 `eject`？"
+    ]
+  }
+}

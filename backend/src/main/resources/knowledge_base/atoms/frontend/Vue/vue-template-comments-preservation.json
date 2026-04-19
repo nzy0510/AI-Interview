@@ -1,0 +1,22 @@
+{
+  "id": "vue-template-comments-preservation",
+  "subject": "控制 Vue 模板中 HTML 注释的保留与移除",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "模板编译",
+    "配置",
+    "性能"
+  ],
+  "content": {
+    "principles": "Vue 默认在生产环境下会移除模板中的 HTML 注释以优化性能。可以通过在创建应用实例时配置 `comments: true` 来强制保留注释。此配置仅在使用包含模板编译器的完整版 Vue 时生效；对于 runtime-only 版本，模板已在构建时预编译，此选项无效。保留注释会使每个 `<!-- -->` 成为真实的 DOM 文本节点，增加内存开销。常见保留场景包括：配合特定第三方库、SSR Hydration 定位、或静态站点生成中的标记。Vue 内部使用的注释节点（如标记 `v-if` 边界）与开发者编写的模板注释无关。",
+    "pitfalls": [
+      "误以为 `app.mount` 的第二个参数（hydrate）与保留注释有关。",
+      "在 runtime-only 构建版本中尝试使用 `comments` 配置但发现无效。"
+    ],
+    "follow_up_paths": [
+      "Vue 3 中保留模板注释的配置方式有变化吗？",
+      "从性能角度，如何评估保留大量注释对应用的影响？"
+    ]
+  }
+}

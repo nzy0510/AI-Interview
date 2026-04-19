@@ -1,0 +1,24 @@
+{
+  "id": "react-controlled-uncontrolled-components",
+  "subject": "React 受控组件与非受控组件的区别与应用场景",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "表单",
+    "状态管理",
+    "数据流"
+  ],
+  "content": {
+    "principles": "受控组件：表单元素的值由 React 的 state 驱动，通过 onChange 事件同步更新 state，数据流为 state → UI → 事件回调 → 更新 state → 视图刷新。例如：`<input value={name} onChange={e => setName(e.target.value)} />`。React 始终掌握数据控制权。\n非受控组件：表单数据由 DOM 自身维护，React 通过 ref 在需要时（如提交时）被动读取 DOM 节点的值。初始值可通过 defaultValue 设置，之后不再受控。例如：使用 `useRef()` 获取节点，通过 `inputRef.current.value` 读取。\n根本区别在于数据源：受控组件的数据源是 React state；非受控组件的数据源是 DOM。",
+    "pitfalls": [
+      "混淆使用 value 和 defaultValue 属性，导致非受控组件在 React 中变成受控组件并引发警告。",
+      "误以为非受控组件完全不受 React 管理，实际上 ref 和 defaultValue 仍属于 React API 的一部分。",
+      "在需要实时验证或数据联动的场景错误地使用非受控组件，导致逻辑复杂。"
+    ],
+    "follow_up_paths": [
+      "在受控组件中，如何优化频繁输入（如搜索框）的性能？（引出防抖/节流）",
+      "对于文件上传 `<input type=\"file\" />`，为什么通常使用非受控组件？（因为其值是只读的，且涉及浏览器安全限制）",
+      "能否在同一个表单中混合使用受控和非受控组件？会带来什么问题？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "react-purecomponent-memo",
+  "subject": "PureComponent 与 React.memo 的对比与使用场景",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "组件",
+    "不可变数据"
+  ],
+  "content": {
+    "principles": "PureComponent 是 Class 组件的性能优化手段，通过浅比较（shallow comparison）props 和 state 来避免不必要的重渲染。它依赖不可变数据（immutable data），对于复杂数据结构（如嵌套对象、数组）容易失效，因为浅比较只检查引用是否相等。现代 React 开发中，函数式组件配合 React.memo 更常见，它也是一个高阶组件，默认进行浅比较，但可以通过第二个参数自定义比较逻辑，写法更灵活。PureComponent 适用于展示型组件（如表格、卡片），其 props 多为基础类型或简单对象。",
+    "pitfalls": [
+      "误以为 PureComponent 或 React.memo 能深度比较对象内容，实际只进行浅层引用比较。",
+      "在 PureComponent 中使用可变数据（如直接修改数组或对象）后 setState，由于引用未变，组件不会重新渲染。",
+      "过度使用 PureComponent/React.memo，对于简单组件可能带来不必要的比较开销。"
+    ],
+    "follow_up_paths": [
+      "请解释什么是浅比较（shallow comparison）？并举例说明在什么情况下它会失效。",
+      "如果有一个深层嵌套的 props 对象，除了使用不可变数据，还有什么其他优化策略来避免不必要的渲染？",
+      "React.memo 的第二个参数（比较函数）应该如何编写？它和 shouldComponentUpdate 有何异同？"
+    ]
+  }
+}

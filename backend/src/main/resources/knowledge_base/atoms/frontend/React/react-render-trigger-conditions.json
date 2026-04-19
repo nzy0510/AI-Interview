@@ -1,0 +1,24 @@
+{
+  "id": "react-render-trigger-conditions",
+  "subject": "React 组件 render 函数的触发条件",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "渲染",
+    "性能",
+    "生命周期"
+  ],
+  "content": {
+    "principles": "触发组件重新渲染（render）的条件包括：1) 组件自身状态变化：调用 `setState`（且新状态值不同）或使用 `forceUpdate`。2) 父组件重新渲染：默认情况下，父组件 render 会触发所有子组件 render，无论其 props 是否变化。3) 消费的 Context 值发生变化。4) 路由变化（如果组件订阅了路由状态）。React 内部优化：函数组件中，`useState` 的初始化函数仅执行一次；若 `setState` 的值与当前状态完全相等（Object.is），React 会跳过渲染。类组件可通过 `shouldComponentUpdate` 或继承 `PureComponent` 进行浅比较来阻止不必要的渲染。性能优化常需手动使用 `React.memo`、`useMemo`、`useCallback`。",
+    "pitfalls": [
+      "认为父组件渲染时，未接收新 props 的子组件不会重新渲染。",
+      "不理解 `useState` 初始值函数仅在挂载时执行一次。",
+      "过度依赖 React 自动优化，在复杂场景下未手动使用 memoization 导致性能问题。"
+    ],
+    "follow_up_paths": [
+      "`React.memo` 与 `PureComponent` 的浅比较机制有何异同？",
+      "如何利用 `useReducer` 来减少不必要的渲染？",
+      "在什么情况下，即使 props 没变，子组件也可能需要随父组件重新渲染？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "react-router-url-params",
+  "subject": "React Router 中获取 URL 参数的方法",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React Router",
+    "Hooks",
+    "路由"
+  ],
+  "content": {
+    "principles": "在 React Router v6 中，获取动态路由参数使用 `useParams` Hook。例如，路由配置为 `/user/:id`，在组件内调用 `const { id } = useParams();` 即可获取参数对象 `{ id: 'xxx' }`。获取查询字符串（query string）使用 `useSearchParams` Hook，它返回一个类似 `useState` 的数组，包含当前 URLSearchParams 对象和更新函数，例如 `const [params] = useSearchParams(); const q = params.get('q');`。`useParams` 仅处理路径中的动态段，不处理查询参数。若要获取哈希片段或完整路径名，需使用 `useLocation` Hook 获取 location 对象进行解析。这些 API 专用于函数组件，类组件需使用 `withRouter` HOC 或直接消费 Router context。",
+    "pitfalls": [
+      "混淆 `useParams` 和 `useSearchParams` 的用途，错误地用 `useParams` 去获取查询参数。",
+      "在类组件中直接尝试使用 Hook 导致错误，不清楚类组件的替代方案。"
+    ],
+    "follow_up_paths": [
+      "如果路由路径是 `/user/:userId/post/:postId`，如何使用 `useParams` 一次性获取所有参数？",
+      "如何使用 `useSearchParams` 来编程式地更新查询参数而不导致页面重新加载？"
+    ]
+  }
+}

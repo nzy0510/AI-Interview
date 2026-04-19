@@ -1,0 +1,25 @@
+{
+  "id": "react-mixins-deprecation-hooks",
+  "subject": "React Mixins 的作用、问题与替代方案",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "逻辑复用",
+    "Mixins",
+    "Hooks",
+    "历史"
+  ],
+  "content": {
+    "principles": "Mixins 是 React 早期用于组件间逻辑复用的方案，允许将生命周期方法、状态逻辑等定义在对象中，并通过 `mixins: [MyMixin]` 混入组件。典型场景如多个组件共享窗口大小监听逻辑。但其存在严重问题：1) 多个 Mixins 可能定义相同的生命周期方法，导致冲突和不可预测的合并行为；2) 隐式修改组件状态或依赖，破坏组件的单一性和可预测性，难以维护。因此已被官方废弃。现代 React 使用高阶组件(HOC)和函数组件配合 Hooks（如 `useEffect` 和自定义 Hook）来实现逻辑复用，代码更清晰、安全且易于测试。",
+    "pitfalls": [
+      "认为 Mixins 仍是可行的复用方案，不了解其已被废弃和存在的根本缺陷。",
+      "混淆 Mixins 与 HOC 或 Hooks 的应用场景和实现原理。",
+      "无法清晰阐述 Mixins 导致命名冲突和状态污染的具体机制。"
+    ],
+    "follow_up_paths": [
+      "请对比 Mixin、HOC 和自定义 Hook 三种复用方式的优缺点。",
+      "如何将一个使用 Mixin 的老组件重构为使用 Hooks 的函数组件？",
+      "Hooks 的规则（如只在顶层调用）是如何解决 Mixins 时代的问题的？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "dart-language-features-flutter-choice",
+  "subject": "Dart语言特点与Flutter选择Dart的原因",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "Dart",
+    "语言特性",
+    "架构决策"
+  ],
+  "content": {
+    "principles": "Dart语言专为简化UI构建设计，其关键特点与Flutter需求高度契合：\n1. **编译模式**：同时支持即时编译（JIT）和提前编译（AOT）。开发时使用JIT实现秒级热重载；发布时使用AOT编译为原生机器码，保证启动速度和运行效率。\n2. **执行模型**：单线程事件循环模型，通过Isolate实现并发，避免共享内存的锁竞争，确保UI线程流畅。\n3. **语法友好**：声明式语法与丰富的字面量语法，非常适合Widget树的声明式UI构建。\n4. **跨平台一致性**：Dart可在Android和iOS上统一生成高效原生代码，不依赖平台中间层或虚拟机。\n5. **生态可控**：由Google深度掌控，便于与Flutter引擎协同快速迭代。\n对比其他语言：不选Java/Kotlin因其在iOS上无法运行；不选JavaScript因其V8引擎在移动端性能受限且不可控。",
+    "pitfalls": [
+      "认为Flutter选择Dart仅仅因为它是Google开发的，忽略了其技术特性与框架目标的匹配度。",
+      "混淆Dart的Isolate与传统多线程（Thread）模型的区别。"
+    ],
+    "follow_up_paths": [
+      "Dart的Isolate之间如何通信？与传统的线程间通信有何异同？",
+      "详细解释一下Dart的JIT和AOT编译过程在Flutter开发流程中是如何具体应用的？"
+    ]
+  }
+}

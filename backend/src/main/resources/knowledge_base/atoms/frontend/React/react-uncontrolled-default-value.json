@@ -1,0 +1,24 @@
+{
+  "id": "react-uncontrolled-default-value",
+  "subject": "React 非受控组件的默认值设置",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "非受控组件",
+    "表单",
+    "默认值"
+  ],
+  "content": {
+    "principles": "在 React 中，非受控组件的默认值通过 `defaultValue`（用于输入框、文本域）和 `defaultChecked`（用于复选框和单选按钮）属性设置，而不是使用受控组件的 `value` 或 `checked` 属性。这些属性仅在组件首次渲染时生效，后续 props 的更改不会影响 DOM 中的实际值。如果需要动态重置默认值，可以通过改变组件的 `key` 属性来强制组件重新挂载，从而重新应用默认值。这种模式适用于表单简单、无需实时校验或集成第三方富文本编辑器（如 react-quill）的场景。注意，不能在同一个输入元素上同时使用 `value` 和 `defaultValue`，React 会发出警告。",
+    "pitfalls": [
+      "误以为修改 `defaultValue` 或 `defaultChecked` 的 props 可以更新 DOM 中的值。",
+      "在同一个元素上混用受控（value/checked）和非受控（defaultValue/defaultChecked）属性。",
+      "不知道如何动态重置非受控组件的值（通过改变 `key`）。"
+    ],
+    "follow_up_paths": [
+      "请解释受控组件和非受控组件的核心区别，并说明各自的适用场景。",
+      "如果在一个非受控输入框中，我们需要在某个事件（如点击按钮）后获取其当前值，应该如何实现？",
+      "为什么改变 `key` 可以强制组件重新挂载并应用新的默认值？这背后的 React 协调（Reconciliation）机制是什么？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "react-component-naming-displayname",
+  "subject": "React 组件命名规范与 displayName 的作用",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "最佳实践",
+    "组件",
+    "开发工具"
+  ],
+  "content": {
+    "principles": "React 组件推荐使用大驼峰（PascalCase）命名，并且文件名应与组件名保持一致（如 UserProfile.js 定义 UserProfile 组件）。这提高了代码的可读性和可维护性。displayName 属性主要用于在 React 开发工具中自定义显示名称。对于使用具名函数或类定义的组件，现代打包工具（如 Webpack、Vite）和 React DevTools 能自动推导出组件名，因此通常无需手动设置 displayName。手动设置 displayName 会增加维护成本，属于重复劳动。它主要用在一些特殊场景，如高阶组件（HOC）包装后需要保留原组件名，或者动态生成匿名组件时。日常开发应避免使用匿名组件，优先采用具名定义。",
+    "pitfalls": [
+      "为具名组件手动添加 displayName，造成不必要的冗余代码。",
+      "使用匿名函数定义组件，导致开发工具中显示为‘Unknown’或‘Anonymous’，不利于调试。",
+      "文件名与组件名不一致，降低项目结构的清晰度。"
+    ],
+    "follow_up_paths": [
+      "在高阶组件（HOC）中，通常如何设置被包装组件的 displayName？请写一个简单的例子。",
+      "如果使用 React.lazy 进行代码分割，对组件命名有什么影响或要求？",
+      "除了命名，还有哪些 React 组件开发的最佳实践？"
+    ]
+  }
+}

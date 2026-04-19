@@ -1,0 +1,24 @@
+{
+  "id": "react-jsx-classname-vs-class",
+  "subject": "JSX 中为何使用 className 而非 class，以及属性覆盖规则",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "JSX",
+    "属性",
+    "DOM"
+  ],
+  "content": {
+    "principles": "在 JSX 中，`className` 用于指定 CSS 类名，对应原生 DOM 的 `className` 属性。使用 `class` 会导致 Babel 编译错误，因为 `class` 是 JavaScript 的保留关键字。这与 Vue 3 JSX 规则一致。属性覆盖遵循类似 `Object.assign` 的规则：后定义的属性值会覆盖先定义的。特别地，标签内部的子内容会覆盖显式传递的 `children` 属性。混用展开运算符 `{...props}` 和静态属性时，顺序至关重要，后出现的会覆盖先出现的。",
+    "pitfalls": [
+      "误以为 JSX 中的 `className` 是 React 发明的概念，其实它是对齐原生 `element.className` API。",
+      "在混用静态属性和 `{...spread}` 时，错误地将静态属性写在前面，导致被覆盖而失效。",
+      "认为 `children` 属性与其他属性一样，后定义的会覆盖先定义的，实际上标签体内容具有最高优先级。"
+    ],
+    "follow_up_paths": [
+      "为什么 Vue 的单文件组件模板中可以使用 `class` 而 JSX 不行？",
+      "如果同时通过 `props.children` 和标签体传递内容，React 内部是如何处理并决定最终值的？",
+      "除了 `className`，还有哪些 JSX 属性名与原生 HTML 属性名不同？为什么？"
+    ]
+  }
+}

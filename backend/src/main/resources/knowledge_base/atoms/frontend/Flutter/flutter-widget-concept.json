@@ -1,0 +1,21 @@
+{
+  "id": "flutter-widget-concept",
+  "subject": "Flutter Widget 核心概念与'一切皆Widget'",
+  "category": "Flutter",
+  "difficulty": "简单",
+  "tags": [
+    "UI",
+    "核心概念"
+  ],
+  "content": {
+    "principles": "Widget是Flutter中构建UI的基本单元，是界面的“配置描述”，而非最终视图。\n“一切皆Widget”意味着Flutter不区分“控件”和“布局”，所有UI元素（如文本、按钮、布局、动画）都是Widget，通过组合而非继承来构建复杂界面。\n关键特性：\n1. **不可变性**：Widget是不可变的（immutable），状态变化时会生成新的Widget树。\n2. **组合式复用**：通过嵌套Widget（如用Padding包裹子Widget）来添加功能。\n3. **状态管理**：StatefulWidget可以持有状态，调用setState()触发UI重建。\n示例：\nclass MyButton extends StatelessWidget {\n  @override\n  Widget build(BuildContext context) {\n    return ElevatedButton(\n      onPressed: () => print('clicked'),\n      child: Text('Click me'),\n    );\n  }\n}",
+    "pitfalls": [
+      "认为Widget是最终渲染的视图对象，实际上它只是配置信息。",
+      "混淆StatelessWidget和StatefulWidget的使用场景，例如在需要内部状态变化时错误使用StatelessWidget。"
+    ],
+    "follow_up_paths": [
+      "Widget的不可变性如何与高效的UI更新机制（如Element树和RenderObject树）协同工作？",
+      "StatefulWidget的setState()方法内部是如何触发UI重建的？重建的范围是如何确定的？"
+    ]
+  }
+}

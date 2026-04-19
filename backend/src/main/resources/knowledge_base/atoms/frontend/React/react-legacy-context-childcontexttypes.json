@@ -1,0 +1,24 @@
+{
+  "id": "react-legacy-context-childcontexttypes",
+  "subject": "React 旧版 Context API (childContextTypes) 的作用与局限",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "Context API",
+    "历史API",
+    "组件通信"
+  ],
+  "content": {
+    "principles": "childContextTypes 是 React 16.3 之前旧版 Context API 的一部分，用于在父组件中声明要传递给后代组件的 context 数据的类型（使用 PropTypes）。它本身不提供数据，而是作为类型检查的‘开关’。父组件通过定义 getChildContext() 方法来提供数据，并通过 childContextTypes 声明字段类型。子组件必须定义 contextTypes（注意没有‘child’前缀）才能接收到 context 数据。这种机制允许数据跨层级隐式传递，但调试困难，容易造成混乱。React 16.3 引入了新的 React.createContext() API，通过 Provider 和 Consumer（或 useContext Hook）提供了更清晰、更安全的上下文管理方式，已完全取代旧 API。",
+    "pitfalls": [
+      "混淆 childContextTypes（父组件用）和 contextTypes（子组件用）的作用。",
+      "认为旧版 Context API 是高效的数据传递方式，实际上其更新机制可能导致不必要的渲染。",
+      "在新项目中仍使用旧版 API，而不是更现代的 createContext。"
+    ],
+    "follow_up_paths": [
+      "请对比说明新版 React.createContext() 与旧版 Context API 在用法和性能上的主要区别。",
+      "为什么旧版 Context API 被认为是不安全的（legacy）？它存在哪些具体问题？",
+      "使用 useContext Hook 消费上下文时，如何避免不必要的重渲染？"
+    ]
+  }
+}

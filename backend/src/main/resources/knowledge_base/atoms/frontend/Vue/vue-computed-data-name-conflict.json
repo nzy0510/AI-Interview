@@ -1,0 +1,23 @@
+{
+  "id": "vue-computed-data-name-conflict",
+  "subject": "Vue 计算属性能否与 data 属性同名？为什么？",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "计算属性",
+    "属性冲突",
+    "响应式系统"
+  ],
+  "content": {
+    "principles": "Vue 不允许计算属性与 data 中的属性同名。在组件初始化过程中，data 返回的属性、computed 属性以及 methods 都会被挂载到 Vue 实例的同一个命名空间下。如果 computed 与 data 属性同名，后挂载的会覆盖先挂载的。由于 computed 的初始化在 data 响应式处理之后，同名计算属性会覆盖 data 属性。Vue 在开发环境下会检测并抛出警告：'The computed property \\\"xxx\\\" is already defined as a data property.' 或 'The computed property \\\"xxx\\\" is already defined as a prop.'，以避免不可预期的行为。",
+    "pitfalls": [
+      "忽略同名警告，导致在模板或代码中访问该名称时，实际访问的是计算属性的 getter 而非预期的 data 属性值。",
+      "误以为同名时 Vue 会智能合并或报错阻止运行，实际上代码会执行但逻辑错误。"
+    ],
+    "follow_up_paths": [
+      "Vue 实例初始化时，data、computed、methods 的具体挂载顺序和实现机制是怎样的？",
+      "如果 prop 也与 data 或 computed 同名，会发生什么？（prop 优先级最高，会覆盖 data）",
+      "在 Vue 3 的 Composition API 中使用 computed 时，是否还存在这种命名冲突问题？为什么？"
+    ]
+  }
+}

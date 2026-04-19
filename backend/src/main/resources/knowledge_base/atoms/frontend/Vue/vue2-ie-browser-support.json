@@ -1,0 +1,22 @@
+{
+  "id": "vue2-ie-browser-support",
+  "subject": "Vue 2 的 IE 浏览器兼容性及原理",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "浏览器兼容",
+    "响应式原理",
+    "构建配置"
+  ],
+  "content": {
+    "principles": "Vue 2 官方支持 IE9 及以上版本。不支持 IE8 及以下版本的核心原因是：Vue 2 的响应式系统基于 `Object.defineProperty` 实现数据劫持，而该 API 在 IE8 中仅对 DOM 对象有效，对普通 JavaScript 对象无效。因此，Vue 2 无法在 IE8 中建立响应式。Vue 2 源码中没有针对 IE8 的降级逻辑，构建产物也不包含相关 polyfill。实际项目中，通常通过 Babel 和 `@babel/polyfill` (或 core-js) 以及 `.browserslistrc` 配置（如 `ie >= 9`）来确保对 IE9+ 的兼容。",
+    "pitfalls": [
+      "误以为引入 polyfill 就能让 Vue 2 在 IE8 中运行。",
+      "混淆 Vue 2 和 Vue 1.x 的兼容性范围。"
+    ],
+    "follow_up_paths": [
+      "Vue 3 使用了 Proxy 实现响应式，这对浏览器兼容性提出了什么新的要求？",
+      "在构建工具（如 Webpack）中，如何具体配置以确保最终打包的代码兼容 IE9？"
+    ]
+  }
+}

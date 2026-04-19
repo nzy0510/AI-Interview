@@ -1,0 +1,22 @@
+{
+  "id": "react-development-modes",
+  "subject": "React 应用的开发与构建方式",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "构建工具",
+    "脚手架",
+    "架构"
+  ],
+  "content": {
+    "principles": "React 开发方式多样，可根据项目需求选择：1. **CDN 脚本引入**：通过 `<script>` 标签引入 React 和 ReactDOM，配合 Babel 的浏览器版进行即时编译，适合简单 demo 或传统页面嵌入，生产环境不推荐。2. **脚手架工具**：主流是 Create React App (CRA)，提供开箱即用的 Webpack、Babel、热更新配置。现更推荐 Vite，启动和热更新速度极快。3. **全栈框架**：如 Next.js，提供服务器端渲染 (SSR)、静态站点生成 (SSG)、API 路由等，适合对 SEO、性能有高要求的应用。4. **微前端集成**：React 应用可作为子应用嵌入到 qiankun 等微前端框架中，与主应用（可能使用其他技术栈）隔离运行。5. **组件库开发**：使用 React 构建 UI 组件库，常配合 TypeScript 和 Storybook 进行开发和文档管理。",
+    "pitfalls": [
+      "在大型生产项目中仍使用 CDN 引入方式，导致性能低下、缺乏构建优化。",
+      "混淆不同方案的使用场景，例如在需要强 SEO 的 ToC 网站中仅使用纯客户端渲染的 CRA。"
+    ],
+    "follow_up_paths": [
+      "比较 Vite 和 Create React App 在构建原理、开发体验和生态支持上的主要区别。",
+      "在微前端架构下，React 子应用如何与主应用进行样式隔离、状态共享和路由同步？"
+    ]
+  }
+}

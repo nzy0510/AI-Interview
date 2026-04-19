@@ -1,0 +1,24 @@
+{
+  "id": "react-synthetic-event-mechanism",
+  "subject": "React 合成事件（SyntheticEvent）机制",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "事件处理",
+    "性能优化",
+    "浏览器兼容性"
+  ],
+  "content": {
+    "principles": "React 的事件处理基于合成事件机制，并非直接绑定到 DOM 元素。原理：1) 事件委托：React 在组件挂载时，将事件处理器注册到内部事件系统，并在顶层（React 17+ 是 root 容器，之前是 document）统一绑定原生事件监听器。2) 事件包装：当原生事件触发并冒泡到顶层时，React 的事件系统会捕获它，创建跨浏览器一致的 `SyntheticEvent` 对象（包装了原生事件），并调度到对应的组件处理函数。3) 优势：性能优化（避免频繁绑定/解绑）、浏览器行为一致性、自动处理事件池（React 17 前）和垃圾回收。4) 异步访问：React 16 及之前，事件对象会被池化（`event.persist()` 可解决）；React 17+ 已取消事件池化，可在异步代码中安全访问事件属性。",
+    "pitfalls": [
+      "误以为 `SyntheticEvent` 就是原生 `Event`，尝试调用非标准方法或属性。",
+      "在 React 16 及之前的版本中，异步访问事件对象属性得到 `null`（未使用 `event.persist()`）。",
+      "对高频事件（如 `onMouseMove`、`onScroll`）未做节流/防抖优化，可能导致性能问题。"
+    ],
+    "follow_up_paths": [
+      "React 17 中事件委托的挂载点从 `document` 改为 `root` 容器，这解决了什么问题？（多版本 React 共存、事件系统隔离）",
+      "如何在 React 中监听原生事件？`addEventListener` 和合成事件混用时要注意什么？（事件执行顺序、清理）",
+      "合成事件的 `stopPropagation` 和原生事件的 `stopPropagation` 有何区别？为什么有时无法阻止实际的事件冒泡？"
+    ]
+  }
+}

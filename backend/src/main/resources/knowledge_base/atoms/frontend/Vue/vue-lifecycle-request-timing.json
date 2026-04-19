@@ -1,0 +1,24 @@
+{
+  "id": "vue-lifecycle-request-timing",
+  "subject": "Vue 组件中发起异步请求的时机选择（created vs mounted）",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "生命周期",
+    "异步请求",
+    "SSR"
+  ],
+  "content": {
+    "principles": "在 Vue 组件中，发起异步请求的时机取决于请求是否依赖 DOM。\n1.  **created 钩子**：组件实例已创建，但 DOM 尚未挂载。此时 `$el` 不可用。适合不依赖 DOM 的纯数据请求，可以尽早发起，提升页面感知速度。\n2.  **mounted 钩子**：组件 DOM 已挂载完成，`$el` 可用。仅当请求依赖 DOM 尺寸或位置（如图表初始化需要容器宽度）时才应放在此阶段。\n3.  **SSR 差异**：在服务端渲染 (SSR) 中，`mounted` 钩子不会在服务端执行，仅在客户端激活时触发。`created` 钩子在服务端和客户端都会执行。因此，SSR 场景下，数据请求必须放在 `created` 中，否则服务端无法获取数据。\n核心原则：数据请求尽量前置，避免在 `mounted` 中等待不必要的 DOM 挂载，以节省时间。",
+    "pitfalls": [
+      "误以为所有请求都应放在 `mounted` 中以确保 DOM 可用，忽略了 `created` 的适用场景和性能优势。",
+      "在 SSR 项目中，将数据请求放在 `mounted` 中，导致服务端渲染时数据缺失，页面内容为空或闪烁。",
+      "混淆 `$el` 的可用性，在 `created` 中尝试操作 DOM 导致错误。"
+    ],
+    "follow_up_paths": [
+      "如果请求的数据用于初始化一个图表库（如 ECharts），它需要容器 DOM 的尺寸，应该放在哪个生命周期？为什么？",
+      "在 Composition API 的 `setup()` 函数中，如何模拟 `created` 和 `mounted` 的请求时机？",
+      "除了 `created` 和 `mounted`，还有哪些生命周期或 API（如 `watch`、`onMounted`）可以用于控制异步逻辑的触发时机？"
+    ]
+  }
+}

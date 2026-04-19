@@ -1,0 +1,25 @@
+{
+  "id": "react-pass-params-to-event-handler",
+  "subject": "向 React 事件处理函数传递参数",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "事件处理",
+    "参数传递",
+    "性能优化",
+    "合成事件"
+  ],
+  "content": {
+    "principles": "在 React 中绑定事件时，需要手动传递额外参数给处理函数，因为 React 的合成事件 (`SyntheticEvent`) 不会像原生 DOM 事件那样自动附加额外参数。常用方法有：1) 使用内联箭头函数：`onClick={(e) => handleClick(id, e)}`，参数 `id` 和事件对象 `e` 被显式传递。2) 使用 `Function.prototype.bind`：`onClick={handleClick.bind(this, id)}`，`bind` 会预设参数并返回新函数，事件对象 `e` 会自动追加为最后一个参数。注意避免在 `render` 中直接调用函数（如 `onClick={handleClick()}`），这会导致立即执行。内联箭头函数简洁但可能因每次渲染创建新函数而影响性能，`bind` 或结合 `useCallback` 可优化。",
+    "pitfalls": [
+      "错误地写成 `onClick={handleClick(id)}`，导致函数在渲染时立即执行，而非点击时触发。",
+      "在列表渲染中，为每个列表项创建内联箭头函数，可能导致性能问题（子组件不必要的重渲染）。",
+      "使用 `bind` 时忘记传递 `this` 上下文（在类组件中），或对 `bind` 返回新函数的机制理解不清。"
+    ],
+    "follow_up_paths": [
+      "React 的合成事件 (`SyntheticEvent`) 与原生 DOM 事件有何不同？为什么要使用合成事件？",
+      "在函数组件中，如何使用 `useCallback` 来优化一个需要传递参数的事件处理函数？",
+      "如果事件处理函数需要访问组件的最新状态或属性，在传递参数时需要注意什么？"
+    ]
+  }
+}

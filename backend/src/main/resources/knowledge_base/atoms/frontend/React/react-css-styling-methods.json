@@ -1,0 +1,24 @@
+{
+  "id": "react-css-styling-methods",
+  "subject": "React 中的 CSS 样式方案",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "CSS",
+    "样式方案",
+    "工程化"
+  ],
+  "content": {
+    "principles": "React 中主要有四种 CSS 样式方案：1) 全局 CSS：直接在全局样式表中定义，简单直接但易造成样式污染。2) CSS Modules：通过构建工具（如 webpack）将类名编译为唯一哈希值，实现模块化与局部作用域，适合中大型项目。3) CSS-in-JS：如 styled-components 或 emotion，将样式写在 JS 中，支持动态样式和主题继承，逻辑与样式耦合便于维护，但存在运行时性能开销和服务端渲染配置成本。4) Utility-First：如 Tailwind CSS，使用原子类组合样式，无需编写额外 CSS 文件。现代框架如 Next.js 或 Create React App 均支持这些方案，可根据项目需求选择。",
+    "pitfalls": [
+      "混淆不同方案的适用场景，例如在需要动态主题的项目中选用 CSS Modules 可能增加复杂度。",
+      "误以为 CSS-in-JS 没有性能成本，忽略其运行时开销对大型应用的影响。",
+      "在项目中随意定义全局 CSS 规则，导致样式冲突。"
+    ],
+    "follow_up_paths": [
+      "如果项目需要支持主题切换，你会如何选择样式方案？为什么？",
+      "请比较 CSS Modules 和 CSS-in-JS 在服务端渲染（SSR）中的实现差异和注意事项。",
+      "Tailwind CSS 的 Utility-First 理念如何影响组件设计和团队协作？"
+    ]
+  }
+}

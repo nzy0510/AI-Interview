@@ -1,0 +1,24 @@
+{
+  "id": "react-interval-update-component",
+  "subject": "在 React 组件中使用定时器进行更新",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "副作用",
+    "生命周期",
+    "useEffect"
+  ],
+  "content": {
+    "principles": "在 React 组件中定时更新，本质是通过 `setInterval` 定期触发状态更新，从而驱动组件重新渲染。标准实现结合 `useState` 和 `useEffect`：\n1. 在 `useEffect` 中设置定时器，更新状态（如当前时间）。\n2. `useEffect` 的清理函数必须清除定时器，以防止内存泄漏和在未挂载组件上调用 `setState` 的警告。\n\n示例代码：\n```javascript\nfunction Clock() {\n  const [time, setTime] = useState(new Date());\n  useEffect(() => {\n    const timer = setInterval(() => setTime(new Date()), 1000);\n    return () => clearInterval(timer);\n  }, []); // 空依赖数组确保定时器只创建一次\n  return <div>{time.toLocaleTimeString()}</div>;\n}\n```\n关键点：`useEffect` 的依赖数组应为空 `[]`，避免每次渲染都重建定时器。若将 `setTime` 放入依赖项，会导致不必要的重建。\n对于服务端渲染（SSR），可能出现客户端与服务器初始时间不一致导致的闪烁。可先用 `null` 占位，在 `useEffect` 执行后再显示数据。复杂场景可封装为自定义 Hook（如 `useInterval`）复用逻辑。",
+    "pitfalls": [
+      "忘记在 `useEffect` 中返回清理函数，导致定时器累积和内存泄漏。",
+      "将状态更新函数（如 `setTime`）放入 `useEffect` 依赖数组，导致定时器被频繁重建和清除。",
+      "在服务端渲染场景下，未处理 hydration 不匹配导致的控制台警告或UI闪烁。"
+    ],
+    "follow_up_paths": [
+      "如何实现一个可暂停、恢复或动态调整间隔时间的自定义 `useInterval` Hook？",
+      "`setInterval` 与 `setTimeout` 递归调用在 React 中有何区别？哪种更适合动画？",
+      "在类组件中，如何正确地在 `componentDidMount` 和 `componentWillUnmount` 中管理定时器？"
+    ]
+  }
+}

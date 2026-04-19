@@ -1,0 +1,24 @@
+{
+  "id": "react-dynamic-classname",
+  "subject": "React 中动态切换组件 class 的方法",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React",
+    "样式",
+    "CSS-in-JS"
+  ],
+  "content": {
+    "principles": "1. 使用 `className` 结合三元表达式处理简单切换。2. 对于复杂条件拼接，推荐使用 `clsx` 或 `classnames` 库，可自动过滤 false/undefined 值。3. 使用 CSS Modules 实现样式局部作用域，通过 `import styles` 引用样式对象。4. 全局主题切换等场景，可直接操作 `document.body.classList` 并配合 CSS 变量，无需组件重渲染。核心是根据状态动态生成 className 字符串。",
+    "pitfalls": [
+      "手动拼接 className 字符串时，因条件判断错误导致多余空格或 undefined 出现在 class 中。",
+      "混淆 CSS Modules 的用法，错误地将其当作字符串拼接。",
+      "在需要全局样式切换时，过度依赖组件状态和重渲染，性能不佳。"
+    ],
+    "follow_up_paths": [
+      "clsx 库内部是如何实现条件合并和过滤的？（可以考察对工具库原理的理解）",
+      "CSS Modules 是如何保证样式局部化的？原理是什么？（Webpack loader，哈希类名）",
+      "除了 className，还有哪些方式可以动态应用样式？（style 属性、CSS-in-JS 库）"
+    ]
+  }
+}

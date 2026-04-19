@@ -1,0 +1,22 @@
+{
+  "id": "vue-watch-immediate-option",
+  "subject": "Vue中watch的immediate选项与初始化执行",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "watch",
+    "生命周期",
+    "响应式"
+  ],
+  "content": {
+    "principles": "Vue的`watch`默认是惰性的，仅在监听的数据源变化时触发回调。若需在组件初始化时立即执行一次回调，可在watch选项中设置`immediate: true`。在Vue 3的`watch`函数中，同样通过第三个参数传递配置对象`{ immediate: true }`。另一种模式是将逻辑抽离为函数，在`created`/`setup`中手动调用一次，再将其作为`watch`的回调。",
+    "pitfalls": [
+      "滥用`immediate: true`处理本应由`computed`属性计算的派生状态。",
+      "在选项式API中错误地将`immediate`放在handler函数内部。"
+    ],
+    "follow_up_paths": [
+      "`watch`的`immediate`选项和`created`生命周期钩子中执行逻辑有何区别？",
+      "在什么场景下，使用`computed`属性比使用`watch` with `immediate`更合适？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "vue-nexttick-principle-usage",
+  "subject": "Vue的nextTick原理与使用场景",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "异步更新",
+    "DOM",
+    "事件循环"
+  ],
+  "content": {
+    "principles": "`nextTick`是Vue提供的异步方法，用于在下次DOM更新循环结束之后执行延迟回调。Vue的异步更新队列基于浏览器的微任务机制（优先使用`Promise.then`、`MutationObserver`，降级到`setImmediate`或`setTimeout`）。修改响应式数据后，DOM不会立即更新，而是将变更推入队列。`nextTick`将回调加入微任务队列，确保在DOM更新后执行。常见使用场景：在数据变化后操作更新后的DOM（如获取元素尺寸、滚动高度）。",
+    "pitfalls": [
+      "误以为`nextTick`是Vue特有的DOM监听器，不理解其基于事件循环的本质。",
+      "滥用`nextTick`处理所有异步逻辑，而不是用于特定的DOM更新后操作。"
+    ],
+    "follow_up_paths": [
+      "Vue 3的`nextTick` API与Vue 2的`this.$nextTick`在使用上有何异同？",
+      "解释为什么在同一个事件循环中多次修改数据，`nextTick`回调只执行一次？"
+    ]
+  }
+}

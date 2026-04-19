@@ -1,0 +1,26 @@
+{
+  "id": "vue-template-definition-methods",
+  "subject": "定义 Vue 组件模板的几种方法及其适用场景",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "模板语法",
+    "单文件组件",
+    "Render函数",
+    "JSX"
+  ],
+  "content": {
+    "principles": "1. **单文件组件 (SFC) `<template>`**：最常见的方式，在 `.vue` 文件中使用 `<template>` 标签编写。结构清晰，工具链支持好（语法高亮、自动补全）。\n2. **字符串模板**：通过组件的 `template` 选项传入一个字符串，或在某些特定场景下动态生成。灵活性高但可读性和可维护性差，不推荐常规使用。\n3. **Render 函数**：使用纯 JavaScript 编写渲染逻辑，通过 `h()` 函数（或 `createElement` in Vue 2）创建虚拟节点。提供完全的编程能力，适合动态生成复杂模板或高度抽象的组件。在 Vue 3 中，常与 JSX 语法结合使用，提升开发体验。\n4. **JSX**：在 Vue 中，JSX 需要插件支持，最终会被编译成 Render 函数。它结合了模板的直观和 JavaScript 的灵活，在需要大量逻辑判断和动态结构的组件中尤其有用。",
+    "pitfalls": [
+      "在需要复杂逻辑的模板中坚持使用 SFC 模板，导致模板过于臃肿且难以维护。",
+      "滥用字符串模板，导致代码难以调试和阅读。",
+      "混淆 Vue 2 和 Vue 3 中 Render 函数及 `h` 的用法。",
+      "在不支持 JSX 的项目环境中尝试使用 JSX。"
+    ],
+    "follow_up_paths": [
+      "Vue 编译器是如何将 SFC 中的 `<template>` 编译成 Render 函数的？",
+      "在什么具体业务场景下，使用 Render 函数或 JSX 比模板更有优势？",
+      "比较 Vue 的模板语法和 React 的 JSX，在设计哲学上有何异同？"
+    ]
+  }
+}

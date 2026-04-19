@@ -1,0 +1,24 @@
+{
+  "id": "react-router-v6-navigate",
+  "subject": "React Router v6 编程式导航",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React Router",
+    "路由",
+    "Hook"
+  ],
+  "content": {
+    "principles": "在 React Router v6 中，官方推荐使用 useNavigate Hook 进行编程式导航，替代了 v5 及之前版本的 useHistory 和 this.props.history。useNavigate 返回一个函数，调用该函数并传入目标路径字符串即可跳转，例如 navigate('/home')。该函数也支持传入数字进行历史记录导航，如 navigate(-1) 表示后退一步，navigate(1) 表示前进一步。v6 移除了 withRouter 高阶组件和 useHistory API。对于非路由组件（无法使用 Hook 的情况），通常不需要自行创建 history 实例，应优先考虑组件结构设计。",
+    "pitfalls": [
+      "候选人可能仍在使用 v5 的 useHistory 或 withRouter，不了解 v6 的 API 变更。",
+      "误以为 useNavigate 只能用于路径跳转，不知道可以传数字操作历史栈。",
+      "在类组件中尝试直接使用 useNavigate Hook（违反 Hook 规则）。"
+    ],
+    "follow_up_paths": [
+      "如何在类组件中实现编程式导航？",
+      "useNavigate 和 Link 组件在使用场景上有何区别？",
+      "如果需要在全局状态管理中触发导航，应该如何设计？"
+    ]
+  }
+}

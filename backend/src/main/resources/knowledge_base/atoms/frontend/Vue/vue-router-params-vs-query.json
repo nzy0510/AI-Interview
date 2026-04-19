@@ -1,0 +1,25 @@
+{
+  "id": "vue-router-params-vs-query",
+  "subject": "Vue Router 中 params 与 query 传参的区别与使用场景",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "Vue Router",
+    "路由参数",
+    "导航"
+  ],
+  "content": {
+    "principles": "params 是路径的一部分，需要在路由配置中定义占位符（如 /user/:id），通过 this.$route.params 访问，适合语义化路径（如详情页）。使用命名路由跳转时必须配合 name 字段。params 在页面刷新时会丢失，除非手动拼接在路径中。query 以查询字符串形式出现在 URL 的 ? 后面（如 /user?id=123），通过 this.$route.query 访问，刷新后参数不会丢失，适合传递非敏感、可暴露的筛选条件（如分页参数）。关键区别在于：表现形式、是否需要预定义、刷新后的保留性以及跳转 API 的使用方式。",
+    "pitfalls": [
+      "使用 path 跳转并传递 params 会导致参数丢失。",
+      "误以为 params 参数在刷新页面后依然存在。",
+      "混淆两者的访问方式（$route.params vs $route.query）。",
+      "在路由配置未定义占位符的情况下尝试传递 params。"
+    ],
+    "follow_up_paths": [
+      "如何实现一个路由，既能用 params 传递主ID，又能用 query 传递过滤条件？",
+      "使用编程式导航 router.push 时，传递 params 和 query 的语法有什么区别？",
+      "Vue Router 内部是如何解析 URL 并分离出 params 和 query 的？"
+    ]
+  }
+}

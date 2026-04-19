@@ -1,0 +1,24 @@
+{
+  "id": "react-ref-dom-access",
+  "subject": "使用 Ref 获取 DOM 元素",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "Ref",
+    "DOM",
+    "Hook"
+  ],
+  "content": {
+    "principles": "在 React 中，通过 ref 可以访问组件对应的 DOM 元素或类组件实例。对于函数组件内的原生 DOM 元素（如 input、div），使用 useRef Hook 创建 ref 对象，并将其绑定到元素的 ref 属性上。挂载后可通过 ref.current 访问 DOM 节点。对于自定义函数组件，需使用 React.forwardRef 进行 ref 转发，将 ref 传递给内部的 DOM 元素。ref 的值在组件挂载后才可用，初始渲染时 current 为 null。应避免滥用 ref 操作 DOM，优先采用数据驱动视图；ref 适用于聚焦、滚动定位、触发动画等命令式操作。",
+    "pitfalls": [
+      "在组件初始渲染时尝试访问 ref.current，得到 null。",
+      "忘记使用 forwardRef 转发，导致无法获取自定义组件内部的 DOM。",
+      "过度使用 ref 来修改 DOM 或状态，违背 React 声明式原则。"
+    ],
+    "follow_up_paths": [
+      "useRef 和 createRef 有什么区别？",
+      "如何实现一个 useImperativeHandle 来暴露自定义组件的方法？",
+      "在哪些场景下，使用 ref 是必要且合适的？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "react-context-consumer-no-provider",
+  "subject": "React Context Consumer 找不到 Provider 时的行为",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "Context",
+    "Provider",
+    "Consumer",
+    "默认值"
+  ],
+  "content": {
+    "principles": "当 React Context 的 Consumer 组件在组件树中向上查找时，如果找不到匹配的 Provider，它将使用调用 React.createContext(defaultValue) 时传入的 defaultValue 作为 value。\n例如：const MyContext = React.createContext('light'); 如果没有 Provider，Consumer 接收到的值就是 'light'。\n注意：如果某个祖先提供了 Provider，即使其 value 是 null 或 undefined，Consumer 也会使用该显式提供的 value，而不会回退到默认值。",
+    "pitfalls": [
+      "误以为 Provider 的 value 为 null/undefined 时，Consumer 会使用默认值。",
+      "在测试独立组件时，忘记包裹 Provider 导致使用了非预期的默认值。",
+      "未给通用库的 Context 设置合理的默认值，增加使用者成本。"
+    ],
+    "follow_up_paths": [
+      "如何设计一个 Context，使其在开发环境提供警告，提示未提供 Provider？",
+      "多个嵌套的相同 Context Provider 会怎样？Consumer 会使用哪个值？",
+      "使用 useContext Hook 时，找不到 Provider 的行为是否与 Consumer 组件一致？"
+    ]
+  }
+}

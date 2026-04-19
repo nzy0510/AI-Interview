@@ -1,0 +1,25 @@
+{
+  "id": "react-jsx-loop-rendering",
+  "subject": "在 JSX 中实现循环渲染（列表渲染）",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "JSX",
+    "循环",
+    "列表渲染",
+    "map",
+    "key"
+  ],
+  "content": {
+    "principles": "JSX 本身不支持 for 循环语句，因为它本质是 JavaScript 表达式。在 JSX 中实现循环渲染通常使用数组的 map() 方法，将数据数组映射为 React 元素数组。例如：`{items.map(item => <li key={item.id}>{item.name}</li>)}`。key 属性必须稳定且唯一，不应使用数组索引（index），尤其是在列表会动态增删或排序时。复杂逻辑可先用 filter、reduce 等方法处理数据，再在 JSX 中渲染结果数组。",
+    "pitfalls": [
+      "在 JSX 中直接使用 for 循环语句导致语法错误",
+      "列表渲染时不提供 key，或使用不稳定的 key（如索引）导致性能问题和状态错乱",
+      "在 map 回调中执行副作用操作"
+    ],
+    "follow_up_paths": [
+      "为什么 React 要求列表项有 key？key 在协调（Reconciliation）过程中具体起什么作用？",
+      "如果数据项没有唯一 id，有哪些生成 key 的策略？各自的优缺点是什么？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "vue-lifecycle-hooks-stages",
+  "subject": "Vue 的生命周期钩子函数与各阶段",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "生命周期",
+    "钩子函数"
+  ],
+  "content": {
+    "principles": "Vue 组件实例从创建到销毁经历一系列阶段，每个阶段都有对应的生命周期钩子函数可供开发者注入代码。主要阶段如下：1) 创建阶段：`beforeCreate`：实例刚被创建，数据观测和事件配置尚未初始化，无法访问 `data`、`methods`。`created`：实例创建完成，数据观测、属性和方法已配置完成，可访问 `data`、`methods`，但 DOM 未挂载（`$el` 不可用）。常用于发起异步请求。2) 挂载阶段：`beforeMount`：模板编译完成，即将开始挂载到 DOM。`mounted`：实例已挂载到 DOM，可以操作真实 DOM 节点。组件完全可用。3) 更新阶段：`beforeUpdate`：响应式数据变化后，虚拟 DOM 重新渲染和打补丁之前。`updated`：虚拟 DOM 重新渲染和打补丁之后。注意可能因子组件更新而多次触发。4) 卸载阶段：`beforeUnmount` (Vue 3) / `beforeDestroy` (Vue 2)：实例销毁之前。在此进行清理工作，如清除定时器、解绑事件监听器，防止内存泄漏。`unmounted` (Vue 3) / `destroyed` (Vue 2)：实例销毁后，所有子实例也被销毁。",
+    "pitfalls": [
+      "在 `created` 钩子中尝试操作 DOM（如 `document.getElementById`），此时 DOM 还未生成。",
+      "在 `updated` 钩子中修改响应式数据，可能导致无限更新循环。",
+      "忘记在 `beforeUnmount`/`beforeDestroy` 中清理全局事件监听器或定时器，造成内存泄漏。"
+    ],
+    "follow_up_paths": [
+      "Vue 3 的 `setup` 函数执行时机相当于哪个生命周期钩子之前？在 `setup` 中如何模拟 `created` 和 `mounted` 的行为？",
+      "服务端渲染 (SSR) 时，哪些生命周期钩子不会被调用？为什么？"
+    ]
+  }
+}

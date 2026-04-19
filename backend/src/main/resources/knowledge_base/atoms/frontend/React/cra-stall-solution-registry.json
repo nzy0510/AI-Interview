@@ -1,0 +1,25 @@
+{
+  "id": "cra-stall-solution-registry",
+  "subject": "解决 create-react-app 创建应用时卡顿的问题",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "工具链",
+    "CRA",
+    "性能",
+    "网络"
+  ],
+  "content": {
+    "principles": "CRA 卡顿通常源于网络问题，特别是从 npm 官方源下载 `react-scripts` 及其依赖时超时。解决方案：1) 使用淘宝镜像源：`npx create-react-app my-app --use-npm --registry https://registry.npmmirror.com`。2) 对于 yarn 用户，可进入项目目录后手动设置源并安装：`yarn config set registry https://registry.npmmirror.com && yarn install`。3) 考虑使用 Vite 作为更快的替代方案：`npm create vite@latest my-app -- --template react`。硬件方面，建议在 SSD 上运行，避免机械硬盘的 IO 瓶颈。",
+    "pitfalls": [
+      "仅等待或重试，不尝试更换下载源。",
+      "全局 npm/yarn 配置了冲突的源，但未在命令中临时覆盖。",
+      "在低配置机器或机械硬盘上操作，误以为是工具问题。"
+    ],
+    "follow_up_paths": [
+      "除了换源，还有哪些方法可以加速 npm 依赖安装？",
+      "Vite 与 CRA 在构建速度和开发体验上的主要区别是什么？",
+      "如何排查并解决 `node_modules` 安装不全或版本冲突的问题？"
+    ]
+  }
+}

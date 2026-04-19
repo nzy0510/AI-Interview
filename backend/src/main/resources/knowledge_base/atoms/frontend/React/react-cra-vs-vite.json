@@ -1,0 +1,22 @@
+{
+  "id": "react-cra-vs-vite",
+  "subject": "CRA 与 Vite 的适用场景对比",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "构建工具",
+    "项目初始化",
+    "脚手架"
+  ],
+  "content": {
+    "principles": "Create React App (CRA) 是一个零配置的 React 项目脚手架，其价值在于标准化项目结构，被主流开发工具（如 VS Code, Chrome DevTools, Jest）原生支持，并默认集成 Jest 进行单元测试。它适合快速验证想法或中小型项目。但对于需要微前端、服务端渲染 (SSR) 或自定义 webpack 插件（如集成 Module Federation）的复杂项目，应选择 Vite 或自行搭建基建，因为 CRA 的配置抽象程度高，难以深度定制。",
+    "pitfalls": [
+      "误以为 CRA 适用于所有类型的 React 项目，尤其是大型或需要深度定制的项目。",
+      "在需要 Module Federation 等高级功能时，试图在 CRA 基础上进行复杂改造，而不是直接更换工具链。"
+    ],
+    "follow_up_paths": [
+      "CRA 底层使用的是哪个版本的 webpack？其配置抽象带来了哪些便利和限制？",
+      "Vite 在开发模式和生产模式下的构建原理与 CRA（webpack）有何本质不同？"
+    ]
+  }
+}

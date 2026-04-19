@@ -1,0 +1,24 @@
+{
+  "id": "react-router-types",
+  "subject": "React Router 中 Router 组件的类型与适用场景",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React Router",
+    "路由",
+    "SPA"
+  ],
+  "content": {
+    "principles": "React Router 提供了多种 Router 组件，根据运行环境和需求选择：\n1. `BrowserRouter`：利用浏览器的 History API（pushState, replaceState）管理路由，URL 形如 `/users/123`。刷新页面不会丢失应用状态，适合现代单页应用（SPA），例如使用 Create React App 或 Vite 构建的项目。\n2. `HashRouter`：通过 URL 的 hash 部分（即 `#` 后的内容）切换视图，URL 形如 `/index.html#/home`。它不会向服务器发送请求，兼容老版本浏览器，适合静态站点托管场景（如 GitHub Pages）。\n3. `MemoryRouter`：将路由状态存储在内存中，不改变浏览器地址栏的 URL。常用于单元测试或非浏览器环境（如 React Native）。\n4. `StaticRouter`：用于服务端渲染（SSR），根据传入的 `location` 属性决定初始路由。通常由框架（如 Next.js）封装，开发者一般不直接使用。\n选择依据主要是运行环境：浏览器环境优先使用 `BrowserRouter`；部署环境受限（如静态文件服务器）则使用 `HashRouter`；测试时使用 `MemoryRouter`。",
+    "pitfalls": [
+      "在静态文件服务器上使用 `BrowserRouter` 而未配置服务器回退（fallback）到 `index.html`，导致刷新页面出现 404 错误。",
+      "混淆 `HashRouter` 和 `BrowserRouter` 的 SEO 影响：`HashRouter` 的 hash 部分通常不被搜索引擎抓取。",
+      "在服务端渲染（SSR）场景错误地使用 `BrowserRouter`，导致 hydration 不匹配。"
+    ],
+    "follow_up_paths": [
+      "如果候选人能区分不同类型，可以追问：`BrowserRouter` 底层是如何与 History API 交互的？它如何处理浏览器的前进/后退按钮？",
+      "可以深入：在微前端架构中，不同的子应用可能使用不同的 Router 类型，如何协调以避免冲突？",
+      "扩展到部署：使用 `BrowserRouter` 时，常见的服务器配置（如 Nginx、Apache）需要如何设置才能支持 SPA 路由？"
+    ]
+  }
+}

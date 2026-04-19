@@ -1,0 +1,24 @@
+{
+  "id": "flutter-local-storage-options",
+  "subject": "Flutter 本地数据存储方案：shared_preferences 与 sqflite 对比",
+  "category": "Flutter",
+  "difficulty": "简单",
+  "tags": [
+    "数据持久化",
+    "本地存储",
+    "数据库"
+  ],
+  "content": {
+    "principles": "Flutter 中常用的本地存储方案根据数据结构和规模选择：\n1. shared_preferences：\n   - 本质：对 Android SharedPreferences 和 iOS NSUserDefaults 的封装，用于存储简单的键值对数据。\n   - 数据类型：支持基本类型（int, double, bool, String, StringList）。\n   - 适用场景：用户偏好设置、轻量配置、登录 token、标记位等小数据量、非结构化数据。\n   - 特点：API 简单（get/set），异步操作，数据存储在平台特定的持久化文件中。\n2. sqflite：\n   - 本质：SQLite 数据库的 Flutter 插件，提供完整的关系型数据库功能。\n   - 功能：支持事务、索引、复杂查询（JOIN, WHERE）、数据迁移。\n   - 适用场景：需要持久化存储大量结构化数据的应用，如聊天记录、文章列表、用户订单、离线缓存等。\n   - 特点：功能强大但使用相对复杂，需要编写 SQL 语句或使用 ORM 框架（如 floor, drift）。\n选择原则：轻量配置用 shared_preferences，复杂业务数据用 sqflite。对于更复杂的数据模型或需要数据同步的场景，可以考虑其他方案如 Hive（基于键值的 NoSQL）或 Firebase Firestore。",
+    "pitfalls": [
+      "使用 shared_preferences 存储大型对象（如 JSON 字符串过长）或频繁读写，导致性能问题。",
+      "在 sqflite 中，在主线程执行耗时数据库操作导致 UI 卡顿（应使用 isolate 或异步操作）。",
+      "混淆两种方案的适用边界，例如试图用 shared_preferences 实现复杂的数据查询。"
+    ],
+    "follow_up_paths": [
+      "shared_preferences 存储的数据在 Android 和 iOS 平台上分别位于文件的什么位置？其数据安全如何保证？",
+      "在 sqflite 中，如何进行数据库版本升级和数据迁移（Migration）？请简述步骤。",
+      "除了 shared_preferences 和 sqflite，Flutter 还有哪些本地存储方案？它们各自的优缺点是什么？（例如 Hive, Isar, ObjectBox）"
+    ]
+  }
+}

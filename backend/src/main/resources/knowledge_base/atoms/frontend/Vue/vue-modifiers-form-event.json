@@ -1,0 +1,24 @@
+{
+  "id": "vue-modifiers-form-event",
+  "subject": "Vue 的表单修饰符与事件修饰符",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "指令",
+    "修饰符",
+    "表单",
+    "事件"
+  ],
+  "content": {
+    "principles": "Vue 提供了多种修饰符来简化常见的 DOM 事件处理和表单数据绑定逻辑。1) 表单修饰符（用于 `v-model`）：`.lazy` 将输入事件转为在 `change` 事件（如失去焦点）后同步数据，减少频繁更新。`.number` 自动将用户输入转为 Number 类型（如果可解析）。`.trim` 自动去除用户输入的首尾空格。2) 事件修饰符（用于 `v-on` 或 `@`）：`.stop` 调用 `event.stopPropagation()` 阻止事件冒泡。`.prevent` 调用 `event.preventDefault()` 阻止默认行为。`.self` 仅当事件是从事件绑定的元素本身触发时才触发回调。`.once` 事件只触发一次。`.enter` 等按键修饰符限定特定按键才触发。修饰符可以串联使用，如 `@click.stop.prevent`，执行顺序从左到右。",
+    "pitfalls": [
+      "混淆 `.prevent` 和 `.stop` 的作用，`.prevent` 是阻止默认行为（如表单提交），`.stop` 是阻止事件传播。",
+      "在使用 `.number` 修饰符时，如果输入值无法被解析为数字，会返回原始字符串。",
+      "修饰符串联时顺序可能影响结果，例如 `@click.prevent.self` 与 `@click.self.prevent` 行为不同。"
+    ],
+    "follow_up_paths": [
+      "如何自定义一个事件修饰符或按键修饰符？",
+      "在 Vue 3 的 Composition API 中，如何在模板外（setup 函数内）实现类似 `.prevent` 或 `.stop` 的逻辑？"
+    ]
+  }
+}
