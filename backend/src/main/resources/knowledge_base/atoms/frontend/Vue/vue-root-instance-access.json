@@ -1,0 +1,24 @@
+{
+  "id": "vue-root-instance-access",
+  "subject": "Vue 组件中访问根实例的方法与最佳实践",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "组件实例",
+    "访问根实例",
+    "通信"
+  ],
+  "content": {
+    "principles": "在 Vue 组件中，可以通过 `$root` 属性直接访问应用的根 Vue 实例。无论组件嵌套多深，`this.$root` 始终指向根实例。在 Vue 3 的 Composition API 中，可以通过 `getCurrentInstance()` 获取当前组件实例，然后通过 `instance.ctx.root` 访问根实例。然而，直接依赖 `$root` 会导致组件与根实例高度耦合，不利于维护和测试。最佳实践是将其视为只读，避免直接修改根实例状态。对于跨层级通信，更推荐使用 `provide/inject` 或状态管理库（如 Pinia、Vuex），而非滥用 `$root` 或层层传递 props。",
+    "pitfalls": [
+      "在大型项目中过度依赖 `$root` 进行状态修改，导致数据流难以追踪和调试。",
+      "在 Vue 3 的 `<script setup>` 语法中，`getCurrentInstance()` 的返回值在开发和生产模式下可能不同，直接使用需谨慎。",
+      "混淆 `$root` 和 `$parent`，`$parent` 指向的是直接父组件实例。"
+    ],
+    "follow_up_paths": [
+      "除了 `$root`，还有哪些方式可以实现跨组件通信？请比较它们的优缺点。",
+      "在 Vue 3 的 Composition API 中，为什么官方不推荐频繁使用 `getCurrentInstance()`？",
+      "如何设计一个避免使用 `$root` 进行状态管理的组件架构？"
+    ]
+  }
+}

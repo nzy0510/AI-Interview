@@ -1,0 +1,21 @@
+{
+  "id": "flutter-const-constructor-optimization",
+  "subject": "使用 const 构造函数避免不必要的 Widget 重建",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "Widget"
+  ],
+  "content": {
+    "principles": "`const` 构造函数创建的 Widget 是编译时常量，只要参数相同，在运行时就是同一个实例。这允许 Flutter 框架在父 Widget 重建时，直接复用对应的 Element 节点，从而短路（short-circuit）该 Widget 的更新过程，避免调用其 `build` 方法。这是最轻量、零成本的性能优化手段。适用于所有固定内容（静态文本、图标、AppBar 等）。合理拆分组件，将不变的部分抽成独立的 StatelessWidget 并用 `const` 构造，可以隔离状态变化的影响范围。",
+    "pitfalls": [
+      "在 `build` 方法中创建非 `const` 的静态 Widget，错失优化机会",
+      "在 `build` 方法内执行耗时操作或创建新对象（如 `Text(DateTime.now().toString())`），导致每次重建都触发不必要的计算"
+    ],
+    "follow_up_paths": [
+      "除了 `const`，还有哪些 Flutter 内置机制可以优化 Widget 重建（如 `RepaintBoundary`, `AutomaticKeepAlive`）？",
+      "如何设计一个组件，使其在接收到相同参数时，能自动避免重建（提示：`shouldRebuild` 或 `Equatable` 包）？"
+    ]
+  }
+}

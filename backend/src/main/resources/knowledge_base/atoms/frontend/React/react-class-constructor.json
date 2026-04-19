@@ -1,0 +1,24 @@
+{
+  "id": "react-class-constructor",
+  "subject": "React 类组件中构造函数的作用",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "类组件",
+    "构造函数",
+    "状态初始化"
+  ],
+  "content": {
+    "principles": "在 React 类组件中，构造函数（constructor）主要有两个作用：1) 初始化组件的 state。2) 为事件处理函数绑定 `this` 上下文，确保在方法被调用时 `this` 指向组件实例。在构造函数中必须首先调用 `super(props)`，否则在构造函数内部访问 `this.props` 将是 `undefined`。随着函数组件和 Hooks 的普及，构造函数已很少需要手动编写。可以使用类属性初始化语法（如 `state = { count: 0 };` 和箭头函数方法）来省略显式的构造函数，Babel 等工具会在编译时自动补全。",
+    "pitfalls": [
+      "忘记在构造函数中调用 `super(props)`，导致后续代码中 `this.props` 为 `undefined`。",
+      "不必要地手动编写构造函数来初始化 state 或绑定方法，而不知道可以使用更简洁的属性初始化语法。",
+      "认为构造函数是类组件必需的（实际上，如果不需要初始化 state 或绑定方法，可以省略）。"
+    ],
+    "follow_up_paths": [
+      "为什么在构造函数中必须先调用 `super(props)`？这与 JavaScript 的类继承机制有什么关系？",
+      "使用箭头函数定义类方法（如 `handleClick = () => {}`）是如何解决 `this` 绑定问题的？",
+      "在函数组件中，如何使用 Hook（如 `useState`）来替代类组件构造函数中的状态初始化？"
+    ]
+  }
+}

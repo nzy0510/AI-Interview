@@ -1,0 +1,26 @@
+{
+  "id": "react-event-target-component-mapping",
+  "subject": "判断事件目标元素属于哪个 React 组件",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "事件机制",
+    "合成事件",
+    "DOM",
+    "ref",
+    "事件委托"
+  ],
+  "content": {
+    "principles": "React 使用合成事件系统，事件委托到根容器（React 17 之前是 document，17 及之后是 React 渲染的根 DOM 节点）。事件对象中的 event.target 是原生 DOM 元素，不是 React 组件实例。因此，需要开发者自行建立 DOM 元素与组件之间的映射关系。常用方法：\n1. 使用 Ref 获取组件根 DOM 节点：通过 useRef 或 createRef 获取组件内某个 DOM 元素的引用，在事件监听器中检查 event.target 是否被该 DOM 元素包含（contains 方法）。\n2. 使用自定义数据属性（data-*）：在组件渲染的 DOM 元素上添加如 data-component=\"MyComponent\" 的属性，在事件处理函数中通过 event.target.dataset.component 读取判断。\n关键点：函数组件没有实例，类组件的实例也不直接对应 DOM。映射关系需主动建立。",
+    "pitfalls": [
+      "试图从 event.target 直接获取 React 组件实例或组件类型。",
+      "在函数组件中误以为可以通过 this 来关联事件目标。",
+      "忘记清理手动添加的全局事件监听器，导致内存泄漏。"
+    ],
+    "follow_up_paths": [
+      "React 的合成事件系统是如何实现事件池（event pooling）和事件委托的？与原生事件监听有何性能差异？",
+      "在 Portal 中渲染的组件，事件冒泡机制是怎样的？如何判断点击是否来自某个 Portal？",
+      "如何实现一个高阶组件（HOC），自动为包裹的组件添加点击外部关闭（click-outside）的功能？"
+    ]
+  }
+}

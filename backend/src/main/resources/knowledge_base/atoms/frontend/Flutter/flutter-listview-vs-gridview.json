@@ -1,0 +1,24 @@
+{
+  "id": "flutter-listview-vs-gridview",
+  "subject": "Flutter 中 ListView 与 GridView 的区别与使用场景",
+  "category": "Flutter",
+  "difficulty": "简单",
+  "tags": [
+    "列表",
+    "布局",
+    "GridView"
+  ],
+  "content": {
+    "principles": "`ListView` 和 `GridView` 都是基于 Sliver 体系构建的滚动组件，支持懒加载（通过 `.builder` 构造函数）。主要区别在于布局行为：1. `ListView`：用于创建单列垂直（或水平）滚动列表，每个子 Widget 沿主轴（默认垂直）线性排列，交叉轴撑满父容器。适用于新闻流、聊天记录等线性列表。2. `GridView`：用于创建网格布局，将空间在交叉轴上划分为多列（或多行），形成网格。适用于相册、商品展示等需要多列排列的场景。常用 `GridView.count`（指定固定列数）或 `GridView.builder` 配合 `SliverGridDelegate`。两者均可嵌套在 `CustomScrollView` 中实现复杂滚动效果（如与 AppBar 联动）。对于瀑布流等不规则网格，需要使用第三方库如 `flutter_staggered_grid_view`。",
+    "pitfalls": [
+      "在需要网格布局时错误使用 `ListView` 进行手动分行排列，导致代码复杂且性能不佳。",
+      "混淆 `GridView` 的各种构造函数和 `gridDelegate` 的用法。",
+      "未理解两者都基于 Sliver，因此在 `CustomScrollView` 中无法直接嵌套，需要使用 `SliverList` 和 `SliverGrid`。"
+    ],
+    "follow_up_paths": [
+      "`GridView` 的 `SliverGridDelegateWithFixedCrossAxisCount` 和 `SliverGridDelegateWithMaxCrossAxisExtent` 有什么区别？",
+      "如何实现一个既能垂直滚动，内部 item 又能水平滚动的嵌套列表（如电商首页）？",
+      "解释 `CustomScrollView` 和 `Sliver` 系列组件是如何协同工作的。"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "vue-template-tag-usage",
+  "subject": "Vue 中 `<template>` 标签的作用与原理",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "模板语法",
+    "指令",
+    "插槽"
+  ],
+  "content": {
+    "principles": "Vue 中的 `<template>` 标签是一个逻辑容器，用于包裹模板内容，但其自身不会被渲染为实际的 DOM 节点。主要作用有：1. 配合 `v-if`、`v-for` 等指令包裹多个元素，避免引入多余的 DOM 节点（如 `<div>`）影响结构。2. 配合 `v-slot` 定义插槽内容，并为作用域插槽提供接收作用域变量的位置。其原理是 Vue 的编译器会处理 `<template>` 内的内容，但不会为它生成对应的虚拟 DOM 节点或真实 DOM 节点。",
+    "pitfalls": [
+      "误以为 `<template>` 会被渲染成一个不可见的 DOM 元素。",
+      "在需要根元素的地方（如组件模板）使用 `<template>` 作为唯一子元素，这是不允许的。"
+    ],
+    "follow_up_paths": [
+      "`<template>` 标签和 Vue 的 Fragment 概念有什么联系？在 Vue 3 中有什么变化？",
+      "除了 `v-if` 和 `v-slot`，还有哪些指令或场景会用到 `<template>` 标签？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "react-state-vs-setstate",
+  "subject": "React 中 state 与 setState 的区别与特性",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "state",
+    "setState",
+    "状态更新",
+    "异步更新"
+  ],
+  "content": {
+    "principles": "state 是组件内部的数据源，用于控制 UI 渲染。setState 是更新 state 并触发重新渲染的唯一合法方法。setState 的更新可能是异步的，React 会将多个 setState 调用放入队列并批量处理以提高性能。因此，不能依赖 this.state 的值立即计算下一个状态，应使用函数式更新：setState((prevState, props) => newState)。在 React 事件处理函数中表现为批量更新，但在 setTimeout 或原生 DOM 事件中可能立即触发更新。直接修改 state 不会触发 UI 刷新。",
+    "pitfalls": [
+      "直接修改 this.state 而不是使用 setState",
+      "在 setState 后立即读取 this.state，期望得到更新后的值",
+      "不理解 setState 的异步性和批量更新机制"
+    ],
+    "follow_up_paths": [
+      "setState 的第二个参数是什么？有什么作用？",
+      "在函数组件中，如何使用 useState Hook 来模拟类组件中 setState 的函数式更新和合并行为？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "react-classname-dynamic-class-binding",
+  "subject": "React 中动态操作 className 的方法与最佳实践",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "JSX",
+    "样式",
+    "classnames"
+  ],
+  "content": {
+    "principles": "在 React 的 JSX 中，使用 className 属性（而非 class）来操作虚拟 DOM 的类名，因为 class 是 JavaScript 保留字。操作方式包括：1) 静态字符串：`className=\"container\"`；2) 动态绑定：使用三元表达式或逻辑与，如 `className={isActive ? 'active' : ''}`；3) 多类名拼接：可使用模板字符串、数组 join，或使用 classnames 等工具库来条件化组合多个类名。核心原则是遵循 React 的声明式范式，所有 UI 变化应通过状态驱动，由 React 计算虚拟 DOM 差异后更新真实 DOM。应避免直接操作真实 DOM 的 classList，因为这会导致状态与视图不同步。",
+    "pitfalls": [
+      "错误地使用 class 属性，导致控制台警告或错误。",
+      "动态拼接类名时逻辑复杂，产生冗余的空格或未定义的类名。",
+      "违背声明式原则，直接使用 document.getElementById 等命令式 API 修改 DOM 类名。"
+    ],
+    "follow_up_paths": [
+      "classnames 库的内部实现原理是什么？它如何高效地处理条件类名？",
+      "在大型项目中，除了 className，还有哪些管理样式的方案（如 CSS Modules, Styled Components）？",
+      "直接操作真实 DOM 的 className 会如何干扰 React 的协调（Reconciliation）过程？"
+    ]
+  }
+}

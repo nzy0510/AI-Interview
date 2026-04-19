@@ -1,0 +1,24 @@
+{
+  "id": "vue-lifecycle-hooks-usage",
+  "subject": "Vue 生命周期钩子的实际应用与注意事项",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "生命周期",
+    "最佳实践",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "Vue 组件生命周期包含多个钩子函数，用于在特定阶段执行代码。`beforeUpdate` 在响应式数据变更触发虚拟 DOM 重新渲染前执行，适合在更新前做一些处理。`updated` 在视图更新完毕后执行，但可能因为子组件更新而多次触发，应避免在此钩子中执行可能引发循环的操作（如发请求）。`beforeUnmount` (Vue 3) / `beforeDestroy` (Vue 2) 在实例销毁前调用，是解绑事件、清除定时器、移除监听以防止内存泄漏的最佳时机。`unmounted` / `destroyed` 在组件完全销毁后调用，此时所有绑定和子实例已被移除，不能再访问实例。实际开发中，`created` 和 `mounted` 最常用：异步数据拉取一般放在 `created`，涉及 DOM 操作则必须放在 `mounted`。",
+    "pitfalls": [
+      "在 `updated` 钩子中执行可能触发自身或父/子组件更新的操作（如修改依赖的响应式数据），容易导致无限循环。",
+      "误以为 `beforeUnmount` / `beforeDestroy` 中还能访问到完整的 DOM 或子组件实例。",
+      "将需要 DOM 的操作（如获取元素尺寸）放在 `created` 中，此时 DOM 尚未挂载。"
+    ],
+    "follow_up_paths": [
+      "如果需要在数据变化后执行依赖于 DOM 更新的操作，除了 `updated`，还有什么更好的替代方案？（如 `nextTick`）",
+      "在 `beforeUnmount` 中清除定时器时，如何确保定时器变量在组件销毁后不会导致内存泄漏？（如使用 `ref` 或实例属性存储 timer ID）",
+      "为什么 `mounted` 不能保证所有子组件也都挂载完毕？如何确保？"
+    ]
+  }
+}

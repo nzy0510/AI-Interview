@@ -1,0 +1,25 @@
+{
+  "id": "html-doctype-function",
+  "subject": "DOCTYPE 的作用与浏览器渲染模式",
+  "category": "HTML",
+  "difficulty": "简单",
+  "tags": [
+    "DOCTYPE",
+    "标准模式",
+    "怪异模式",
+    "渲染"
+  ],
+  "content": {
+    "principles": "DOCTYPE（文档类型声明）的作用是告知浏览器当前 HTML 文档遵循哪个 HTML 标准进行解析和渲染。它必须位于文档最顶部。现代网页使用 <!DOCTYPE html> 来声明 HTML5 标准。如果没有 DOCTYPE 或格式错误，浏览器可能进入“怪异模式”（Quirks Mode），其盒模型、布局和样式解析行为会与“标准模式”（Standards Mode）不一致，导致页面渲染错乱（例如在旧版 IE 中宽度计算差异）。标准模式确保浏览器按照 W3C 标准统一处理布局、盒模型和 CSS。主流框架生成的模板默认包含此声明。",
+    "pitfalls": [
+      "认为 DOCTYPE 是一个 HTML 标签（实际上它是一个声明）。",
+      "不了解怪异模式与标准模式的具体差异（如盒模型 width 是否包含 padding 和 border）。",
+      "在手动编写或服务端直出 HTML 时遗漏 DOCTYPE，导致移动端或嵌入式 WebKit 内核中出现样式问题。"
+    ],
+    "follow_up_paths": [
+      "请详细说明标准模式和怪异模式下盒模型（box-sizing）的具体区别。",
+      "除了 DOCTYPE，还有哪些因素会触发浏览器的怪异模式？",
+      "如何通过 JavaScript 检测当前文档处于哪种渲染模式？"
+    ]
+  }
+}

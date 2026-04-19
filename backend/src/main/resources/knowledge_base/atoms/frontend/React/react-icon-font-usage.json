@@ -1,0 +1,24 @@
+{
+  "id": "react-icon-font-usage",
+  "subject": "在 React 项目中使用字体图标的方法",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "样式",
+    "资源管理",
+    "构建"
+  ],
+  "content": {
+    "principles": "在 React 项目中引入字体图标主要有以下几种方式：\n1. **CDN 引入**：在 `public/index.html` 中添加 `<link>` 标签引入远程 CSS 文件（如 iconfont、Font Awesome）。之后在组件中使用 `className` 应用图标。例如：`<i className=\"iconfont icon-home\"></i>`。此法轻量，适合图标用量少、不想介入构建流程的项目。\n2. **本地化字体文件**：从平台（如 iconfont.cn）下载字体文件（.woff2, .ttf 等），放入项目（如 `src/assets/fonts/`），在全局 CSS 中使用 `@font-face` 声明。打包后不依赖外链，加载稳定且可自定义字体名。\n3. **SVG Symbol 组件化**（推荐）：引入 iconfont 提供的 symbol JS 文件，然后封装一个 `Icon` 组件，通过 `<svg><use xlinkHref=\"#icon-name\" /></svg>` 渲染。此法支持颜色继承、缩放无损，适合中大型项目。示例：\n```javascript\nfunction Icon({ type }) {\n  return (\n    <svg aria-hidden=\"true\">\n      <use xlinkHref={`#${type}`} />\n    </svg>\n  );\n}\n```\n注意构建时需确保字体文件被正确复制到输出目录。Webpack 默认不处理 `public` 目录下的资源，放在 `public` 可直接通过路径引用。\n当前趋势是使用纯 SVG 图标库（如 Feather Icons），它们体积小、语义清晰且支持 Tree Shaking。",
+    "pitfalls": [
+      "使用 CDN 引入时，未考虑网络延迟或 CDN 不可用对图标加载的影响。",
+      "在本地化方案中，未正确配置 Webpack 或构建工具处理字体文件，导致 404 错误。",
+      "使用 SVG Symbol 时，忘记在入口处引入 symbol JS 文件，导致图标无法显示。"
+    ],
+    "follow_up_paths": [
+      "如何为 SVG 图标组件添加可访问性（ARIA）属性？",
+      "在微前端或模块联邦架构中，如何共享和管理图标资源？",
+      "对比字体图标与内联 SVG 图标在性能、可维护性和功能上的优劣。"
+    ]
+  }
+}

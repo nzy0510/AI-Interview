@@ -1,0 +1,24 @@
+{
+  "id": "flutter-dio-network-library",
+  "subject": "Flutter 网络请求库 dio 的核心优势与使用",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "网络请求",
+    "第三方库",
+    "Dio"
+  ],
+  "content": {
+    "principles": "dio 是一个功能强大的 Dart HTTP 客户端库，相比原生 HttpClient 和基础的 http 包，其主要优势在于开发效率和扩展性。核心特性包括：1. 拦截器（Interceptors）：可统一处理请求头、日志、错误（如自动刷新 token 并重试请求）。2. 全局配置：方便设置 baseUrl、超时时间。3. 文件操作：支持文件上传/下载及进度监听。4. 请求取消：提供 CancelToken 用于取消 pending 请求。5. 数据解析：易于与 json_serializable 配合，进行结构化数据转换。其设计使得处理复杂鉴权、多环境、Mock 等场景更为便捷。",
+    "pitfalls": [
+      "混淆 dio 的 `BaseOptions` 和单个请求的 `Options` 的配置优先级。",
+      "在拦截器中未正确处理异步操作或错误，导致请求循环或崩溃。",
+      "滥用全局单例 Dio 实例，导致不同模块的配置污染。"
+    ],
+    "follow_up_paths": [
+      "dio 拦截器的执行顺序是怎样的？如何实现一个在请求失败后自动重试的拦截器？",
+      "dio 的 `CancelToken` 是如何工作的？在页面销毁时，如何优雅地取消所有相关请求？",
+      "如何基于 dio 实现一个类似 Retrofit 的声明式网络请求客户端？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "vue-class-style-bindings",
+  "subject": "Vue 中 :class 与 :style 的动态绑定方式",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Class绑定",
+    "Style绑定",
+    "模板语法"
+  ],
+  "content": {
+    "principles": "`:class` 和 `:style` 是 Vue 对 DOM 的 class 和 style 属性进行动态绑定的指令，核心是数据驱动。`:class` 支持三种主流写法：1) 对象语法：`<div :class=\"{ active: isActive, 'text-danger': hasError }\"></div>`，通过布尔值控制类名开关。2) 数组语法：`<div :class=\"[activeClass, errorClass]\"></div>`，适合动态切换多个类名。3) 混合语法：`<div :class=\"[{ active: isActive }, errorClass]\"></div>`，对象与数组结合应对复杂条件。`:style` 写法类似：1) 对象语法：`<div :style=\"{ color: activeColor, fontSize: fontSize + 'px' }\"></div>`，推荐使用驼峰式属性名。2) 数组语法：`<div :style=\"[baseStyles, overridingStyles]\"></div>`，支持合并多组样式对象。Vue 会自动为某些 CSS 属性（如 transform）添加浏览器前缀。注意：频繁切换的样式建议使用 `:class` 绑定 CSS 类，而非反复修改 `:style` 对象，以避免性能问题；内联样式更适合运行时计算、无法预知的值。",
+    "pitfalls": [
+      "在 `:style` 对象中错误使用连字符格式的 CSS 属性名（如 `font-size`），应使用驼峰式（`fontSize`）或加引号的字符串。",
+      "过度依赖 `:style` 进行频繁的动态样式计算，导致性能开销。",
+      "忽略 Vue 自动添加浏览器前缀的特性，手动重复添加。"
+    ],
+    "follow_up_paths": [
+      "Vue 是如何在底层实现 `:class` 与原生 `class` 属性共存的？",
+      "在自定义组件上使用 `:class` 绑定，类名会应用到组件的根元素吗？如何通过 `$attrs` 控制？",
+      "如何实现一个根据滚动位置动态计算 `:style`（如透明度）的性能优化方案？"
+    ]
+  }
+}

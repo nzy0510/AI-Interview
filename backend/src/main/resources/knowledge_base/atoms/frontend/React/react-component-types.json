@@ -1,0 +1,24 @@
+{
+  "id": "react-component-types",
+  "subject": "React 组件的构建方式与区别",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "函数组件",
+    "类组件",
+    "Hooks"
+  ],
+  "content": {
+    "principles": "React 中构建组件主要有两种方式：函数组件和类组件。类组件需要继承 `React.Component`，使用 `render` 方法返回 JSX，并通过生命周期方法管理状态和副作用。函数组件本质上是接收 props 并返回 UI 的纯函数。自 React 16.8 引入 Hooks（如 `useState`, `useEffect`）后，函数组件具备了管理状态和处理副作用的能力，几乎覆盖了类组件的所有功能。目前官方推荐使用函数组件 + Hooks，因其代码更简洁、逻辑复用更自然（如自定义 Hook）。类组件仅在维护遗留代码或需要使用其独有特性（如 `getSnapshotBeforeUpdate`）时才考虑使用。",
+    "pitfalls": [
+      "认为函数组件无法管理状态或处理副作用（在 Hooks 出现前正确，但现在已过时）。",
+      "在新项目中仍选择类组件作为主要开发方式。",
+      "不清楚 Hooks 如何模拟类组件的生命周期（如 `componentDidMount`, `componentDidUpdate`）。"
+    ],
+    "follow_up_paths": [
+      "请详细说明 `useEffect` Hook 如何模拟 `componentDidMount`、`componentDidUpdate` 和 `componentWillUnmount` 的组合。",
+      "在什么情况下，类组件仍然是必要的或更好的选择？",
+      "自定义 Hook 是如何实现逻辑复用的？请举例说明。"
+    ]
+  }
+}

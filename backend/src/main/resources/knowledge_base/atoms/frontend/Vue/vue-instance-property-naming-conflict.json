@@ -1,0 +1,24 @@
+{
+  "id": "vue-instance-property-naming-conflict",
+  "subject": "Vue 实例中 data、methods 等选项的命名冲突与代理机制",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "响应式原理",
+    "选项合并",
+    "实例属性"
+  ],
+  "content": {
+    "principles": "Vue 实例上的所有属性和方法最终都会被代理到同一个对象（即组件实例 `vm`）上。`data` 中的属性在初始化时会被响应式系统处理，挂载到实例的 `_data` 上，并通过 `Object.defineProperty` (Vue 2) 或 `Proxy` (Vue 3) 代理到 `vm` 上。`methods` 中的方法也会被直接代理到 `vm` 实例上。如果 `data` 中的属性与 `methods` 中的方法同名，由于 Vue 在合并选项时，`methods` 是在 `data` 之后处理的，后定义的会覆盖前一个。这种覆盖行为由实例属性合并机制决定，不是响应式系统的问题，且覆盖不是响应式的。官方明确禁止在 `data`、`methods`、`computed` 等选项中使用重复名称。",
+    "pitfalls": [
+      "认为同名属性/方法会共存或产生某种合并行为，实际上会导致覆盖。",
+      "在 mixin 或继承场景下，无意中引入命名冲突，导致难以调试的 bug（如 `this.methodName is not a function`）。",
+      "不理解覆盖的顺序，误以为 `data` 总是优先。"
+    ],
+    "follow_up_paths": [
+      "如果通过 mixin 注入了一个同名的 `data` 属性，它会覆盖组件自身的 `methods` 吗？为什么？（考察合并策略顺序）",
+      "除了命名冲突，在 Vue 2 中使用 `Object.defineProperty` 进行代理时，还有哪些属性名是需要注意的？（如以 `_` 或 `$` 开头的属性可能被保留）",
+      "在 Vue 3 的 `setup` 语法中，如何避免类似的命名冲突问题？（作用域隔离）"
+    ]
+  }
+}

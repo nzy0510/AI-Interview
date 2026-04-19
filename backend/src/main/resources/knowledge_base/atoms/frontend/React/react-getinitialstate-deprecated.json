@@ -1,0 +1,22 @@
+{
+  "id": "react-getinitialstate-deprecated",
+  "subject": "React 中 getInitialState 方法的废弃与替代",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "类组件",
+    "State",
+    "历史API"
+  ],
+  "content": {
+    "principles": "`getInitialState` 是 React v0.13 之前，与 `React.createClass` API 配合使用的、用于定义类组件初始 state 的方法。在现代 React 中已完全废弃。替代方案是使用 ES6 类组件：1. 在构造函数 `constructor(props)` 中通过 `this.state = { ... }` 初始化。2. 更推荐使用类字段语法直接在类中定义 `state = { ... }`。对于函数组件，应使用 `useState` Hook。`React.createClass` 早已被 ES6 class 取代，`getInitialState` 仅存在于遗留代码中，新项目不应使用。",
+    "pitfalls": [
+      "在阅读旧文档或代码时，误将 `getInitialState` 当作当前可用的 API 在新代码中使用。",
+      "不清楚 `getInitialState` 与 `React.createClass` 的绑定关系，以及为何它被废弃。"
+    ],
+    "follow_up_paths": [
+      "除了 `getInitialState`，还有哪些 React 早期 API（如 `mixins`, `PropTypes` 定义方式）已被现代模式取代？",
+      "在将使用 `React.createClass` 和 `getInitialState` 的旧组件迁移到函数组件和 Hooks 时，主要步骤是什么？"
+    ]
+  }
+}

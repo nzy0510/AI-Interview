@@ -1,0 +1,24 @@
+{
+  "id": "vue-template-tag-purpose",
+  "subject": "Vue 中 `<template>` 标签的作用与使用场景",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "模板语法",
+    "渲染",
+    "指令"
+  ],
+  "content": {
+    "principles": "Vue 中的 `<template>` 标签是一个虚拟的包装器元素，它本身不会被渲染到最终的 DOM 中。它的核心作用是作为包裹一组元素的根节点，用于应用 Vue 的指令（如 `v-if`, `v-else`, `v-for`, `v-slot`），而这些指令通常要求作用在单个根元素上。使用 `<template>` 可以避免引入不必要的 DOM 节点，保持 HTML 结构清晰。例如，`v-if` 和 `v-for` 可以作用在 `<template>` 上来条件性或循环性地渲染一组元素。此外，`<template>` 也是定义具名插槽和作用域插槽内容的标准位置（使用 `v-slot` 指令）。在 Vue 3 中，`<template>` 还可以与 `v-slot` 一起用于接收作用域插槽的 props。",
+    "pitfalls": [
+      "试图在 `<template>` 上使用非指令属性（如 `class`, `id`），这些属性不会被渲染。",
+      "在 `v-for` 循环中，误将 `key` 绑定在 `<template>` 上，`key` 应绑定在其内部的真实元素上。",
+      "混淆 Vue 的 `<template>` 和 HTML 标准 `<template>` 元素（后者用于声明惰性可复用 DOM 片段）。"
+    ],
+    "follow_up_paths": [
+      "为什么 Vue 的 `v-if` 和 `v-for` 不建议用在同一个元素上？如何使用 `<template>` 来解决这个问题？",
+      "在 Vue 3 的 Fragments 特性下，组件可以有多个根节点，这是否减少了 `<template>` 的使用必要性？",
+      "请说明 `<template>` 在 Vue 单文件组件（.vue 文件）中的顶层作用，与在组件内部使用的区别。"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "html-meta-tags-common-uses",
+  "subject": "常用 HTML meta 标签及其作用",
+  "category": "HTML",
+  "difficulty": "简单",
+  "tags": [
+    "meta",
+    "SEO",
+    "移动端",
+    "视口"
+  ],
+  "content": {
+    "principles": "meta 标签用于提供页面的元信息，不直接显示但影响浏览器行为和搜索引擎。常用 meta 标签包括：1) 字符集声明：<meta charset=\"UTF-8\">，指定文档编码，防止乱码。2) 视口控制：<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">，移动端适配关键，控制布局宽度和初始缩放比例。3) 页面描述：<meta name=\"description\" content=\"...\">，被搜索引擎用作搜索结果摘要。4) HTTP 头模拟：如 <meta http-equiv=\"refresh\" content=\"5;url=...\"> 用于页面刷新或重定向（现已少用）。5) Open Graph 协议：如 <meta property=\"og:title\" content=\"...\"> 和 <meta property=\"og:image\" content=\"...\">，用于在社交平台（如微信、Facebook）分享时控制显示的标题、图片等信息。6) iOS 应用模式：<meta name=\"apple-mobile-web-app-capable\" content=\"yes\">，使网页能以全屏应用模式打开。",
+    "pitfalls": [
+      "忽略 viewport 标签，导致移动端页面按桌面宽度渲染，体验差。",
+      "仍花费精力在已被主流搜索引擎弃用的 keywords 标签上。",
+      "混淆 http-equiv 属性的用途，或在不了解的情况下使用 refresh 导致不良用户体验。"
+    ],
+    "follow_up_paths": [
+      "viewport 标签中 width=device-width 和 initial-scale=1.0 分别是什么含义？如何防止用户缩放？",
+      "除了 og:title 和 og:image，Open Graph 协议还有哪些常用属性？Twitter Card 的 meta 标签前缀是什么？",
+      "如何通过 meta 标签设置页面的主题色或禁止电话号码自动识别为链接？"
+    ]
+  }
+}

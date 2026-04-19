@@ -1,0 +1,22 @@
+{
+  "id": "vue-vshow-vif-difference",
+  "subject": "Vue 中 v-show 与 v-if 的核心区别与适用场景",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "指令",
+    "条件渲染",
+    "性能"
+  ],
+  "content": {
+    "principles": "`v-if` 是“真正的”条件渲染，它会根据表达式值的真假，在 DOM 中动态创建或销毁元素/组件。切换时，会触发组件的生命周期钩子（如 `created`/`mounted` 和 `destroyed`/`unmounted`）。`v-show` 只是通过切换 CSS 的 `display` 属性（`none` 或原始值）来控制元素的显示与隐藏，元素始终会被渲染并保留在 DOM 中。**区别总结**：1. **编译/渲染**：`v-if` 是惰性的，条件为假时其内部代码不会编译；`v-show` 无论条件如何都会编译并渲染。2. **DOM操作**：`v-if` 切换涉及 DOM 节点的增删；`v-show` 切换仅涉及 CSS 变化。3. **性能**：频繁切换时，`v-show` 性能更好（避免频繁的组件挂载/销毁）；初始条件为假时，`v-if` 性能更好（避免初始渲染无用节点）。4. **生命周期**：`v-if` 切换会触发生命周期；`v-show` 不会。",
+    "pitfalls": [
+      "误以为 `v-show` 是通过 `visibility: hidden` 或 `opacity: 0` 实现的。",
+      "在需要控制组件生命周期或初始渲染开销的场景中错误选择指令。"
+    ],
+    "follow_up_paths": [
+      "对于包含复杂组件或大量子元素的节点，频繁使用 `v-if` 切换可能带来什么性能问题？",
+      "`v-show` 不支持 `<template>` 元素，也不支持 `v-else`，这是为什么？"
+    ]
+  }
+}

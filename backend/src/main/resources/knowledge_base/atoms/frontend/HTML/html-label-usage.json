@@ -1,0 +1,23 @@
+{
+  "id": "html-label-usage",
+  "subject": "HTML label 标签的作用与使用方式",
+  "category": "HTML",
+  "difficulty": "简单",
+  "tags": [
+    "表单",
+    "可访问性",
+    "HTML"
+  ],
+  "content": {
+    "principles": "label 标签的主要作用是提升表单的可访问性，让点击文字也能触发关联的表单控件（如 checkbox 或 input），这对鼠标用户和辅助设备都更友好。使用方式有两种：1. 通过 for 属性绑定目标元素的 id：`<label for=\"username\">用户名</label>` 对应 `<input type=\"text\" id=\"username\">`，点击文字时光标会自动聚焦到输入框。2. 嵌套写法：将控件直接放在 label 标签内部，无需写 for 和 id：`<label><input type=\"checkbox\" name=\"agree\"> 同意协议</label>`，这种方式更简洁，适合简单的表单项。注意：每个 label 只应关联一个表单元素，重复绑定会导致行为混乱。对于 radio 组，每一个 radio 都要有自己的 label 或嵌套结构。现代组件库（如 Ant Design、Element Plus）内部默认使用 label 包装了 checkbox 和 radio。",
+    "pitfalls": [
+      "候选人可能只知道嵌套写法，不清楚 for 属性的绑定机制及其在复杂布局中的必要性。",
+      "容易忽略 label 与表单元素一一对应的原则，在 radio 组中错误地复用同一个 label。",
+      "可能认为 label 仅用于样式，而忽视其核心的可访问性价值。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：label 的点击事件是如何冒泡到关联的 input 的？在自定义表单组件中如何手动实现 label 的关联功能？",
+      "如果候选人答得不好，可以引导：如果不使用 label，仅通过 CSS 让文字可点击，会有什么可访问性问题？屏幕阅读器会如何处理？"
+    ]
+  }
+}

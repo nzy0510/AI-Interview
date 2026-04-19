@@ -1,0 +1,24 @@
+{
+  "id": "flutter-sharedpreferences-vs-sqflite",
+  "subject": "Flutter 本地存储方案选择：shared_preferences 与 sqflite 对比",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "本地存储",
+    "性能优化",
+    "数据库"
+  ],
+  "content": {
+    "principles": "shared_preferences 用于存储简单的键值对数据（如配置、token），基于平台原生机制（如 NSUserDefaults, SharedPreferences），启动快，读写小数据为毫秒级。sqflite 是 SQLite 的 Flutter 插件，用于处理结构化、关系型数据，支持多表、关联查询和复杂事务。其初始化稍慢，但通过建立索引，百万级数据查询可优化至百毫秒内。选择依据：90%的配置类需求用 shared_preferences；涉及多表、关联、频繁增删查改时，应使用 sqflite。",
+    "pitfalls": [
+      "误用 shared_preferences 存储大量或结构化数据，导致性能下降和可维护性差。",
+      "在 sqflite 中未对常用查询字段建立索引，导致大数据量时查询性能低下。",
+      "认为 shared_preferences 可以完全替代轻量级数据库。"
+    ],
+    "follow_up_paths": [
+      "shared_preferences 的数据在 Android 和 iOS 上是如何持久化的？有什么限制？",
+      "如何在 sqflite 中实现数据库迁移（Migration）？",
+      "除了这两种，Flutter 还有哪些本地存储方案（如 Hive, Isar）？它们各自的优劣是什么？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "react-constructor-necessity",
+  "subject": "React 类组件中构造函数的必要性",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "类组件",
+    "构造函数",
+    "状态初始化",
+    "this绑定"
+  ],
+  "content": {
+    "principles": "在 React 类组件中，构造函数 (`constructor`) 不是必须的。只有在需要执行以下操作时才需要显式定义：1) 初始化本地状态 (`this.state`)；2) 为事件处理函数绑定 `this` 上下文。现代 React 开发中，可以使用类属性语法直接定义 `state` 和箭头函数方法，从而完全避免编写构造函数。如果定义了构造函数，则必须首先调用 `super(props)`，以确保 `this` 在构造函数中可用，并让 `props` 在构造函数内可访问（尽管在 React 17+ 中，`this.props` 在调用 `super` 后已被自动设置）。函数组件使用 Hooks（如 `useState`）则完全不需要构造函数。",
+    "pitfalls": [
+      "在不需要的情况下仍习惯性编写构造函数，增加代码冗余。",
+      "编写构造函数时忘记调用 `super(props)`，导致 `this` 未初始化而报错。",
+      "误以为在构造函数中可以通过 `this.props` 访问 `props`（实际上在调用 `super(props)` 前不可用）。"
+    ],
+    "follow_up_paths": [
+      "类属性语法（如 `state = {}`）是如何在底层被 Babel 转译的？它与在构造函数中初始化有何区别？",
+      "为什么在构造函数中调用 `setState` 是不允许的？",
+      "在函数组件中，`useState` 的初始化函数与类组件的构造函数在功能上有何对应关系？"
+    ]
+  }
+}

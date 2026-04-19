@@ -1,0 +1,24 @@
+{
+  "id": "react-children-rendering-patterns",
+  "subject": "React 子组件渲染模式（数组、条件、children）",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "组件设计",
+    "渲染",
+    "JSX"
+  ],
+  "content": {
+    "principles": "React 提供了多种动态渲染子组件的模式：1) 使用数组动态组装子元素，每个元素需要唯一的 `key`。2) 使用条件判断（如 if 语句）决定是否渲染特定组件。3) 使用 `props.children` 实现插槽功能，父组件可以将任意 JSX 内容传递给子组件，子组件通过 `{children}` 渲染。这种方式常用于通用容器组件（如 Card、Modal、Layout），类似于 Vue 的 slot，但实现更简洁。React Router 的 `<Outlet />` 也是基于此思路实现嵌套路由渲染。核心是保持组件职责单一，避免过度耦合。",
+    "pitfalls": [
+      "使用数组渲染时忘记添加 `key`，导致性能问题和潜在渲染错误。",
+      "过度使用 `props.children` 导致组件层级过深，难以维护。",
+      "将 `props.children` 与组件内部状态逻辑过度耦合，破坏了组件的通用性。"
+    ],
+    "follow_up_paths": [
+      "`props.children` 可以传递函数吗？如何实现类似“作用域插槽”的功能？（Render Props 模式）",
+      "除了 `props.children`，如何设计支持多个命名“插槽”的组件？（例如使用额外的 props）",
+      "React 18 中 `<Outlet />` 的实现原理是什么？它与 `props.children` 有何异同？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "vue-v-model-lazy-modifier",
+  "subject": "Vue 表单 v-model 的 .lazy 修饰符作用与原理",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "表单",
+    "v-model",
+    "性能优化"
+  ],
+  "content": {
+    "principles": ".lazy 是 v-model 的修饰符，其作用是将数据同步的触发时机从默认的 input 事件延迟到 change 事件。默认情况下，v-model 监听 input 事件，每次用户输入都会同步数据到 Vue 实例。添加 .lazy 后，只有在输入框失去焦点或用户按下回车时，才会更新数据。这减少了高频输入场景下不必要的响应式更新和渲染开销，适用于不需要实时校验或对性能敏感的表单字段（如搜索框）。本质上是牺牲实时性以换取性能，常与 .trim 或 .number 修饰符结合使用。",
+    "pitfalls": [
+      "误以为 .lazy 是延迟请求或防抖，它只影响数据同步时机。",
+      "在需要实时反馈（如即时搜索建议）的场景错误地使用 .lazy。",
+      "不了解 .lazy 背后监听的事件从 input 切换到了 change。"
+    ],
+    "follow_up_paths": [
+      "除了 .lazy，v-model 还有哪些常用的修饰符？它们分别有什么作用？",
+      "如何自己实现一个类似 .lazy 但具有自定义防抖逻辑的输入框组件？",
+      "从源码角度，v-model 的修饰符是如何被解析和处理的？"
+    ]
+  }
+}

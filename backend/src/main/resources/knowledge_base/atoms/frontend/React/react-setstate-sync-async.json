@@ -1,0 +1,25 @@
+{
+  "id": "react-setstate-sync-async",
+  "subject": "React 中 setState 的同步与异步行为",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "setState",
+    "事件机制",
+    "批处理",
+    "React 18"
+  ],
+  "content": {
+    "principles": "setState 的同步异步行为取决于调用上下文和 React 版本。\n1. 在 React 管控的上下文中（如合成事件 onClick、生命周期 componentDidMount、useEffect），setState 是异步的。React 会合并多个 setState 调用，进行批量更新以提升性能。此时 this.state 不会立即更新。\n2. 在原生的 DOM 事件监听器（addEventListener）或 setTimeout/setInterval 等宏任务中调用 setState，在 React 17 及之前版本是同步的，state 会立即更新。\n3. 从 React 18 开始，使用 ReactDOM.createRoot 后，引入了自动批处理（automatic batching）。即使在 Promise、setTimeout、原生事件中，setState 默认也会被批处理，表现为异步。但可以使用 ReactDOM.flushSync 强制同步更新。",
+    "pitfalls": [
+      "混淆 React 17 与 React 18 的行为差异，认为原生事件中 setState 总是同步的。",
+      "在异步回调中依赖 this.state 的即时更新值，导致逻辑错误。",
+      "不了解 flushSync 的用法和强制同步更新的场景。"
+    ],
+    "follow_up_paths": [
+      "React 18 的自动批处理具体是如何实现的？它对性能有何影响？",
+      "在类组件中，setState 的第二个参数（回调函数）与异步更新有何关系？",
+      "请解释一下 React 的合成事件系统是如何实现事件委托和批处理的？"
+    ]
+  }
+}

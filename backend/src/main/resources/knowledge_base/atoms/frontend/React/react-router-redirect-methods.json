@@ -1,0 +1,24 @@
+{
+  "id": "react-router-redirect-methods",
+  "subject": "React Router 中实现重定向的方法",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "React Router",
+    "路由",
+    "导航"
+  ],
+  "content": {
+    "principles": "在 React Router 中，重定向主要有两种实现方式：\n1. **编程式导航**：在组件逻辑中使用 `useNavigate` Hook（函数组件）或 `withRouter`（类组件）。例如：`const navigate = useNavigate(); navigate('/home', { replace: true });`。`replace: true` 选项会用新路由替换当前历史记录条目，防止用户返回时回到被重定向的页面。\n2. **声明式配置**：在路由配置中直接使用 `<Navigate>` 组件。例如：`<Route path=\"/old-page\" element={<Navigate to=\"/new-page\" replace />} />`。这适用于处理废弃路由、默认子路由等场景，如将根路径重定向到仪表板：`<Route path=\"/\" element={<Navigate to=\"/dashboard\" replace />} />`。\n\n此外，常结合 `useEffect` 和状态管理（如 Redux 的 `useSelector`）进行条件跳转，例如拦截未登录用户访问私有路由并重定向到登录页。整个过程为纯前端路由控制，不经过后端。",
+    "pitfalls": [
+      "在 `useEffect` 中执行重定向时未正确处理依赖项，导致循环重定向或未触发。",
+      "忘记使用 `replace` 选项，导致历史记录堆叠，用户体验不佳。",
+      "在类组件中未正确使用 `withRouter` 或 `this.props.history`。"
+    ],
+    "follow_up_paths": [
+      "`<Navigate>` 组件在渲染时是如何工作的？它与 `useNavigate` 在底层有何联系？",
+      "如何在服务端渲染（SSR）场景下处理重定向？",
+      "React Router v6 与 v5 在重定向 API 上有哪些重大变化？"
+    ]
+  }
+}

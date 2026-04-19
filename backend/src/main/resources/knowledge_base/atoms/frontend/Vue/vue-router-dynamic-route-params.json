@@ -1,0 +1,24 @@
+{
+  "id": "vue-router-dynamic-route-params",
+  "subject": "Vue Router 动态路由的定义与参数获取",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Vue Router",
+    "动态路由",
+    "路由参数"
+  ],
+  "content": {
+    "principles": "动态路由通过路由 `path` 中的参数占位符（以冒号 `:` 开头）定义，用于匹配结构固定但内容变化的 URL。例如：`{ path: '/user/:id', component: UserComponent }` 可以匹配 `/user/123` 和 `/user/456`。在组件内部，通过 `this.$route.params` 对象获取动态参数（如 `this.$route.params.id`）。注意区分 `$route`（当前路由信息对象）和 `$router`（路由实例）。当路由包含多个动态段时（如 `/user/:id/post/:postId`），`params` 对象会包含所有参数。动态参数变化（如从 `/user/1` 跳转到 `/user/2`）默认不会触发组件的重新创建（复用组件），因此需要利用 `beforeRouteUpdate` 导航守卫或监听 `$route` 对象的变化来响应参数更新。",
+    "pitfalls": [
+      "混淆 `$route` 和 `$router`，错误地使用 `this.$router.params`。",
+      "误以为参数变化会自动导致组件重新渲染，从而在 `created` 或 `mounted` 中依赖参数初始化数据，导致数据不更新。",
+      "在组件复用时，未清理上一次参数产生的副作用（如定时器、订阅）。"
+    ],
+    "follow_up_paths": [
+      "除了 `params`，`$route` 对象上还有哪些重要的属性？（如 `query`、`hash`、`fullPath`）",
+      "如何监听路由参数的变化并执行相应操作？（监听 `$route` 或使用 `beforeRouteUpdate`）",
+      "动态路由和路由的 `props` 配置如何结合使用，以实现更松散的耦合？"
+    ]
+  }
+}

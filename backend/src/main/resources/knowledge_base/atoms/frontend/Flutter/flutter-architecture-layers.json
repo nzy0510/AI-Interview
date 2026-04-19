@@ -1,0 +1,21 @@
+{
+  "id": "flutter-architecture-layers",
+  "subject": "Flutter 架构层次",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "架构",
+    "核心概念"
+  ],
+  "content": {
+    "principles": "Flutter 采用分层架构，从上到下依次为：\n1. **Framework层**：用Dart实现，提供UI组件（Widget）、动画、手势、渲染流水线等核心能力。开发者日常接触的MaterialApp、Scaffold等均在此层。\n2. **Engine层**：用C++编写，是框架的“心脏”。负责图形渲染（基于Skia）、Dart代码执行（内嵌Dart VM）、事件处理和平台通道通信。将Widget树转换为Layer树，并调用Skia进行光栅化。\n3. **Embedder层**：负责将Engine嵌入到不同平台的原生应用中（如Android通过JNI，iOS通过Objective-C/Swift）。处理窗口创建、输入事件转发、系统服务对接等平台特定任务。\n4. **操作系统层**：提供硬件访问能力和基础运行环境。\n核心流程：Dart代码构建Widget树 → 渲染对象生成Layer树 → Engine调用Skia直接绘制到GPU，实现跨平台一致的高性能渲染，不经过原生控件体系。",
+    "pitfalls": [
+      "混淆Engine层和Embedder层的职责，例如认为Engine直接处理窗口创建。",
+      "认为Flutter渲染会经过原生控件，实际上是通过Skia直接绘制到GPU。"
+    ],
+    "follow_up_paths": [
+      "为什么Flutter选择Skia作为渲染引擎？与其他方案（如OpenGL）相比有什么优势？",
+      "Embedder层在不同平台（如Android和iOS）的具体实现细节有哪些关键差异？"
+    ]
+  }
+}

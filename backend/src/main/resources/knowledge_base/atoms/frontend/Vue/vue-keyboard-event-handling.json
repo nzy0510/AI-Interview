@@ -1,0 +1,26 @@
+{
+  "id": "vue-keyboard-event-handling",
+  "subject": "Vue 中键盘事件的监听与处理",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "事件处理",
+    "键盘事件",
+    "修饰符",
+    "生命周期"
+  ],
+  "content": {
+    "principles": "在 Vue 中监听键盘事件主要使用 `v-on` 指令（`@` 语法糖）。可以直接在模板中绑定原生事件如 `@keyup`、`@keydown`。Vue 提供了按键修饰符来简化特定按键的监听，例如 `@keyup.enter=\"submit\"` 只在回车键抬起时触发。内置修饰符包括常用键的别名（如 `.enter`, `.tab`, `.esc`, `.space`, `.ctrl`）。监听组合键需注意修饰符顺序，如 `@keyup.ctrl.s` 表示 Ctrl + S。Vue 3 已废弃通过键码（如 `.13`）的监听方式，推荐使用语义化修饰符。`.once` 修饰符可使事件只触发一次。对于全局键盘监听（如监听整个 document），需在组件生命周期钩子（如 `onMounted`）中手动使用 `addEventListener` 绑定，并在卸载前（如 `onBeforeUnmount`）使用 `removeEventListener` 解绑，以防止内存泄漏。这种模式常用于实现应用级的快捷键系统。",
+    "pitfalls": [
+      "错误地使用键码数字（如 `.13`）在 Vue 3 中监听按键，导致失效。",
+      "在监听组合键时弄错修饰符顺序（如 `.s.ctrl` 无效，必须是 `.ctrl.s`）。",
+      "进行全局键盘事件监听后，忘记在组件销毁时移除监听器，造成内存泄漏和事件重复触发。",
+      "误以为按键修饰符可以用于任何 HTML 元素，实际上它们通常只在可聚焦元素（如 input, button）或配合 `.native` 修饰符（Vue 2）时有效。"
+    ],
+    "follow_up_paths": [
+      "如何实现一个可自定义、可禁用的全局快捷键管理系统？请描述其架构和关键实现细节。",
+      "Vue 的按键修饰符底层是如何实现的？它是如何将 `@keyup.enter` 转换成对 `event.key` 或 `event.keyCode` 的判断的？",
+      "在 Vue 3 的 Composition API 中，如何封装一个可复用的 `useKeyPress` hook 来优雅地处理键盘事件？"
+    ]
+  }
+}

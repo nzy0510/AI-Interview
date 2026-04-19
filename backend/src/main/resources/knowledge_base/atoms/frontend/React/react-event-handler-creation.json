@@ -1,0 +1,23 @@
+{
+  "id": "react-event-handler-creation",
+  "subject": "在 React 中创建与绑定事件处理函数",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "事件处理",
+    "语法"
+  ],
+  "content": {
+    "principles": "在 React 中创建事件遵循合成事件系统。绑定方式：在 JSX 元素上使用驼峰命名的事件属性（如 onClick、onChange），其值是一个函数引用，而非字符串。事件处理函数通常在组件内部定义。例如：`<button onClick={handleClick}>Click</button>`。需要注意 this 绑定问题（类组件中），通常通过在构造函数中绑定或使用类属性箭头函数解决。函数组件中直接使用函数或 useCallback 优化。事件对象是合成事件（SyntheticEvent）实例。",
+    "pitfalls": [
+      "误将事件处理函数以字符串形式传入，如 `onClick=\"handleClick\"`。",
+      "在类组件中定义事件处理函数时未正确绑定 this，导致函数内 this 为 undefined。",
+      "为事件处理函数传入调用而非引用，如 `onClick={handleClick()}`，导致渲染时立即执行。"
+    ],
+    "follow_up_paths": [
+      "如何在事件处理函数中传递自定义参数？",
+      "对比类组件和函数组件中事件处理函数 this 绑定的不同处理方式。",
+      "为什么 React 推荐使用箭头函数或类属性语法来定义方法，而不是在构造函数中绑定？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "react-component-vs-purecomponent",
+  "subject": "React 中 Component 与 PureComponent 的区别",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "类组件",
+    "浅比较"
+  ],
+  "content": {
+    "principles": "`Component` 在每次 `setState` 或父组件渲染时都会重新 render，不自动进行 props/state 比较。`PureComponent` 通过浅比较（shallow comparison）来优化性能：在 `shouldComponentUpdate` 生命周期中对新旧 props 和 state 进行一层比较，若所有字段值相等（对于引用类型，比较引用地址），则跳过 render。浅比较的局限：若 props/state 是嵌套对象或数组，仅内部值改变而引用未变，`PureComponent` 会误判为无变化。因此，更新状态时必须返回新引用（如使用 `concat`, `slice`, 展开运算符）。对于函数组件，等效的优化工具是 `React.memo`。",
+    "pitfalls": [
+      "误以为 `PureComponent` 会进行深比较，导致状态更新后 UI 不更新。",
+      "在 `PureComponent` 中直接修改状态（如 `this.state.list.push(item)`）后调用 `setState`，因引用未变而渲染失败。",
+      "混淆 `PureComponent`（类组件）与 `React.memo`（函数组件）的使用场景。"
+    ],
+    "follow_up_paths": [
+      "浅比较的具体实现逻辑是怎样的？它如何比较函数和 React 元素？",
+      "在什么场景下使用 `PureComponent` 反而可能导致性能下降？",
+      "如何实现一个自定义的 `shouldComponentUpdate` 来进行深比较或特定字段的比较？"
+    ]
+  }
+}

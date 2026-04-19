@@ -1,0 +1,24 @@
+{
+  "id": "vue-event-object-usage",
+  "subject": "Vue 中事件对象 (Event Object) 的使用与修饰符",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "事件处理",
+    "修饰符",
+    "DOM"
+  ],
+  "content": {
+    "principles": "在 Vue 模板中绑定事件监听器（如 `@click=\"handleClick\"`），处理函数默认会接收原生 DOM 事件对象作为第一个参数。如果需要同时传入自定义参数和访问事件对象，可以使用 `$event` 变量显式传递：`@click=\"handleClick('arg', $event)\"`。Vue 对事件对象进行了浏览器兼容性处理。Vue 提供了事件修饰符来简化常见的 DOM 事件处理逻辑，它们可以链式调用：`.stop` 调用 `event.stopPropagation()` 阻止事件冒泡；`.prevent` 调用 `event.preventDefault()` 阻止默认行为；`.once` 确保事件只触发一次。这些修饰符使代码更声明式。注意，模板中的事件监听器绑定的是原生 DOM 事件，组件间的自定义事件需要通过 `$emit` 触发和监听。",
+    "pitfalls": [
+      "在需要自定义参数的方法中，忘记显式传入 `$event` 导致无法访问事件对象。",
+      "混淆事件修饰符的作用，例如误用 `.self` 来代替 `.stop`。",
+      "在组件上使用原生 DOM 事件修饰符（如 `.prevent`），实际上它作用于组件的根元素，可能不符合预期。"
+    ],
+    "follow_up_paths": [
+      "除了 `.stop`, `.prevent`, `.once`，Vue 还提供了哪些常用的事件修饰符？请说明 `.capture` 和 `.passive` 的作用。",
+      "如何在 Vue 3 的 Composition API 中（`<script setup>`）使用事件对象和修饰符？",
+      "为什么说在组件上使用 `v-on` 监听的是自定义事件？如何监听组件根元素的原生事件？"
+    ]
+  }
+}

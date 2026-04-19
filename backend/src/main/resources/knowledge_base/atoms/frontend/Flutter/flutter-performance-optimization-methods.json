@@ -1,0 +1,22 @@
+{
+  "id": "flutter-performance-optimization-methods",
+  "subject": "Flutter 性能优化常用方法与瓶颈定位",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "渲染",
+    "工具"
+  ],
+  "content": {
+    "principles": "Flutter 性能优化核心方向：1) **减少 Widget 过度重建**：使用 `const` 构造函数、`ListView.builder` 按需构建。2) **减轻主线程负担**：使用 `compute()` 函数将复杂计算（图像解码、JSON解析）移至 Isolate。3) **优化图片资源**：使用 `cached_network_image` 等带缓存的库，对大图使用 `cacheWidth`/`cacheHeight` 限制解码尺寸。4) **减少不必要的图层合成**：避免滥用 `Opacity` Widget，对于容器半透明应直接设置 `color.withOpacity()`。定位性能瓶颈主要使用 Flutter DevTools 的 Performance 视图：录制操作，分析 CPU 轨迹（确保 Raster 时间 < 16ms/帧），查看哪些 Widget 在频繁重建，监控内存曲线防止泄漏。",
+    "pitfalls": [
+      "在列表中使用 `ListView(children: [])` 一次性构建所有子项，导致滚动卡顿",
+      "在主线程进行同步的耗时操作（如大量循环计算），阻塞 UI 渲染"
+    ],
+    "follow_up_paths": [
+      "DevTools 中 Raster 线程耗时过高通常意味着什么问题？如何优化自定义绘制（CustomPaint）的逻辑？",
+      "如何检测和避免 Flutter 中的内存泄漏？常见泄漏场景有哪些？"
+    ]
+  }
+}

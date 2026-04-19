@@ -1,0 +1,24 @@
+{
+  "id": "react-production-mode-enable",
+  "subject": "开启 React 生产模式的方法与原理",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "构建工具",
+    "性能优化",
+    "环境变量"
+  ],
+  "content": {
+    "principles": "生产模式通过移除开发环境的额外检查和警告来优化性能。核心是设置 `process.env.NODE_ENV` 为 `'production'`。常见方法：1) 构建工具：Webpack 使用 `DefinePlugin` 注入该环境变量；Vite、Create React App、Next.js 等脚手架在运行 `build` 命令时自动完成。2) 效果：React 会禁用严格模式检查、跳过 `prop-types` 验证、关闭警告日志、启用代码压缩等，渲染性能可提升 30% 以上。3) 风险：未开启生产模式直接上线会导致页面响应变慢，控制台可能暴露内部逻辑。",
+    "pitfalls": [
+      "手动配置构建工具时，忘记注入 `NODE_ENV=production` 环境变量。",
+      "误以为代码压缩就等于开启了生产模式，实际上 React 库本身的行为未切换。",
+      "在服务器端渲染（SSR）场景中，服务器环境变量未正确设置，导致服务端仍使用开发模式。"
+    ],
+    "follow_up_paths": [
+      "除了 `NODE_ENV`，React 生产构建还会应用哪些特定的优化？（如 dead code elimination, minification）",
+      "如何在开发环境中模拟生产模式以进行性能测试？",
+      "Webpack 的 `mode: 'production'` 具体做了哪些事情？除了 DefinePlugin 还有哪些相关插件？"
+    ]
+  }
+}

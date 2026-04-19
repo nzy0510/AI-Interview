@@ -1,0 +1,22 @@
+{
+  "id": "vue-router-useroute-userouter",
+  "subject": "Vue Router中useRoute与useRouter的区别与使用",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Vue Router",
+    "组合式API",
+    "路由"
+  ],
+  "content": {
+    "principles": "在Vue 3的组合式API中，`useRoute`返回一个响应式的当前路由对象，包含`path`, `params`, `query`等信息。`useRouter`返回路由实例，提供编程式导航方法如`push`, `replace`, `go`。它们必须在`setup`函数或`<script setup>`中使用。在选项式API中，对应的属性是`this.$route`和`this.$router`。",
+    "pitfalls": [
+      "在`setup`或`<script setup>`之外调用`useRoute`/`useRouter`，会导致错误。",
+      "混淆`useRoute`（获取信息）和`useRouter`（进行操作）的职责。"
+    ],
+    "follow_up_paths": [
+      "`route`对象是响应式的，如何在`watch`或`computed`中监听路由参数的变化？",
+      "`router.push`和`router.replace`有什么区别？在什么场景下使用`replace`？"
+    ]
+  }
+}

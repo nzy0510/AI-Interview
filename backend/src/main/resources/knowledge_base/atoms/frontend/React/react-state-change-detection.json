@@ -1,0 +1,25 @@
+{
+  "id": "react-state-change-detection",
+  "subject": "React 中侦听 State 变化的模式",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "Hooks",
+    "useEffect",
+    "生命周期",
+    "副作用"
+  ],
+  "content": {
+    "principles": "React 没有提供直接监听 state 赋值的 API。响应 state 变化的正确模式是观察其引起的副作用。在函数组件中，使用 `useEffect` Hook，将目标 state 放入依赖数组，副作用函数会在该 state 更新后执行。在类组件中，使用 `componentDidUpdate` 生命周期方法，通过对比 `prevState` 和 `this.state` 来侦听变化。需要理解 React 的 state 更新是异步且可能被批量处理的，因此在 `setState` 调用后立即读取 `state` 可能得到旧值，`useEffect` 的回调才是获取更新后值的正确时机。对于复杂状态逻辑，可考虑使用 `useReducer` 来集中管理状态变更和副作用。",
+    "pitfalls": [
+      "试图在 `setState` 回调函数外部立即读取更新后的 state 值。",
+      "在 `useEffect` 的依赖数组中遗漏了需要监听的 state，导致副作用不更新。",
+      "过度使用 `useEffect` 监听 state，导致逻辑分散，应考虑状态逻辑提升或使用状态管理库。"
+    ],
+    "follow_up_paths": [
+      "`useEffect` 的依赖数组为空 `[]` 和省略依赖数组有什么区别？",
+      "如何利用 `useRef` 来获取上一次渲染的 state 或 props 值？",
+      "在 `useReducer` 的 `dispatch` 之后，如何确保副作用在状态更新后执行？"
+    ]
+  }
+}

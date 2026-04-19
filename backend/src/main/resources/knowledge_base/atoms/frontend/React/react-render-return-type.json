@@ -1,0 +1,24 @@
+{
+  "id": "react-render-return-type",
+  "subject": "React render 函数的返回值类型",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "render",
+    "React Element",
+    "JSX",
+    "虚拟DOM"
+  ],
+  "content": {
+    "principles": "React 的 render 函数返回的是 React 元素（React Element），它是一个普通的 JavaScript 对象，用于描述 UI 结构（虚拟 DOM 节点）。这个对象包含 type、props 等属性。JSX 会被编译为 React.createElement 调用以生成此对象。除了对象，render 还可以返回 null、字符串、数字、数组（包含以上类型）或布尔值（用于条件渲染）。不能返回 Promise、函数或 undefined。函数组件的调用返回值与类组件的 render() 返回值作用一致。",
+    "pitfalls": [
+      "误以为 render 返回的是真实 DOM 节点",
+      "忘记 render 可以返回数组或 null 等类型",
+      "尝试返回 Promise 或函数导致错误"
+    ],
+    "follow_up_paths": [
+      "React 是如何利用这个返回值进行高效更新的（协调/Reconciliation）？",
+      "为什么返回数组时，数组中的元素通常需要 key 属性？"
+    ]
+  }
+}
