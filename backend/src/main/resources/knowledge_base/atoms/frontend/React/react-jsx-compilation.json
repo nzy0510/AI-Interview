@@ -1,0 +1,24 @@
+{
+  "id": "react-jsx-compilation",
+  "subject": "JSX 的编译原理与必要性",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "JSX",
+    "构建工具",
+    "Babel"
+  ],
+  "content": {
+    "principles": "浏览器只能执行标准 JavaScript，无法直接解析 JSX。JSX 是一种 JavaScript 语法扩展，需要被编译成浏览器能理解的 JavaScript 对象创建表达式，即 React.createElement 函数调用。这个转换过程由编译工具（最常见的是 Babel，通过 @babel/preset-react 插件）完成。现代前端工程通过构建工具（如 Webpack、Vite）在开发和打包阶段集成 Babel，自动处理 .jsx/.tsx 文件的转译。如果不经编译，直接在浏览器中写 JSX 会触发语法错误，因为 `<` 会被解析为小于号运算符。因此，React 项目基本都基于脚手架或构建工具，离不开这套'翻译'机制。",
+    "pitfalls": [
+      "误以为 JSX 是 HTML 或是浏览器原生支持的特性。",
+      "不理解为什么 React 项目必须要有构建步骤。",
+      "混淆 JSX 语法与最终在浏览器中运行的 JavaScript 代码之间的关系。"
+    ],
+    "follow_up_paths": [
+      "除了 Babel，还有哪些工具可以编译 JSX？它们的原理有何不同？",
+      "React.createElement 函数具体接收哪些参数？它返回的对象结构是怎样的？",
+      "如果不使用 JSX，用纯 JavaScript 编写 React 组件会是什么样子？试比较其优缺点。"
+    ]
+  }
+}

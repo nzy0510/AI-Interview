@@ -1,0 +1,24 @@
+{
+  "id": "flutter-inheritedwidget-state-sharing",
+  "subject": "Flutter InheritedWidget 原理与状态共享机制",
+  "category": "Flutter",
+  "difficulty": "困难",
+  "tags": [
+    "状态管理",
+    "核心机制",
+    "Provider 基础"
+  ],
+  "content": {
+    "principles": "InheritedWidget 是 Flutter 中用于在 Widget 树中高效向下共享数据的底层基础组件。其核心机制是依赖注入与通知更新。\n1. 工作原理：InheritedWidget 本身是一个 Widget，当其被插入树中时，其数据对子节点可见。子组件通过 `context.dependOnInheritedWidgetOfExactType<T>()` 或自定义的静态 `of(context)` 方法获取该 InheritedWidget 的实例并建立依赖关系。\n2. 更新触发：当 InheritedWidget 重建时（通常因为其持有的数据变化），会调用 `updateShouldNotify` 方法，与旧 widget 比较。若返回 true，则框架会通知所有通过 `dependOnInheritedWidgetOfExactType` 建立了依赖关系的子组件（即调用过 `of` 方法的组件）触发重建（rebuild）。\n3. 高效性：依赖关系由框架内部通过一个映射（InheritedElement 的 _dependents）维护，通知更新是精确的 O(1) 操作，只重建依赖的子组件，而非整棵子树。\n这是 Provider、Riverpod 等状态管理库的基石。自定义 InheritedWidget 通常包含：共享的数据字段、一个接收 child 的构造函数、重写 `updateShouldNotify`、一个便捷的静态 `of` 方法。",
+    "pitfalls": [
+      "错误地在 `updateShouldNotify` 中总是返回 true，导致不必要的全局重建，性能低下。",
+      "不理解 `context.dependOnInheritedWidgetOfExactType` 与 `context.getElementForInheritedWidgetOfExactType` 的区别（前者建立依赖，后者不建立）。",
+      "在 InheritedWidget 重建期间，其子组件获取到的旧数据与新数据状态不一致的问题。"
+    ],
+    "follow_up_paths": [
+      "请描述从调用 `MyInheritedWidget.of(context)` 到子组件重建的完整 Flutter 框架内部流程。",
+      "如何利用 InheritedWidget 实现一个简单的主题（Theme）切换功能？需要考虑哪些边界情况？",
+      "Provider 库中的 `ChangeNotifierProvider` 是如何结合 InheritedWidget 和 ChangeNotifier 来实现状态管理的？"
+    ]
+  }
+}

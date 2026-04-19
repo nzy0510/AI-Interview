@@ -1,0 +1,24 @@
+{
+  "id": "react-jsx-conditional-rendering",
+  "subject": "JSX 中的内联条件渲染方法",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React",
+    "JSX",
+    "条件渲染"
+  ],
+  "content": {
+    "principles": "JSX 内联条件渲染主要依赖 JavaScript 逻辑运算符。1. 逻辑与 (&&)：条件为真时渲染右侧元素，否则不渲染任何内容（React 会忽略 false, null, undefined, true）。适用于条件满足时才显示的组件。2. 三元运算符 (condition ? truePart : falsePart)：在两种可能结果中选择一个渲染。是 JSX 中替代 if-else 的常用方式。3. 使用括号包裹复杂逻辑：可以将多个条件通过 &&、|| 或嵌套三元组合，但应避免嵌套过深影响可读性。如果条件都不满足，可以返回 null 或空数组（[]）来渲染空内容。",
+    "pitfalls": [
+      "在使用 `&&` 时，左侧条件为 0 或空字符串等 falsy 但有效的值，会导致意外渲染出 0 或空字符串。",
+      "三元运算符嵌套过深，导致代码难以阅读和维护。",
+      "忘记 JSX 中嵌入的 JavaScript 表达式必须返回单个元素或数组（或 null/undefined 等可忽略值）。"
+    ],
+    "follow_up_paths": [
+      "除了内联方式，还有哪些实现条件渲染的模式？（if 语句提前 return、将条件逻辑抽离到变量或函数中）",
+      "在列表渲染中，如何结合条件渲染过滤或映射部分元素？",
+      "为什么在 JSX 中 `{false && <div/>}` 不会渲染出 'false' 这个字符串？（考察 React 对 JSX 表达式的处理）"
+    ]
+  }
+}

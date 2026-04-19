@@ -1,0 +1,25 @@
+{
+  "id": "vue-v-html-filter-alternatives",
+  "subject": "Vue 2.0 v-html 指令不支持过滤器后的HTML内容处理方法",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "v-html",
+    "过滤器",
+    "XSS防护",
+    "富文本"
+  ],
+  "content": {
+    "principles": "Vue 2.0 的 v-html 指令不再支持过滤器，Vue 3 中过滤器已被彻底移除。处理动态 HTML 内容的现代方法包括：1. 在 JavaScript 中预处理数据，使用 DOMParser 或正则表达式清洗 HTML 字符串。2. 对于用户输入的 HTML，必须进行 XSS 防护，推荐使用 DOMPurify 等库进行净化。3. 将净化逻辑封装为计算属性或方法，在模板中通过 v-html 调用。4. 使用组件化思路，将富文本内容拆分为子组件，通过 props 传递结构化数据，由组件决定渲染逻辑。核心是采用“数据预处理 + 净化库 + 结构化渲染”的组合方案。",
+    "pitfalls": [
+      "误以为 v-html 可以安全渲染任何 HTML 字符串，忽略 XSS 攻击风险。",
+      "试图在 Vue 2.0 或 Vue 3 中为 v-html 使用过滤器语法。",
+      "过度依赖字符串拼接生成复杂 HTML，导致代码难以维护和测试。"
+    ],
+    "follow_up_paths": [
+      "DOMPurify 库是如何过滤危险脚本和属性的？其白名单机制是怎样的？",
+      "除了 DOMPurify，还有哪些前端安全库可以用于 HTML 净化？它们的原理有何不同？",
+      "在 SSR（服务端渲染）场景下，如何安全地处理并渲染动态 HTML 内容？"
+    ]
+  }
+}

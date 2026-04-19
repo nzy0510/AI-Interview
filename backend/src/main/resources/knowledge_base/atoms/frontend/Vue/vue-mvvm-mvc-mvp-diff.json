@@ -1,0 +1,22 @@
+{
+  "id": "vue-mvvm-mvc-mvp-diff",
+  "subject": "Vue中MVVM与MVC、MVP架构模式的区别",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "架构模式",
+    "MVVM",
+    "数据绑定"
+  ],
+  "content": {
+    "principles": "MVC中，View可直接与Model通信，Controller处理用户输入并更新Model，Model变化后通知View更新，耦合度较高。MVP中，Presenter作为中间人，持有View接口和Model，View不直接接触Model，解耦更好但代码量多。Vue采用MVVM模式，核心是ViewModel（Vue实例），通过响应式系统和数据绑定（如`v-model`）自动同步View和Model。开发者无需手动操作DOM，数据变化驱动视图更新，视图交互自动更新数据。",
+    "pitfalls": [
+      "混淆MVVM中ViewModel的角色，认为它等同于MVC中的Controller。",
+      "无法清晰描述Vue的响应式系统如何实现Model到View的自动更新。"
+    ],
+    "follow_up_paths": [
+      "Vue 3的Composition API如何影响或体现MVVM模式？",
+      "对比React（通常被视为更接近MVP或函数式）和Vue在架构模式上的哲学差异。"
+    ]
+  }
+}

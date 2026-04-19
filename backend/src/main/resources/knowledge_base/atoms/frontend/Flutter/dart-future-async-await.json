@@ -1,0 +1,23 @@
+{
+  "id": "dart-future-async-await",
+  "subject": "Dart 异步编程：Future 与 async/await",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "Dart",
+    "异步",
+    "并发"
+  ],
+  "content": {
+    "principles": "Dart采用单线程事件循环模型处理异步。\n1. **Future**：代表一个将来可能完成的值或错误，类似于Promise。用于封装网络请求、文件I/O等异步操作。\n   Future<String> fetchData() async {\n     await Future.delayed(Duration(seconds: 1));\n     return \"data\";\n   }\n2. **async/await**：语法糖，让异步代码以同步方式书写。标记为`async`的函数可以使用`await`等待Future完成，而不阻塞主线程。\n   main() async {\n     String result = await fetchData(); // 等待但不阻塞\n     print(result);\n   }\n3. **错误处理**：使用try-catch捕获异步异常。\n4. **并发执行**：使用`Future.wait`等待多个Future并行完成。\n   var results = await Future.wait([fetchData(), fetchData()]);\n5. **底层机制**：Future是一个状态机，由事件循环在微任务队列中调度。async/await在编译后会生成对应的状态机代码。\n注意事项：避免在循环中顺序使用`await`导致不必要的串行执行，应考虑并行化。",
+    "pitfalls": [
+      "在`async`函数中忘记使用`await`，导致后续代码在异步操作完成前执行。",
+      "误用`await`导致本可并行的任务串行执行，影响性能。",
+      "不理解`async`函数本身返回一个Future。"
+    ],
+    "follow_up_paths": [
+      "Dart的事件循环（Event Loop）中微任务队列（Microtask Queue）和事件队列（Event Queue）是如何协作的？",
+      "如何取消一个正在执行的Future？有哪些方案？"
+    ]
+  }
+}

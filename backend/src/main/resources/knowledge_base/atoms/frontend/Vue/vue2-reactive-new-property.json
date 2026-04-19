@@ -1,0 +1,24 @@
+{
+  "id": "vue2-reactive-new-property",
+  "subject": "Vue 2 中给对象动态添加新属性为何界面不更新？如何解决？",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "响应式原理",
+    "Vue2",
+    "Object.defineProperty"
+  ],
+  "content": {
+    "principles": "Vue 2 的响应式系统基于 Object.defineProperty，它在初始化实例时递归遍历 data 对象的已有属性，将其转化为 getter/setter。后续动态添加的新属性因为没有经过 defineProperty 处理，所以不具备响应性。数组通过索引直接赋值 (this.list[0] = newVal) 同理。解决方案：1. 提前在 data 中声明所有属性（即使初始值为 undefined）。2. 使用 Vue.set(object, key, value) 或其实例方法 this.$set。对于数组，也可使用 splice 方法。Vue 3 使用 Proxy 代理整个对象，因此不存在此问题。",
+    "pitfalls": [
+      "误以为给已响应式对象直接赋值新属性会触发更新。",
+      "使用 this.$set 时，第一个参数传入了错误的上下文（如非响应式对象）。",
+      "对数组使用索引直接修改后，困惑于视图为何不更新。"
+    ],
+    "follow_up_paths": [
+      "Vue.set 方法的内部实现原理是什么？它是如何触发视图更新的？",
+      "除了 Vue.set，还有哪些方法可以确保数组变化的响应性？（如 push, pop, splice 等变异方法）",
+      "Vue 3 的 Proxy 是如何解决这个问题的？对比 defineProperty 和 Proxy 的优劣。"
+    ]
+  }
+}

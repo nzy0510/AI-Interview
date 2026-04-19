@@ -1,0 +1,23 @@
+{
+  "id": "vue-ref-dom-access",
+  "subject": "Vue 中通过 ref 获取 DOM 节点与组件实例",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "DOM操作",
+    "ref",
+    "组件通信"
+  ],
+  "content": {
+    "principles": "在 Vue 中，通过 `ref` 属性可以获取模板中的 DOM 元素或子组件实例。在 Options API 中，模板中设置 `ref=\"xxx\"` 后，可在 JavaScript 中通过 `this.$refs.xxx` 访问。1) 操作原生 DOM：例如获取 input 元素并调用 `focus()` 方法。2) 访问子组件实例：可调用子组件的方法或访问其数据。注意：`$refs` 是非响应式的，只在组件渲染完成后填充。在 `v-for` 中使用 `ref`，`$refs.xxx` 会是一个数组或对象集合。在 Composition API 中，需使用 `ref` 函数创建响应式引用，并在模板中绑定同名 `ref` 属性，在 `onMounted` 等生命周期钩子中通过 `.value` 访问。",
+    "pitfalls": [
+      "在组件挂载完成前（如 `created` 钩子）尝试访问 `$refs`，得到的是 `undefined`。",
+      "误以为 `$refs` 是响应式的，试图在计算属性或模板中依赖它。",
+      "在 `v-for` 循环中动态生成 `ref` 时，不熟悉其结果为数组或对象的结构。"
+    ],
+    "follow_up_paths": [
+      "为什么 `$refs` 设计成非响应式的？这带来了什么好处和限制？",
+      "在 Composition API 的 `setup` 函数中，如何确保在正确的时机访问 `template ref`？除了 `onMounted` 还有哪些方式？"
+    ]
+  }
+}

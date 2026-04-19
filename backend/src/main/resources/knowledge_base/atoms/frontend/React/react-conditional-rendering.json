@@ -1,0 +1,22 @@
+{
+  "id": "react-conditional-rendering",
+  "subject": "React 条件渲染的模式与最佳实践",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "JSX",
+    "渲染控制",
+    "模式"
+  ],
+  "content": {
+    "principles": "React 的条件渲染本质是 JavaScript 表达式求值，决定哪些 React 元素进入 Virtual DOM。主要模式有：1) 三元运算符 `{condition ? <A /> : <B />}`，适合两种状态的切换。2) 逻辑与运算符 `{condition && <A />}`，仅在条件为真时渲染。3) 对于复杂多分支逻辑，应将条件判断提取为独立变量、函数或组件，以保持 JSX 结构清晰。条件渲染是从结构上控制组件是否被创建和挂载，与使用 `display: none` 进行样式隐藏有本质区别，后者组件依然存在。",
+    "pitfalls": [
+      "在 `{condition && <A />}` 模式中，当 `condition` 为 0 等 falsy 值时，会意外渲染出 0。",
+      "误用 CSS `display: none` 来“实现”条件渲染，导致不必要的组件挂载和生命周期执行。"
+    ],
+    "follow_up_paths": [
+      "在列表渲染中，如何结合 `Array.prototype.map` 和条件渲染安全地过滤或转换元素？",
+      "如何设计一个高阶组件 (HOC) 或自定义 Hook 来封装复杂的条件渲染逻辑？"
+    ]
+  }
+}

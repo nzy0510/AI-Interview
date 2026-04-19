@@ -1,0 +1,24 @@
+{
+  "id": "react-ref-access-in-render",
+  "subject": "为什么不能在 render 方法中访问 refs？",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "Refs",
+    "生命周期",
+    "渲染流程"
+  ],
+  "content": {
+    "principles": "在 render 方法中无法访问 refs 是因为 React 的渲染分为两个阶段：1) **Render 阶段（协调）**：计算组件的虚拟 DOM 树，此时不操作真实 DOM，ref 尚未被附加到 DOM 节点上，`ref.current` 为 `null` 或 `undefined`。2) **Commit 阶段（提交）**：将协调好的变更应用到真实 DOM，此时才会创建/更新 DOM 节点并赋值给对应的 ref。因此，访问 ref 的正确时机是在组件挂载或更新之后，例如在函数组件的 `useEffect`（依赖项为空数组时模拟 `componentDidMount`）或类组件的 `componentDidMount`/`componentDidUpdate` 生命周期中。",
+    "pitfalls": [
+      "在 render 中直接读取 `ref.current` 并基于其值进行条件渲染，导致逻辑错误。",
+      "在函数组件中，试图在 `useMemo` 或 `useCallback`（无正确依赖）中访问 ref，可能访问到过期的值。",
+      "混淆了 ref 指向的时机，认为 ref 在组件创建时即已可用。"
+    ],
+    "follow_up_paths": [
+      "`useRef` 和 `createRef` 在类组件和函数组件中的生命周期和赋值时机有何不同？",
+      "React 的 `forwardRef` 是如何工作的？它如何解决 ref 传递问题？",
+      "在 React 的 Concurrent 模式下，ref 的赋值时机是否会发生变化？"
+    ]
+  }
+}

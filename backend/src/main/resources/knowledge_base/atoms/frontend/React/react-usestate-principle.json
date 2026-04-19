@@ -1,0 +1,24 @@
+{
+  "id": "react-usestate-principle",
+  "subject": "useState Hook 的原理与必要性",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "Hooks",
+    "状态管理",
+    "函数组件"
+  ],
+  "content": {
+    "principles": "`useState` 是 React Hook，用于在函数组件中添加状态。函数组件本质是无状态的，执行完即销毁。`useState` 使函数组件能像类组件一样拥有跨渲染周期保持的变量，并在值变化时触发重新渲染。\n\n调用 `useState(initialValue)` 返回一个数组：第一个元素是当前状态值，第二个是用于更新状态的函数（如 `[count, setCount]`）。调用 `setCount(newValue)` 会通知 React 该组件的状态已变更，React 会重新执行该函数组件以获取新的 UI。\n\n必须使用 `useState` 而非普通变量的原因在于：普通变量在每次组件重渲染时都会重置，无法保持值。`useState` 返回的 setter 函数由 React 管理，能保证状态持久化并触发视图更新。\n\n`useState` 可接受任何类型的初始值（包括对象），但更新对象时不会自动合并属性，需手动展开：`setState(prev => ({ ...prev, key: value }))`。对于复杂状态逻辑，可考虑使用 `useReducer`。",
+    "pitfalls": [
+      "在条件或循环中调用 `useState`，违反 Hooks 规则。",
+      "直接修改状态对象而非使用 setter 函数，导致组件不更新。",
+      "误以为 `setState` 是同步的，不理解其异步批处理特性。"
+    ],
+    "follow_up_pathes": [
+      "`useState` 的闭包原理是什么？状态值在多次渲染中如何被“记住”？",
+      "`useState` 与 `useReducer` 分别适用于哪些场景？如何选择？",
+      "多个 `useState` 调用时，React 如何区分和管理不同的状态？"
+    ]
+  }
+}

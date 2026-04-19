@@ -1,0 +1,24 @@
+{
+  "id": "react-setstate-sync-async-behavior",
+  "subject": "React 中 setState 的同步与异步行为",
+  "category": "React",
+  "difficulty": "困难",
+  "tags": [
+    "setState",
+    "状态更新",
+    "事件系统"
+  ],
+  "content": {
+    "principles": "setState 的‘异步’行为是 React 的一种性能优化策略（批处理更新）。在 React 可控的上下文中（如合成事件处理函数、生命周期方法内），setState 调用是异步的，React 会将多个 setState 调用合并，并在一次事件循环后批量更新组件状态和 DOM，以避免不必要的重复渲染。然而，在 React 不可控的异步上下文中（如原生 DOM 事件监听器（addEventListener）、setTimeout、setInterval、Promise 的回调等），setState 会表现为同步更新，即调用后 state 立即改变并触发同步渲染。从 React 18 开始，使用 ReactDOM.createRoot 并启用并发特性后，即使在 setTimeout 等场景下，更新也可能被自动批处理。理解这一点对于正确编写依赖当前 state 或 props 的逻辑至关重要。",
+    "pitfalls": [
+      "在 setState 后立即读取 this.state，期望拿到更新后的值，但在异步上下文中拿到的是旧值。",
+      "不理解批处理机制，对连续多次 setState 调用后的最终状态感到困惑。",
+      "混淆了‘异步更新’和‘异步代码’（如 setTimeout）对 setState 行为的影响。"
+    ],
+    "follow_up_paths": [
+      "如何获取 setState 更新完成后的状态？请介绍 setState 的回调函数形式和 componentDidUpdate 的用法。",
+      "React 18 中的自动批处理（Automatic Batching）与之前版本有何不同？",
+      "请解释什么是‘合成事件’（SyntheticEvent）？为什么在合成事件处理函数中 setState 是异步的？"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "react-component-philosophy",
+  "subject": "React 组件化思想",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "组件",
+    "设计思想"
+  ],
+  "content": {
+    "principles": "React 的核心设计思想是组件化。UI 被拆分为独立、可复用的组件单元，每个组件管理自身的逻辑和视图。组件是 React 应用的基本构建块，接收 props 作为输入，返回 JSX 描述视图。UI 更新是声明式的，当 state 或 props 变化时，组件重新渲染，React 通过虚拟 DOM 对比差异来高效更新真实 DOM。组件可以组合嵌套，通过 props 传递数据，形成 UI 树。",
+    "pitfalls": [
+      "混淆组件（Component）和元素（Element）的概念。",
+      "不理解声明式编程与命令式编程在 UI 更新上的本质区别。"
+    ],
+    "follow_up_paths": [
+      "什么是纯组件（PureComponent）和 `React.memo`？它们如何优化性能？",
+      "函数组件和类组件在状态管理和生命周期上有何根本区别？Hooks 如何改变了组件的编写方式？"
+    ]
+  }
+}

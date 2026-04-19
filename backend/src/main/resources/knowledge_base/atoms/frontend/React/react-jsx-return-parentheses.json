@@ -1,0 +1,24 @@
+{
+  "id": "react-jsx-return-parentheses",
+  "subject": "React JSX 中 return 语句使用圆括号的必要性",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "JSX",
+    "语法",
+    "自动分号插入"
+  ],
+  "content": {
+    "principles": "在 React 的 render 函数（或函数组件返回值）中，如果 JSX 跨越多行，必须在 `return` 语句后使用圆括号包裹。这是因为 JavaScript 的自动分号插入（ASI）机制：如果 `return` 关键字后紧跟换行，解释器会在换行处自动插入分号，导致 `return` 提前结束并返回 `undefined`，后续的 JSX 成为不可达代码，组件渲染为空且不易排查。使用圆括号将多行 JSX 包裹成一个连续的表达式，可以避免 ASI 问题。单行 JSX 可以不加括号。这是 JavaScript 语言本身的特性，并非 React 特有。",
+    "pitfalls": [
+      "在多行 JSX 的 `return` 语句中忘记加括号，导致组件渲染为空或 `undefined`。",
+      "误以为这是 React 的特定限制，而非 JavaScript 的语法规则。",
+      "在团队协作中，代码风格不统一，部分代码加括号部分不加，增加维护成本。"
+    ],
+    "follow_up_paths": [
+      "除了使用圆括号，还有哪些方法可以避免 ASI 导致的多行 `return` 问题？",
+      "请解释 JavaScript 中自动分号插入（ASI）的具体规则。",
+      "在 TypeScript 或使用特定 ESLint 规则的情况下，这个问题通常如何被规避或检测？"
+    ]
+  }
+}

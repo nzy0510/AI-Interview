@@ -1,0 +1,24 @@
+{
+  "id": "dart-const-vs-final",
+  "subject": "Dart 中 const 与 final 的区别与使用场景",
+  "category": "Flutter",
+  "difficulty": "简单",
+  "tags": [
+    "Dart",
+    "基础语法",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "const 和 final 都用于声明不可变变量，但核心区别在于：\n1. const 保证变量值在编译期完全确定，并且相同值的 const 表达式在内存中是同一个对象（享元模式）。例如：`const a = [1]; const b = [1];`，a 和 b 指向同一个 List 对象。\n2. final 只保证变量在运行时被赋值一次后不可更改，但每次实例化时，其值可以是运行时确定的。例如：`final time = DateTime.now();` 每次执行都会生成新的时间戳。\n3. const 可用于构造函数，创建编译时常量对象，要求类的所有字段都是 final 且构造函数本身是 const。\n最佳实践：优先使用 const，因为它能带来更好的性能和内存效率；当值需要在运行时确定或从外部（如环境变量、配置文件）读取时，则使用 final。",
+    "pitfalls": [
+      "混淆 const 和 final 的语义，认为 final 变量也是编译期常量。",
+      "在需要运行时计算值的场景错误地使用 const。",
+      "不理解 const 构造函数的约束条件（所有字段必须为 final，且构造函数本身标记为 const）。"
+    ],
+    "follow_up_paths": [
+      "如果 const 对象的值在编译期确定，那么 `const Duration(seconds: 1)` 中的 `seconds: 1` 是编译期常量吗？为什么？",
+      "请解释 Dart 中 `identical(const A(), const A())` 返回 true 而 `identical(final A(), final A())` 可能返回 false 的原因。",
+      "在 Flutter 的 Widget 构建中，为什么推荐对静态子组件使用 const？这如何影响性能？"
+    ]
+  }
+}

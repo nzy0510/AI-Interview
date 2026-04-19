@@ -1,0 +1,24 @@
+{
+  "id": "flutter-ios-build-size-optimization",
+  "subject": "Flutter iOS 构建与包体积优化策略",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "构建",
+    "性能优化",
+    "包体积"
+  ],
+  "content": {
+    "principles": "Flutter 构建 iOS Release 包时，Dart 代码通过 AOT 编译为对应架构的原生指令，资源文件一并打包。优化体积需从三方面入手：1) Dart 代码：利用其内置的树摇（tree-shaking）机制，自动移除未使用的代码。但需注意避免引入整个大型库而仅使用其一小部分，这会抵消树摇效果。2) 资源文件：图片是体积大头，建议使用 WebP 格式替代 PNG/JPG，可节省约30%以上空间。启动图应尽量精简或使用代码绘制。可使用 `flutter pub` 上的 `image_compression` 等工具在构建时自动处理。3) 分平台构建：使用 `--split-per-abi` 参数生成针对特定 CPU 架构（如仅 ARM64）的包，相比通用包可减少约30MB。此外，AOT编译后的代码体积是关键，Flutter引擎本身约占8-12MB（Android APK），Dart业务代码增量视应用复杂度而定，简单应用可控制在2-3MB内。最终上线前，可执行 `flutter build appbundle --obfuscate --split-debug-info=debug_info/`（针对Android）进行代码混淆并分离调试信息，以进一步减小体积并增加逆向难度。",
+    "pitfalls": [
+      "候选人可能混淆 Android (`appbundle`) 和 iOS (`ipa`) 的构建命令及优化参数。",
+      "可能只提及通用优化（如压缩图片），而忽略 Flutter 特有的树摇机制和分架构构建等关键点。",
+      "可能错误地认为树摇可以完全解决因引入大型库导致的体积膨胀问题。"
+    ],
+    "follow_up_paths": [
+      "除了提到的三点，还有哪些 Flutter 特有的或通用的包体积优化手段？（例如：分析包组成工具 `flutter build apk --analyze-size`， 移除未使用的资源，动态下发等）",
+      "请解释一下 AOT 编译与 JIT 编译在开发/发布模式下的区别，以及它们对包体积和运行时性能的影响。",
+      "`--obfuscate` 参数具体做了什么？它对应用性能有影响吗？分离调试符号 (`--split-debug-info`) 的主要目的是什么？"
+    ]
+  }
+}

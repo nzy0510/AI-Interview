@@ -1,0 +1,24 @@
+{
+  "id": "react-virtual-dom-vs-real-dom",
+  "subject": "虚拟 DOM 与真实 DOM 的区别及优缺点",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "虚拟DOM",
+    "性能",
+    "Diff算法"
+  ],
+  "content": {
+    "principles": "真实 DOM 是浏览器提供的对象模型，直接操作会触发重排重绘，性能开销大。虚拟 DOM 是描述 UI 的轻量级 JavaScript 对象，是真实 DOM 的抽象。React 使用虚拟 DOM 配合 Diff 算法：当状态变化时，生成新的虚拟 DOM 树，与旧树进行差异比较，计算出最小更新操作，再批量应用到真实 DOM。优点：1) 性能优化：减少直接操作真实 DOM 的次数，避免频繁重排重绘，尤其在复杂、高频更新场景下。2) 跨平台能力：虚拟 DOM 抽象了渲染层，可渲染到不同平台（如 React Native、服务端）。缺点：1) 内存占用更高，需维护虚拟 DOM 树。2) 首次渲染及简单更新可能比直接操作真实 DOM 慢，因为多了创建和 Diff 的开销。适用场景：复杂交互应用适合虚拟 DOM；静态页面或极简操作可直接操作真实 DOM。",
+    "pitfalls": [
+      "认为虚拟 DOM 一定比直接操作真实 DOM 快，忽略其初始化和 Diff 的成本。",
+      "混淆虚拟 DOM 与 Shadow DOM 的概念。",
+      "无法清晰阐述 Diff 算法的基本原理（如同级比较、key 的作用）。"
+    ],
+    "follow_up_paths": [
+      "React 的 Diff 算法具体是如何工作的？时间复杂度是多少？",
+      "请举例说明在什么场景下直接操作真实 DOM 可能比使用虚拟 DOM 更优。",
+      "除了 React，还有哪些框架/库使用了虚拟 DOM？它们实现上有何异同？"
+    ]
+  }
+}

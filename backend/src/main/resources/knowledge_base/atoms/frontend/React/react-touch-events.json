@@ -1,0 +1,24 @@
+{
+  "id": "react-touch-events",
+  "subject": "React 中的触摸事件",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "事件处理",
+    "移动端",
+    "合成事件"
+  ],
+  "content": {
+    "principles": "React 提供了 onTouchStart、onTouchMove、onTouchEnd、onTouchCancel 等合成触摸事件，用于处理移动端交互。这些事件在浏览器和移动端都能稳定触发，底层通过事件委托机制统一代理到根节点。事件对象携带 touches、changedTouches、targetTouches 等属性，包含当前所有活动触摸点的信息。onTouchMove 事件频率高，通常需要节流以避免性能问题。在 PC 浏览器调试时需切换到设备模式或真机测试。复杂手势建议使用 Hammer.js 或 use-gesture 等库。",
+    "pitfalls": [
+      "在 PC 浏览器调试时触摸事件不会触发，候选人可能不知道需要切换到设备模式。",
+      "onTouchMove 事件频率过高，未做节流可能导致卡顿。",
+      "异步访问事件对象属性时，因事件对象池化导致属性被清空，需要提前缓存。"
+    ],
+    "follow_up_paths": [
+      "如何实现一个简单的拖拽或滑动识别逻辑？",
+      "事件对象中的 touches、changedTouches 和 targetTouches 有什么区别？",
+      "在 React 中如何为触摸事件添加节流或防抖？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "flutter-provider-state-management",
+  "subject": "Flutter 状态管理：Provider 的工作原理",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "状态管理",
+    "Provider",
+    "InheritedWidget"
+  ],
+  "content": {
+    "principles": "Provider 是基于 `InheritedWidget` 实现的状态管理方案，核心机制是依赖收集和通知更新。它在组件树中提供一个数据模型（如使用 `ChangeNotifier`），子组件通过 `Provider.of<T>(context)`、`context.watch<T>()` 或 `Consumer` 来监听该数据。当数据变化并调用 `notifyListeners()` 时，Provider 会通知所有通过 `watch` 或 `Consumer` 建立了依赖关系的组件进行重建。`context.read<T>()` 用于获取数据但不建立监听关系，避免不必要的重建。其优势在于封装了 `InheritedWidget` 的复杂性，提供了更简洁的 API 和更好的性能控制（通过选择性监听）。",
+    "pitfalls": [
+      "在不需要监听数据变化的场景（如回调函数中）错误使用 `context.watch`，导致过度重建。",
+      "未正确在 Widget 树的上层放置 `Provider`，导致 `Provider.of` 找不到对应的数据。",
+      "在 `ChangeNotifier` 中修改数据后忘记调用 `notifyListeners()`，导致 UI 不更新。"
+    ],
+    "follow_up_paths": [
+      "Provider 的 `Selector` Widget 与 `Consumer` 有什么区别？它在什么场景下更能优化性能？",
+      "多个 Provider 如何嵌套使用？数据如何在不同 Provider 之间传递或共享？",
+      "与 Riverpod 相比，Provider 有哪些设计上的不足？Riverpod 如何解决了这些问题？"
+    ]
+  }
+}

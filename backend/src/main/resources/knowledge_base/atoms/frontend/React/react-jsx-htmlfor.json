@@ -1,0 +1,24 @@
+{
+  "id": "react-jsx-htmlfor",
+  "subject": "JSX 中 htmlFor 与 for 的区别",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "JSX",
+    "DOM",
+    "语法"
+  ],
+  "content": {
+    "principles": "在 JSX 中，必须使用 htmlFor 属性而非 HTML 中的 for 属性。因为 for 是 JavaScript 的保留字（用于 for 循环），在 JSX（本质是 JavaScript）中直接使用会导致语法错误。React 采用驼峰命名规则将这类与 JavaScript 保留字冲突的 HTML 属性进行映射：for -> htmlFor, class -> className, tabindex -> tabIndex。而 aria-* 和 data-* 等带连字符的属性不是保留字，可以原样使用。这是 JSX 语法规范的一部分，旨在保持与 JavaScript 语法的一致性。",
+    "pitfalls": [
+      "候选人可能直接书写 HTML 属性的习惯，写成 for 或 class。",
+      "不清楚其他需要转换的属性，如 tabindex。",
+      "误以为所有带连字符的属性都需要转换。"
+    ],
+    "follow_up_paths": [
+      "除了 htmlFor 和 className，还有哪些常见的属性名映射？",
+      "为什么 React 选择这种映射方式，而不是其他方案？",
+      "在自定义组件中，如何处理传递给原生元素的属性？"
+    ]
+  }
+}

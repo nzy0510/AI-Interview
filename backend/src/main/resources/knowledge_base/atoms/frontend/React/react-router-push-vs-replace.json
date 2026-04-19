@@ -1,0 +1,24 @@
+{
+  "id": "react-router-push-vs-replace",
+  "subject": "React Router 中 history.push 与 history.replace 的区别",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React Router",
+    "导航",
+    "History API"
+  ],
+  "content": {
+    "principles": "`history.push(path)` 会在浏览器历史记录栈中添加一条新记录，用户可通过后退按钮返回上一页面，适用于大多数导航场景（如列表进入详情）。`history.replace(path)` 则用新路径替换当前历史记录栈中的当前条目，不新增记录，用户无法通过后退返回被替换的页面。典型用例是登录后重定向，目的是防止用户后退时再次看到登录页。选择依据在于是否希望用户能“返回”到当前页面。",
+    "pitfalls": [
+      "混淆两者对历史栈的影响，错误地在需要保留历史记录的场景使用 `replace`。",
+      "不理解登录重定向等场景为何必须使用 `replace` 来优化用户体验。",
+      "认为 `push` 和 `replace` 仅影响 URL 显示，不涉及浏览器历史行为。"
+    ],
+    "follow_up_paths": [
+      "在 SPA 中，`history.replaceState` 与 React Router 的 `replace` 方法有何关联？",
+      "如何实现一个导航守卫，在用户离开未保存页面时进行提示？",
+      "`useNavigate` Hook 中的 `replace` 选项是如何工作的？"
+    ]
+  }
+}

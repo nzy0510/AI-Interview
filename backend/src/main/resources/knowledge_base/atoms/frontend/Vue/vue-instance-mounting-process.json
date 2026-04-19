@@ -1,0 +1,25 @@
+{
+  "id": "vue-instance-mounting-process",
+  "subject": "Vue 实例挂载过程的核心机制",
+  "category": "Vue",
+  "difficulty": "困难",
+  "tags": [
+    "挂载",
+    "响应式",
+    "Virtual DOM",
+    "Watcher"
+  ],
+  "content": {
+    "principles": "Vue 实例挂载过程始于调用 $mount 方法。核心流程：1. 编译模板：若无 render 函数，则将 template 或 el 的 innerHTML 编译成 render 函数（生产环境建议预编译）。2. 执行 mountComponent：创建 Watcher 实例，立即触发其 getter，进行响应式数据的依赖收集。同时调用 _render 生成 VNode，再通过 _update 将 VNode 转换为真实 DOM 并插入页面。3. 首次更新：_update 方法执行 diff 算法，由于无旧 VNode，直接根据 VNode 类型递归创建真实元素（普通标签用 createElement，组件则触发其实例化和挂载）。数据变化触发异步批量 DOM 更新。整个机制基于“响应式数据 + Watcher + Virtual DOM”链路。",
+    "pitfalls": [
+      "混淆运行时编译和预编译的区别，不清楚生产环境优化方向。",
+      "不理解 Watcher 在依赖收集和触发更新中的核心作用。",
+      "认为数据变化会立即同步更新 DOM。"
+    ],
+    "follow_up_paths": [
+      "详细描述一下 Vue 3 的挂载过程与 Vue 2 有何主要区别？",
+      "Watcher 是如何被创建和调度的？它与渲染函数 _render 的关系是什么？",
+      "为什么 Vue 采用异步更新队列？nextTick 的原理是什么？"
+    ]
+  }
+}

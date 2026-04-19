@@ -1,0 +1,24 @@
+{
+  "id": "vue-router-params-access",
+  "subject": "Vue Router 中获取路由参数的方式与区别",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "Vue Router",
+    "路由参数",
+    "组件通信"
+  ],
+  "content": {
+    "principles": "Vue Router 中获取路由参数主要分为三种方式：1. **Params（动态路径参数）**：在路由路径中定义，如 `/user/:id`。在组件内通过 `this.$route.params.id` 访问。Params 是路径的一部分，刷新页面不会丢失。通过 `name` 进行路由跳转可以保留 params，而使用 `path` 跳转则会丢失。2. **Query（查询参数）**：在 URL 的 `?` 之后，如 `/search?keyword=vue`。在组件内通过 `this.$route.query.keyword` 访问。Query 参数灵活，不影响路由匹配，使用 `name` 或 `path` 跳转均可携带。3. **Props 解耦**：在路由配置中设置 `props: true`，可以将 params 作为组件的 props 传入。对于命名视图，可以设置为对象或函数形式。这种方式将组件与路由解耦，便于测试和复用。",
+    "pitfalls": [
+      "混淆 params 和 query 的使用场景，导致参数传递错误或丢失。",
+      "使用 `path` 跳转并期望携带 params 参数，导致参数无法传递。",
+      "在路由配置为 `props: true` 时，组件内仍尝试从 `$route` 中取参，造成冗余。"
+    ],
+    "follow_up_paths": [
+      "请说明在什么情况下应该使用 params，什么情况下应该使用 query？",
+      "如何通过编程式导航（`router.push`）传递 params 和 query 参数？",
+      "在路由配置中，`props` 设置为函数时有什么用处？请举例说明。"
+    ]
+  }
+}

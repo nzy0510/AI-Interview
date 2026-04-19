@@ -1,0 +1,24 @@
+{
+  "id": "react-router-link-vs-a",
+  "subject": "React Router 的 Link 与原生 a 标签的区别",
+  "category": "React",
+  "difficulty": "中等",
+  "tags": [
+    "React Router",
+    "SPA",
+    "路由"
+  ],
+  "content": {
+    "principles": "Link 是 React Router 为单页应用（SPA）设计的声明式导航组件，通过调用 `history.pushState` 更新 URL，由 React Router 控制组件渲染，实现无刷新页面跳转，保留应用状态。原生 a 标签会触发浏览器默认行为，导致页面完全重新加载，状态丢失。Link 在运行时被前端路由接管，但保留了 href 属性以支持 SEO 和可访问性。Link 还支持相对路径、动态路由参数，并能与嵌套路由上下文自动联动。",
+    "pitfalls": [
+      "在 SPA 中误用 a 标签导致页面刷新，破坏用户体验。",
+      "认为 Link 只是对 a 标签的简单包装，不理解其背后依赖的 history API 和路由上下文。",
+      "在服务端渲染（SSR）场景下，对 Link 和 a 标签的行为差异理解不清。"
+    ],
+    "follow_up_paths": [
+      "Link 组件内部是如何阻止 a 标签的默认行为的？（考察事件处理和 React Router 源码）",
+      "在什么情况下，即使在 React 应用中也不得不用 a 标签？（外部链接、文件下载）",
+      "如何实现一个自定义的导航组件，使其行为类似 Link？（考察 history API 和路由钩子）"
+    ]
+  }
+}

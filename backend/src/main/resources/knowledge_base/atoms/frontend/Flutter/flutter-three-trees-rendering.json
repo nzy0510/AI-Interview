@@ -1,0 +1,22 @@
+{
+  "id": "flutter-three-trees-rendering",
+  "subject": "Flutter 三棵树（Widget, Element, RenderObject）的渲染流程与关系",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "渲染",
+    "架构",
+    "性能"
+  ],
+  "content": {
+    "principles": "Flutter 渲染流程涉及三棵树：1) **Widget 树**：轻量的配置描述，声明 UI 的蓝图。2) **Element 树**：Widget 的实例化载体，负责管理生命周期和树结构的复用。当 UI 更新时，Framework 对比新旧 Widget 树，更新或复用对应的 Element。3) **RenderObject 树**：由渲染相关的 Element（如 RenderObjectElement）创建或关联，负责执行具体的布局（layout）、绘制（paint）等底层操作。核心关系：Widget 描述配置，Element 组织复用，RenderObject 执行渲染。Widget 重建（如 `setState` 触发）不一定会导致 RenderObject 重布局/重绘，Element 和 RenderObject 的复用是高性能的关键（如 ListView 滚动）。",
+    "pitfalls": [
+      "混淆 Widget 重建与界面重绘，认为 Widget 重建必然导致性能问题",
+      "不理解 Element 在复用机制中的核心作用，以及 `key` 属性如何影响 Element 的复用决策"
+    ],
+    "follow_up_paths": [
+      "`GlobalKey` 和 `LocalKey`（如 `ValueKey`, `ObjectKey`）在 Element 复用中有什么不同作用？",
+      "RenderObject 的布局和绘制流程具体是怎样的？什么是‘脏’标记（markNeedsLayout, markNeedsPaint）？"
+    ]
+  }
+}

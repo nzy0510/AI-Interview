@@ -1,0 +1,22 @@
+{
+  "id": "vue-sfc-structure-optional",
+  "subject": "Vue单文件组件(SFC)中template、script、style的强制性",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "SFC",
+    "组件结构",
+    "模板"
+  ],
+  "content": {
+    "principles": "Vue单文件组件（.vue文件）由`<template>`、`<script>`和`<style>`三个可选块组成，均非强制。`<template>`可省略，通过`render`函数或挂载元素的outerHTML定义模板。`<script>`可省略，组件将使用默认的空配置。`<style>`可省略，样式可通过外部CSS文件引入。这种设计提供了灵活性，组件只需最终能提供渲染函数和配置即可。",
+    "pitfalls": [
+      "认为必须同时编写三个部分，导致不必要的代码。",
+      "在需要复杂逻辑时省略`<script>`，试图在模板中完成所有工作。"
+    ],
+    "follow_up_paths": [
+      "如果只有`<template>`，Vue如何编译和渲染这个组件？",
+      "在`<script setup>`中，如何定义组件的name、inheritAttrs等选项？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "vue-computed-vs-watch",
+  "subject": "Vue 中 computed 与 watch 的核心区别与应用场景",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "响应式",
+    "计算属性",
+    "侦听器"
+  ],
+  "content": {
+    "principles": "computed 是计算属性，用于声明式地依赖其他属性计算出一个值，具有缓存机制，只有依赖的响应式数据变化时才会重新计算。watch 是侦听器，用于监听特定数据的变化并执行副作用操作（如异步请求、复杂逻辑），它不返回值，更关注变化后的行为。computed 不支持异步操作，而 watch 可以。computed 默认只追踪直接依赖，watch 可通过 deep 选项监听深层对象变化。",
+    "pitfalls": [
+      "误用 watch 去实现简单的数据计算，导致代码冗余且失去 computed 的缓存优势。",
+      "在 computed 中执行异步操作或产生副作用，这违背其设计初衷且可能导致不可预测的行为。",
+      "忘记 watch 的 deep 选项，导致监听对象内部属性变化时无法触发回调。"
+    ],
+    "follow_up_paths": [
+      "computed 的缓存机制是如何实现的？可以结合源码中的 dirty 标志和依赖收集来阐述。",
+      "watch 的 immediate 和 deep 选项分别适用于什么场景？它们的内部实现原理是什么？",
+      "在 Vue 3 的 Composition API 中，computed 和 watch/watchEffect 的使用方式和区别是什么？"
+    ]
+  }
+}

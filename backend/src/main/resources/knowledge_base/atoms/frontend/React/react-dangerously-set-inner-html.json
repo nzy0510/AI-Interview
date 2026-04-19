@@ -1,0 +1,22 @@
+{
+  "id": "react-dangerously-set-inner-html",
+  "subject": "React 中渲染原始 HTML 的方法与安全风险",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "XSS",
+    "DOM操作",
+    "安全"
+  ],
+  "content": {
+    "principles": "React 默认会转义所有字符串内容以防止 XSS 攻击。要渲染原始 HTML 字符串为 DOM 节点，必须使用 `dangerouslySetInnerHTML` 属性。该属性接收一个对象，其 `__html` 键对应的值是需要渲染的 HTML 字符串。这本质上等同于原生 `innerHTML`，存在脚本注入风险。最佳实践是仅渲染可信内容，对于用户输入等不可信内容，应先用 DOMPurify 等库进行清洗。无法通过模板字符串拼接或自定义组件绕过此机制。",
+    "pitfalls": [
+      "忘记 `dangerouslySetInnerHTML` 必须接收 `{__html: ...}` 对象格式，而非直接传递字符串。",
+      "在未对内容进行安全清洗的情况下，直接渲染用户提交的 HTML（如富文本编辑器内容）。"
+    ],
+    "follow_up_paths": [
+      "除了 DOMPurify，还有哪些前端安全库或策略可以防范 XSS？",
+      "`dangerouslySetInnerHTML` 与 Vue 中的 `v-html` 指令有何异同？"
+    ]
+  }
+}

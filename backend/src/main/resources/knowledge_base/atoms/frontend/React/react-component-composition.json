@@ -1,0 +1,23 @@
+{
+  "id": "react-component-composition",
+  "subject": "React 组件组合与嵌套",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "组件设计",
+    "组合"
+  ],
+  "content": {
+    "principles": "React 通过组件组合来构建 UI。将一个或多个组件嵌入到另一个组件中的主要方式是：在父组件的 JSX 中直接使用子组件作为标签，形成父子结构。这是最基本和常见的组合方式。此外，可以通过 JavaScript 表达式（如数组、条件判断）动态决定渲染哪些子组件，例如根据权限、状态来过滤或映射组件列表。组合是 React 的核心思想之一，它使得 UI 可以被拆分为独立可复用的部分。",
+    "pitfalls": [
+      "试图通过继承而非组合来复用组件逻辑，这与 React 的设计哲学相悖。",
+      "在动态生成子组件列表时，忘记给每个子项添加唯一的 `key` 属性。",
+      "过度嵌套组件导致 props 需要层层传递（prop drilling），而不知道可以使用 Context 或状态管理库来解决。"
+    ],
+    "follow_up_paths": [
+      "组件组合（Composition）和继承（Inheritance）在 React 中有什么区别？为什么推荐使用组合？",
+      "什么是“Prop Drilling”问题？有哪些解决方案（如 Context API、组件组合模式如 render props、children）？",
+      "如何设计一个可复用的布局（Layout）组件，使其能够灵活地嵌入不同的头部（Header）、侧边栏（Sidebar）和内容（Content）？"
+    ]
+  }
+}

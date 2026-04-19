@@ -1,0 +1,24 @@
+{
+  "id": "flutter-core-characteristics-vs-native",
+  "subject": "Flutter 的核心特点及其与原生开发的对比",
+  "category": "Flutter",
+  "difficulty": "中等",
+  "tags": [
+    "跨平台",
+    "渲染引擎",
+    "性能"
+  ],
+  "content": {
+    "principles": "Flutter 的核心特点是基于自绘引擎（Skia）的高性能跨平台 UI 框架。\n1. 渲染机制：不依赖平台原生控件（如 Android 的 View 或 iOS 的 UIView），而是通过 Skia 图形库直接绘制到画布（Canvas）上。这确保了 UI 在不同平台上具有绝对的像素级一致性，并避免了原生控件桥接带来的性能开销。\n2. 开发语言与编译：使用 Dart 语言，支持 JIT（开发时热重载）和 AOT（发布时编译为原生机器码）。热重载极大提升开发效率，AOT 编译保证发布应用的启动速度和运行性能。\n3. 组件化架构：一切皆 Widget，UI、布局、手势、动画均由 Widget 组合而成，具有极高的灵活性和可定制性。\n与原生开发对比：\n- 优势：一套代码多端运行，提升开发效率；UI 一致性极佳；高性能，动画流畅（可达 120fps）。\n- 劣势：对平台特有功能（深度硬件交互、特定系统服务）的集成需要通过 Platform Channels 桥接，复杂度增加；应用包体积通常比纯原生应用大。\n混合开发是常见模式：Flutter 负责核心 UI 业务，复杂平台能力由原生模块提供。",
+    "pitfalls": [
+      "认为 Flutter 性能在所有场景下都优于原生（实际上在重度依赖平台原生特效或极其复杂的自定义绘制时，需要精细优化）。",
+      "低估 Platform Channels 通信的复杂性和性能成本。",
+      "混淆 Flutter 的“跨平台一致性”与“完全原生体验”的界限。"
+    ],
+    "follow_up_paths": [
+      "Flutter 的自绘引擎如何实现与平台输入事件（如触摸、键盘）的同步？",
+      "在混合开发场景下，Flutter 页面与原生页面相互跳转时，路由栈和内存管理是如何处理的？",
+      "Flutter 的渲染管线（Rendering Pipeline）与 React Native 或原生 Android/iOS 的渲染流程主要区别是什么？"
+    ]
+  }
+}
