@@ -1,6 +1,7 @@
 package com.interview.service.impl;
 
 import com.alibaba.fastjson2.JSON;
+import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewRecord;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.service.InterviewService;
@@ -247,6 +248,7 @@ public class InterviewServiceImpl implements InterviewService {
         InterviewRecord record = new InterviewRecord();
         record.setUserId(userId);
         record.setPosition(position);
+        record.setPhase(InterviewPhase.OPENING.name());
         record.setInterviewMode(mode != null ? mode : "text");
         record.setCreateTime(LocalDateTime.now());
         record.setChatHistory("[]");
@@ -313,39 +315,50 @@ public class InterviewServiceImpl implements InterviewService {
         for (Content content : retrievedContents)
             contextBuilder.append("- ").append(content.textSegment().text()).append("\n");
 
-        // 2. 动态决定当前 Agent 人设
+        // 2. 根据显式面试阶段选择 Agent 人设（替代隐式 turn 计算）
         int turn = chatHistory.size() / 2;
-        String currentSystemPrompt;
+        String currentPhase = record.getPhase();
+        if (currentPhase == null || currentPhase.isEmpty()) {
+            currentPhase = InterviewPhase.OPENING.name();
+        }
 
-        boolean earlySwitchToHr = false;
+        // 检测上一轮 AI 回复中的阶段切换标记
+        boolean switchToHrMarker = false;
+        boolean autoFinishMarker = false;
         for (ChatMessage m : chatHistory) {
-            if (m instanceof AiMessage && m.text().contains("[SWITCH_TO_HR]")) {
-                earlySwitchToHr = true;
-                break;
+            if (m instanceof AiMessage) {
+                String text = m.text();
+                if (text.contains("[SWITCH_TO_HR]")) switchToHrMarker = true;
+                if (text.contains("[AUTO_FINISH]")) autoFinishMarker = true;
             }
         }
 
-        if (turn == 0) {
+        // 状态转换
+        InterviewPhase phase = determineNextPhase(
+                InterviewPhase.valueOf(currentPhase), turn, switchToHrMarker, autoFinishMarker);
+        record.setPhase(phase.name());
+        interviewRecordMapper.updateById(record);
+
+        // 根据阶段构建 System Prompt
+        String currentSystemPrompt;
+        if (phase == InterviewPhase.OPENING) {
             currentSystemPrompt = interviewPrompts.getCoordinator() + "\n" + interviewPrompts.getAttitudeRule()
                     + "\n请先让候选人做个简短的自我介绍。";
-        } else if (turn <= 8 && !earlySwitchToHr) {
+        } else if (phase == InterviewPhase.TECHNICAL) {
             currentSystemPrompt = interviewPrompts.getTechnical() + "\n" + interviewPrompts.getAttitudeRule()
                     + "\n以下是本题考核参考点：\n" + contextBuilder.toString();
 
             List<String> tailoredQuestions = loadTailoredQuestions(recordId);
-
             if (tailoredQuestions != null && !tailoredQuestions.isEmpty()) {
                 StringBuilder qb = new StringBuilder("\n【重要指令：你的问题池已结合候选人简历更新，请**优先**依照以下量身定做题库向候选人发问】：\n");
-                for (String q : tailoredQuestions) {
-                    qb.append("- ").append(q).append("\n");
-                }
+                for (String q : tailoredQuestions) qb.append("- ").append(q).append("\n");
                 qb.append("\n要求：如果在充分考察完上述定制题后，或者候选人在某点回答极其完善完美，**请务必主动发散到其他核心甚至进阶领域**，确保深挖候选人的知识广度。\n");
                 qb.append("如果在极其满意的状况下认为无需进行任何技术面试了，你可以提前结束技术部分，并把话题抛给HR同事，此时在这个回答的最末尾追加标记：[SWITCH_TO_HR]\n");
                 currentSystemPrompt += qb.toString();
             } else {
                 currentSystemPrompt += "\n如果在极其满意的状况下认为无可挑剔且无需再问，你可以提前结束技术部分，并把话题抛给HR同事，此时在这个回答的最末尾追加标记：[SWITCH_TO_HR]\n";
             }
-        } else if (turn <= 11) {
+        } else if (phase == InterviewPhase.HR) {
             currentSystemPrompt = interviewPrompts.getHr() + "\n" + interviewPrompts.getAttitudeRule();
         } else {
             currentSystemPrompt = interviewPrompts.getClosing();
@@ -422,6 +435,7 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         record.setEndTime(LocalDateTime.now());
+        record.setPhase(InterviewPhase.FINISHED.name());
         record.setVoiceWpm(wpm != null ? wpm : 0);
         if (emotionJson != null && !emotionJson.isEmpty()) {
             record.setEmotionJson(emotionJson);
@@ -525,6 +539,20 @@ public class InterviewServiceImpl implements InterviewService {
 
         interviewRecordMapper.updateById(record);
         return record;
+    }
+
+    /** 显式状态机：根据当前阶段、轮次和 AI 标记决定下一阶段 */
+    private InterviewPhase determineNextPhase(InterviewPhase current, int turn,
+                                             boolean switchToHrMarker, boolean autoFinishMarker) {
+        if (current == InterviewPhase.FINISHED) return InterviewPhase.FINISHED;
+        if (autoFinishMarker) return InterviewPhase.FINISHED;
+        if (current == InterviewPhase.OPENING && turn >= 1) return InterviewPhase.TECHNICAL;
+        if (current == InterviewPhase.TECHNICAL) {
+            if (switchToHrMarker || turn > 8) return InterviewPhase.HR;
+            return InterviewPhase.TECHNICAL;
+        }
+        if (current == InterviewPhase.HR && turn > 11) return InterviewPhase.CLOSING;
+        return current;
     }
 
     @Override

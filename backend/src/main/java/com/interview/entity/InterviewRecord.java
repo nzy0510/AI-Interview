@@ -52,6 +52,9 @@ public class InterviewRecord {
      */
     private String emotionJson;
 
+    /** 面试阶段: OPENING/TECHNICAL/HR/CLOSING/FINISHED */
+    private String phase;
+
     /** 面试模式: text=文字模式, video=视频模式 */
     private String interviewMode;
 
