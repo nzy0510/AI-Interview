@@ -1,12 +1,7 @@
--- AI 面试系统数据库初始化脚本（MySQL 8.0+）
--- 如果数据库不存在则创建
-CREATE DATABASE IF NOT EXISTS `ai_interview_ds` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- V1: Base schema for AI Interview platform
+-- Requires MySQL 8.0+
 
-USE `ai_interview_ds`;
-
--- 1. 用户账号表
-DROP TABLE IF EXISTS `user`;
-CREATE TABLE `user` (
+CREATE TABLE IF NOT EXISTS `user` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `username` VARCHAR(64) NOT NULL UNIQUE COMMENT '用户名',
   `password` VARCHAR(255) NOT NULL COMMENT '哈希加密后的密码',
@@ -17,30 +12,23 @@ CREATE TABLE `user` (
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户账号表';
 
--- 2. 面试记录表
-DROP TABLE IF EXISTS `interview_record`;
-CREATE TABLE `interview_record` (
+CREATE TABLE IF NOT EXISTS `interview_record` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `user_id` BIGINT NOT NULL COMMENT '关联的用户ID',
   `position` VARCHAR(64) NOT NULL COMMENT '面试岗位',
   `chat_history` JSON NOT NULL COMMENT '完整面试对话历史 (JSON格式存储)',
   `score` INT DEFAULT NULL COMMENT 'AI综合评分',
   `feedback` TEXT DEFAULT NULL COMMENT 'AI评价反馈',
-  `ability_json` JSON DEFAULT NULL COMMENT '六维能力评分 (包含：技术深度、解题思路、知识广度、表达、逻辑、应变)',
+  `ability_json` JSON DEFAULT NULL COMMENT '六维能力评分',
   `recommendations` JSON DEFAULT NULL COMMENT 'AI提供的职场或技术提升建议列表',
   `voice_wpm` INT DEFAULT 0 COMMENT '面试平均语速 (Words Per Minute)',
-  `emotion_json` TEXT DEFAULT NULL COMMENT '视频面试情感分析数据 (JSON格式，含情绪分布、自信指数等)',
+  `emotion_json` TEXT DEFAULT NULL COMMENT '视频面试情感分析数据',
   `interview_mode` VARCHAR(16) DEFAULT 'text' COMMENT '面试模式: text=文字模式, video=视频模式',
-  `knowledge_json` TEXT DEFAULT NULL COMMENT '星系知识图谱数据 (知识点及掌握熟练度)',
+  `knowledge_json` TEXT DEFAULT NULL COMMENT '星系知识图谱数据',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '面试开始时间',
   `end_time` DATETIME DEFAULT NULL COMMENT '面试结束时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='面试记录表';
 
--- 注入默认管理员（密码: 123456 → MD5 哈希）
-INSERT IGNORE INTO `user` (`id`, `username`, `password`, `nickname`)
-VALUES (1, 'admin', 'e10adc3949ba59abbe56e057f20f883e', '系统管理员');
-
--- 3. 简历画像表
 CREATE TABLE IF NOT EXISTS `resume_profile` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `user_id` BIGINT NOT NULL COMMENT '所属用户',
@@ -50,3 +38,7 @@ CREATE TABLE IF NOT EXISTS `resume_profile` (
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `uk_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户简历画像';
+
+-- Seed admin user (password: 123456, MD5 hashed)
+INSERT IGNORE INTO `user` (`id`, `username`, `password`, `nickname`)
+VALUES (1, 'admin', 'e10adc3949ba59abbe56e057f20f883e', '系统管理员');

@@ -3,40 +3,52 @@ package com.interview.utils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import java.util.Date;
 import java.util.Map;
 
 /**
- * JWT 工具类：提供 Token 的生成与解析
- * JWT (JSON Web Token) 用于无状态的用户身份验证，前端登录成功后获得 Token，
- * 后续请求携带此 Token 即可证明身份，无需服务器存储 Session
+ * JWT 工具：提供 Token 生成与解析，签名密钥通过 Spring 配置注入。
  */
+@Component
 public class JwtUtils {
-    private static final String SIGN_KEY = "ai_interview_secret_key_123456"; // 签名密钥（生产环境应从配置文件读取）
-    private static final long EXPIRE = 1000 * 60 * 60 * 24; // Token 有效期：24小时
+
+    private String signKey;
+    private long expireMs = 86_400_000; // 24h default
 
     /**
-     * 生成 JWT Token
-     * @param claims 负载信息，通常包含用户 ID 和用户名
-     * @return 签名后的 JWT 字符串
+     * Spring 构造器注入。生产配置来自 application.yml 的 jwt.sign-key 和 jwt.expire-ms。
      */
-    public static String generateJwt(Map<String, Object> claims){
+    public JwtUtils(
+            @Value("${jwt.sign-key}") String signKey,
+            @Value("${jwt.expire-ms:86400000}") long expireMs) {
+        this.signKey = signKey;
+        this.expireMs = expireMs;
+    }
+
+    /** 仅用于单元测试注入 */
+    void setSignKey(String signKey) {
+        this.signKey = signKey;
+    }
+
+    void setExpireMs(long expireMs) {
+        this.expireMs = expireMs;
+    }
+
+    public String generateJwt(Map<String, Object> claims) {
         return Jwts.builder()
-                .addClaims(claims)                                        // 写入负载数据
-                .signWith(SignatureAlgorithm.HS256, SIGN_KEY)             // HS256 算法签名
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRE)) // 设置过期时间
+                .addClaims(claims)
+                .signWith(SignatureAlgorithm.HS256, signKey)
+                .setExpiration(new Date(System.currentTimeMillis() + expireMs))
                 .compact();
     }
 
-    /**
-     * 解析 JWT Token，获取其中的负载信息
-     * @param jwt 前端传入的 Token 字符串
-     * @return Claims 对象，可通过 get("id") 等方法提取用户信息
-     */
-    public static Claims parseJwt(String jwt){
+    public Claims parseJwt(String jwt) {
         return Jwts.parser()
-                .setSigningKey(SIGN_KEY)           // 使用同一密钥验签
-                .parseClaimsJws(jwt)               // 解析并验证签名是否有效
+                .setSigningKey(signKey)
+                .parseClaimsJws(jwt)
                 .getBody();
     }
 }

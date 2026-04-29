@@ -23,6 +23,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private JwtUtils jwtUtils;
+
     @Override
     public String login(LoginDTO loginDTO) {
         String loginIdentity = loginDTO.getUsername();
@@ -43,7 +46,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         claims.put("id", user.getId());
         claims.put("username", user.getUsername());
 
-        return JwtUtils.generateJwt(claims);
+        return jwtUtils.generateJwt(claims);
     }
 
     @Override
