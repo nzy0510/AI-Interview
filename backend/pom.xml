@@ -20,6 +20,7 @@
         <java.version>17</java.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <hutool.version>5.8.25</hutool.version>
+        <flyway.version>9.22.3</flyway.version>
         <fastjson2.version>2.0.47</fastjson2.version>
         <jwt.version>0.9.1</jwt.version>
         <jaxb.version>2.3.1</jaxb.version>
@@ -145,6 +146,16 @@
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-document-parser-apache-tika</artifactId>
             <version>0.29.1</version>
+        </dependency>
+
+        <!-- Flyway 数据库迁移 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
         </dependency>
 
         <!-- Spring Boot Test -->

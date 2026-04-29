@@ -21,6 +21,12 @@ import java.util.Map;
 @Slf4j
 public class JwtInterceptor implements HandlerInterceptor {
 
+    private final JwtUtils jwtUtils;
+
+    public JwtInterceptor(JwtUtils jwtUtils) {
+        this.jwtUtils = jwtUtils;
+    }
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         // OPTIONS 预检请求直接放行
@@ -42,7 +48,7 @@ public class JwtInterceptor implements HandlerInterceptor {
         }
 
         try {
-            Claims claims = JwtUtils.parseJwt(token);
+            Claims claims = jwtUtils.parseJwt(token);
             Long userId = ((Number) claims.get("id")).longValue();
             request.setAttribute("currentUserId", userId);
             return true;

@@ -29,6 +29,9 @@ public class ResumeController {
     @Autowired
     private ResumeProfileMapper resumeProfileMapper;
 
+    @Autowired
+    private JwtUtils jwtUtils;
+
     /**
      * 上传并解析简历（首次上传或覆盖更新）
      * 解析成功后自动存入 resume_profile 表
@@ -125,7 +128,7 @@ public class ResumeController {
         if (token == null || token.isEmpty()) {
             throw new RuntimeException("未登录：缺少 Token");
         }
-        Claims claims = JwtUtils.parseJwt(token);
+        Claims claims = jwtUtils.parseJwt(token);
         return ((Number) claims.get("id")).longValue();
     }
 }

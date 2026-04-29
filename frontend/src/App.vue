@@ -1,10 +1,15 @@
-<template>
-  <router-view></router-view>
-</template>
+<script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import AppShell from '@/components/layout/AppShell.vue'
 
-<style>
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-</style>
+const route = useRoute()
+const isLoginRoute = computed(() => route.path === '/login')
+</script>
+
+<template>
+  <router-view v-if="isLoginRoute" />
+  <AppShell v-else>
+    <router-view />
+  </AppShell>
+</template>
