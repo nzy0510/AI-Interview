@@ -62,7 +62,8 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agent
 
 ## git 操作要求
 - 修改代码前，必须先确认当前分支和工作区状态。
-- ai agent 可以自主commit 和 push 并合并到主分支，但是一定要在确认功能无误且已创建过新功能分支后再合并
+- 每次更新功能时都新创建功能分支
+- ai agent 可以自主commit 和 push 并合并到主分支，但是一定要在确认功能无误后再合并
 - 注意保护隐私内容，并做好git_ignore工作，不上传没必要的文件
 - 遇到 merge conflict 时，先说明冲突内容和解决建议，再等待我确认。
 - 提交前必须展示修改文件、commit message 和测试结果。

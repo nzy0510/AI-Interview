@@ -591,7 +591,8 @@ const streamAiResponse = (msg) => {
   messageList.value.push(aiMsg)
 
   const token = localStorage.getItem('token') || ''
-  const url = `http://localhost:8080/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(msg)}&token=${token}`
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const url = `${baseUrl}/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(msg)}&token=${token}`
   if (eventSource) eventSource.close()
   eventSource = new EventSource(url)
 

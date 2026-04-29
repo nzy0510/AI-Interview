@@ -105,13 +105,12 @@
             <div>
               <p class="section-kicker">Growth Lens</p>
               <h2 class="section-title">能力成长曲线</h2>
-              <p class="section-desc">在评分、能力热力和知识图谱之间切换，观察长期变化。</p>
+              <p class="section-desc">在评分和能力热力图之间切换，观察长期变化趋势。</p>
             </div>
             <div class="chart-actions">
               <el-radio-group v-model="chartMode" size="small" class="mode-switch" @change="drawGrowthChart">
                 <el-radio-button value="score">综合得分</el-radio-button>
                 <el-radio-button value="radar">能力热力图</el-radio-button>
-                <el-radio-button value="graph">知识星图</el-radio-button>
               </el-radio-group>
               <el-button :icon="RefreshRight" plain size="small" @click="refreshChart">刷新图表</el-button>
             </div>
@@ -152,6 +151,26 @@
             </article>
           </div>
           <el-empty v-else :description="reportCenter.emptyStates.all" />
+        </section>
+
+        <section v-if="knowledgeCoverage?.details?.length" class="surface-card section-shell coverage-section">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Knowledge Coverage</p>
+              <h2 class="section-title">知识领域覆盖</h2>
+              <p class="section-desc">基于所有历史面试中 RAG 真实命中的知识原子，按分类统计覆盖度。</p>
+            </div>
+            <el-tag effect="plain" type="info">{{ knowledgeCoverage.details.length }} 个领域</el-tag>
+          </div>
+          <div class="coverage-list">
+            <div v-for="item in knowledgeCoverage.details" :key="item.category" class="coverage-row">
+              <span class="coverage-name">{{ item.category }}</span>
+              <div class="coverage-bar-bg">
+                <div class="coverage-bar-fill" :style="{ width: `${Math.min(item.percent, 100)}%` }" />
+              </div>
+              <span class="coverage-num">{{ item.covered }} 个</span>
+            </div>
+          </div>
         </section>
 
         <section class="surface-card section-shell list-shell">
@@ -295,6 +314,28 @@
           </section>
         </template>
 
+        <template v-if="selectedKnowledges.length">
+          <section class="drawer-panel">
+            <div class="section-head compact">
+              <div>
+                <p class="section-kicker">Knowledge Map</p>
+                <h2 class="section-title">知识星图 · 本场面试</h2>
+              </div>
+              <el-tag size="small" effect="plain" type="primary">{{ selectedKnowledges.length }} 个概念</el-tag>
+            </div>
+            <div class="knowledge-list">
+              <div v-for="k in selectedKnowledges" :key="k.concept" class="knowledge-item">
+                <el-progress :percentage="Math.round(k.mastery * 100)" :color="getMasteryColor(k.mastery)" :stroke-width="8">
+                  <template #default>
+                    <span class="knowledge-concept">{{ k.concept }}</span>
+                  </template>
+                </el-progress>
+                <span class="knowledge-cat">{{ k.category || '' }}</span>
+              </div>
+            </div>
+          </section>
+        </template>
+
         <section class="drawer-panel">
           <div class="section-head compact">
             <div>
@@ -326,17 +367,19 @@ import { ref, computed, onMounted, nextTick, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, RefreshRight, Search, Setting } from '@element-plus/icons-vue'
 import { getHistoryListAPI } from '@/api/interview'
+import { getKnowledgeCoverageAPI } from '@/api/user'
 import { reportCenterConfig } from '@/mock/reports'
 import * as echarts from 'echarts'
 
 const router = useRouter()
 const loading = ref(true)
-const historyList = ref([])      // Sorted newest-first for table
+const historyList = ref([])
 const chartMode = ref('score')
 const searchKeyword = ref('')
 const modeFilter = ref('all')
 const growthChartRef = ref(null)
 const miniRadarRef = ref(null)
+const knowledgeCoverage = ref(null)
 let growthChartInstance = null
 let miniRadarInstance = null
 const drawerOpen = ref(false)
@@ -486,15 +529,17 @@ const strongestAbility = computed(() => {
 onMounted(async () => {
   try {
     historyList.value = await getHistoryListAPI()
-  } catch {
-    historyList.value = []
-  } finally {
+  } catch { historyList.value = [] }
+  finally {
     loading.value = false
-    nextTick(() => {
-      drawGrowthChart()
-      window.addEventListener('resize', handleResize)
-    })
+    nextTick(() => { drawGrowthChart() })
   }
+  // 知识覆盖异步加载，不阻塞页面渲染
+  try {
+    const insight = await getKnowledgeCoverageAPI()
+    if (insight?.knowledgeCoverage) knowledgeCoverage.value = insight.knowledgeCoverage
+  } catch { /* optional */ }
+  window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
@@ -766,6 +811,13 @@ const drawGrowthChart = () => {
 }
 
 // ─── Mini Radar ───────────────────────────────────────────────────────────────
+const selectedKnowledges = computed(() => {
+  try { return selected.value?.knowledgeJson ? JSON.parse(selected.value.knowledgeJson) : [] }
+  catch { return [] }
+})
+
+const getMasteryColor = (m) => m >= 0.8 ? '#10b981' : m >= 0.6 ? '#e6a23c' : '#f56c6c'
+
 const drawMiniRadar = () => {
   const container = miniRadarRef.value
   if (!container || !selected.value) return
@@ -1442,6 +1494,20 @@ const drawMiniRadar = () => {
   border-radius: 10px;
   border-left: 3px solid #3a388b;
 }
+
+/* ─── Knowledge Coverage & Map ─── */
+.coverage-list { display: grid; gap: 10px; }
+.coverage-row { display: flex; align-items: center; gap: 12px; }
+.coverage-name { width: 80px; font-size: 12px; color: #454652; text-align: right; flex-shrink: 0; }
+.coverage-bar-bg { flex: 1; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(58, 56, 139, 0.06); }
+.coverage-bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #3a388b, #5250a4); transition: width 0.6s ease; }
+.coverage-num { width: 48px; font-size: 12px; color: #454652; text-align: right; }
+
+.knowledge-list { display: grid; gap: 12px; }
+.knowledge-item { display: flex; align-items: center; gap: 10px; }
+.knowledge-item :deep(.el-progress) { flex: 1; }
+.knowledge-concept { font-size: 13px; color: #191c1e; font-weight: 700; }
+.knowledge-cat { width: 64px; font-size: 11px; color: #87867f; text-align: right; flex-shrink: 0; }
 
 @media (max-width: 960px) {
   .page-header,

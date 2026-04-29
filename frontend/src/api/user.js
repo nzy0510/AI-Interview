@@ -39,3 +39,11 @@ export const resetPasswordAPI = (data) => {
         data
     });
 };
+
+export const getMentorInsightAPI = () => {
+    return request({ url: '/user/mentor-insight', method: 'get' });
+};
+
+export const getKnowledgeCoverageAPI = () => {
+    return request({ url: '/user/knowledge-coverage', method: 'get' });
+};

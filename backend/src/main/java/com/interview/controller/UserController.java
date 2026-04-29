@@ -2,9 +2,12 @@ package com.interview.controller;
 
 import com.interview.common.Result;
 import com.interview.dto.LoginDTO;
+import com.interview.dto.MentorInsightResponse;
 import com.interview.dto.RegisterDTO;
 import com.interview.dto.ResetPasswordDTO;
+import com.interview.service.MentorService;
 import com.interview.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +21,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private MentorService mentorService;
 
     @PostMapping("/login")
     public Result<String> login(@RequestBody @Validated LoginDTO loginDTO) {
@@ -65,5 +71,25 @@ public class UserController {
     public Result<String> resetPassword(@RequestBody @Validated ResetPasswordDTO resetDTO) {
         userService.resetPassword(resetDTO);
         return Result.success("密码重置成功，请使用新密码登录");
+    }
+
+    /**
+     * 知识覆盖统计（快速，仅查数据库，不调 LLM）
+     */
+    @GetMapping("/knowledge-coverage")
+    public Result<MentorInsightResponse> knowledgeCoverage(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        MentorInsightResponse insight = mentorService.getKnowledgeCoverageOnly(userId);
+        return Result.success(insight);
+    }
+
+    /**
+     * AI Mentor 洞察报告（含 LLM 分析，24小时缓存）
+     */
+    @GetMapping("/mentor-insight")
+    public Result<MentorInsightResponse> mentorInsight(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        MentorInsightResponse insight = mentorService.getInsight(userId);
+        return Result.success(insight);
     }
 }
