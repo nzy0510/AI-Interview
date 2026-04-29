@@ -223,25 +223,6 @@
               </el-checkbox-group>
             </section>
 
-            <section class="surface-card section-block">
-              <div class="block-head">
-                <div>
-                  <p class="section-kicker">Future</p>
-                  <h3 class="section-title">待接入模块</h3>
-                </div>
-                <el-tag effect="plain" type="warning">Placeholder</el-tag>
-              </div>
-
-              <div class="placeholder-grid">
-                <div v-for="item in setupDefaults.placeholderModules" :key="item.title" class="placeholder-card">
-                  <div class="placeholder-head">
-                    <strong>{{ item.title }}</strong>
-                    <el-tag size="small" type="warning" effect="plain">{{ item.status }}</el-tag>
-                  </div>
-                  <p>{{ item.description }}</p>
-                </div>
-              </div>
-            </section>
           </aside>
         </div>
       </el-main>

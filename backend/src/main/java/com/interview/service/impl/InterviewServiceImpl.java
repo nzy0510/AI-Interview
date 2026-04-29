@@ -3,7 +3,9 @@ package com.interview.service.impl;
 import com.alibaba.fastjson2.JSON;
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewRecord;
+import com.interview.entity.RagRetrievalLog;
 import com.interview.mapper.InterviewRecordMapper;
+import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.service.InterviewService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -64,6 +66,12 @@ public class InterviewServiceImpl implements InterviewService {
     @Autowired
     private com.interview.service.EvaluationGenerator evaluationGenerator;
 
+    @Autowired
+    private RagRetrievalLogMapper ragRetrievalLogMapper;
+
+    @Autowired
+    private com.interview.service.MentorService mentorService;
+
     // ========== 业务方法 ==========
 
     @Override
@@ -114,9 +122,24 @@ public class InterviewServiceImpl implements InterviewService {
         // 1. RAG 检索（含已用原子黑名单，避免重复提问同一知识点）
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
         String position = record != null ? record.getPosition() : "common";
+
+        // 构造增强检索 query：上一轮 AI 问题 + 用户当前回答
+        String ragQuery = message;
+        for (int i = chatHistory.size() - 1; i >= 0; i--) {
+            if (chatHistory.get(i) instanceof AiMessage) {
+                String lastAiText = ((AiMessage) chatHistory.get(i)).text();
+                if (lastAiText != null && !lastAiText.isBlank()) {
+                    ragQuery = lastAiText.length() > 300
+                            ? lastAiText.substring(lastAiText.length() - 300) + " " + message
+                            : lastAiText + " " + message;
+                }
+                break;
+            }
+        }
+
         // RAG 检索（通过 RagRetriever 封装岗位分类过滤 + 已用原子黑名单）
         List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
-        List<Content> retrievedContents = ragRetriever.retrieve(position, message, usedAtomIds);
+        List<Content> retrievedContents = ragRetriever.retrieve(position, ragQuery, usedAtomIds);
 
         // 原子追加新命中原子 ID，避免并发覆盖
         List<String> newAtomIds = new ArrayList<>();
@@ -126,9 +149,40 @@ public class InterviewServiceImpl implements InterviewService {
         }
         sessionStore.addUsedAtoms(recordId, newAtomIds);
 
+        // 持久化 RAG 检索日志
+        int turnIdx = chatHistory.size() / 2 + 1;
+        int rank = 0;
+        for (Content content : retrievedContents) {
+            rank++;
+            String atomId = content.textSegment().metadata().getString("id");
+            if (atomId == null) continue;
+            String category = content.textSegment().metadata().getString("category");
+            Double score = content.textSegment().metadata().getDouble("score");
+            RagRetrievalLog logEntry = new RagRetrievalLog();
+            logEntry.setUserId(userId);
+            logEntry.setRecordId(recordId);
+            logEntry.setTurnIndex(turnIdx);
+            logEntry.setQueryText(ragQuery.length() > 500 ? ragQuery.substring(0, 500) : ragQuery);
+            logEntry.setPosition(position);
+            logEntry.setRetrievedAtomId(atomId);
+            logEntry.setRetrievedCategory(category);
+            logEntry.setSimilarityScore(score != null ? score : 0.0);
+            logEntry.setRankIndex(rank);
+            try {
+                ragRetrievalLogMapper.insert(logEntry);
+            } catch (Exception e) {
+                log.warn("RAG 检索日志写入失败: {}", e.getMessage());
+            }
+        }
+
         StringBuilder contextBuilder = new StringBuilder();
-        for (Content content : retrievedContents)
-            contextBuilder.append("- ").append(content.textSegment().text()).append("\n");
+        for (int i = 0; i < retrievedContents.size(); i++) {
+            Content content = retrievedContents.get(i);
+            String atomId = content.textSegment().metadata().getString("id");
+            contextBuilder.append(i + 1).append(". [atom_id: ")
+                    .append(atomId != null ? atomId : "unknown")
+                    .append("]\n").append(content.textSegment().text()).append("\n\n");
+        }
 
         // 2. 根据显式面试阶段选择 Agent 人设（替代隐式 turn 计算）
         int turn = chatHistory.size() / 2;
@@ -161,7 +215,8 @@ public class InterviewServiceImpl implements InterviewService {
                     + "\n请先让候选人做个简短的自我介绍。";
         } else if (phase == InterviewPhase.TECHNICAL) {
             currentSystemPrompt = interviewPrompts.getTechnical() + "\n" + interviewPrompts.getAttitudeRule()
-                    + "\n以下是本题考核参考点：\n" + contextBuilder.toString();
+                    + "\n候选知识点（选择最相关的1个追问，不要直接说出标准答案，优先追问候选人回答中缺失的部分）：\n"
+                    + contextBuilder.toString();
 
             List<String> tailoredQuestions = sessionStore.loadTailoredQuestions(recordId);
             if (tailoredQuestions != null && !tailoredQuestions.isEmpty()) {
@@ -240,6 +295,8 @@ public class InterviewServiceImpl implements InterviewService {
     @Override
     public InterviewRecord endInterview(Long recordId, Integer wpm, String emotionJson) {
         List<ChatMessage> historyMessages = sessionStore.load(recordId);
+        // 持久化已用知识原子 ID 列表
+        List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
         sessionStore.delete(recordId);
 
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
@@ -252,6 +309,8 @@ public class InterviewServiceImpl implements InterviewService {
         record.setEndTime(LocalDateTime.now());
         record.setPhase(InterviewPhase.FINISHED.name());
         record.setVoiceWpm(wpm != null ? wpm : 0);
+        record.setUsedAtomIds(usedAtomIds != null && !usedAtomIds.isEmpty()
+                ? JSON.toJSONString(usedAtomIds) : null);
         if (emotionJson != null && !emotionJson.isEmpty()) {
             record.setEmotionJson(emotionJson);
         }
@@ -306,6 +365,18 @@ public class InterviewServiceImpl implements InterviewService {
         evaluationGenerator.generate(record, historyMessages, wpm);
 
         interviewRecordMapper.updateById(record);
+
+        // 后台预计算 AI Mentor 缓存，避免 Dashboard 首次访问触发 LLM 阻塞
+        final Long uid = record.getUserId();
+        new Thread(() -> {
+            try {
+                mentorService.getInsight(uid);
+                log.info("AI Mentor 缓存已更新 userId={}", uid);
+            } catch (Exception e) {
+                log.warn("AI Mentor 后台缓存更新失败 userId={}: {}", uid, e.getMessage());
+            }
+        }, "mentor-cache-" + uid).start();
+
         return record;
     }
 

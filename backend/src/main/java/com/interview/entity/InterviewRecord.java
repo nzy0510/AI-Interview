@@ -64,6 +64,9 @@ public class InterviewRecord {
      */
     private String knowledgeJson;
 
+    /** 面试过程中 RAG 命中的知识原子 ID 列表 JSON，去重。如 ["redis-001","mysql-042"] */
+    private String usedAtomIds;
+
     private LocalDateTime createTime;
 
     private LocalDateTime endTime;
