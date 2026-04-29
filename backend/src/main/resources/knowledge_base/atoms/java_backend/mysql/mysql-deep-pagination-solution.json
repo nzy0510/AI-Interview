@@ -1,0 +1,24 @@
+{
+  "id": "mysql-deep-pagination-solution",
+  "subject": "MySQL深度分页问题与优化方案",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "MySQL",
+    "性能优化",
+    "分页"
+  ],
+  "content": {
+    "principles": "深度分页性能问题的根本原因是使用 `LIMIT offset, size` 时，MySQL 需要先扫描并跳过 offset 指定的行数，导致 offset 越大，查询越慢。核心优化思路是避免使用大 offset，转而使用基于游标的分页（Cursor-based Pagination）。具体做法是利用有序索引字段（如自增主键或时间戳）作为条件进行过滤。例如：`SELECT * FROM orders WHERE id > last_seen_id ORDER BY id LIMIT 20;`。这种方式可以利用索引（如主键索引）进行高效的范围查询，时间复杂度稳定在 O(log n)，避免了全表扫描。如果业务必须支持随机跳页，则需采用更高成本的方案，如延迟关联（deferred join）或维护分页索引表。此外，结合业务场景使用缓存（如 Redis ZSET）也是一种常见优化手段。",
+    "pitfalls": [
+      "误认为 `LIMIT offset, size` 在任何 offset 下性能都稳定。",
+      "在非索引字段上进行排序和分页，导致全表扫描。",
+      "认为基于游标的分页可以完美替代所有传统分页需求，忽略了其无法直接跳转到任意页码的局限性。"
+    ],
+    "follow_up_paths": [
+      "如果必须支持跳转到任意页码，有哪些可行的技术方案？各自的优缺点是什么？",
+      "延迟关联（Deferred Join）是如何优化深度分页的？请描述其执行过程。",
+      "在分页查询中，`ORDER BY` 子句对性能有何影响？如何结合索引进行优化？"
+    ]
+  }
+}

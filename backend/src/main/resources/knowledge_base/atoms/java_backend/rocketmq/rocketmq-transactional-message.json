@@ -1,0 +1,24 @@
+{
+  "id": "rocketmq-transactional-message",
+  "subject": "RocketMQ 事务消息实现原理",
+  "category": "rocketmq",
+  "difficulty": "困难",
+  "tags": [
+    "消息队列",
+    "RocketMQ",
+    "分布式事务"
+  ],
+  "content": {
+    "principles": "RocketMQ 事务消息用于解决本地数据库操作与消息发送的原子性问题（如扣库存成功但发送订单消息失败）。其核心方案是“半消息 + 定时回查”。\n\n**流程**：\n1. **发送半消息**：生产者发送一条对消费者不可见的消息（半消息）到 Broker，Broker 将其持久化。\n2. **执行本地事务**：生产者执行本地业务逻辑（如更新数据库）。\n3. **提交/回滚**：根据本地事务执行结果，生产者向 Broker 发送提交或回滚指令。\n\n**异常处理与回查机制**：\n- 若生产者在发送半消息后宕机，导致 Broker 未收到最终指令，Broker 会定时（默认间隔 30 秒）发起**事务状态回查**。\n- 生产者需实现 `TransactionListener` 接口，提供 `executeLocalTransaction`（执行本地事务）和 `checkLocalTransaction`（回查本地事务状态）方法。\n- Broker 最多回查 15 次。\n\n**代码要点**：\n- 使用 `TransactionMQProducer`。\n- 调用 `producer.sendMessageInTransaction(msg, null);`\n\n**特点与限制**：\n- 回查机制保证最终一致性。\n- 需注意消费端的幂等性处理。\n- 事务消息不支持批量发送，延迟等级有限制。\n- 适用于订单创建、支付回调等强一致性场景，不适用于高频小事务。",
+    "pitfalls": [
+      "混淆事务消息和普通消息的发送流程。",
+      "不理解回查机制的必要性，或无法说明回查的触发条件。",
+      "忽略消费端幂等性设计，导致消息重复消费。"
+    ],
+    "follow_up_paths": [
+      "对比 RocketMQ 事务消息和 Kafka 事务消息的实现差异。",
+      "如果回查接口 `checkLocalTransaction` 也失败了，系统如何保证最终一致？",
+      "事务消息对 Broker 的存储和性能有何特殊要求？"
+    ]
+  }
+}

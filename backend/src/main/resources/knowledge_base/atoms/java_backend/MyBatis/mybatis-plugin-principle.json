@@ -1,0 +1,24 @@
+{
+  "id": "mybatis-plugin-principle",
+  "subject": "MyBatis插件（拦截器）的运行原理与编写",
+  "category": "MyBatis",
+  "difficulty": "困难",
+  "tags": [
+    "MyBatis",
+    "插件",
+    "拦截器",
+    "动态代理"
+  ],
+  "content": {
+    "principles": "MyBatis插件基于拦截器机制，通过动态代理对四大核心对象（Executor, StatementHandler, ParameterHandler, ResultSetHandler）的方法调用进行增强，而不侵入原有逻辑。编写插件步骤：1) 实现Interceptor接口，重写intercept方法，在其中编写增强逻辑（如记录SQL耗时）。2) 使用@Intercepts和@Signature注解精确指定要拦截的类、方法及参数类型。3) 在mybatis-config.xml中注册插件或通过编程方式添加。多个插件会形成责任链，按注册顺序执行。核心原理：在创建四大对象时，会调用InterceptorChain.pluginAll()，遍历所有插件，通过Plugin.wrap方法判断当前对象是否匹配@Signature声明，若是则用动态代理包装该对象，最终返回被代理链包裹的实例。",
+    "pitfalls": [
+      "@Signature注解配置错误（如方法名或参数类型不匹配）导致拦截失效",
+      "在intercept方法中忘记调用invocation.proceed()导致原方法无法执行",
+      "不理解插件链的执行顺序，导致增强逻辑顺序错乱"
+    ],
+    "follow_up_paths": [
+      "Plugin.wrap方法内部是如何根据@Signature判断并生成代理对象的？",
+      "如果让你实现一个分页插件，你会选择拦截哪个对象和哪个方法？为什么？"
+    ]
+  }
+}

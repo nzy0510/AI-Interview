@@ -1,0 +1,23 @@
+{
+  "id": "tcp-time-wait-state",
+  "subject": "TCP四次挥手与TIME_WAIT状态",
+  "category": "网络",
+  "difficulty": "中等",
+  "tags": [
+    "网络协议",
+    "TCP"
+  ],
+  "content": {
+    "principles": "TCP四次挥手中，主动关闭连接的一方在发送完最后一个ACK后进入TIME_WAIT状态，持续时间通常为2MSL（Maximum Segment Lifetime，报文最大生存时间，RFC建议为2分钟，实际实现常为30秒或1分钟）。\n\nTIME_WAIT状态存在的两个核心原因：\n1. 可靠地终止连接：确保最后一个ACK能到达被动关闭方。如果该ACK丢失，被动方会重传FIN，主动方在TIME_WAIT状态下可以重发ACK，保证连接正常关闭。若主动方直接关闭，被动方将无法收到ACK而停留在LAST_ACK状态。\n2. 防止旧连接的数据包干扰新连接：等待2MSL时间，足以让本次连接产生的所有报文段从网络中消失，避免相同四元组（源IP、源端口、目的IP、目的端口）的新连接收到延迟的旧数据包。\n\n高并发短连接场景下，大量TIME_WAIT连接可能导致端口资源耗尽。可通过设置socket选项`SO_REUSEADDR`来允许重用处于TIME_WAIT状态的端口，缓解此问题。服务端通常是被动关闭方，较少受TIME_WAIT影响。",
+    "pitfalls": [
+      "认为TIME_WAIT是设计缺陷或浪费资源。",
+      "混淆TIME_WAIT和CLOSE_WAIT状态。",
+      "不理解为什么TIME_WAIT时间是2MSL而不是1MSL。"
+    ],
+    "follow_up_paths": [
+      "为什么TIME_WAIT状态要持续2MSL，而不是1MSL？",
+      "`SO_REUSEADDR`和`SO_REUSEPORT`选项有什么区别？",
+      "如果服务器出现大量CLOSE_WAIT状态，可能是什么原因？如何排查？"
+    ]
+  }
+}

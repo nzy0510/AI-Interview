@@ -1,0 +1,24 @@
+{
+  "id": "java-thread-lifecycle-states",
+  "subject": "Java线程的生命周期与状态流转",
+  "category": "并发",
+  "difficulty": "中等",
+  "tags": [
+    "多线程",
+    "并发基础",
+    "JVM"
+  ],
+  "content": {
+    "principles": "Java线程的生命周期由`java.lang.Thread.State`枚举定义，共6种状态：\n1.  **NEW（新建）**：线程对象已创建，但尚未调用`start()`方法。\n2.  **RUNNABLE（可运行）**：调用`start()`后进入此状态。它包含了操作系统层面的就绪（Ready）和运行中（Running）两种状态，由JVM统一管理。\n3.  **BLOCKED（阻塞）**：线程在等待进入一个由`synchronized`关键字保护的同步块或方法时，因未能获取到监视器锁（Monitor Lock）而进入的状态。\n4.  **WAITING（等待）**：线程因调用了无参的`Object.wait()`、`Thread.join()`或`LockSupport.park()`方法而进入无限期等待，需要其他线程显式唤醒（如`notify()`/`notifyAll()`）。\n5.  **TIMED_WAITING（限期等待）**：线程因调用了带超时参数的`sleep(long)`、`wait(long)`、`join(long)`、`LockSupport.parkNanos()`或`LockSupport.parkUntil()`方法而进入有时间限制的等待状态，超时后自动返回。\n6.  **TERMINATED（终止）**：线程执行完毕（run方法结束）或因未捕获异常而退出，状态不可逆转。\n\n注意：Java线程状态是JVM对操作系统底层线程状态的一层抽象，开发者应关注Java层面的状态定义和流转。",
+    "pitfalls": [
+      "混淆RUNNABLE状态，误以为只有正在CPU上执行的线程才是RUNNABLE。实际上，等待CPU调度的就绪线程也属于RUNNABLE。",
+      "混淆BLOCKED和WAITING/TIMED_WAITING状态。BLOCKED是等待获取`synchronized`监视器锁，而WAITING/TIMED_WAITING是线程主动调用特定方法进入的等待。",
+      "认为线程状态与操作系统线程状态一一对应。"
+    ],
+    "follow_up_paths": [
+      "从WAITING状态被唤醒后，线程会进入哪个状态？（RUNNABLE）",
+      "`Thread.yield()`方法调用后，线程状态会改变吗？为什么？（不会，它只是提示调度器让出CPU，线程仍在RUNNABLE状态）",
+      "如果一个线程在`synchronized`方法内调用了`wait()`，它会释放锁吗？状态如何变化？（会释放锁，状态从RUNNABLE变为WAITING）"
+    ]
+  }
+}

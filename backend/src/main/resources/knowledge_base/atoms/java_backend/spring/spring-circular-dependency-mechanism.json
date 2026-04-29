@@ -1,0 +1,22 @@
+{
+  "id": "spring-circular-dependency-mechanism",
+  "subject": "Spring 循环依赖的解决机制与三级缓存",
+  "category": "spring",
+  "difficulty": "困难",
+  "tags": [
+    "Spring",
+    "IoC",
+    "Bean 生命周期"
+  ],
+  "content": {
+    "principles": "Spring 通过三级缓存机制解决单例 Bean 的 setter/字段注入循环依赖。一级缓存 `singletonObjects` 存放完全初始化好的单例 Bean。二级缓存 `earlySingletonObjects` 存放提前暴露的原始对象（尚未完成属性填充）。三级缓存 `singletonFactories` 存放 `ObjectFactory`，用于生成早期对象引用，其核心价值在于支持 AOP：当 Bean 需要被代理时，通过 `ObjectFactory` 的 `getEarlyBeanReference` 方法可以返回正确的代理对象，确保依赖注入的是增强后的实例。该机制仅支持单例作用域且通过 setter 或字段注入的循环依赖。构造器注入的循环依赖不经过缓存，直接抛出 `BeanCurrentlyInCreationException`。原型（prototype）作用域的 Bean 不支持循环依赖，每次都会创建新实例。",
+    "pitfalls": [
+      "认为 Spring 能解决所有类型的循环依赖，忽略了构造器注入和原型 Bean 的限制。",
+      "混淆二级缓存和三级缓存的作用，不理解为何需要三级缓存来支持 AOP 代理。"
+    ],
+    "follow_up_paths": [
+      "为什么构造器注入的循环依赖无法解决？这与 Bean 的实例化顺序有何关系？",
+      "如果只有二级缓存，在存在 AOP 代理的场景下会遇到什么问题？请描述具体流程。"
+    ]
+  }
+}

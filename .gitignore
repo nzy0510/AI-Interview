@@ -93,3 +93,5 @@ conflicts_render.txt
 # 忽略原始大型文档，保留生成的 JSON 原子
 *.pdf
 **/knowledge_base/archive_original/
+
+变量.txt

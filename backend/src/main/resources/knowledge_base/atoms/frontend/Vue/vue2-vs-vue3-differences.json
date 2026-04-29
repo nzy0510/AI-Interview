@@ -1,0 +1,26 @@
+{
+  "id": "vue2-vs-vue3-differences",
+  "subject": "Vue 2 与 Vue 3 的核心区别与更新",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "Vue",
+    "Vue 3",
+    "Composition API",
+    "响应式原理"
+  ],
+  "content": {
+    "principles": "Vue 3 是全方位重构，主要区别与更新包括：\n1.  **响应式系统**：Vue 2 使用 `Object.defineProperty` 劫持数据对象的 `getter/setter`，无法检测属性的添加/删除及数组索引的直接设置。Vue 3 改用 `Proxy` 代理整个对象，支持监听动态属性变化和数组索引操作，且初始化时无需递归遍历，性能更优，内存占用更低。\n2.  **Composition API**：Vue 3 引入 `setup` 函数作为组合式 API 的入口。允许将逻辑按功能（而非选项）组织，使用 `ref`、`reactive`、`computed`、`watch` 等函数组合逻辑，大幅提升大型组件的可维护性和逻辑复用性（类似 React Hooks）。\n3.  **编译与运行时优化**：\n    - 支持模板中的多个根节点（Fragment）。\n    - 编译器会进行静态提升（Hoist），将静态节点提升到渲染函数外，避免重复创建。\n    - 引入 `patchFlag` 标记动态内容，运行时 Diff 只比较带标记的节点，性能提升。\n    - 更好的 Tree-shaking 支持，未使用的模块（如过渡效果）不会被打包。\n4.  **生态**：配套 Vue Router 4、官方推荐状态管理库 Pinia（取代 Vuex，API 更简洁，类型推导更强）。\n5.  **其他**：使用 `createApp` 创建应用实例，更好的 TypeScript 支持，新的生命周期钩子（如 `onMounted`）。",
+    "pitfalls": [
+      "误以为 Vue 3 的 `Proxy` 兼容所有浏览器（实际上不支持 IE11）。",
+      "混淆 Options API 和 Composition API 的使用场景，Composition API 更适合复杂逻辑组织。",
+      "迁移时，旧项目依赖了 Vue 2 特有 API（如 `$on`/`$off`）或第三方插件，可能不兼容。",
+      "不理解 `ref` 和 `reactive` 的区别与应用场景（`ref` 处理基本类型，`reactive` 处理对象）。"
+    ],
+    "follow_up_paths": [
+      "详细解释 `Proxy` 相比 `Object.defineProperty` 在实现响应式上的优势与劣势。",
+      "在 Composition API 中，如何实现逻辑复用（自定义 Hook）？与 Mixins 相比有何优势？",
+      "Vue 3 的 `Teleport` 和 `Suspense` 内置组件解决了什么问题？"
+    ]
+  }
+}

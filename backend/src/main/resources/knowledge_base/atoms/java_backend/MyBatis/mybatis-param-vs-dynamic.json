@@ -1,0 +1,24 @@
+{
+  "id": "mybatis-param-vs-dynamic",
+  "subject": "MyBatis中#{}与${}的区别与使用场景",
+  "category": "MyBatis",
+  "difficulty": "简单",
+  "tags": [
+    "MyBatis",
+    "SQL",
+    "安全"
+  ],
+  "content": {
+    "principles": "#{}是预编译占位符，MyBatis会将其替换为`?`，参数值会通过JDBC的PreparedStatement安全地设置，能有效防止SQL注入，且性能更好。${}是字符串拼接，会将参数值直接替换到SQL语句中，存在SQL注入风险。${}的适用场景仅限于无法使用预编译的动态部分，如动态表名、动态排序字段（如ORDER BY ${columnName}），使用时必须确保输入可控或进行白名单校验。",
+    "pitfalls": [
+      "混淆两者用途，在普通参数位置使用${}导致注入风险",
+      "认为动态表名等场景也能用#{}实现",
+      "使用${}时未做任何输入校验或过滤"
+    ],
+    "follow_up_paths": [
+      "MyBatis底层是如何实现#{}预编译的？和JDBC的PreparedStatement是什么关系？",
+      "如果必须使用${}做动态排序，有哪些具体的安全防护措施（白名单、转义）？",
+      "除了表名和排序，还有哪些场景可能必须使用${}？"
+    ]
+  }
+}

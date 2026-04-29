@@ -1,0 +1,24 @@
+{
+  "id": "nodejs-global-objects",
+  "subject": "Node.js 全局对象",
+  "category": "NodeJS",
+  "difficulty": "简单",
+  "tags": [
+    "Node.js",
+    "全局对象",
+    "模块系统"
+  ],
+  "content": {
+    "principles": "Node.js 运行在服务器端，拥有自己的一套全局对象，无需引入即可直接使用。核心全局对象包括：1) `global`：顶级命名空间对象，类似浏览器的 `window`，但不推荐直接向其添加属性。2) `process`：提供与当前 Node.js 进程交互的信息和控制，如环境变量 (`process.env`)、工作目录 (`process.cwd()`)、命令行参数和退出进程。3) `console`：用于标准输出/错误流。4) 定时器函数：`setTimeout`, `setInterval`, `setImmediate`。5) `__dirname`, `__filename`：模块级变量，分别表示当前文件所在目录的绝对路径和文件的绝对路径。6) `Buffer`：用于处理二进制数据。7) `module`, `exports`, `require`：实现 CommonJS 模块系统的核心。这些对象使 Node.js 能够脱离浏览器环境，直接进行系统级操作和 I/O。",
+    "pitfalls": [
+      "误以为 `global` 是唯一或主要的全局对象访问方式。",
+      "混淆 `__dirname` 与 `process.cwd()` 的区别，前者是文件位置，后者是进程启动目录。",
+      "在 ES 模块（`import/export`）中尝试使用 `__dirname` 或 `require` 而未做适配处理。"
+    ],
+    "follow_up_paths": [
+      "`global` 对象和 ES6 的 `globalThis` 有什么关系？在 Node.js 中它们指向同一个对象吗？",
+      "`process.nextTick` 和 `setImmediate` 在事件循环中的执行顺序有何不同？",
+      "如何在 ES 模块中获取当前文件的路径（替代 `__dirname`）？"
+    ]
+  }
+}

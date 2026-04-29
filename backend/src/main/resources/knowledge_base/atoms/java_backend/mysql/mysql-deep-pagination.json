@@ -1,0 +1,23 @@
+{
+  "id": "mysql-deep-pagination",
+  "subject": "MySQL 深度分页性能优化",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "分页",
+    "索引"
+  ],
+  "content": {
+    "principles": "深度分页性能问题的核心在于 `LIMIT offset, size` 语句（如 `LIMIT 1000000, 20`）。MySQL 需要先扫描并跳过 `offset` 指定的前 N 行（即使这些行最终不返回），这导致巨大的 IO 和 CPU 开销。优化方案：1. **利用覆盖索引+子查询**：先通过覆盖索引在子查询中快速定位到需要的数据的主键 ID，再通过主键关联回原表获取完整数据。例如：`SELECT * FROM table AS a INNER JOIN (SELECT id FROM table WHERE condition ORDER BY id LIMIT 1000000, 20) AS b ON a.id = b.id`。2. **基于上次查询的最大ID**（游标分页）：记录上一次查询结果中最后一条记录的 ID（或排序字段值），下次查询使用 `WHERE id > last_max_id LIMIT size`。这种方式要求排序字段唯一且连续，且只能用于“下一页”，不支持随机跳页。3. **业务折衷**：限制用户可查询的最大页数或深度。根本解决可能需要结合分库分表，将数据分散到多个物理表以减少单表扫描量。",
+    "pitfalls": [
+      "盲目使用 `LIMIT offset, size` 进行深度分页，导致性能随 offset 增大线性下降。",
+      "在使用“基于上次最大ID”方法时，未处理好排序字段不唯一或数据删除导致的不连续问题。",
+      "优化时只考虑 SQL 改写，未考虑业务需求是否真的需要支持任意深度的随机跳页。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：如果排序字段不是主键，且存在重复值，如何实现稳定、高效的游标分页（Cursor-based Pagination）？",
+      "如果候选人答得不好，可以引导：对于 `SELECT * FROM articles ORDER BY create_time DESC LIMIT 10000, 20` 这个慢查询，除了你提到的方法，如果必须在 `create_time` 上排序，且 `create_time` 有索引，还有什么优化思路？"
+    ]
+  }
+}

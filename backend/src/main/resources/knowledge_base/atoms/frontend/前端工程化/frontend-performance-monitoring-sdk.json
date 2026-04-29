@@ -1,0 +1,25 @@
+{
+  "id": "frontend-performance-monitoring-sdk",
+  "subject": "前端性能监控 SDK 的设计与实现",
+  "category": "前端工程化",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "监控",
+    "SDK设计"
+  ],
+  "content": {
+    "principles": "前端性能监控 SDK 的核心流程是埋点采集、数据聚合、上报分析。关键技术点：1. **数据采集**：使用 `PerformanceObserver` API 监听 `navigation` 和 `resource` 类型的性能条目，获取页面加载（如 `first-contentful-paint`, `largest-contentful-paint`）和资源/接口请求的详细耗时。2. **数据聚合与上报**：为避免频繁上报压垮服务端，需进行批量聚合（如每 N 条或每 T 秒）。上报应优先使用 `navigator.sendBeacon()` 方法，确保在页面卸载时也能可靠发送。3. **SDK 设计**：追求轻量级，初始化代码压缩后应尽量小（如 1KB 以内）。需支持配置采样率、过滤规则等。上报数据结构应包含页面 URL、用户设备信息、地理位置（IP推断）、时间戳、具体性能指标。后端通常使用消息队列（如 Kafka）接入，流处理引擎（如 Flink）实时聚合，并存入时序数据库（如 ClickHouse）供查询。",
+    "pitfalls": [
+      "全量上报所有性能数据，导致 SDK 体积过大或上报流量激增，影响用户页面性能。",
+      "使用 `fetch` 或 `XMLHttpRequest` 进行上报，在页面关闭时可能丢失数据。",
+      "忽略不同浏览器对 Performance API 的支持差异，导致采集数据不准确或缺失。",
+      "上报时机不当，可能与关键业务请求竞争带宽，或阻塞页面生命周期。"
+    ],
+    "follow_up_paths": [
+      "除了 Performance API，还有哪些方法可以采集前端错误（JS Error）、用户行为（点击、路由）等数据？",
+      "如何设计一个支持多种上报策略（立即、批量、延迟）的 SDK 上报模块？",
+      "在单页应用（SPA）中，如何准确监控路由切换的性能？"
+    ]
+  }
+}

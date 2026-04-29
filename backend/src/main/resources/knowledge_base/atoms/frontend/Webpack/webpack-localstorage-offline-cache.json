@@ -1,0 +1,25 @@
+{
+  "id": "webpack-localstorage-offline-cache",
+  "subject": "利用 Webpack 与 LocalStorage 实现简易离线缓存",
+  "category": "Webpack",
+  "difficulty": "困难",
+  "tags": [
+    "Webpack",
+    "缓存",
+    "离线应用"
+  ],
+  "content": {
+    "principles": "结合 Webpack 的文件哈希和 LocalStorage 实现静态资源离线缓存。原理：1) Webpack 使用 `[contenthash]` 为静态资源生成唯一文件名，作为缓存键。2) 页面加载时，先检查 LocalStorage 中是否存在对应 hash 的资源内容。若存在且版本匹配，则直接读取（如通过 `eval` 或创建 Blob URL）并注入页面，跳过网络请求。3) 若不存在或版本过期，则从网络获取资源，正常执行并同时将资源内容存入 LocalStorage。4) 可维护一个 manifest 文件记录资源映射和版本号，用于启动时比对。注意 LocalStorage 有容量限制（通常 5-10MB），不适合存储大文件，此方案为简易离线策略，更完整的方案应使用 Service Worker。",
+    "pitfalls": [
+      "忽略 LocalStorage 的容量限制和同步读写可能导致的性能问题。",
+      "使用 `eval` 执行缓存脚本存在安全风险，且可能破坏严格模式。",
+      "未处理资源更新机制，导致用户永远使用旧缓存。",
+      "混淆了此方案与 Service Worker 的适用场景和复杂度。"
+    ],
+    "follow_up_paths": [
+      "如何设计一个可靠的版本控制和缓存更新机制？",
+      "相比 Service Worker，仅用 LocalStorage 做离线缓存的优缺点是什么？",
+      "当 LocalStorage 存满时，应采用什么策略进行缓存淘汰？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "mysql-sql-execution-process",
+  "subject": "MySQL SQL 语句执行过程",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "MySQL",
+    "SQL",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "一条 SQL 在 MySQL 中的执行流程：1) **连接器**：管理连接，认证权限。2) **分析器**：进行词法、语法分析，生成语法树。3) **优化器**：基于成本模型（CBO）选择最优执行计划，决定索引使用、JOIN顺序等。4) **执行器**：调用存储引擎接口执行。5) **存储引擎**（如InnoDB）：通过索引检索数据，涉及Buffer Pool、redo log、undo log等组件。对于更新操作，采用两阶段提交保证 binlog 与 redo log 的一致性。查询缓存已在 MySQL 8.0 被移除。",
+    "pitfalls": [
+      "误认为 MySQL 8.0 仍有查询缓存。",
+      "不理解优化器可能选择非预期索引的原因（如统计信息不准确）。"
+    ],
+    "follow_up_paths": [
+      "如何通过 `EXPLAIN` 分析执行计划中的 `type`、`key`、`Extra` 字段来定位性能问题？",
+      "InnoDB 的 Buffer Pool 和 Change Buffer 在查询和更新过程中分别起什么作用？"
+    ]
+  }
+}

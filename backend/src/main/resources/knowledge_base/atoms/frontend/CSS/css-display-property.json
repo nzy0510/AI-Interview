@@ -1,0 +1,23 @@
+{
+  "id": "css-display-property",
+  "subject": "CSS display 属性",
+  "category": "CSS",
+  "difficulty": "简单",
+  "tags": [
+    "CSS",
+    "布局"
+  ],
+  "content": {
+    "principles": "`display` 属性定义元素的显示类型，决定了其外部和内部的布局方式。主要值及其作用：\n1.  **`block`**：块级元素。独占一行，可设置宽度(width)和高度(height)。默认是 `block` 的元素有 `<div>`, `<p>`, `<h1>`-`<h6>` 等。\n2.  **`inline`**：行内元素。不换行，宽度和高度由内容决定，设置 `width`/`height` 无效。默认是 `inline` 的元素有 `<span>`, `<a>`, `<strong>` 等。\n3.  **`inline-block`**：行内块元素。兼具 `inline`（不换行）和 `block`（可设置宽高）的特性。常用于按钮组、图标列表。\n4.  **`flex`**：弹性布局容器。启用 Flexbox 模型，子元素成为弹性项目，可以方便地在主轴和交叉轴上对齐、分布、伸缩。是现代一维布局的核心。\n5.  **`grid`**：网格布局容器。启用 CSS Grid 模型，可以定义行和列，创建复杂的二维布局，比传统布局方式更灵活强大。\n6.  **`none`**：元素完全不显示，并从文档流中移除，不占据任何空间。与 `visibility: hidden`（占据空间但不可见）不同。\n7.  **其他**：如 `table`, `table-row`, `table-cell` 等，用于模拟表格布局，现在使用较少。\n最佳实践：优先考虑语义化，避免随意改变元素的默认 `display` 类型。对于布局，应优先掌握 `flex` 和 `grid`。",
+    "pitfalls": [
+      "混淆 `inline-block` 元素之间的默认空白间隙（由HTML中的换行或空格引起）及其消除方法。",
+      "误认为 `display: none` 的元素仍会参与DOM事件流（实际上不会，而 `visibility: hidden` 的元素会）。",
+      "在 `flex` 或 `grid` 容器中，错误地给子元素同时使用 `float` 或 `vertical-align`（这些属性通常失效）。"
+    ],
+    "follow_up_paths": [
+      "`display: inline-flex` 和 `display: inline-grid` 的作用是什么？它们与 `display: flex` 和 `display: grid` 有何区别？",
+      "如何实现一个两栏布局，左侧固定宽度，右侧自适应宽度？请分别用 `flex` 和 `grid` 写出核心CSS代码。",
+      "`display: contents` 有什么作用？它如何影响盒模型的生成和元素的渲染？"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "java-hashmap-resize-trigger",
+  "subject": "HashMap 扩容触发条件与阈值计算",
+  "category": "并发",
+  "difficulty": "简单",
+  "tags": [
+    "HashMap",
+    "集合",
+    "扩容"
+  ],
+  "content": {
+    "principles": "HashMap 扩容发生在元素数量超过阈值（threshold）时。阈值 = 容量（capacity） * 加载因子（loadFactor），默认加载因子为0.75。例如，默认初始容量16，阈值即为12。当元素数量超过阈值时，在 put 操作后会触发扩容。扩容是懒触发的，只在 put 后检查时发生。",
+    "pitfalls": [
+      "误以为扩容是实时监控元素数量，实际上只在 put 操作后检查",
+      "混淆容量（capacity）和阈值（threshold）的概念",
+      "认为加载因子可以随意设置，不理解其作为空间与时间权衡的意义"
+    ],
+    "follow_up_paths": [
+      "如果初始容量设置为100，加载因子为0.75，第一次扩容会在插入第几个元素后发生？",
+      "为什么扩容检查要放在 put 操作之后，而不是之前或实时进行？"
+    ]
+  }
+}

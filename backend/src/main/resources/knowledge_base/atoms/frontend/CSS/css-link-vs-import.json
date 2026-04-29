@@ -1,0 +1,23 @@
+{
+  "id": "css-link-vs-import",
+  "subject": "使用 link 标签与 @import 规则引入 CSS 的区别与影响",
+  "category": "CSS",
+  "difficulty": "中等",
+  "tags": [
+    "CSS",
+    "性能优化",
+    "浏览器渲染"
+  ],
+  "content": {
+    "principles": "`<link>` 标签和 `@import` 规则都能引入外部 CSS，但在机制、性能和能力上有显著区别：\n1. **引入位置与本质**：\n   - `<link>` 是 HTML 标签，写在 `<head>` 中，如 `<link rel=\"stylesheet\" href=\"style.css\">`。\n   - `@import` 是 CSS 语法，必须写在 CSS 文件或 `<style>` 标签内部，如 `@import url(\"theme.css\");`。\n2. **加载与渲染性能**：\n   - `<link>`：浏览器会并行下载 CSS 文件，不阻塞 HTML 解析（但可能阻塞渲染），有助于尽早呈现页面。\n   - `@import`：浏览器需先下载并解析包含 `@import` 的 CSS 文件，然后才发现并加载导入的 CSS，容易形成请求链（网络瀑布流），延迟页面渲染。\n3. **功能与兼容性**：\n   - `<link>` 功能更强大：支持通过 `rel` 属性进行资源预加载（`preload`）、加载字体等；支持 `media` 属性进行媒体查询，实现条件加载。\n   - `@import` 也支持媒体查询，但兼容性稍差（IE5+）。\n4. **JavaScript 可控性**：\n   - `<link>` 标签可通过 JavaScript 动态创建、插入或移除，便于实现主题切换、异步加载非关键 CSS。\n   - `@import` 无法通过 JavaScript 直接控制。\n现代开发中，`@import` 常用于 CSS 预处理器（如 Sass）中，在编译阶段合并文件，不会影响运行时性能。",
+    "pitfalls": [
+      "在关键路径 CSS 中使用 `@import`，导致页面加载时间增加。",
+      "误认为 `@import` 和 `<link>` 在性能上没有区别。",
+      "不知道可以通过 JavaScript 动态操作 `<link>` 标签来加载样式。"
+    ],
+    "follow_up_paths": [
+      "如果候选人理解性能差异，可以追问：除了使用 `<link>` 标签，还有哪些现代技术或最佳实践可以优化 CSS 的加载性能（如 Critical CSS、代码分割）？",
+      "如果候选人只知表面区别，可以引导：请描述浏览器从遇到 `<link rel=\"stylesheet\">` 到应用样式，整个渲染过程的几个关键步骤。"
+    ]
+  }
+}

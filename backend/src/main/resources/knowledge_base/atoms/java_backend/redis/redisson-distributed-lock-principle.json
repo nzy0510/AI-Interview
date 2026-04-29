@@ -1,0 +1,24 @@
+{
+  "id": "redisson-distributed-lock-principle",
+  "subject": "Redisson 分布式锁的实现原理",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "分布式锁",
+    "Redis",
+    "Redisson"
+  ],
+  "content": {
+    "principles": "Redisson 分布式锁核心基于 Redis 的 Lua 脚本和单线程特性保证原子性，支持可重入、锁续期。加锁时，通过 Lua 脚本向 Redis 写入一个 Hash 结构：Key 是锁名，Field 是客户端唯一标识（如 UUID + threadId），Value 是重入次数。若 Key 不存在则设置并附加过期时间；若存在且 Field 匹配，则将 Value 加 1（可重入）。解锁同样通过 Lua 脚本：先校验 Field 是否匹配，匹配则将重入次数减 1，减至 0 时删除 Key。关键机制是**看门狗（Watchdog）自动续期**：客户端获取锁后，会启动后台任务，在锁过期时间的 1/3 处检查客户端是否仍持有锁（即业务是否执行完），若是则自动延长锁的 TTL，避免业务未完成锁已过期。使用方式简单：`RLock lock = redisson.getLock(\"lockName\"); lock.lock();`。适用于订单扣减、库存超卖等强一致性场景。注意网络分区下可能丢失锁，极端场景可考虑 RedLock 模式，但单 Redis 实例配合合理超时已能满足大部分需求。",
+    "pitfalls": [
+      "误以为 Redisson 锁的过期时间是固定的，忽略了看门狗的自动续期机制。",
+      "在 try-finally 块中未正确释放锁，导致锁泄漏。",
+      "对 Redis 主从切换或网络分区场景下的锁安全性过于乐观。"
+    ],
+    "follow_up_paths": [
+      "Redisson 的看门狗续期机制，如果客户端进程意外挂掉，锁会怎样？",
+      "对比 Redisson 分布式锁与基于数据库、ZooKeeper 实现分布式锁的优劣。",
+      "什么是 RedLock 算法？Redisson 是如何实现它的？在什么场景下建议使用？"
+    ]
+  }
+}

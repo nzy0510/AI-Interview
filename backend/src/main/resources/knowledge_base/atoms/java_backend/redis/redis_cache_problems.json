@@ -1,0 +1,20 @@
+{
+  "id": "redis-002",
+  "subject": "缓存雪崩/击穿/穿透",
+  "category": "redis",
+  "difficulty": "P6",
+  "tags": [
+    "Redis",
+    "Caching",
+    "System Design"
+  ],
+  "content": {
+    "principles": "1. Penetration (穿透): Key never exists. Sol: Bloom Filter, cache null values. 2. Breakdown (击穿): Hot key expires. Sol: Mutex lock, logical expiration. 3. Avalanche (雪崩): Many keys expire or Redis down. Sol: Random TTL, circuit breaker, high availability.",
+    "pitfalls": "Bloom filter false positives. Mutex lock causing high latency for many requests. Incorrect TTL randomization logic.",
+    "follow_up_paths": [
+      "Bloom Filter implementation",
+      "Redisson RLock for breakdown",
+      "Redis Sentinel/Cluster"
+    ]
+  }
+}

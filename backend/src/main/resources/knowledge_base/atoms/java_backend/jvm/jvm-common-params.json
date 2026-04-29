@@ -1,0 +1,24 @@
+{
+  "id": "jvm-common-params",
+  "subject": "JVM常用配置参数分类与作用",
+  "category": "jvm",
+  "difficulty": "中等",
+  "tags": [
+    "JVM",
+    "性能调优",
+    "GC"
+  ],
+  "content": {
+    "principles": "JVM参数主要分为内存、垃圾回收器、日志与监控、诊断开关等类别。\n1. 内存参数：\n   - `-Xms` 与 `-Xmx` 设置堆内存初始大小和最大值，通常设为相同值以避免运行时动态扩容带来的性能开销。\n   - `-Xmn` 设置年轻代大小，通常为堆内存的1/3到1/2，对象多的场景可适当调大。\n2. 垃圾回收器参数：\n   - 响应优先场景使用G1：`-XX:+UseG1GC`，配合 `-XX:MaxGCPauseMillis` 控制目标停顿时间。\n   - 吞吐优先场景使用ParallelGC：`-XX:+UseParallelGC`，适合后台批处理。\n   - 低延迟场景使用ZGC：`-XX:+UseZGC`（JDK 15+），可将STW控制在10ms内。\n3. 日志与监控参数：\n   - `-Xlog:gc*` 开启详细GC日志，可附加 `time,uptime,level,tags` 等标签输出完整信息，用于线上问题定位。\n4. 诊断开关：\n   - `-XX:+HeapDumpOnOutOfMemoryError` 在OOM时自动生成堆转储文件。\n   - `-XX:HeapDumpPath` 指定堆转储文件路径。\n   - `-XX:+PrintCommandLineFlags` 在启动时打印实际生效的JVM参数，用于排查配置覆盖问题。\n5. 元空间参数：`-XX:MaxMetaspaceSize` 通常无需设置，除非明确遇到元空间溢出问题，默认允许自动扩展。",
+    "pitfalls": [
+      "误以为 `-Xms` 和 `-Xmx` 设置不同值可以节省内存，实际上可能导致频繁的堆内存扩容与GC，影响性能。",
+      "在不了解应用对象生命周期特征的情况下，随意设置 `-Xmn` 年轻代大小，可能导致频繁的Minor GC或过早晋升到老年代。",
+      "线上环境未配置GC日志或堆转储参数，导致出现性能问题或OOM时无法快速定位根因。",
+      "盲目设置 `-XX:MaxMetaspaceSize` 限制元空间大小，可能引发不必要的 `Metaspace` 相关的 `OutOfMemoryError`。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：请结合一个具体的高并发服务场景，详细说明你会如何选择和调整这些JVM参数？",
+      "如果候选人答得不好，可以引导：如果不设置 `-Xlog:gc*`，当线上服务发生频繁Full GC时，你还有哪些手段可以诊断问题？"
+    ]
+  }
+}

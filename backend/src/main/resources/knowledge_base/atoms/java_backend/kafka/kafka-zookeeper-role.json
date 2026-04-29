@@ -1,0 +1,23 @@
+{
+  "id": "kafka-zookeeper-role",
+  "subject": "Kafka早期版本中Zookeeper的核心作用",
+  "category": "kafka",
+  "difficulty": "中等",
+  "tags": [
+    "Kafka",
+    "Zookeeper",
+    "分布式协调"
+  ],
+  "content": {
+    "principles": "在Kafka 2.8版本之前，Zookeeper是Kafka集群的‘大脑’，负责关键的分布式协调工作：1. Broker注册：Broker启动时在`/brokers/ids`下创建临时节点，用于服务发现和健康监测。2. Controller选举：通过在`/controller`路径创建临时节点实现，第一个创建成功的Broker成为Controller，负责分区和副本的状态管理。3. 存储元数据：Topic的分区分布、副本分配、配置参数等存储在`/brokers/topics`等路径下。4. 存储ACL（访问控制列表）和配额（Quota）配置。Zookeeper作为一个高可用的分布式协调服务，为Kafka提供了强一致性的元数据存储和事件通知（Watch）机制。",
+    "pitfalls": [
+      "只回答‘存元数据’，而说不清具体存了哪些元数据（如Broker列表、Controller信息、Topic分区信息）。",
+      "混淆Zookeeper的临时节点和持久节点的作用（如Broker注册用临时节点，元数据用持久节点）。",
+      "不了解Controller选举的具体机制（基于Zookeeper的临时节点和争抢）。"
+    ],
+    "follow_up_paths": [
+      "Zookeeper的Watch机制在Kafka中是如何被使用的？举一个具体场景。",
+      "如果Zookeeper集群发生网络分区，会对Kafka集群产生什么影响？"
+    ]
+  }
+}

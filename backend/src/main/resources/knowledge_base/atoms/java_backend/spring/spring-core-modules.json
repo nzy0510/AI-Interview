@@ -1,0 +1,23 @@
+{
+  "id": "spring-core-modules",
+  "subject": "Spring框架核心模块组成与职责",
+  "category": "spring",
+  "difficulty": "中等",
+  "tags": [
+    "Spring",
+    "架构设计",
+    "模块化"
+  ],
+  "content": {
+    "principles": "Spring框架采用模块化设计，核心模块各司其职，通过明确的依赖关系组合使用。\n1. **IoC容器基石**：\n   - `spring-core`：提供基础工具类，如类型转换、资源抽象（Resource接口）。\n   - `spring-beans`：实现Bean的定义、配置创建和生命周期管理（BeanFactory）。\n   - `spring-context`：在`spring-beans`基础上提供更高级的容器功能（ApplicationContext），支持国际化、事件传播、环境抽象等。\n2. **AOP能力**：\n   - `spring-aop`：提供基于动态代理的面向切面编程支持，是实现方法拦截（如`@Transactional`、自定义切面）的基础。依赖`spring-core`和`spring-beans`，但可独立使用。\n3. **数据访问**：\n   - `spring-jdbc`：对JDBC进行轻量封装，简化数据库操作，减少样板代码。\n   - `spring-tx`：提供统一的事务管理抽象，支持编程式和声明式事务。\n4. **Web开发**：\n   - `spring-web`：提供基础的Web功能，如文件上传、HTTP客户端等。\n   - `spring-webmvc`：即Spring MVC，实现请求分发、控制器映射、视图解析等MVC模式。\n5. **表达式语言**：\n   - `spring-expression`：提供SpEL（Spring Expression Language）支持，用于在注解和XML配置中执行动态表达式。\n此外，还有如`spring-batch`、`spring-jms`等可选模块，可按需引入。模块间依赖清晰，支持按需组合，是Spring灵活性和可扩展性的基础。",
+    "pitfalls": [
+      "混淆`spring-beans`（BeanFactory）和`spring-context`（ApplicationContext）的职责，后者是前者的超集，提供了更多企业级功能。",
+      "认为Spring AOP必须依赖完整的Spring容器，实际上`spring-aop`模块可以独立使用。",
+      "忽略SpEL模块（`spring-expression`）的存在，不理解其在注解（如`@Value`）中动态赋值的工作原理。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：Spring Boot的自动配置（Auto-Configuration）机制，主要依赖了以上哪些核心模块？它是如何工作的？",
+      "如果候选人答得不好，可以引导：如果只想使用Spring的IoC容器来管理一些简单的POJO，不涉及Web和事务，最少需要引入哪几个模块？"
+    ]
+  }
+}

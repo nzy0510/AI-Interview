@@ -1,0 +1,24 @@
+{
+  "id": "react-image-import-methods",
+  "subject": "React 项目中引入图片的两种方式与最佳实践",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React",
+    "Webpack",
+    "资源管理"
+  ],
+  "content": {
+    "principles": "在基于 Webpack 的 React 项目（如 Create React App）中，引入图片主要有两种方式：\n1. **模块导入（推荐）**：将图片放在 `src` 目录下，使用 ES6 `import` 语句导入。Webpack 会将其视为模块，并通过 `file-loader` 或 `url-loader` 进行处理。这种方式的好处是构建工具可以进行优化，例如：对小图片进行 Base64 内联以减少 HTTP 请求；对大图片进行单独打包并添加内容哈希（hash）以实现长效缓存；支持代码分割和按需加载。\n2. **公共路径引用**：将图片放在 `public` 目录下，在 JSX 中直接使用绝对路径（如 `/images/logo.png`）引用。这种方式构建工具不会处理图片，适合完全静态、不希望被构建流程改变的资源（如 `favicon.ico`）。缺点是缺乏缓存优化（无哈希），更新时可能导致缓存问题。\n最佳实践是使用模块导入方式，让构建工具管理资源，以获得更好的性能和可维护性。",
+    "pitfalls": [
+      "将应该由构建工具处理的图片放在 `public` 目录，错过了优化机会。",
+      "在 `public` 目录中使用相对路径引用图片，导致路径错误。",
+      "不理解两种方式在构建产物和缓存策略上的区别。"
+    ],
+    "follow_up_paths": [
+      "Webpack 的 `url-loader` 的 `limit` 配置是如何决定图片是内联还是单独打包的？",
+      "使用模块导入图片时，如何解决 TypeScript 的模块声明问题？",
+      "在 SSR 或静态站点生成（SSG）场景下，图片引入方式有什么特殊考虑？"
+    ]
+  }
+}

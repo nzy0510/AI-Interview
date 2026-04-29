@@ -1,0 +1,24 @@
+{
+  "id": "nodejs-event-loop-detail",
+  "subject": "Node.js 事件循环的详细阶段与执行机制",
+  "category": "NodeJS",
+  "difficulty": "中等",
+  "tags": [
+    "Node.js",
+    "事件循环",
+    "libuv"
+  ],
+  "content": {
+    "principles": "Node.js 事件循环由 libuv 库实现，是一个持续运行的循环，负责调度和执行异步操作的回调。它将一个循环分为多个阶段，每个阶段有特定的任务队列：1) 定时器阶段：执行到期的 setTimeout 和 setInterval 回调。2) 待定回调阶段：执行某些系统操作（如 TCP 错误）的回调。3) 空闲、准备阶段：libuv 内部使用。4) 轮询阶段：检索新的 I/O 事件，执行相关的 I/O 回调（如文件读取、网络请求）。如果队列为空，则会等待新的回调加入。5) 检测阶段：执行 setImmediate 的回调。6) 关闭的回调函数：执行一些关闭事件的回调（如 socket.on('close', ...)）。此外，process.nextTick 的回调不属于任何阶段，它会在当前操作完成后、事件循环进入下一阶段前立即执行，优先级最高。这种机制使得 Node.js 能够高效地处理高并发 I/O。",
+    "pitfalls": [
+      "混淆 setImmediate 和 setTimeout(fn, 0) 的执行顺序，其顺序受 I/O 循环上下文影响。",
+      "在轮询阶段执行耗时操作，会阻塞事件循环，延迟后续 I/O 处理。",
+      "滥用 process.nextTick，导致递归调用造成“饿死”事件循环，阻止其进入下一阶段。"
+    ],
+    "follow_up_paths": [
+      "请举例说明在同一个 I/O 周期内，setImmediate 和 setTimeout(fn, 0) 的调用顺序是怎样的？为什么？",
+      "事件循环的每个阶段在底层（如通过 epoll）是如何等待和获取 I/O 事件的？",
+      "微任务（如 Promise.then 的回调）在事件循环的哪个时机被执行？它与 process.nextTick 的优先级关系如何？"
+    ]
+  }
+}

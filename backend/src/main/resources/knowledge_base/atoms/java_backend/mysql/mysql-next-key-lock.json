@@ -1,0 +1,23 @@
+{
+  "id": "mysql-next-key-lock",
+  "subject": "MySQL Next-Key Lock 与锁机制",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "锁",
+    "事务",
+    "隔离级别"
+  ],
+  "content": {
+    "principles": "Next-Key Lock 是行锁（Record Lock）和间隙锁（Gap Lock）的组合，锁定记录本身以及记录之前的间隙。它是 InnoDB 在可重复读（RR）隔离级别下默认使用的锁机制，是防止幻读的关键。间隙锁锁定一个范围，但不包括记录本身，用于防止其他事务在范围内插入新记录。表级锁包括意向共享锁（IS）和意向排他锁（IX），它们是声明式锁，用于在表级别快速判断是否有行锁冲突，避免逐行检查。自增锁（AUTO-INC Lock）是一种特殊的表级锁，用于确保自增字段值的唯一性和连续性，通常在 INSERT 语句执行后立即释放。",
+    "pitfalls": [
+      "混淆 Next-Key Lock 与间隙锁的作用范围。Next-Key Lock 锁的是左开右闭区间（例如，(5, 10]），而间隙锁锁的是开区间（例如，(5, 10)）。",
+      "认为 RR 级别下所有查询都会加 Next-Key Lock。实际上，在唯一索引的等值查询且记录存在时，Next-Key Lock 会退化为行锁。",
+      "忽略意向锁的作用，不理解其作为表级锁与行级锁的协调机制。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：在 RR 级别下，一个范围查询 `SELECT * FROM t WHERE id > 10 AND id < 20 FOR UPDATE` 具体会加哪些 Next-Key Lock？",
+      "如果候选人答得不好，可以引导：你能解释一下为什么在 RR 级别下，一个简单的 `SELECT * FROM t WHERE id = 15 FOR UPDATE`（id 是唯一索引且记录存在）不会产生幻读问题吗？这用到了什么锁？"
+    ]
+  }
+}

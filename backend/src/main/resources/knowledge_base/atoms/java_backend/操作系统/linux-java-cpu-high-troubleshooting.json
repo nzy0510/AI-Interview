@@ -1,0 +1,25 @@
+{
+  "id": "linux-java-cpu-high-troubleshooting",
+  "subject": "Linux 下 Java 进程 CPU 使用率高的问题排查",
+  "category": "操作系统",
+  "difficulty": "中等",
+  "tags": [
+    "Linux",
+    "性能调优",
+    "JVM",
+    "线程"
+  ],
+  "content": {
+    "principles": "当系统 CPU 使用率（us 用户态或 sy 内核态）持续高于 80%，表明系统压力大。排查 Java 进程高 CPU 的步骤：1. 使用 `top` 命令按 CPU 排序，找到高负载的 Java 进程 PID。2. 执行 `top -H -p <PID>` 查看该进程下所有线程的 CPU 占用，找出高消耗线程的 TID。3. 将 TID 转换为十六进制（如 `printf \"%x\\n\" <TID>`）。4. 使用 `jstack <PID> | grep -A 50 <hex_TID>` 抓取对应线程的调用栈，通常为 RUNNABLE 状态的线程。常见原因包括：代码死循环、正则表达式灾难性回溯（如 `(.+)+` 匹配长字符串）、频繁 GC、大对象 JSON 序列化（Jackson/Gson）卡住、外部依赖超时导致线程池积压。线上首选 `top + jstack` 组合排查。容器环境需进入宿主机或使用 `kubectl exec`。",
+    "pitfalls": [
+      "混淆用户态(us)和内核态(sy) CPU 高的不同含义，用户态高通常为应用代码问题，内核态高可能涉及系统调用或 I/O 问题。",
+      "忘记将线程 ID (TID) 转换为十六进制，导致 `jstack` 的 `grep` 命令无法匹配到正确线程。",
+      "仅查看 `jstack` 一次快照，可能错过瞬时或间歇性问题，需要多次采样。"
+    ],
+    "follow_up_paths": [
+      "除了 `jstack`，还有哪些工具或命令可以辅助定位 Java 线程问题？（如 `jstat`, `arthas`, `async-profiler`）",
+      "如果 `jstack` 发现大量线程处于 BLOCKED 或 WAITING 状态，可能是什么原因？如何排查？",
+      "如何通过代码层面（如使用 `ThreadMXBean`）主动监控线程状态和 CPU 时间？"
+    ]
+  }
+}

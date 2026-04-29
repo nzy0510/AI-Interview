@@ -1,0 +1,22 @@
+{
+  "id": "react-props-default-value",
+  "subject": "React 组件未传属性的默认值机制",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React",
+    "组件",
+    "Props"
+  ],
+  "content": {
+    "principles": "当 React 组件的属性没有传递时，其值为 `undefined`。JSX 会转换为 `React.createElement` 调用，未传递的 prop 不会出现在 `props` 对象中。设置默认值有两种主要方式：1) **函数组件中使用解构默认值**：`function Comp({ size = 'default' }) {...}`。当 `size` 为 `undefined` 时触发默认值。2) **类组件中使用 `defaultProps`**：`Comp.defaultProps = { size: 'default' }`。`defaultProps` 是 React 在实例化时的兜底机制。注意：传递 `null` 不会触发默认值，传递 `undefined` 会。现代 React 更推荐使用解构默认值，因其更直观、支持 Tree Shaking 且对 TypeScript 友好。",
+    "pitfalls": [
+      "混淆 `undefined` 和 `null` 对默认值的影响（传 `null` 不会触发默认值）。",
+      "在函数组件中混合使用解构默认值和 `defaultProps`，导致优先级困惑。"
+    ],
+    "follow_up_paths": [
+      "在 TypeScript 中，如何定义带有默认值的 Props 类型？",
+      "`defaultProps` 在未来的 React 版本中会被废弃吗？函数组件的默认参数有何替代方案？"
+    ]
+  }
+}

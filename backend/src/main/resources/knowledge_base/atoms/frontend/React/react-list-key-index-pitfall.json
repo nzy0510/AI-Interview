@@ -1,0 +1,24 @@
+{
+  "id": "react-list-key-index-pitfall",
+  "subject": "React 列表渲染中 key 的正确使用与 index 的陷阱",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React",
+    "性能优化",
+    "列表渲染"
+  ],
+  "content": {
+    "principles": "在 React 中，当渲染列表时，应为每个列表项提供一个稳定且唯一的 `key` 属性。这有助于 React 识别哪些项被更改、添加或删除，从而高效地复用和更新 DOM 节点。使用数组索引 `index` 作为 `key` 在列表顺序可能变化（增、删、排序）时是危险的，因为 React 会误判节点的身份，导致性能下降（不必要的补丁式更新）和潜在的状态错乱 bug。对于静态的、纯展示且无增删改操作的列表，使用 `index` 作为 `key` 是可接受的。当数据没有唯一标识时，应生成一个（如使用 `uuid` 或组合字段）。",
+    "pitfalls": [
+      "认为 `key` 只是 React 的一个警告，不重要。",
+      "在动态列表（如可排序、可过滤、可增删）中习惯性使用 `index` 作为 `key`。",
+      "不理解 `key` 如何影响 React 的 diff 算法和节点复用。"
+    ],
+    "follow_up_paths": [
+      "如果列表项是一个复杂组件且有内部状态，使用 `index` 作为 `key` 会导致什么具体问题？",
+      "React 的 diff 算法具体是如何利用 `key` 来优化更新的？",
+      "除了 `key`，还有哪些因素会影响列表渲染性能？"
+    ]
+  }
+}

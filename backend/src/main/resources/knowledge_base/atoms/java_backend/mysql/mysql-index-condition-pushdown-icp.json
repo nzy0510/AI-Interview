@@ -1,0 +1,22 @@
+{
+  "id": "mysql-index-condition-pushdown-icp",
+  "subject": "MySQL 索引条件下推（ICP）",
+  "category": "mysql",
+  "difficulty": "中等",
+  "tags": [
+    "MySQL",
+    "索引",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "索引条件下推（Index Condition Pushdown, ICP）是 MySQL 5.6 引入的优化，用于在存储引擎层利用索引过滤数据，减少回表次数。在没有 ICP 时，存储引擎根据索引定位数据后即回表，再由 Server 层根据 WHERE 条件过滤。启用 ICP 后，存储引擎会在索引遍历阶段，利用索引中包含的列进行条件判断，只将满足所有条件（包括索引中未完全覆盖的条件）的记录进行回表。这尤其适用于联合索引和范围查询。",
+    "pitfalls": [
+      "混淆 ICP 与覆盖索引，ICP 仍需回表，只是过滤提前。",
+      "不了解 ICP 的适用条件（如仅适用于二级索引，且某些条件下如子查询可能不生效）。"
+    ],
+    "follow_up_paths": [
+      "如何通过 `EXPLAIN` 的 `Extra` 字段中的 `Using index condition` 来判断 ICP 是否生效？",
+      "ICP 与 MRR（Multi-Range Read）优化是如何协同工作的？"
+    ]
+  }
+}

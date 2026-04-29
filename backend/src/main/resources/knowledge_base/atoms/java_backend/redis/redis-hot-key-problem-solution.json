@@ -1,0 +1,24 @@
+{
+  "id": "redis-hot-key-problem-solution",
+  "subject": "Redis 热点 Key 问题与解决方案",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "Redis",
+    "高并发",
+    "缓存",
+    "性能"
+  ],
+  "content": {
+    "principles": "热点 Key 指某个 key 被极高频率访问（QPS 可能达十万级），导致 Redis 实例 CPU 或网卡被打满，甚至拖垮服务。\n解决步骤：\n1. 定位：使用 `redis-cli --hotkeys`（Redis 4.0+）、监控系统（如 Prometheus + Grafana）或在代理层（如 Codis、TendisProxy）埋点统计 top N 热 key。\n2. 解决方案（组合拳）：\n   a. 本地缓存：在应用层使用 Caffeine、Guava Cache 等将热 key 缓存一份，设置短过期时间（如1-2秒），使大部分请求不访问 Redis。需注意缓存穿透问题，可用布隆过滤器兜底。\n   b. 拆分 key：将原热 key 的数据分片存储（如 key_1, key_2, ...），访问时通过随机或轮询方式分散请求压力。\n   c. 读写分离/副本扩展：对于读多写少的热点，可通过增加 Redis 从库分担读压力。\n   d. 业务逻辑优化：如将瞬时高频访问（如秒杀）通过消息队列削峰填谷，或使用原子操作（INCR）替代先读后写。\n核心目标是分散对单个 key 的集中访问压力。",
+    "pitfalls": [
+      "仅增加 Redis 实例数量而未解决 key 的集中访问，热点问题依旧存在。",
+      "本地缓存使用不当，导致数据不一致或缓存雪崩。",
+      "拆分 key 后，未考虑数据聚合或跨分片查询的复杂性。"
+    ],
+    "follow_up_paths": [
+      "在秒杀场景中，商品库存 key 成为热点，除了本地缓存和拆分，还有哪些更极致的优化方案？（考察更细粒度的锁、令牌桶等）",
+      "如何设计一个系统，能够实时发现并自动缓解新出现的突发热点 key？（考察自动化运维和弹性架构）"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "vue-filters-concept",
+  "subject": "Vue 过滤器的概念、用法与现状",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Vue",
+    "模板",
+    "Vue 3"
+  ],
+  "content": {
+    "principles": "Vue 2 中的过滤器（Filters）是一种用于文本格式化或数据转换的模板功能，通过管道符 `|` 调用。可在组件选项中局部定义（`filters: { capitalize(value) { ... } }`）或全局定义（`Vue.filter('capitalize', ...)`）。在模板中使用如 `{{ message | capitalize }}` 或 `v-bind:id=\"rawId | formatId\"`。过滤器可以串联，且可以接收额外参数。然而，在 Vue 3 中，过滤器已被移除。官方理由是其功能与计算属性或方法重复，且增加了模板语法的复杂性和学习成本。Vue 3 推荐使用计算属性（computed）或方法（methods）来实现相同的功能，使逻辑更清晰且易于测试。",
+    "pitfalls": [
+      "在 Vue 3 项目中尝试使用过滤器语法导致错误。",
+      "过度使用过滤器处理复杂业务逻辑，使模板难以维护。"
+    ],
+    "follow_up_paths": [
+      "如何在 Vue 3 中优雅地实现一个全局的文本格式化功能，以替代 Vue 2 的全局过滤器？",
+      "除了计算属性和方法，还有哪些 Vue 3 的新特性可以更好地处理数据转换？"
+    ]
+  }
+}

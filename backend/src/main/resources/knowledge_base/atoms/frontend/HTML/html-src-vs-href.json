@@ -1,0 +1,23 @@
+{
+  "id": "html-src-vs-href",
+  "subject": "HTML中src与href属性的区别",
+  "category": "HTML",
+  "difficulty": "简单",
+  "tags": [
+    "HTML",
+    "前端基础"
+  ],
+  "content": {
+    "principles": "src（source）和href（hypertext reference）都是HTML中用于引入外部资源的属性，但语义和浏览器处理方式有本质区别。src是“替换”行为，表示该资源是当前文档的一部分，浏览器会加载该资源并替换/嵌入到当前标签的位置。例如：`<script src=\"...\">` 或 `<img src=\"...\">`，脚本和图片的内容会直接决定对应标签的展示。src资源的加载和执行通常会阻塞HTML文档的解析（如无async/defer的script）。href是“链接/关联”行为，表示当前元素与外部资源建立一种关联，但不会替换自身内容。例如：`<link href=\"style.css\" rel=\"stylesheet\">` 或 `<a href=\"/home\">首页</a>`，前者告诉浏览器加载并应用样式表，后者创建一个可导航的超链接。关键区别在于对文档流的参与方式：src引入的资源被视为页面主体的一部分；href更多是建立一种引用关系。",
+    "pitfalls": [
+      "混淆使用场景，例如在`<link>`标签中使用src，或在`<script>`标签中使用href。",
+      "不理解`<img>`使用src是嵌入，而`<a>`使用href是导航，本质行为不同。",
+      "对资源加载阻塞行为的理解不准确，例如认为所有href资源都不阻塞渲染。"
+    ],
+    "follow_up_paths": [
+      "除了script和img，还有哪些标签常用src属性？它们的加载行为有何异同？",
+      "`<link rel=\"preload\">` 中使用href，其加载行为与普通href有何不同？",
+      "从浏览器渲染管线的角度，分析src和href资源加载分别发生在哪个阶段？"
+    ]
+  }
+}

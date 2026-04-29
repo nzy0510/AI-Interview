@@ -1,0 +1,22 @@
+{
+  "id": "rocketmq-nameserver-vs-zookeeper",
+  "subject": "RocketMQ为何使用NameServer而非ZooKeeper作为注册中心",
+  "category": "rocketmq",
+  "difficulty": "中等",
+  "tags": [
+    "RocketMQ",
+    "分布式系统",
+    "服务发现"
+  ],
+  "content": {
+    "principles": "RocketMQ选择自研NameServer而非ZooKeeper，是基于架构取舍。ZooKeeper设计目标是强一致性的协调服务（使用ZAB协议），写操作需落盘和多数派确认，在Broker频繁上下线、心跳上报的场景下性能不足、延迟高。NameServer设计轻量，是无状态的路由注册表。Broker定时（如30秒）向所有NameServer发送心跳上报路由信息。NameServer不参与消息收发、不做持久化，宕机后Broker可依赖本地缓存暂时工作。客户端从NameServer拉取路由并定时更新。该模式牺牲强一致性，换取了高可用、低延迟和易于扩容，更适合消息队列场景。",
+    "pitfalls": [
+      "认为NameServer功能强大复杂，不理解其无状态、轻量的设计本质",
+      "混淆服务发现与强一致性协调服务的适用场景"
+    ],
+    "follow_up_paths": [
+      "NameServer集群如何保证数据最终一致性？如果某个NameServer数据过时怎么办？",
+      "与Kafka早期使用ZooKeeper相比，RocketMQ的选择带来了哪些优势和挑战？"
+    ]
+  }
+}

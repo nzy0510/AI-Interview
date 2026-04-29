@@ -1,0 +1,24 @@
+{
+  "id": "js-bigint-large-number",
+  "subject": "JavaScript 中处理大整数与 BigInt",
+  "category": "JavaScript",
+  "difficulty": "中等",
+  "tags": [
+    "JavaScript",
+    "数据类型",
+    "精度"
+  ],
+  "content": {
+    "principles": "JavaScript 的 `Number` 类型基于 IEEE 754 双精度浮点数，安全整数范围是 `-(2^53 - 1)` 到 `2^53 - 1`（即 -9007199254740991 到 9007199254740991）。超出此范围会丢失精度。`BigInt` 是 ES2020 引入的原始类型，用于表示任意精度的整数。创建方式：字面量加 `n` 后缀（如 `123n`）或使用 `BigInt()` 构造函数。`BigInt` 支持算术、比较运算符，但不能与 `Number` 混合运算，必须显式转换。`typeof 10n` 返回 `'bigint'`。实际应用中，如处理后端传来的 64 位雪花ID，应作为字符串接收并使用 `BigInt(idStr)` 转换，或直接以字符串操作，以避免 `Number` 转换时的精度丢失。JSON 不支持 `BigInt`，前后端交互时应使用字符串序列化。",
+    "pitfalls": [
+      "将超出安全范围的整数字符串直接赋值给 `Number` 类型，导致精度丢失且不易察觉。",
+      "尝试对 `BigInt` 和 `Number` 进行混合运算（如 `10n + 1`），会抛出 `TypeError`。",
+      "忽略 JSON 序列化/反序列化时 `BigInt` 的兼容性问题，导致数据传输错误。"
+    ],
+    "follow_up_paths": [
+      "`BigInt` 支持哪些运算符？它与 `Number` 在除法 `/` 运算符上有何不同？",
+      "如何检测一个数值是否在 `Number` 的安全整数范围内？",
+      "在后端使用 Java `Long` 类型或 Go `int64` 时，前端应如何设计接口以确保数据完整性？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "java-101",
+  "subject": "一致性 Hash 算法原理",
+  "category": "分布式",
+  "difficulty": "P7",
+  "tags": [
+    "Algorithm",
+    "Distributed",
+    "Load Balance"
+  ],
+  "content": {
+    "principles": "1. 核心流程: 将所有 Hash 值组织成一个 0~2^32-1 的圆环。2. 节点与数据映射: 服务器节点与数据对象均通过 Hash 映射到环上，数据存储在顺时针方向遇到的第一个节点。3. 虚拟节点: 解决由于物理节点过少导致的哈希倾斜问题，提高负载均衡均匀度。",
+    "pitfalls": [
+      "Hash Drift: 节点增删时虽只影响部分数据，但在极高性能场景下仍会有瞬间缓存穿透。",
+      "Virtual Node Skew: 虚拟节点倍数设置不合理，导致均衡效果达不到预期。",
+      "Rehash Storm: 节点频繁宕机引发的大规模数据迁移。"
+    ],
+    "follow_up_paths": [
+      "Consistent Hashing in Redis Cluster (Slots comparison)",
+      "Ketama 算法实现细节",
+      "Maglev Hash 与最小负载一致性 Hash"
+    ]
+  }
+}

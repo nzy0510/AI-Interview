@@ -1,0 +1,23 @@
+{
+  "id": "vue-slot-mechanism-application",
+  "subject": "Vue 插槽 (Slot) 的机制、类型与应用",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "Vue",
+    "组件",
+    "插槽"
+  ],
+  "content": {
+    "principles": "Vue 的插槽 (Slot) 是一种内容分发机制，允许父组件向子组件模板的指定位置注入内容。**默认插槽**：父组件传入的所有未指定插槽名的内容会填充到子组件的 `<slot></slot>` 位置。**具名插槽**：子组件使用 `<slot name=\"header\"></slot>` 定义插槽，父组件使用 `<template #header>` 或 `<template v-slot:header>` 将内容注入对应名称的插槽。**作用域插槽**：子组件通过 `<slot :item=\"item\">` 将数据（slot props）传递给父组件，父组件通过 `<template #default=\"slotProps\">` 接收并使用这些数据来渲染内容，从而实现基于子组件数据的自定义渲染。插槽是实现高可定制化 UI 组件库（如 Element Plus）的核心技术。",
+    "pitfalls": [
+      "混淆默认插槽和具名插槽的用法。",
+      "不理解作用域插槽的数据传递方向（子传父）。",
+      "在 Vue 3 中，仍使用旧的具名插槽语法（如 `slot=\"name\"`），该语法已在 Vue 2.6.0+ 中被 `v-slot` 取代。"
+    ],
+    "follow_up_paths": [
+      "请解释 Vue 3 中废弃 `slot` 和 `slot-scope` 特性的原因，以及新的 `v-slot` 语法有何优势？",
+      "如何利用作用域插槽实现一个可自定义渲染每一项的列表组件？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "java-aqs-core-principle",
+  "subject": "AQS（AbstractQueuedSynchronizer）核心原理",
+  "category": "并发",
+  "difficulty": "困难",
+  "tags": [
+    "并发",
+    "AQS",
+    "同步器"
+  ],
+  "content": {
+    "principles": "AQS是Java并发包中构建锁和同步器（如ReentrantLock, Semaphore, CountDownLatch）的底层框架。其核心是一个volatile int类型的state变量，表示同步状态（如锁的重入次数、信号量许可数）。线程通过CAS操作尝试修改state，成功则获取资源，失败则被封装成Node节点加入一个FIFO的CLH双向队列等待。AQS采用模板方法模式，将具体的资源获取（tryAcquire）和释放（tryRelease）逻辑交由子类实现，自身负责线程的排队、阻塞与唤醒。支持独占（如ReentrantLock）和共享（如Semaphore）两种模式，以及公平与非公平两种策略。",
+    "pitfalls": [
+      "混淆AQS与具体的锁（如ReentrantLock），AQS是骨架，具体锁是它的实现。",
+      "认为AQS适用于所有同步场景，实际上对于简单的一次性事件（如CountDownLatch）或计数，应优先使用JDK现成工具。"
+    ],
+    "follow_up_paths": [
+      "请描述一下AQS中Node节点的状态（waitStatus）有哪些，分别代表什么含义？（如CANCELLED, SIGNAL, CONDITION, PROPAGATE）",
+      "非公平锁和公平锁在AQS的acquire方法中实现有何不同？（非公平锁会先直接尝试CAS获取，失败才入队；公平锁则直接检查队列）"
+    ]
+  }
+}

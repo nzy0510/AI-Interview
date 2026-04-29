@@ -1,0 +1,25 @@
+{
+  "id": "html-script-defer-async",
+  "subject": "HTML script标签中defer与async的区别",
+  "category": "HTML",
+  "difficulty": "中等",
+  "tags": [
+    "HTML",
+    "JavaScript",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "defer和async是script标签的布尔属性，用于控制外部脚本的加载和执行行为，以避免阻塞HTML解析。1. async：脚本的加载是异步的，不会阻塞HTML解析。但是，一旦脚本下载完成，它会立即执行，此时会阻塞HTML解析。多个async脚本的执行顺序与它们在文档中的顺序无关，取决于下载完成的先后。适用于独立、无依赖的脚本（如分析统计代码）。2. defer：脚本的加载也是异步的，不会阻塞HTML解析。但是，脚本的执行会被延迟，直到整个HTML文档解析完成（DOM构建完毕），并且在DOMContentLoaded事件触发之前执行。多个defer脚本会严格按照它们在文档中出现的顺序执行。适用于需要操作DOM或脚本间有依赖关系的场景。如果同时指定async和defer，在支持defer的浏览器中，async属性会被忽略，行为同defer。无任何属性的普通script会同步加载和执行，完全阻塞其后的HTML解析。",
+    "pitfalls": [
+      "误以为async和defer脚本的执行都不会阻塞任何操作，实际上async脚本执行时仍会阻塞。",
+      "在多个有依赖关系的脚本上使用async，导致执行顺序错乱，引发错误。",
+      "同时使用async和defer，导致行为不可预测，应避免。",
+      "认为defer脚本一定在DOMContentLoaded之后执行，实际上是在之前。"
+    ],
+    "follow_up_paths": [
+      "从浏览器渲染引擎的角度，详细描述带有defer/async的script标签的加载、解析、执行流程。",
+      "模块化脚本（`<script type=\"module\">`）的默认加载行为是什么？它与defer有何关系？",
+      "如何动态创建的script标签（document.createElement）模拟defer或async的行为？"
+    ]
+  }
+}

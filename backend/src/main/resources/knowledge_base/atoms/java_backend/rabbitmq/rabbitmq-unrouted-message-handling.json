@@ -1,0 +1,22 @@
+{
+  "id": "rabbitmq-unrouted-message-handling",
+  "subject": "RabbitMQ中无法路由的消息处理机制",
+  "category": "rabbitmq",
+  "difficulty": "简单",
+  "tags": [
+    "RabbitMQ",
+    "消息队列"
+  ],
+  "content": {
+    "principles": "当消息发送到Exchange后，如果根据路由规则（Routing Key）找不到任何匹配的Queue，其处理方式取决于生产者发送消息时是否设置了`mandatory`标志。1. 默认情况（`mandatory=false`）：消息被Broker直接静默丢弃，生产者不会收到任何通知。2. 设置了`mandatory=true`：Broker会通过`Return`机制将消息退回给生产者。在Spring AMQP中，需要为`RabbitTemplate`设置`setMandatory(true)`并注册`ReturnCallback`来接收退回的消息，以便进行日志记录、告警或补偿处理。",
+    "pitfalls": [
+      "误以为无法路由的消息会自动进入死信队列（DLX），实际上DLX处理的是已进入队列但无法被消费的消息。",
+      "不知道`mandatory`参数的存在或其默认值为`false`。",
+      "在Spring中未正确配置`ReturnCallback`，导致即使开了`mandatory`也收不到退回消息。"
+    ],
+    "follow_up_paths": [
+      "除了`mandatory`，还有哪个参数（`immediate`，已废弃）也曾影响消息路由？它的作用是什么？",
+      "在微服务架构中，如何利用`Return`机制设计一个可靠的消息投递保障系统？"
+    ]
+  }
+}

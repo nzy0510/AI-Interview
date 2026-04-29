@@ -1,0 +1,25 @@
+{
+  "id": "nodejs-eventemitter-usage",
+  "subject": "Node.js EventEmitter 核心用法与原理",
+  "category": "NodeJS",
+  "difficulty": "简单",
+  "tags": [
+    "Node.js",
+    "事件驱动",
+    "设计模式"
+  ],
+  "content": {
+    "principles": "Node.js 的事件驱动架构基于 `events` 模块的 EventEmitter 类实现观察者模式。核心原理是：事件发射器（EventEmitter 实例）通过 `on` 或 `once` 方法注册监听器（回调函数），当通过 `emit` 方法触发对应事件时，所有注册的监听器会同步执行。`emit` 可以传递任意数量的参数给监听器。`once` 方法注册的监听器在触发一次后会自动移除。为避免内存泄漏，需用 `removeListener` 或 `removeAllListeners` 主动移除监听器。未捕获的 'error' 事件会导致 Node.js 进程退出，因此必须为 'error' 事件添加监听器。底层实现上，EventEmitter 内部维护一个以事件名为键、监听器数组为值的对象（Map）。",
+    "pitfalls": [
+      "忘记监听 'error' 事件，导致未捕获的 'error' 事件使进程崩溃。",
+      "滥用 `once` 导致预期外的监听器丢失，或误用 `on` 导致监听器重复添加引发内存泄漏。",
+      "在事件回调中抛出同步错误，若未处理会破坏事件循环（除非是 'error' 事件）。",
+      "认为 `emit` 是异步的（实际上是同步执行监听器）。"
+    ],
+    "follow_up_paths": [
+      "EventEmitter 的 `newListener` 和 `removeListener` 内部事件有什么作用？如何利用它们实现高级功能（如日志、性能监控）？",
+      "Node.js 的 Stream 和许多核心模块（如 net.Server）如何继承 EventEmitter？请举例说明其事件流。",
+      "如何实现一个支持异步监听器或监听器优先级的事件系统？与 EventEmitter 的设计差异是什么？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "js-es6-rest-params",
+  "subject": "ES6 Rest 参数与解构赋值",
+  "category": "JavaScript",
+  "difficulty": "简单",
+  "tags": [
+    "JavaScript",
+    "ES6"
+  ],
+  "content": {
+    "principles": "Rest 参数（...args）用于获取函数的多余参数，将其放入一个数组中，解决了 arguments 类数组对象操作不便的问题。解构赋值允许从数组或对象中提取值，并赋值给变量。对象解构：`const { name, age } = user`。数组解构可用于交换变量：`[a, b] = [b, a]`，无需临时变量。",
+    "pitfalls": [
+      "误以为 arguments 是数组，忘记其是类数组对象，没有数组方法。",
+      "解构赋值时，变量名必须与对象属性名一致，否则值为 undefined。",
+      "交换变量时，若变量值引用同一对象，可能导致非预期副作用。"
+    ],
+    "follow_up_paths": [
+      "如何实现一个函数，使用 rest 参数求和，并比较与 arguments 写法的优劣？",
+      "解构赋值时，如何给提取的变量重命名并设置默认值？"
+    ]
+  }
+}

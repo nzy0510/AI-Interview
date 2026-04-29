@@ -1,0 +1,24 @@
+{
+  "id": "java-concurrenthashmap-17-vs-18",
+  "subject": "ConcurrentHashMap JDK 1.7 与 1.8 的区别",
+  "category": "并发",
+  "difficulty": "困难",
+  "tags": [
+    "ConcurrentHashMap",
+    "并发",
+    "JDK7",
+    "JDK8"
+  ],
+  "content": {
+    "principles": "ConcurrentHashMap 从 JDK 1.7 到 1.8 进行了重大重构：\n1. **数据结构与锁粒度**：1.7 采用分段锁（Segment），每个 Segment 是一个小的哈希表，由 ReentrantLock 保护。默认16个Segment，写并发度受限于Segment数量。1.8 抛弃了Segment，采用 `Node数组 + 链表/红黑树` 结构，使用 `CAS + synchronized` 对单个桶位（链表头节点）进行加锁，锁粒度更细，写并发度更高。读操作通常无锁（volatile）。\n2. **哈希冲突处理**：1.7 使用链表。1.8 引入了与 HashMap 类似的红黑树机制（链表长度>8且数组长度>=64时树化），防止极端情况下链表过长导致性能退化。\n3. **扩容机制**：1.7 扩容时锁住整个Segment。1.8 支持多线程协助扩容（协助迁移），一个线程触发扩容后，其他线程在 put 时如果发现正在扩容，会帮助迁移数据，提高扩容效率。\n4. **API扩展**：1.8 新增了如 `forEach`, `reduce`, `search` 等并行操作支持。",
+    "pitfalls": [
+      "认为 ConcurrentHashMap 1.8 只是简单地将 synchronized 替换了 ReentrantLock，不理解其 CAS 与细粒度锁的结合",
+      "误以为 1.8 的读操作也需要加锁",
+      "不清楚 1.8 的扩容如何实现并发协助"
+    ],
+    "follow_up_paths": [
+      "详细说明 JDK 1.8 ConcurrentHashMap 的 `put` 操作中，CAS 和 synchronized 分别是如何应用的？",
+      "为什么 JDK 1.8 要放弃分段锁（Segment）设计？分段锁在哪些场景下会成为瓶颈？"
+    ]
+  }
+}

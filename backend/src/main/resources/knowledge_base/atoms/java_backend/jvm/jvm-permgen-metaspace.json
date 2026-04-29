@@ -1,0 +1,24 @@
+{
+  "id": "jvm-permgen-metaspace",
+  "subject": "JVM 永久代 (PermGen) 与元空间 (Metaspace)",
+  "category": "jvm",
+  "difficulty": "中等",
+  "tags": [
+    "JVM",
+    "内存管理",
+    "Java 8"
+  ],
+  "content": {
+    "principles": "Java 8 移除了永久代 (PermGen)，引入了元空间 (Metaspace)。永久代是 HotSpot JVM 在 Java 7 及之前用于存储类元数据（如类名、方法、字段信息、常量池等）的区域，位于 JVM 堆内，大小固定（通过 `-XX:MaxPermSize` 设置），容易因加载大量类（如使用 CGLIB 动态代理、热部署）导致 `OutOfMemoryError: PermGen space`。\n元空间将类的元数据移出 JVM 堆，存储到本地内存 (Native Memory) 中。其容量受限于系统可用内存，默认无上限（可通过 `-XX:MaxMetaspaceSize` 限制），从根本上解决了永久代的容量瓶颈问题。此外，元空间由 JVM 自动管理，其垃圾回收与类的卸载关联，通常在 Full GC 时触发，减少了与堆内对象 GC 的相互干扰，提升了 GC 效率。这一改变更好地适应了现代应用动态生成类（如 Spring AOP、OSGi）的场景。",
+    "pitfalls": [
+      "认为元空间完全不会发生 OOM（实际上如果无限制且系统内存耗尽，仍会导致 OOM）。",
+      "混淆元空间和堆内存的关系，误以为元空间也在堆内。",
+      "不了解 `-XX:MaxMetaspaceSize` 和 `-XX:MetaspaceSize` 参数的作用。"
+    ],
+    "follow_up_paths": [
+      "元空间的内存具体由谁管理？是 JVM 还是操作系统？",
+      "什么情况下，元空间中的类元数据会被回收（类卸载）？",
+      "从永久代到元空间，对 JVM 的垃圾收集器（如 G1）有什么影响？"
+    ]
+  }
+}

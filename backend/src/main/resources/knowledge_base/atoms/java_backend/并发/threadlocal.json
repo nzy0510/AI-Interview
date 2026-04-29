@@ -1,0 +1,24 @@
+{
+  "id": "java-103",
+  "subject": "ThreadLocal 原理与内存泄漏",
+  "category": "并发",
+  "difficulty": "P6",
+  "tags": [
+    "Java",
+    "Concurrency",
+    "ThreadLocal"
+  ],
+  "content": {
+    "principles": "1. 每个线程持有 ThreadLocalMap，Key 是 ThreadLocal 的弱引用 (WeakReference)，Value 是实际存储的变量。2. 提供线程隔离，避免并发争用。3. 线性探测法处理哈希冲突。",
+    "pitfalls": [
+      "Memory Leak: 线程池场景下 ThreadLocal 弱引用被回收后，Value 长期滞留 (需要手动 .remove())。",
+      "Linear Probing Overhead: 哈希冲突严重时查找性能下降。",
+      "Async Context Loss: 异步回调中线程切换导致 ThreadLocal 内容丢失。"
+    ],
+    "follow_up_paths": [
+      "InheritableThreadLocal 用于父子线程传递",
+      "TransmittableThreadLocal (TTL) 在线程池中传递上下文",
+      "Netty FastThreadLocal 性能优化"
+    ]
+  }
+}

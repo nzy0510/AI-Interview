@@ -1,0 +1,25 @@
+{
+  "id": "redis-hotkey-solutions",
+  "subject": "Redis 热 Key 问题的解决方案",
+  "category": "redis",
+  "difficulty": "中等",
+  "tags": [
+    "Redis",
+    "缓存",
+    "高并发",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "解决 Redis 热 Key 问题需要组合策略。1) 本地缓存：在应用节点使用 Caffeine 或 Guava Cache 缓存热 Key，设置短过期时间（如 1-2 秒），使大部分请求不经过网络到达 Redis。需注意缓存穿透问题，可用布隆过滤器兜底。2) 拆分 Key：将单个 Key 存储的全量数据分片为 key_1、key_2 等，通过随机或轮询访问分散压力，适用于静态资源场景。3) Redis 多副本：为热 Key 创建独立的只读副本集群，或利用 Redis Cluster 的 replica 节点分流读请求。4) 写扩散（极端方案）：通过消息中间件（如 Kafka）将热 Key 值推送到所有客户端内存，并通知更新。此方案运维复杂，需解决一致性问题。",
+    "pitfalls": [
+      "仅依赖单一方案，未根据场景组合使用。",
+      "本地缓存过期时间设置不当，导致数据不一致或穿透。",
+      "写扩散方案未考虑最终一致性和运维复杂度，盲目使用。"
+    ],
+    "follow_up_paths": [
+      "如果采用本地缓存，如何与 Redis 的数据一致性进行同步？",
+      "拆分 Key 后，如何保证数据聚合查询的效率和正确性？",
+      "Redis Cluster 的 replica 节点在读写分离时，如何监控和应对复制延迟？"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "vue3-modal-component-design",
+  "subject": "Vue 3弹窗（Modal）组件的设计与实现",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "Vue3",
+    "组件设计",
+    "Teleport"
+  ],
+  "content": {
+    "principles": "设计一个灵活、解耦的Vue 3弹窗组件需遵循以下核心原则：1. 使用`v-model`管理显示状态（`visible`），实现父子组件双向同步。子组件通过`emit('update:visible', false)`关闭自身。2. 内容区域使用插槽（`<slot>`）提供最大定制灵活性，特别是具名插槽（如`header`、`default`、`footer`）。3. 必须使用`<Teleport to=\"body\">`将弹窗内容渲染到`<body>`下，以避免父容器样式（如`overflow: hidden`）的裁剪，并防止样式污染。4. 通过Props控制行为，如`closeOnClickModal`（点击遮罩关闭）、`closeOnPressEscape`（按ESC关闭）。5. 事件处理需严谨：点击遮罩关闭应使用`@click.self`确保仅点击背景触发；监听`keydown`事件实现ESC关闭，并在组件挂载/卸载时正确绑定/清理事件监听器，防止内存泄漏。对于全局调用模式（如`Modal.confirm()`），可使用`render`函数动态创建VNode并挂载到body，参考Element Plus的服务式实现，但需注意实例销毁以防止内存泄漏。",
+    "pitfalls": [
+      "未使用`Teleport`导致弹窗被父级布局或样式限制。",
+      "通过`$refs`手动控制显隐，破坏了Vue的数据驱动原则，增加维护成本。",
+      "事件监听器（如键盘事件）绑定后未在组件卸载时移除，导致内存泄漏。",
+      "遮罩层点击事件未使用`.self`修饰符，误点击内容区域也会触发关闭。"
+    ],
+    "follow_up_paths": [
+      "如何实现一个支持命令式调用（如`Modal.success()`）的弹窗服务？需要考虑哪些生命周期和内存管理问题？",
+      "在弹窗组件中，如何实现`<Transition>`动画效果，并确保`Teleport`与动画的兼容性？",
+      "如何设计弹窗组件的Props以支持可访问性（A11y），如焦点管理、ARIA属性？"
+    ]
+  }
+}

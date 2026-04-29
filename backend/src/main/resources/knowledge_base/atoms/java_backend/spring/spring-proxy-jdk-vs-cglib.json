@@ -1,0 +1,22 @@
+{
+  "id": "spring-proxy-jdk-vs-cglib",
+  "subject": "Spring AOP 代理机制：JDK 动态代理与 CGLIB",
+  "category": "spring",
+  "difficulty": "中等",
+  "tags": [
+    "Spring",
+    "AOP",
+    "代理模式"
+  ],
+  "content": {
+    "principles": "Spring AOP 默认使用 JDK 动态代理，要求目标类至少实现一个接口。如果目标类是 package-private 或未实现任何接口，Spring 会自动切换到 CGLIB 代理，通过生成目标类的子类来创建代理。在 Spring Boot 自动配置、事务管理等场景中，具体使用哪种代理方式取决于目标类的结构。可以通过在配置类上添加 `@EnableAspectJAutoProxy(proxyTargetClass = true)` 强制使用 CGLIB 代理，但通常无需手动干预，Spring 能根据类结构自动选择正确的方式。",
+    "pitfalls": [
+      "误认为所有 Spring 代理都是 JDK 动态代理，忽略了 CGLIB 的存在和触发条件。",
+      "在需要代理类本身而非接口方法时（如非 public 方法），未意识到必须使用 CGLIB 代理。"
+    ],
+    "follow_up_paths": [
+      "JDK 动态代理和 CGLIB 代理在性能、限制和原理上有何区别？",
+      "`@Transactional` 注解在同类方法间调用失效，这与代理机制有何关系？"
+    ]
+  }
+}

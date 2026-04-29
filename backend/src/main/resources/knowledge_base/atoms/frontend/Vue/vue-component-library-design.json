@@ -1,0 +1,27 @@
+{
+  "id": "vue-component-library-design",
+  "subject": "Vue 组件库的设计与实现要点",
+  "category": "Vue",
+  "difficulty": "困难",
+  "tags": [
+    "Vue",
+    "组件库",
+    "工程化",
+    "TypeScript"
+  ],
+  "content": {
+    "principles": "设计实现一个 Vue 组件库是一个系统工程，核心要点包括：\n1.  **工程化与规范**：\n    - 使用 Vite 或 Webpack 构建，支持 TypeScript 以获得类型安全。\n    - 制定代码规范（ESLint, Prettier）、目录结构、提交规范（如 Conventional Commits）。\n    - 构建目标需支持按需引入和 Tree-shaking，通常输出 ES Module 和 CommonJS 两种格式。\n2.  **组件设计**：\n    - 原子化设计：基础组件（Button, Input）保持单一职责，通过 Props 控制变体。\n    - 样式方案：使用 Scoped CSS、CSS Modules 或 CSS-in-JS 实现样式隔离，并通过 CSS 变量支持主题定制。\n    - 复杂组件（如 Table）内部可组合，对外提供简洁、一致的 API。\n3.  **开发与质量保障**：\n    - 单元测试：为每个组件编写测试（使用 Vitest/Jest），确保逻辑正确。\n    - 文档与演示：使用 VitePress 或 Storybook 搭建文档站，提供实时示例和 API 说明。\n    - 类型声明：生成 `d.ts` 文件，提供完整的 IDE 类型提示。\n4.  **复用与架构**：\n    - 抽离公共逻辑为 Composable (Hooks) 或工具函数。\n    - 设计全局配置（如尺寸、语言）和国际化方案。\n5.  **发布与维护**：\n    - 使用 `semantic-release` 等工具根据提交信息自动版本管理和发布。\n    - 关注长期维护和 API 的向后兼容性（Breaking Change 需谨慎）。\n参考成熟库（如 Element Plus, Naive UI）的架构设计。",
+    "pitfalls": [
+      "组件 API 设计不一致，增加用户学习成本。",
+      "样式全局污染，或主题定制方案过于复杂。",
+      "忽略无障碍（A11y）和国际化（i18n）支持。",
+      "打包配置不当，导致无法按需引入或 Tree-shaking 失效。",
+      "缺乏完善的测试和文档，影响组件库的可靠性和可用性。"
+    ],
+    "follow_up_paths": [
+      "如何设计一个支持主题切换（如暗黑模式）的组件库？",
+      "在组件库中，如何处理全局状态（如配置、消息）？与业务应用中的状态管理有何不同？",
+      "如何实现组件的按需加载（Babel 插件 vs. 手动导入）？原理是什么？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "netty-performance-reasons",
+  "subject": "Netty高性能的原因",
+  "category": "netty",
+  "difficulty": "中等",
+  "tags": [
+    "Netty",
+    "网络编程",
+    "性能优化"
+  ],
+  "content": {
+    "principles": "Netty的高性能源于线程模型、内存管理和API设计的协同优化。核心是Reactor模式，通过EventLoopGroup用少量线程处理大量连接，避免线程上下文切换开销。内存层面使用对象池化，如PooledByteBufAllocator复用ByteBuf，减少GC压力。零拷贝技术（如CompositeByteBuf、FileRegion）优化数据传输路径，减少内存复制。ChannelPipeline采用责任链模式，保证扩展性的同时性能损耗极低。",
+    "pitfalls": [
+      "误认为Netty高性能仅靠单点技术，不理解其整体协同设计",
+      "混淆零拷贝概念，认为只是不拷贝，不理解其优化数据传输路径的本质"
+    ],
+    "follow_up_paths": [
+      "Netty的EventLoop线程模型具体如何工作？与Reactor模式的对应关系是什么？",
+      "PooledByteBufAllocator的内存池是如何实现的？如何避免内存泄漏？"
+    ]
+  }
+}

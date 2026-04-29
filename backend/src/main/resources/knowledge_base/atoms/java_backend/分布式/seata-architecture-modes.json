@@ -1,0 +1,26 @@
+{
+  "id": "seata-architecture-modes",
+  "subject": "Seata架构与工作模式",
+  "category": "分布式",
+  "difficulty": "中等",
+  "tags": [
+    "分布式事务",
+    "微服务",
+    "Spring Cloud Alibaba"
+  ],
+  "content": {
+    "principles": "Seata（Simple Extensible Autonomous Transaction Architecture）是阿里开源的分布式事务解决方案，旨在简化分布式事务开发。其核心架构包含三个角色：1) TC (Transaction Coordinator)：事务协调器，独立部署的服务端，维护全局事务和分支事务的状态，驱动全局提交或回滚。2) TM (Transaction Manager)：事务管理器，嵌入在应用端，负责定义全局事务边界（如使用`@GlobalTransactional`），开启、提交或回滚全局事务。3) RM (Resource Manager)：资源管理器，负责管理分支事务（即本地事务）的资源，向TC注册分支事务、报告状态，并执行TC的提交或回滚指令。在AT模式下，RM会拦截业务SQL，解析语义生成undo_log（数据快照），在业务提交后删除undo_log，回滚时用undo_log恢复数据。Seata支持多种模式：AT模式（自动补偿，侵入小）、TCC模式（手动定义两阶段）、Saga模式（长事务，基于状态机编排）。",
+    "pitfalls": [
+      "认为Seata的TC必须单独部署，实际上它也支持内嵌模式，但生产环境推荐独立部署。",
+      "混淆Seata AT模式与数据库XA，AT模式基于本地事务和补偿，不依赖数据库的XA支持。",
+      "忽略undo_log表的设计和清理，如果undo_log堆积会影响性能。",
+      "在AT模式下，全局锁的竞争可能在高并发更新同一数据时导致性能下降甚至死锁。"
+    ],
+    "follow_up_paths": [
+      "Seata的全局事务ID（XID）是如何在微服务调用链中传递的？通常通过什么机制（如HTTP header、RPC context）？",
+      "AT模式下的undo_log记录的是数据的前像还是后像？回滚时具体如何操作？",
+      "Seata的TCC模式和独立的TCC框架实现有什么区别？Seata的TCC模式中，TC扮演什么角色？",
+      "如果TC服务宕机了，正在运行中的分布式事务会怎样？Seata有什么高可用机制？"
+    ]
+  }
+}

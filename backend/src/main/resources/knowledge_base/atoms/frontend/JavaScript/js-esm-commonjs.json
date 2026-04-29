@@ -1,0 +1,23 @@
+{
+  "id": "js-esm-commonjs",
+  "subject": "ES Modules 与 CommonJS",
+  "category": "JavaScript",
+  "difficulty": "中等",
+  "tags": [
+    "JavaScript",
+    "模块化"
+  ],
+  "content": {
+    "principles": "ES Modules (ESM) 是 ES6 引入的官方模块系统，使用 `export` 导出，`import` 导入。它支持静态分析，便于打包工具（如 webpack、vite）进行 Tree Shaking。CommonJS 是 Node.js 的模块系统，使用 `module.exports` 导出，`require` 导入，是运行时加载。ESM 是编译时确定依赖关系，CommonJS 是执行时同步加载模块。",
+    "pitfalls": [
+      "在 Node.js 中混合使用 ESM 和 CommonJS 可能导致错误，需要注意文件扩展名（.mjs/.cjs）和 package.json 的 `type` 字段。",
+      "误以为 `import` 是异步的（在浏览器中是，但在 Node.js 的 ESM 中顶层是同步的）。",
+      "ESM 中 `export default` 和 `export` 的区别，以及对应的 `import` 语法。"
+    ],
+    "follow_up_paths": [
+      "Tree Shaking 的原理是什么？为什么 CommonJS 模块难以进行 Tree Shaking？",
+      "在 Node.js 中，如何让一个模块同时支持 ESM 和 CommonJS 两种导入方式？",
+      "解释一下动态导入 `import()` 的用途和它与静态导入的区别。"
+    ]
+  }
+}

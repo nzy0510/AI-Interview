@@ -1,0 +1,25 @@
+{
+  "id": "js-fetch-api",
+  "subject": "Fetch API 详解",
+  "category": "JavaScript",
+  "difficulty": "中等",
+  "tags": [
+    "JavaScript",
+    "网络请求",
+    "浏览器API"
+  ],
+  "content": {
+    "principles": "Fetch 是浏览器原生提供的、基于 Promise 的网络请求 API，用于替代 XMLHttpRequest。语法简洁，支持链式调用。响应体是 ReadableStream，支持流式处理。与 Service Worker 和 Cache API 集成良好，适用于 PWA。默认不发送/接收 cookies，跨域需设置 `credentials: 'include'`。原生不支持超时，需使用 AbortController 实现。HTTP 错误状态码（如 404、500）不会导致 Promise reject，需手动检查 `response.ok` 或 `response.status`。",
+    "pitfalls": [
+      "忘记设置 `credentials` 导致跨域请求不携带 cookie。",
+      "错误处理不完整，未检查 `response.ok` 或 `response.status`。",
+      "误以为 fetch 在 Node.js 中始终原生可用（v18 之前需要 polyfill）。",
+      "未使用 AbortController 实现请求超时或取消。"
+    ],
+    "follow_up_paths": [
+      "如何使用 AbortController 实现请求超时和取消？",
+      "比较 Fetch 与 Axios 的优缺点。",
+      "Fetch 的流式响应（streaming response）如何用于处理大文件或实时数据？"
+    ]
+  }
+}

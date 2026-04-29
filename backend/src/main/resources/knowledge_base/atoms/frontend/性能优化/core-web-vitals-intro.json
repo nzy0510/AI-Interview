@@ -1,0 +1,24 @@
+{
+  "id": "core-web-vitals-intro",
+  "subject": "Core Web Vitals核心网页指标",
+  "category": "性能优化",
+  "difficulty": "简单",
+  "tags": [
+    "性能优化",
+    "用户体验",
+    "Google"
+  ],
+  "content": {
+    "principles": "Core Web Vitals是Google提出的一套用于衡量网页用户体验的核心指标集合，主要从加载性能、交互性和视觉稳定性三个维度评估页面质量。这些指标直接影响Google搜索排名。主要包括以下三个指标：1) Largest Contentful Paint (LCP，最大内容绘制)：衡量加载性能，标识页面主要内容加载完成的时间。理想值应小于2.5秒。2) First Input Delay (FID，首次输入延迟)：衡量交互性，标识用户首次与页面交互（如点击按钮）到浏览器实际响应该交互的时间。理想值应小于100毫秒。3) Cumulative Layout Shift (CLS，累积布局偏移)：衡量视觉稳定性，标识页面在加载期间元素意外移动的程度。理想值应小于0.1。优化这些指标是提升用户体验和SEO的关键。",
+    "pitfalls": [
+      "将LCP误解为页面完全加载完成的时间，而非主要内容渲染时间。",
+      "混淆FID与响应处理时间，FID仅度量输入事件到主线程开始处理的延迟。",
+      "忽略CLS的累积特性，认为单次布局偏移不重要。"
+    ],
+    "follow_up_paths": [
+      "除了LCP、FID、CLS，还有哪些重要的Web Vitals指标（如INP、TTFB）？",
+      "针对LCP优化，有哪些具体的技术手段（如图片优化、字体加载、服务端响应）？",
+      "如何通过工具（如Lighthouse、Chrome DevTools）测量和分析Core Web Vitals？"
+    ]
+  }
+}

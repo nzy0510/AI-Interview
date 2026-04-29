@@ -1,0 +1,22 @@
+{
+  "id": "rabbitmq-dead-letter-exchange",
+  "subject": "RabbitMQ死信交换机（DLX）的触发条件与配置",
+  "category": "rabbitmq",
+  "difficulty": "中等",
+  "tags": [
+    "RabbitMQ",
+    "消息可靠性"
+  ],
+  "content": {
+    "principles": "死信交换机（Dead-Letter-Exchange, DLX）用于处理队列中无法被正常消费的消息（即死信）。消息变成死信有三种情况：1. 消费者使用`basic.reject`或`basic.nack`拒绝消息，并且设置`requeue=false`（不重新入队）。2. 消息在队列中存活时间超过设置的TTL（Time-To-Live）。TTL可针对单条消息设置，也可针对整个队列设置（通过`x-message-ttl`参数）。3. 队列达到最大长度限制（通过`x-max-length`参数设置），新消息进入时，队列头部的老消息会被移出成为死信。启用DLX需要在声明队列时通过参数绑定：`x-dead-letter-exchange`指定死信交换机名称，`x-dead-letter-routing-key`（可选）指定转发到死信交换机时使用的路由键。死信交换机本身是一个普通的Exchange，需要绑定一个或多个队列（死信队列）来实际处理这些消息。该模式常用于实现延迟队列（通过TTL+DLX）或处理业务异常消息。",
+    "pitfalls": [
+      "混淆消息无法路由（未进入队列）和成为死信（已进入队列但无法被消费）的区别。",
+      "忘记在声明队列时设置DLX参数，或参数名拼写错误。",
+      "认为设置了DLX，所有异常消息都会自动处理，而忽略了消费者代码中需要正确拒绝消息（`requeue=false`）。"
+    ],
+    "follow_up_paths": [
+      "如何利用TTL和DLX实现一个精确的延迟队列？有什么局限性？",
+      "如果死信队列也处理失败，消息堆积怎么办？如何设计一个多级死信机制？"
+    ]
+  }
+}

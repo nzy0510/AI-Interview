@@ -1,0 +1,23 @@
+{
+  "id": "spring-context-refresh-process",
+  "subject": "Spring IoC 容器启动（refresh）过程",
+  "category": "spring",
+  "difficulty": "困难",
+  "tags": [
+    "Spring Framework",
+    "IoC",
+    "BeanFactory",
+    "生命周期"
+  ],
+  "content": {
+    "principles": "Spring 容器的启动核心是 AbstractApplicationContext.refresh() 方法，包含约12个关键步骤：1) prepareRefresh()：准备环境变量和属性。2) obtainFreshBeanFactory()：创建或刷新 BeanFactory，加载并注册 Bean 定义（来自 XML 或注解）。3) prepareBeanFactory()：配置 BeanFactory 的标准上下文（如 ClassLoader， BeanPostProcessor）。4) postProcessBeanFactory()：允许子类修改 BeanFactory。5) invokeBeanFactoryPostProcessors()：调用 BeanFactoryPostProcessor（如处理 @PropertySource）。6) registerBeanPostProcessors()：注册 BeanPostProcessor（用于 Bean 初始化前后处理，如 AOP）。7) initMessageSource()：初始化国际化资源。8) initApplicationEventMulticaster()：初始化事件广播器。9) onRefresh()：子类扩展点（如 Spring Boot 在此启动内嵌 Web 容器）。10) registerListeners()：注册应用监听器。11) finishBeanFactoryInitialization()：初始化所有非懒加载的单例 Bean（包括实例化、依赖注入、初始化方法如 @PostConstruct），并解决循环依赖（通过三级缓存）。12) finishRefresh()：发布 ContextRefreshedEvent，完成启动。",
+    "pitfalls": [
+      "混淆 BeanFactoryPostProcessor 和 BeanPostProcessor 的执行时机和作用。",
+      "对循环依赖的三级缓存（singletonFactories, earlySingletonObjects, singletonObjects）机制理解不清。"
+    ],
+    "follow_up_paths": [
+      "请详细描述 Spring 解决单例 Bean 循环依赖的具体流程和三级缓存的作用。",
+      "如果在 Bean 的初始化方法（@PostConstruct）中抛出异常，会对容器启动流程产生什么影响？"
+    ]
+  }
+}

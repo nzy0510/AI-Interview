@@ -1,0 +1,21 @@
+{
+  "id": "vue-custom-event-multiple-params",
+  "subject": "Vue 自定义事件中父组件接收子组件多个参数",
+  "category": "Vue",
+  "difficulty": "简单",
+  "tags": [
+    "Vue",
+    "组件通信"
+  ],
+  "content": {
+    "principles": "Vue 的自定义事件机制允许子组件通过 `$emit` 触发事件时传递任意数量的参数，父组件在监听该事件时可以直接接收这些参数，无需额外封装。\n\n1.  **子组件触发**：`this.$emit('eventName', arg1, arg2, arg3, ...)`。\n2.  **父组件接收**：在模板中监听事件 `@eventName=\"handler\"`，对应的 `handler` 方法按顺序接收所有参数：`handler(param1, param2, param3, ...)`。\n\n参数传递是扁平的，顺序必须与 `$emit` 调用时保持一致。对于参数较多的情况，建议合并成一个对象以提高可维护性，但这并非强制要求。",
+    "pitfalls": [
+      "父组件的事件处理函数参数顺序与子组件 `$emit` 传递的顺序不匹配，导致数据错乱。",
+      "在需要传递多个复杂数据时，未考虑使用对象进行聚合，使代码难以维护。"
+    ],
+    "follow_up_paths": [
+      "在 Vue 3 的 Composition API 中，如何使用 `emit` 函数实现相同的功能？",
+      "如果使用 TypeScript，如何为自定义事件和其参数定义类型？"
+    ]
+  }
+}

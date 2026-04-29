@@ -1,0 +1,24 @@
+{
+  "id": "webpack-devserver-proxy-cross-origin",
+  "subject": "Webpack DevServer 代理解决开发环境跨域",
+  "category": "Webpack",
+  "difficulty": "简单",
+  "tags": [
+    "Webpack",
+    "开发工具",
+    "网络"
+  ],
+  "content": {
+    "principles": "Webpack DevServer 的 `devServer.proxy` 配置通过在本地启动一个代理服务器，将前端发出的特定 API 请求转发到后端目标服务器，从而绕过浏览器的同源策略。核心配置项：`target` 指定后端服务地址；`changeOrigin: true` 修改请求头中的 `Host` 字段以匹配目标服务器，常用于解决后端的主机头校验；`pathRewrite` 用于重写请求路径，例如去掉代理前缀。此机制仅在开发环境生效，生产环境需通过 Nginx 反向代理或后端配置 CORS 头解决跨域。",
+    "pitfalls": [
+      "认为 `proxy` 配置在生产环境也有效，实际上它依赖于 `webpack-dev-server` 这个开发中间件。",
+      "不理解 `changeOrigin` 的作用，当后端服务对 `Host` 头有校验时，不设置此选项可能导致代理失败。",
+      "当 API 没有统一前缀时，配置代理规则可能比较复杂，应优先推动接口规范化。"
+    ],
+    "follow_up_paths": [
+      "如果后端接口分散在多个域名下，如何配置代理？能否用函数动态判断 `target`？",
+      "`webpack-dev-server` 的代理底层是基于哪个 Node.js 库实现的？",
+      "除了代理，还有哪些方法可以在开发时解决跨域问题？"
+    ]
+  }
+}

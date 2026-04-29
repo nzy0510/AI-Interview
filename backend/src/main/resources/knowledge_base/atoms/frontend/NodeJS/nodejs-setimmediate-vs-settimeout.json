@@ -1,0 +1,23 @@
+{
+  "id": "nodejs-setimmediate-vs-settimeout",
+  "subject": "Node.js 中 setImmediate() 与 setTimeout() 的区别",
+  "category": "NodeJS",
+  "difficulty": "中等",
+  "tags": [
+    "Node.js",
+    "事件循环",
+    "定时器"
+  ],
+  "content": {
+    "principles": "核心原理：两者都用于延迟执行，但隶属于事件循环的不同阶段。1) `setTimeout(fn, delay)`：回调被注册到**定时器阶段（Timers Phase）**，即使 `delay` 设为 0，也需要等待事件循环推进到该阶段且定时器到期才会执行。2) `setImmediate(fn)`：回调被注册到**检查阶段（Check Phase）**，该阶段在轮询（I/O）阶段之后立即执行。执行顺序不确定性：在主模块（非 I/O 回调）中，两者的执行顺序取决于进程性能，无法保证。确定性顺序：在**一个 I/O 回调内部**注册时，`setImmediate` 总是先于 `setTimeout(fn, 0)` 执行，因为 I/O 回调执行后事件循环直接进入 Check Phase，然后才是下一轮的 Timers Phase。",
+    "pitfalls": [
+      "误以为 `setTimeout(fn, 0)` 是“立即执行”。",
+      "不清楚在主模块和 I/O 回调中，两者执行顺序的差异。",
+      "混淆 `setImmediate` 与 `process.nextTick` 的优先级（`nextTick` 更高）。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：请画出 Node.js 事件循环的完整阶段图，并标出 `setTimeout`、`setImmediate`、`process.nextTick` 和 I/O 回调的执行位置。为什么在 I/O 回调中 `setImmediate` 总是先执行？",
+      "如果候选人答得不好，可以引导：请写一段代码，使得 `setImmediate` 和 `setTimeout(fn, 0)` 的执行顺序是确定且可预测的。"
+    ]
+  }
+}

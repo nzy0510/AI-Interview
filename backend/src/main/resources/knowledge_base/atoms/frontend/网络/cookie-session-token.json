@@ -1,0 +1,24 @@
+{
+  "id": "cookie-session-token",
+  "subject": "Cookie、Session与Token的区别与应用",
+  "category": "网络",
+  "difficulty": "中等",
+  "tags": [
+    "Web开发",
+    "HTTP",
+    "认证授权"
+  ],
+  "content": {
+    "principles": "三者都是为了解决HTTP无状态问题，实现状态保持或用户认证，但机制和特点不同：\n\n1. Cookie：\n   - 存储位置：客户端（浏览器）。\n   - 机制：服务器通过`Set-Cookie`响应头发送，浏览器自动在后续请求的`Cookie`请求头中携带。\n   - 特点：可设置过期时间（会话Cookie或持久Cookie）；可被JavaScript访问（除非设置HttpOnly）；有大小限制（约4KB）；存在安全风险（XSS、CSRF）。\n\n2. Session：\n   - 存储位置：服务器端（内存、数据库、Redis）。\n   - 机制：用户登录后，服务器创建Session对象并生成唯一Session ID，通过Cookie（或URL重写）传给客户端。客户端后续请求携带此ID，服务器据此查找Session数据。\n   - 特点：状态集中管理，易于失效；服务器有存储开销；分布式环境下需要Session共享方案（如Redis）。\n\n3. Token（以JWT为例）：\n   - 存储位置：客户端。\n   - 机制：用户登录后，服务器签发一个签名的Token（如JWT），客户端存储（localStorage、Cookie）。后续请求在Authorization头中携带Token，服务器验证签名和有效性即可，无需存储状态。\n   - 特点：无状态，扩展性好；自包含（payload可存储用户信息）；一旦签发，在过期前无法主动作废，除非使用黑名单机制。\n\nJWT结构：Header（算法和类型）.Payload（声明）.Signature（签名），三段Base64编码用点连接。",
+    "pitfalls": [
+      "认为Session必须依赖Cookie传输Session ID（忽略URL重写等方式）。",
+      "认为Token（如JWT）绝对安全，忽略其被盗用的风险。",
+      "混淆Session和Token的应用场景，在微服务中仍使用Session共享。"
+    ],
+    "follow_up_paths": [
+      "如何防止JWT被盗用？除了设置短有效期，还有哪些安全措施？",
+      "Session共享方案有哪些？Spring Session是如何实现的？",
+      "Cookie的SameSite属性有什么作用？对CSRF防护有何影响？"
+    ]
+  }
+}

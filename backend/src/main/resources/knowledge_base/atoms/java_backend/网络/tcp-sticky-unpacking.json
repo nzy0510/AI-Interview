@@ -1,0 +1,23 @@
+{
+  "id": "tcp-sticky-unpacking",
+  "subject": "TCP粘包与拆包问题及解决方案",
+  "category": "网络",
+  "difficulty": "中等",
+  "tags": [
+    "TCP",
+    "网络编程",
+    "Netty"
+  ],
+  "content": {
+    "principles": "TCP是面向字节流的协议，本身无'消息包'概念。'粘包'和'拆包'是应用层读取数据时，因未正确处理消息边界导致的现象。发送方连续发送多条消息，接收方可能一次收到多条（粘包），或一条消息分多次收到（拆包）。根本原因是TCP只保证字节流顺序，不保证收发消息的原子性。解决方案需在应用层协议中定义消息边界：1) 固定长度消息，不足补零。2) 使用特殊分隔符（如换行符）。3) 采用'长度字段+消息体'格式（最常用，如Dubbo、RocketMQ使用`LengthFieldBasedFrameDecoder`）。例如，Netty等网络框架需配置相应的编解码器来处理。",
+    "pitfalls": [
+      "误认为TCP本身存在'粘包'缺陷，实则是应用层协议设计问题。",
+      "未在协议设计中考虑消息边界，直接导致数据解析错误。",
+      "对Netty等框架中处理粘包拆包的编解码器（如`LineBasedFrameDecoder`）使用不熟悉。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：Netty的`LengthFieldBasedFrameDecoder`是如何根据长度字段来拆解消息的？请说明其构造函数关键参数的含义。",
+      "如果候选人答得不好，可以引导：如果不使用任何编解码器，直接读取TCP Socket的InputStream，会遇到什么问题？如何手动处理？"
+    ]
+  }
+}

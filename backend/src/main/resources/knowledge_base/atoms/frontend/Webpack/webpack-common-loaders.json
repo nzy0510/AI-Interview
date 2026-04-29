@@ -1,0 +1,23 @@
+{
+  "id": "webpack-common-loaders",
+  "subject": "Webpack 常用 Loader 及其作用",
+  "category": "Webpack",
+  "difficulty": "中等",
+  "tags": [
+    "Webpack",
+    "构建工具",
+    "Loader"
+  ],
+  "content": {
+    "principles": "Webpack Loader 用于转换模块的源代码，执行顺序为从右到左、从下到上。常用 Loader 包括：1. **babel-loader**: 使用 Babel 将 ES6+/JSX 转译为 ES5。2. **ts-loader / swc-loader**: 编译 TypeScript，`swc-loader` 基于 Rust，速度更快。3. **css-loader**: 解析 CSS 中的 `@import` 和 `url()`，支持 CSS 模块化。4. **style-loader**: 将 CSS 通过 `<style>` 标签注入 DOM。5. **sass-loader / less-loader**: 预处理 SCSS/LESS 为 CSS，需配合 `css-loader`。6. **file-loader / url-loader**: 处理文件资源，`url-loader` 可将小文件转为 Data URL。Webpack 5 的 Asset Modules (`asset/resource`, `asset/inline`) 已逐步替代它们。7. **raw-loader**: 将文件作为字符串导入。8. **eslint-loader**: 在构建时进行 ESLint 检查（现多使用 `eslint-webpack-plugin`）。",
+    "pitfalls": [
+      "记错 Loader 的执行顺序（从右到左）。",
+      "在 Webpack 5 中仍配置 `file-loader`，而未使用内置的 Asset Modules。",
+      "配置 `sass-loader` 时，未正确串联 `css-loader` 和 `style-loader`（或 `MiniCssExtractPlugin.loader`）。"
+    ],
+    "follow_up_paths": [
+      "Webpack 5 的 Asset Modules 有哪几种类型？它们分别对应 `file-loader` 和 `url-loader` 的什么功能？",
+      "如何在生产环境中用 `MiniCssExtractPlugin.loader` 替代 `style-loader`，并说明原因？"
+    ]
+  }
+}

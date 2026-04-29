@@ -1,0 +1,27 @@
+{
+  "id": "nodejs-http-routing-mechanism",
+  "subject": "Node.js HTTP 路由的实现与框架对比",
+  "category": "NodeJS",
+  "difficulty": "中等",
+  "tags": [
+    "Node.js",
+    "HTTP",
+    "路由",
+    "Express",
+    "Koa"
+  ],
+  "content": {
+    "principles": "Node.js 原生 `http` 模块仅提供基础的 HTTP 服务器，路由需手动解析 `req.method` 和 `req.url`，通常通过 `url.parse` 和 `querystring` 模块辅助，再使用 if-else 或 switch 进行匹配分发。工程实践中普遍使用框架：1) **Express**：采用中间件栈和声明式路由（如 `app.get('/path', handler)`），支持动态路由参数（`:id`）和路由级中间件。其路由匹配器基于 `path-to-regexp` 库。2) **Koa**：更轻量的洋葱模型，需配合 `koa-router` 等第三方库实现路由。3) **Fastify**：高性能，内置路由和基于 Schema 的序列化优化。此外，约定式路由（如 Next.js 的 `pages` 目录）通过文件系统结构自动映射路由。所有框架的路由本质都是“匹配-分发-处理”流程，将请求路径和方法映射到对应的处理函数。",
+    "pitfalls": [
+      "手动解析路由时，未正确处理 URL 编码、查询字符串或尾部斜杠，导致匹配失败。",
+      "在 Express 中，路由顺序很重要，错误放置通配符路由（如 `app.get('*')`）会拦截所有请求。",
+      "混淆 Express 的 `app.use`（用于中间件和前缀匹配）与 `app.METHOD`（用于精确路径和方法匹配）。",
+      "动态路由参数（如 `:id`）未进行有效性校验（如是否为数字），可能导致安全或逻辑问题。"
+    ],
+    "follow_up_paths": [
+      "Express 路由匹配算法的时间复杂度是多少？如何处理路由冲突（如 `/users/:id` 和 `/users/new`）？",
+      "Koa 的洋葱模型中间件与 Express 的线性中间件在执行流程上有何本质区别？这对错误处理有何影响？",
+      "如何自己实现一个支持路由分组、前缀和参数验证的简易路由库？请描述核心数据结构。"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "nodejs-high-performance-logging",
+  "subject": "Node.js 高性能日志处理方案",
+  "category": "NodeJS",
+  "difficulty": "中等",
+  "tags": [
+    "Node.js",
+    "性能优化",
+    "日志系统"
+  ],
+  "content": {
+    "principles": "核心目标是避免日志 I/O 操作阻塞 Node.js 单线程事件循环。关键策略：1) 使用异步非阻塞写入：避免使用同步的 console.log（尤其在容器环境重定向 stdout 时可能阻塞），应使用 fs.createWriteStream 或成熟的日志库（如 winston, pino），并确保配置为异步模式（如 pino 中设置 sync: false）。2) 日志分级与采样：生产环境通常只记录 warn/error 级别日志，关闭 debug/info 级别。对于高频接口，实施采样策略（如每100条请求日志只记录1条），避免磁盘 I/O 过载。3) 批量写入：将多条日志在内存中缓冲，积攒成一批后再一次性写入磁盘或发送到日志收集系统，减少 I/O 次数。4) 解耦应用与日志传输：应用只负责将日志写入本地文件，由独立的 Agent（如 Filebeat, Fluentd）负责收集和转发到中央日志系统（如 ELK）。这样即使网络或日志系统暂时不可用，也不会影响主应用的正常运行。代码示例：使用 pino 创建异步日志记录器，logger.info() 调用是非阻塞的。",
+    "pitfalls": [
+      "在生产环境滥用 console.log 进行调试或信息记录，导致事件循环被阻塞，服务响应延迟飙升。",
+      "未实施日志轮转（log rotation）和归档策略，导致日志文件无限增长占满磁盘。",
+      "将日志直接通过网络发送到远程服务（如直接 HTTP 推送到 ELK），未考虑网络抖动或服务宕机时的容错，导致应用性能受日志系统牵连。"
+    ],
+    "follow_up_paths": [
+      "pino 相比 winston 在性能上有哪些具体优势？其异步写入的内部机制是怎样的？",
+      "如何设计一个日志采样算法，使其既能控制总量，又能确保错误日志（error）100%被记录？",
+      "在微服务架构下，如何实现跨服务的请求链路追踪（Request ID tracing）并将其整合到日志中？"
+    ]
+  }
+}

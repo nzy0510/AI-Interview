@@ -1,0 +1,25 @@
+{
+  "id": "frontend-virtual-scroll-implementation",
+  "subject": "前端虚拟滚动实现原理与优化",
+  "category": "前端工程化",
+  "difficulty": "中等",
+  "tags": [
+    "前端性能",
+    "渲染优化",
+    "虚拟列表"
+  ],
+  "content": {
+    "principles": "虚拟滚动的核心原理是仅渲染可视区域内的 DOM 元素，通过动态计算滚动偏移量来更新显示内容，从而避免一次性渲染海量节点导致的性能问题。关键步骤包括：1. 计算可视区域能容纳的项数 `visibleCount = Math.ceil(containerHeight / itemHeight)`。2. 根据滚动偏移量 `scrollTop` 计算起始索引 `startIndex = Math.floor(scrollTop / itemHeight)` 和结束索引 `endIndex = startIndex + visibleCount`。3. 使用 `data.slice(startIndex, endIndex)` 获取当前需要渲染的数据子集。4. 通过绝对定位或 CSS `transform: translateY(...)` 将渲染的列表项定位到正确位置，模拟完整列表的高度。实际项目中应优先使用成熟库（如 React 的 react-window， Vue 的 vue-virtual-scroller），它们已处理了滚动定位、动态高度、Item 缓存、边缘缓冲（如示例中的 `startIndex - 5` 和 `endIndex + 10`）等复杂问题。",
+    "pitfalls": [
+      "误以为虚拟滚动适用于所有列表场景，实际上对于项高不固定或结构复杂的列表，实现难度和性能收益需要仔细评估。",
+      "忘记处理滚动容器的高度和列表总高度的设置，导致滚动条长度不正确。",
+      "动态数据更新（增删改）时，未正确同步虚拟列表的索引和定位，导致显示错乱。",
+      "忽略边缘缓冲（Buffer）的重要性，快速滚动时可能出现空白区域。"
+    ],
+    "follow_up_paths": [
+      "如果虚拟列表的项高度是动态不固定的，如何实现？库内部是如何计算和缓存这些高度的？",
+      "除了虚拟滚动，还有哪些技术可以优化超长列表的渲染性能（如时间分片、分页加载）？它们各自的适用场景是什么？",
+      "虚拟滚动在移动端（如触摸滚动）和桌面端有哪些不同的实现考量点？"
+    ]
+  }
+}

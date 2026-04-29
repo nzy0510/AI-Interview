@@ -1,0 +1,23 @@
+{
+  "id": "http2-vs-http3-differences",
+  "subject": "HTTP/2 与 HTTP/3 的核心区别",
+  "category": "网络",
+  "difficulty": "中等",
+  "tags": [
+    "HTTP",
+    "QUIC",
+    "网络协议"
+  ],
+  "content": {
+    "principles": "HTTP/2基于TCP，通过多路复用解决应用层并发问题，但TCP的丢包重传会导致所有流(Stream)阻塞。HTTP/3改用QUIC协议作为传输层，运行在UDP之上，自行实现可靠传输和拥塞控制。核心区别：1) 传输层协议：HTTP/3使用QUIC替代TCP。2) 连接迁移：QUIC将连接绑定到客户端生成的连接ID，而非IP+端口，支持网络切换（如Wi-Fi转4G）时连接不断。3) 队头阻塞消除：QUIC在传输层实现多路复用，单个流的丢包不影响其他流。4) 更快的握手：QUIC（通常结合TLS 1.3）可实现0-RTT或1-RTT连接建立。实际部署中，CDN厂商已广泛支持。代码层面变化不大，但服务端需配置支持QUIC（如Nginx编译quiche模块）。",
+    "pitfalls": [
+      "混淆HTTP/2和HTTP/3解决队头阻塞的层次（应用层 vs 传输层）。",
+      "误以为HTTP/3已完全取代HTTP/2，实际上部署和兼容性仍在推进中。",
+      "不了解QUIC如何实现基于连接ID的连接迁移。"
+    ],
+    "follow_up_paths": [
+      "如果候选人答得好，可以追问：QUIC协议是如何在UDP上实现可靠传输和拥塞控制的？与TCP的实现有何异同？",
+      "如果候选人答得不好，可以引导：为什么说HTTP/2的队头阻塞问题在HTTP/3中得到了根本性解决？"
+    ]
+  }
+}

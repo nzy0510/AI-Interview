@@ -1,0 +1,23 @@
+{
+  "id": "spring-design-patterns-aop-proxy",
+  "subject": "Spring AOP 与代理模式",
+  "category": "spring",
+  "difficulty": "中等",
+  "tags": [
+    "Spring",
+    "设计模式",
+    "AOP",
+    "代理"
+  ],
+  "content": {
+    "principles": "Spring AOP 基于代理模式实现。默认使用 JDK 动态代理（要求目标类实现接口），通过 `java.lang.reflect.Proxy` 和 `InvocationHandler` 创建代理对象。若无接口，则切换到 CGLIB 代理，通过生成目标类的子类来增强方法。典型应用如 `@Transactional` 事务管理，代理对象在方法调用前后织入开启、提交或回滚事务的逻辑。",
+    "pitfalls": [
+      "混淆 JDK 动态代理与 CGLIB 代理的适用场景及性能差异。",
+      "认为 `@Transactional` 注解在同一个类的内部方法调用时也生效（由于代理机制，自调用不会触发代理增强）。"
+    ],
+    "follow_up_paths": [
+      "JDK 动态代理和 CGLIB 代理在字节码层面是如何实现的？Spring 如何选择使用哪种代理？",
+      "除了事务，Spring AOP 还有哪些典型应用场景？如何自定义一个切面？"
+    ]
+  }
+}

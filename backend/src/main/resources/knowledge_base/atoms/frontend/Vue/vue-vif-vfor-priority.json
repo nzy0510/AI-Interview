@@ -1,0 +1,24 @@
+{
+  "id": "vue-vif-vfor-priority",
+  "subject": "Vue 中 v-if 与 v-for 的优先级与性能优化",
+  "category": "Vue",
+  "difficulty": "中等",
+  "tags": [
+    "Vue",
+    "性能优化",
+    "模板指令"
+  ],
+  "content": {
+    "principles": "在 Vue 2 中，v-for 的优先级高于 v-if。当两者作用于同一元素时，会先执行 v-for 循环，再对每个循环项执行 v-if 判断，这会导致不必要的虚拟节点创建与销毁，造成性能浪费。在 Vue 3 中，v-if 的优先级更高，但官方仍不推荐在同一元素上同时使用，编译器会发出警告。最佳实践是避免两者共存于同一元素。优化方案：1. 使用 `<template>` 标签将条件判断提升到外层，如 `<template v-if=\"items.length\"><li v-for=\"item in items\"></li></template>`。2. 使用计算属性预先过滤数据源，如 `computed: { activeItems() { return this.items.filter(item => item.active) } }`，模板中直接 `v-for=\"item in activeItems\"`，从源头上减少需要渲染的节点数。",
+    "pitfalls": [
+      "误以为 Vue 3 中 v-if 优先级更高就可以随意在同一元素上使用，忽略了官方警告和潜在的性能问题。",
+      "在长列表中使用 `v-for` 和 `v-if` 组合，导致大量不必要的虚拟 DOM 节点创建，造成性能瓶颈。",
+      "使用 `index` 作为 `v-for` 的 `key`，在列表过滤或排序时可能导致渲染错乱和性能下降。"
+    ],
+    "follow_up_paths": [
+      "除了计算属性，还有哪些方法可以优化列表渲染性能？（如虚拟滚动、Object.freeze）",
+      "Vue 3 的编译时优化（如静态提升、补丁标志）是如何进一步改善 `v-if`/`v-for` 场景性能的？",
+      "如果必须根据循环项自身的属性进行条件渲染（如 `v-for=\"item in items\" v-if=\"item.isActive\"`），除了计算属性，还有没有其他更优的写法？"
+    ]
+  }
+}

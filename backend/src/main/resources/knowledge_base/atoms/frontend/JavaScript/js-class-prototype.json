@@ -1,0 +1,24 @@
+{
+  "id": "js-class-prototype",
+  "subject": "ES6 Class 与原型继承",
+  "category": "JavaScript",
+  "difficulty": "中等",
+  "tags": [
+    "JavaScript",
+    "面向对象"
+  ],
+  "content": {
+    "principles": "ES6 的 class 是语法糖，本质基于原型继承。`class` 关键字用于定义类，`constructor` 是构造函数。`extends` 实现继承，`super` 用于调用父类的构造函数或方法。类方法定义在原型上，实例方法通过 `this` 访问。静态方法使用 `static` 关键字定义，属于类本身。",
+    "pitfalls": [
+      "误以为 class 引入了新的面向对象继承模型（本质仍是原型链）。",
+      "在子类构造函数中，必须先调用 `super()` 才能使用 `this`。",
+      "类方法不可枚举，而通过构造函数原型定义的方法默认是可枚举的。",
+      "类声明不存在提升，必须在访问前定义。"
+    ],
+    "follow_up_paths": [
+      "如何用 ES5 语法模拟一个 ES6 的 class？",
+      "Class 中的静态属性和实例属性如何定义？",
+      "Class 的私有字段（#）是什么？如何实现？"
+    ]
+  }
+}

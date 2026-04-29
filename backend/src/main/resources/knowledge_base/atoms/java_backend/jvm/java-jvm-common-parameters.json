@@ -1,0 +1,24 @@
+{
+  "id": "java-jvm-common-parameters",
+  "subject": "JVM 常用配置参数分类与作用",
+  "category": "jvm",
+  "difficulty": "中等",
+  "tags": [
+    "Java",
+    "JVM",
+    "配置"
+  ],
+  "content": {
+    "principles": "JVM 常用参数可分为几类：\n1) 内存相关：\n   - 堆大小：-Xms (初始堆大小)、-Xmx (最大堆大小)，通常设成一样避免动态扩容开销。\n   - 新生代大小：-Xmn (年轻代大小)，通常设为堆的 1/3 到 1/2。\n   - 元空间：-XX:MetaspaceSize、-XX:MaxMetaspaceSize。\n2) GC 收集器选择：\n   - 吞吐量/响应优先：-XX:+UseG1GC (G1)、-XX:+UseZGC (ZGC，需 -XX:+UnlockExperimentalVMOptions)。\n   - 已废弃：-XX:+UseConcMarkSweepGC (CMS)。\n3) GC 调优参数：\n   - 目标停顿时间：-XX:MaxGCPauseMillis (G1)。\n   - 日志详情：-XX:+PrintGCDetails、-Xlog:gc*。\n4) 其他：\n   - 溢出时转储堆：-XX:+HeapDumpOnOutOfMemoryError、-XX:HeapDumpPath。\n   - 直接内存大小：-XX:MaxDirectMemorySize。",
+    "pitfalls": [
+      "将 -Xms 和 -Xmx 设置不同值，导致运行时堆大小调整引发性能波动",
+      "混淆 -Xmn 和 -XX:NewRatio 的作用",
+      "在生产环境使用实验性参数（如某些 ZGC 参数）而不充分测试"
+    ],
+    "follow_up_paths": [
+      "-XX:SurvivorRatio 和 -XX:NewRatio 的具体含义和设置建议是什么？",
+      "如何配置 GC 日志的滚动和归档，以便于长期分析？",
+      "在容器中运行 Java 应用，有哪些特殊的 JVM 参数需要考虑（如 -XX:+UseContainerSupport）？"
+    ]
+  }
+}

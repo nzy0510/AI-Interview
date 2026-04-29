@@ -1,0 +1,23 @@
+{
+  "id": "css-specificity-calculation",
+  "subject": "CSS 选择器优先级计算",
+  "category": "CSS",
+  "difficulty": "简单",
+  "tags": [
+    "CSS",
+    "前端基础"
+  ],
+  "content": {
+    "principles": "CSS 优先级（Specificity）决定样式冲突时哪个规则生效。它是一套权重计算体系，通常被描述为一个由四部分组成的序列（a, b, c, d）：\n1.  **内联样式** (`style=\"...\"`): a=1，权重记为 1,0,0,0。\n2.  **ID 选择器**: 每个 b+1，权重记为 0,1,0,0。\n3.  **类选择器、伪类选择器、属性选择器**: 每个 c+1，权重记为 0,0,1,0。\n4.  **元素选择器、伪元素选择器**: 每个 d+1，权重记为 0,0,0,1。\n计算时，从左到右逐级比较数字大小，数字大的优先级高。例如：`#header .nav:hover` 的权重为 (0,1,2,0)；`div#sidebar ul li.active` 的权重为 (0,1,1,3)。前者胜出。\n特殊规则：\n- `!important` 声明拥有最高优先级，覆盖所有其他规则，但应避免滥用。\n- 继承的样式没有 specificity 权重，天生最弱。\n- 当 specificity 完全相同时，后定义的样式覆盖先定义的。\n最佳实践：使用如 BEM 的命名规范，保持选择器简洁，避免通过堆叠选择器来提高权重。",
+    "pitfalls": [
+      "误认为 `!important` 是解决样式冲突的常规手段，导致代码难以维护。",
+      "混淆通用选择器 `*`、组合符 `+`, `>`, `~` 以及 `:not()` 伪类对优先级的影响（`:not()` 本身不计分，但其内部选择器会计分）。",
+      "认为 `:where()` 和 `:is()` 伪类会提高优先级（实际上它们本身的 specificity 为0，但接受的选择器列表中的最高 specificity 会生效）。"
+    ],
+    "follow_up_paths": [
+      "请计算选择器 `body div#main .content p:first-child` 的 specificity 值。",
+      "如果一个元素同时有内联样式、ID选择器样式和带 `!important` 的类样式，最终哪个会生效？为什么？",
+      "在大型项目中，如何通过工具或架构（如 CSS-in-JS, CSS Modules）来管理样式优先级，避免冲突？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "webpack-bundle-size-optimization",
+  "subject": "Webpack打包体积优化策略",
+  "category": "Webpack",
+  "difficulty": "中等",
+  "tags": [
+    "Webpack",
+    "性能优化",
+    "前端工程化"
+  ],
+  "content": {
+    "principles": "优化Webpack打包体积的核心思路是‘减少资源总量’和‘提升压缩效率’。具体手段包括：1. 代码分割（Code Splitting）：使用SplitChunksPlugin将node_modules中的第三方库（vendor）和业务代码分离，避免缓存失效。2. 开启生产环境的Tree Shaking：确保使用ES Module语法，并在package.json中正确标注`\"sideEffects\": false`以移除未引用的导出。3. 压缩方案：JS使用TerserPlugin，CSS使用CssMinimizerWebpackPlugin。同时引入Brotli或Gzip压缩，配合Nginx配置，通常可再压缩60%~70%体积。4. 处理图片和静态资源：小图转base64，大图使用WebP格式并懒加载。字体文件按需提取子集。5. 检查重复打包：使用webpack-bundle-analyzer可视化分析包内容，解决多个版本库（如lodash）同时打包的问题。6. 生产环境source map建议使用`source-map`或`hidden-source-map`，避免使用eval类型。",
+    "pitfalls": [
+      "Tree Shaking依赖ES Module的静态结构，使用CommonJS的`require`会导致树摇失效。",
+      "未给带哈希指纹的资源（如app.[hash].js）设置长期强缓存，导致缓存利用率低。",
+      "对HTML文件设置过长缓存，导致用户无法及时获取新版本。"
+    ],
+    "follow_up_paths": [
+      "如果项目使用了动态import(`./${module}.js`)这种完全动态拼接的路径，Webpack会如何处理？如何优化？",
+      "除了提到的插件，还有哪些Webpack插件或配置可以进一步优化运行时（runtime）代码的体积？",
+      "如何量化评估每一项优化措施（如代码分割、压缩）对最终打包体积的具体影响？"
+    ]
+  }
+}

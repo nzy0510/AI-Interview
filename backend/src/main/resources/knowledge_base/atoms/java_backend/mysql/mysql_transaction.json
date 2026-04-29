@@ -1,0 +1,20 @@
+{
+  "id": "mysql-002",
+  "subject": "MySQL事务隔离级别",
+  "category": "mysql",
+  "difficulty": "P6",
+  "tags": [
+    "MySQL",
+    "Database",
+    "Transaction"
+  ],
+  "content": {
+    "principles": "Four levels: Read Uncommitted, Read Committed, Repeatable Read (Default in InnoDB), Serializable. Solves: Dirty Read, Non-repeatable Read, Phantom Read. RR in InnoDB uses Next-Key Locks to mitigate phantom reads.",
+    "pitfalls": "Phantom reads in RR (though partially solved by MVCC and locks). Higher isolation levels reduce concurrency. Long-running transactions bloating undo logs.",
+    "follow_up_paths": [
+      "2PL (Two-Phase Locking)",
+      "Deadlock detection",
+      "Savepoints"
+    ]
+  }
+}

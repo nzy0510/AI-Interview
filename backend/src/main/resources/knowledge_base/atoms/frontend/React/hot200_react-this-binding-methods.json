@@ -1,0 +1,22 @@
+{
+  "id": "react-this-binding-methods",
+  "subject": "React 类组件中绑定 `this` 的多种方法",
+  "category": "React",
+  "difficulty": "简单",
+  "tags": [
+    "React",
+    "类组件",
+    "This绑定"
+  ],
+  "content": {
+    "principles": "在 React 类组件中，处理事件处理函数的 `this` 绑定有多种方式：1) **构造函数中绑定**：`this.handleClick = this.handleClick.bind(this);`。2) **类字段 + 箭头函数**（推荐）：`handleClick = () => { ... };` 箭头函数自动绑定实例 `this`。3) **JSX 内联绑定**：`onClick={this.handleClick.bind(this)}` 或 `onClick={() => this.handleClick()}`。但内联绑定每次渲染都会创建新函数，若传递给子组件可能导致不必要的重渲染，性能不佳。现代开发中，**函数组件配合 Hooks** 是主流，完全避免了 `this` 绑定问题，可使用 `useCallback` 缓存函数引用。",
+    "pitfalls": [
+      "在 JSX 中使用内联箭头函数或 `.bind`，导致子组件不必要的重渲染。",
+      "忘记绑定 `this`，导致事件处理函数中的 `this` 为 `undefined`。"
+    ],
+    "follow_up_paths": [
+      "`useCallback` 是如何优化函数引用的？它的依赖数组如何工作？",
+      "类字段语法（`handleClick = () => {}`）在底层是如何实现 `this` 绑定的？"
+    ]
+  }
+}

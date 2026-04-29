@@ -1,0 +1,24 @@
+{
+  "id": "frontend-sso-implementation",
+  "subject": "单点登录（SSO）原理及前端实现",
+  "category": "前端工程化",
+  "difficulty": "中等",
+  "tags": [
+    "认证授权",
+    "安全",
+    "OAuth"
+  ],
+  "content": {
+    "principles": "单点登录（SSO）允许用户一次登录，访问所有互信系统。核心是建立一个独立的认证中心。典型流程：1. 用户访问应用A，未登录，被重定向至认证中心。2. 用户在认证中心完成登录，认证中心生成全局会话和Token。3. 认证中心将用户重定向回应用A，并携带Token（通常通过URL参数或Post Message）。4. 应用A用Token向认证中心验证，验证通过后建立本地会话。前端实现关键：1. 同域名下（如 a.example.com, b.example.com）可共享顶级域（example.com）的Cookie来传递会话。2. 跨域场景需借助OAuth 2.0（如隐式授权、PKCE）或OpenID Connect标准，前端负责处理授权码流程、Token获取与刷新。常用工具有Auth0、Keycloak的SDK或企业微信/钉钉登录SDK。Token存储需权衡安全与便利：HttpOnly Cookie防XSS但跨域处理复杂；LocalStorage易受XSS攻击但便于前端使用。",
+    "pitfalls": [
+      "混淆同域SSO与跨域SSO的实现差异，错误地认为Cookie可以任意跨域共享。",
+      "将敏感Token明文存储在LocalStorage且未采取任何XSS防护措施。",
+      "忽略Token的刷新机制，导致用户会话意外中断。"
+    ],
+    "follow_up_paths": [
+      "详细描述OAuth 2.0的授权码模式（Authorization Code Flow）与隐式模式（Implicit Flow）在前端SSO实现中的区别与安全考量。",
+      "前端如何安全地处理Token（存储、携带、刷新）？可以对比Cookie、LocalStorage、Memory等方案的优劣。",
+      "在SPA（单页应用）中实现SSO时，如何处理静默登录（Silent Login）或iframe内嵌认证页面的问题？"
+    ]
+  }
+}

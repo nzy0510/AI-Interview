@@ -1,0 +1,24 @@
+{
+  "id": "webpack-plugin-implementation-principle",
+  "subject": "Webpack 插件的底层实现原理",
+  "category": "Webpack",
+  "difficulty": "中等",
+  "tags": [
+    "Webpack",
+    "构建工具",
+    "插件系统"
+  ],
+  "content": {
+    "principles": "Webpack 插件的核心是基于发布-订阅模式，通过 Tapable 库提供的丰富钩子（Hook）类型（如同步/异步、串行/并行、瀑布流等）来干预构建流程。插件必须实现一个 apply(compiler) 方法。在 apply 方法内部，通过 compiler.hooks.<hookName>.tap(<pluginName>, callback) 的方式在特定的编译生命周期钩子上注册回调逻辑。当 Webpack 运行到对应生命周期阶段时，会触发这些钩子，执行所有已注册插件的回调。例如，emit 钩子在资源输出到目录前触发，插件可以在此阶段访问 compilation.assets 对象，修改或添加资源。一个简单的文件列表插件示例：在 apply 中监听 compiler.hooks.emit.tap，回调函数接收 compilation 对象，遍历 compilation.assets 获取所有文件名，然后向 compilation.assets 注入一个新的 filelist.md 资源对象（需提供 source 和 size 方法）。整个机制要求开发者清晰理解 Webpack 的编译生命周期（如 compile, compilation, make, seal, emit, done），才能准确地在合适阶段进行干预。",
+    "pitfalls": [
+      "混淆 compiler 和 compilation 对象的作用域和可用钩子。compiler 代表整个 Webpack 环境，compilation 代表一次具体的构建。",
+      "不理解不同钩子类型（如 SyncHook, AsyncSeriesHook）的执行特性，错误地使用 tap 而非 tapAsync/tapPromise 导致问题。",
+      "在插件中直接修改传入的对象（如 compilation.assets）而未考虑与其他插件的执行顺序和冲突。"
+    ],
+    "follow_up_paths": [
+      "Tapable 库提供了哪些钩子类型？请举例说明 SyncHook、AsyncParallelHook 和 AsyncSeriesHook 的区别和使用场景。",
+      "如何编写一个插件，在编译过程中分析模块依赖关系并生成可视化报告？需要监听哪些钩子？",
+      "比较 Webpack 插件（Plugin）和加载器（Loader）的根本区别。Loader 能否实现插件的功能？为什么？"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "springboot-startup-process",
+  "subject": "Spring Boot 应用启动流程",
+  "category": "spring",
+  "difficulty": "中等",
+  "tags": [
+    "Spring Boot",
+    "启动流程",
+    "Spring"
+  ],
+  "content": {
+    "principles": "Spring Boot 启动流程封装在 `SpringApplication.run()` 方法中，主要步骤：1. **初始化 SpringApplication**：推断应用类型（Servlet/Reactive），设置初始器（`ApplicationContextInitializer`）和监听器（`ApplicationListener`）。2. **准备环境**：创建并配置 `Environment`，加载配置文件（`application.yml/properties`）和命令行参数。3. **创建应用上下文**：根据应用类型创建对应的 `ApplicationContext`，如 Servlet Web 项目创建 `AnnotationConfigServletWebServerApplicationContext`。4. **刷新应用上下文**：这是核心步骤，调用 `AbstractApplicationContext.refresh()` 方法，包括：准备 Bean 工厂、执行 BeanFactoryPostProcessor、注册 BeanPostProcessor、初始化消息源、初始化事件广播器、注册监听器、实例化所有非懒加载的单例 Bean、发布上下文就绪事件等。5. **启动内嵌 Web 容器**：如果是 Web 应用，在刷新上下文的最后阶段，会启动内嵌的 Tomcat、Jetty 等 Servlet 容器。6. **执行 Runner**：调用 `ApplicationRunner` 和 `CommandLineRunner`。整个过程由 `@SpringBootApplication`（组合了 `@SpringBootConfiguration`、`@EnableAutoConfiguration`、`@ComponentScan`）注解驱动。",
+    "pitfalls": [
+      "将启动流程简单理解为“扫描注解并创建Bean”，忽略了环境准备、上下文刷新、容器启动等多个关键阶段。",
+      "不清楚 `ApplicationContextInitializer` 和 `ApplicationListener` 在启动过程中的执行时机和作用。",
+      "混淆内嵌容器启动与传统的 WAR 包部署到外部容器的区别。"
+    ],
+    "follow_up_paths": [
+      "详细说明 `AbstractApplicationContext.refresh()` 方法中最重要的几个步骤。",
+      "Spring Boot 是如何实现内嵌 Servlet 容器的？（如 Tomcat）",
+      "在启动过程中，`BeanFactoryPostProcessor` 和 `BeanPostProcessor` 有什么区别？分别有什么作用？"
+    ]
+  }
+}

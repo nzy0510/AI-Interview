@@ -1,0 +1,24 @@
+{
+  "id": "html5-new-features",
+  "subject": "HTML5主要新特性与更新",
+  "category": "HTML",
+  "difficulty": "中等",
+  "tags": [
+    "HTML5",
+    "Web标准"
+  ],
+  "content": {
+    "principles": "HTML5是对HTML标准的重大革新，旨在支持富媒体Web应用开发，减少对Flash等插件的依赖。主要更新包括：1. 语义化标签：引入`<header>`, `<nav>`, `<section>`, `<article>`, `<aside>`, `<footer>`等，使文档结构更清晰，利于SEO和可访问性。2. 原生多媒体支持：新增`<audio>`和`<video>`标签，无需插件即可播放音视频。3. 增强的表单功能：新增`email`, `url`, `number`, `range`, `date`, `color`等输入类型，自带表单验证和移动端键盘适配。4. 图形与矢量图：`<canvas>`元素用于JavaScript绘制2D图形；`<svg>`用于内联矢量图。5. 本地存储：提供`localStorage`和`sessionStorage`进行键值对存储，以及`IndexedDB`用于更复杂的结构化数据存储。6. 新的API：地理定位（Geolocation）、拖放（Drag and Drop）、Web Workers（多线程）、WebSocket（全双工通信）等。7. 离线应用：通过Application Cache（已废弃）和Service Worker实现离线访问。HTML5不仅增加了新标签，更重构了Web应用开发模型。",
+    "pitfalls": [
+      "将HTML5简单理解为新增了几个标签，忽略了其背后完整的API生态和开发理念转变。",
+      "混淆`localStorage`与`sessionStorage`的生命周期和作用域。",
+      "在不支持新表单类型的旧浏览器中未提供降级方案。",
+      "过度使用`<canvas>`处理所有图形，而忽略更简单的CSS或SVG方案。"
+    ],
+    "follow_up_paths": [
+      "HTML5的语义化标签对SEO的具体影响机制是什么？搜索引擎如何抓取和权重分配？",
+      "对比`<canvas>`和`<svg>`的优缺点及适用场景。",
+      "Service Worker如何取代Application Cache实现更强大的离线能力和网络代理？"
+    ]
+  }
+}

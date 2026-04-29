@@ -1,0 +1,25 @@
+{
+  "id": "frontend-api-request-deduplication",
+  "subject": "前端重复API请求的优化与去重策略",
+  "category": "前端工程化",
+  "difficulty": "中等",
+  "tags": [
+    "性能优化",
+    "HTTP",
+    "缓存",
+    "GraphQL"
+  ],
+  "content": {
+    "principles": "当同一页面的多个组件请求同一API导致重复请求时，核心优化思路是去重合并，减少资源浪费和接口压力。主要方案包括：1) 前端缓存响应结果：将URL+参数作为key，将对应的Promise存入全局Map缓存。后续相同请求直接复用该Promise，避免重复调用。可设置缓存过期时间（如30秒）。示例代码：const requestCache = new Map(); function fetchApi(url, params) { const key = `${url}?${new URLSearchParams(params)}`; if (!requestCache.has(key)) { requestCache.set(key, fetch(key).finally(() => setTimeout(() => requestCache.delete(key), 30000))); } return requestCache.get(key); }。2) 后端请求合并（Batching）：通过中间件聚合短时间内的相同请求（如10ms内），合并为一次后端调用，再将响应广播给所有请求客户端，可使用Netty或Spring WebFlux实现。3) 使用GraphQL或tRPC等协议层方案：允许客户端在一次请求中声明所需的所有数据，减少冗余请求，特别适合微前端或复杂页面场景。注意：优化需谨慎，若请求参数不同或有强实时性要求，则不能简单合并。需设计好缓存有效期和错误重试策略。",
+    "pitfalls": [
+      "对所有请求无差别缓存，忽略了参数差异或实时性要求。",
+      "缓存策略设计不当（如无过期时间），导致数据陈旧。",
+      "过度依赖前端缓存，未考虑后端合并或协议层优化等方案。"
+    ],
+    "follow_up_paths": [
+      "除了内存缓存（Map），还有哪些前端缓存策略（如Service Worker、localStorage）？各自的适用场景是什么？",
+      "在后端请求合并方案中，如何保证不同用户请求的数据隔离性？",
+      "GraphQL相比RESTful API在解决重复请求问题上具体有哪些优势？"
+    ]
+  }
+}

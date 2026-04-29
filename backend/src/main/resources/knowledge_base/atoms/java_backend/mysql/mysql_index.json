@@ -1,0 +1,20 @@
+{
+  "id": "mysql-001",
+  "subject": "MySQL索引结构",
+  "category": "mysql",
+  "difficulty": "P6",
+  "tags": [
+    "MySQL",
+    "Database",
+    "Index"
+  ],
+  "content": {
+    "principles": "Mainly B+ Tree. Why B+ Tree? Balanced, disk-friendly (large fan-out), supports range queries (leaf nodes linked). Clustered Index (data in leaf) vs Non-Clustered (pointer in leaf).",
+    "pitfalls": "Index failure (not following leftmost prefix, using functions on indexed columns). Back-to-table (回表) overhead. Over-indexing impacts write performance.",
+    "follow_up_paths": [
+      "Covering Index",
+      "Hash Index vs B+ Tree",
+      "Index Cardinality"
+    ]
+  }
+}

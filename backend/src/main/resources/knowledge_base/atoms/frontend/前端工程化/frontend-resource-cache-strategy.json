@@ -1,0 +1,24 @@
+{
+  "id": "frontend-resource-cache-strategy",
+  "subject": "前端资源缓存配置策略",
+  "category": "前端工程化",
+  "difficulty": "中等",
+  "tags": [
+    "HTTP缓存",
+    "性能优化",
+    "部署"
+  ],
+  "content": {
+    "principles": "前端资源缓存的核心是合理利用HTTP缓存机制。1. 强缓存：通过`Cache-Control`（如`max-age=31536000`）和`Expires`响应头控制。浏览器直接使用本地副本，不发请求。适用于带哈希指纹的静态资源（如JS、CSS），可设置`public, immutable`指示资源永不变化。2. 协商缓存：在强缓存失效后触发，服务器通过`ETag`或`Last-Modified`判断资源是否变更，未变更则返回304。适用于没有哈希的资源或动态页面（如index.html），通常设置`Cache-Control: no-cache`。3. 分资源类型配置：在CDN或Nginx中，对`.js`、`.css`、`.png`等设置长期强缓存；对`index.html`设置协商缓存。Nginx配置示例：对静态资源设置`expires 1y; add_header Cache-Control \"public, immutable\";`；对HTML设置`add_header Cache-Control \"no-cache\";`。",
+    "pitfalls": [
+      "给HTML文件设置强缓存（如长max-age），导致用户可能一直卡在旧版本。",
+      "未使用`immutable`属性，导致用户操作（如刷新）触发不必要的缓存重新验证。",
+      "混淆`no-cache`（需要协商验证）和`no-store`（完全不缓存）的用法。"
+    ],
+    "follow_up_paths": [
+      "`Cache-Control`中的`immutable`属性具体解决了什么问题？在哪些浏览器或场景下支持？",
+      "如何设计一套缓存更新策略，确保在发布新版本后，所有用户都能及时获取到最新的HTML和对应的哈希资源？",
+      "除了HTTP头，Service Worker在缓存策略中扮演什么角色？它与HTTP缓存如何协同工作？"
+    ]
+  }
+}

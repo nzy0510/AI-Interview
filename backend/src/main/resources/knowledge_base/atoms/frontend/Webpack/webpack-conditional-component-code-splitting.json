@@ -1,0 +1,24 @@
+{
+  "id": "webpack-conditional-component-code-splitting",
+  "subject": "Webpack中条件组件的按需打包",
+  "category": "Webpack",
+  "difficulty": "中等",
+  "tags": [
+    "Webpack",
+    "代码分割",
+    "动态导入"
+  ],
+  "content": {
+    "principles": "实现条件组件按需打包的关键是让Webpack识别动态引入的代码，并通过代码分割和Tree Shaking剔除未使用部分。1. 使用动态`import()`语法配合Promise加载组件，Webpack会自动将其拆分成独立chunk，运行时按需下载。例如根据用户权限加载：`if (user.role === 'admin') { import('./AdminPanel').then(mod => render(mod.default)) }`。2. 结合React.lazy和Suspense实现路由级按需加载。3. 利用webpackIgnorePlugin或自定义条件判断排除特定环境模块（如移动端打包移除PC端组件）。注意：Tree Shaking依赖ES Module的静态结构，必须确保导出是静态声明的。CommonJS的`require`是动态的，会导致代码被整体保留。动态导入的模块路径应避免完全动态拼接（如`import(./${module}.js)`），否则Webpack会预加载目录下所有可能文件，可配合`webpackMode: 'lazy'`控制加载策略。",
+    "pitfalls": [
+      "使用CommonJS的`require`进行条件引入，导致整个模块被打包，无法Tree Shaking。",
+      "动态导入路径完全动态拼接，导致Webpack打包过多不必要的模块，增大初始包体积。",
+      "未正确处理动态导入的加载状态和错误边界，影响用户体验。"
+    ],
+    "follow_up_paths": [
+      "Webpack是如何在构建时分析`import()`语法并决定代码分割点的？",
+      "在SSR（服务端渲染）场景下，动态导入和代码分割会遇到什么问题？如何解决？",
+      "除了`import()`，还有哪些技术或Webpack插件可以实现更细粒度的代码分割（如组件级）？"
+    ]
+  }
+}

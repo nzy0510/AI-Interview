@@ -1,0 +1,22 @@
+{
+  "id": "spring-design-patterns-observer-event",
+  "subject": "Spring 中的观察者模式（事件机制）",
+  "category": "spring",
+  "difficulty": "简单",
+  "tags": [
+    "Spring",
+    "设计模式",
+    "事件"
+  ],
+  "content": {
+    "principles": "Spring 的事件机制基于观察者模式实现。核心组件包括：事件源（发布 `ApplicationEvent`）、事件监听器（实现 `ApplicationListener` 接口或使用 `@EventListener` 注解）。当事件发布后，所有注册的监听器会异步或同步地接收到事件并进行处理。典型应用场景包括应用上下文刷新 (`ContextRefreshedEvent`)、自定义业务状态通知等。",
+    "pitfalls": [
+      "混淆同步事件与异步事件（使用 `@Async`）的发布与处理顺序。",
+      "监听器抛出异常时，对事务性事件的影响处理不当。"
+    ],
+    "follow_up_paths": [
+      "Spring 事件是如何在应用上下文内部传播的？如何实现跨上下文的事件监听？",
+      "如何基于 Spring 的事件机制实现一个领域事件驱动的微服务模块？"
+    ]
+  }
+}
