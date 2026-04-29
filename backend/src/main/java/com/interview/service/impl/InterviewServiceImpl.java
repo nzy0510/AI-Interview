@@ -63,6 +63,9 @@ public class InterviewServiceImpl implements InterviewService {
     @Autowired
     private com.interview.config.PositionCategoryConfig positionCategoryConfig;
 
+    @Autowired
+    private com.interview.config.InterviewPrompts interviewPrompts;
+
     // Redis key 前缀
     private static final String CHAT_KEY_PREFIX = "interview:chat:";
     private static final String TAILORED_KEY_PREFIX = "interview:tailored:";
@@ -74,37 +77,6 @@ public class InterviewServiceImpl implements InterviewService {
     private final Map<Long, List<String>> localTailoredCache = new ConcurrentHashMap<>();
     private final Map<Long, List<String>> localUsedAtomsCache = new ConcurrentHashMap<>(); // 已用原子黑名单
     private volatile boolean redisAvailable = true; // 标记 Redis 是否可连通
-
-    // ========== 多智能体人设提示词定义 ==========
-    private static final String ATTITUDE_RULE = """
-
-            【态度监控规则（所有角色必须遵守）】：
-            - 如果候选人表现出不耐烦、言语辱骂、回答极其敷衍（如连续多次只发1个字符）或拒绝回答，请先给予一次严肃警告。
-            - 若警告后行为仍无改善，请在回复的最末尾加上标记：[TERMINATE]""";
-
-    private static final String PROMPT_COORDINATOR = "你是面试组长。负责主持流程：开场致辞、引导候选人、在技术官和HR之间切换话题。语气稳重、礼貌。每次只问一个问题。"
-            + ATTITUDE_RULE;
-
-    private static final String PROMPT_TECHNICAL = """
-            你是一位资深技术面试官。职责是考察候选人的技术能力。
-            【面试风格】：
-            - 语气专业、平和、有引导性。绝对不要批评或指责候选人，即使回答不理想也要保持鼓励和尊重。
-            - 如果候选人回答不够完善，用追问来引导，例如"那你能再说说…的部分吗？"，而不是直接否定。
-            - 每次回复简短（2-3句话），只问一个问题，不要长篇大论。
-            【自适应难度】：
-            - 第一个问题从基础概念入手（如"请简单介绍一下…"）。
-            - 如果候选人回答流畅准确，后续问题逐步加深难度，深入底层原理或实战场景。
-            - 如果候选人回答吃力或不够准确，保持当前难度或适当降低，换一个相近的知识点提问。
-            【灵活提问】
-            - 若候选人对某一方面不是很了解，换另一个知识点提问。
-            - 提问做到覆盖多方面的知识。
-            """ + ATTITUDE_RULE;
-
-    private static final String PROMPT_HR = "你是【资深 HR BP】。职责是考察候选人的沟通能力、价值观和稳定性。语气专业、温和但有洞察力。每次只问一个问题。如果在考察后感到非常满意或没有需要了解的了，可以直接告诉候选人面试结束，并在结尾加上标记：[TERMINATE]。"
-            + ATTITUDE_RULE;
-
-    private static final String PROMPT_CLOSING = "你是面试组长。面试已经进入尾声。请对候选人的整体表现做一个简短的总结性发言（2-3句话），礼貌地与候选人道别。" +
-            "你必须在回复的最末尾加上标记：[AUTO_FINISH]，表示面试正式结束。";
 
     // ========== 双模式会话存储工具（Redis 优先，内存兜底） ==========
 
@@ -354,9 +326,11 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         if (turn == 0) {
-            currentSystemPrompt = PROMPT_COORDINATOR + "\n请先让候选人做个简短的自我介绍。";
+            currentSystemPrompt = interviewPrompts.getCoordinator() + "\n" + interviewPrompts.getAttitudeRule()
+                    + "\n请先让候选人做个简短的自我介绍。";
         } else if (turn <= 8 && !earlySwitchToHr) {
-            currentSystemPrompt = PROMPT_TECHNICAL + "\n以下是本题考核参考点：\n" + contextBuilder.toString();
+            currentSystemPrompt = interviewPrompts.getTechnical() + "\n" + interviewPrompts.getAttitudeRule()
+                    + "\n以下是本题考核参考点：\n" + contextBuilder.toString();
 
             List<String> tailoredQuestions = loadTailoredQuestions(recordId);
 
@@ -372,9 +346,9 @@ public class InterviewServiceImpl implements InterviewService {
                 currentSystemPrompt += "\n如果在极其满意的状况下认为无可挑剔且无需再问，你可以提前结束技术部分，并把话题抛给HR同事，此时在这个回答的最末尾追加标记：[SWITCH_TO_HR]\n";
             }
         } else if (turn <= 11) {
-            currentSystemPrompt = PROMPT_HR;
+            currentSystemPrompt = interviewPrompts.getHr() + "\n" + interviewPrompts.getAttitudeRule();
         } else {
-            currentSystemPrompt = PROMPT_CLOSING;
+            currentSystemPrompt = interviewPrompts.getClosing();
         }
 
         // 3. 构造消息列表
@@ -500,56 +474,7 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         // ========== AI 评估 ==========
-        String evaluationPrompt = String.format(
-                """
-                        你现在是一个【面试评估分析师】，不是面试官。你的任务是根据以下面试对话记录，输出一个结构化的 JSON 评估报告。
-                        候选人本次面试的平均语速为 %d WPM。
-
-                        【最高优先级指令】你必须且只能返回一个纯 JSON 对象。禁止返回任何其他格式的文本、对话、角色扮演内容或 Markdown 标记。
-
-                        严格按照以下 JSON 格式返回：
-                        {
-                          "score": 82,
-                          "feedback": "候选人整体表现...（5-10句综合点评）",
-                          "ability": {
-                            "techDepth": "A",
-                            "breadth": "B",
-                            "problemSolving": "A",
-                            "expression": "B",
-                            "logic": "A",
-                            "adaptability": "B"
-                          },
-                          "recommendations": [
-                            {"period": "本周", "action": "职场素养", "detail": "建议学习基本面试礼仪..."},
-                            {"period": "两周内", "action": "话术练习", "detail": "尝试练习结构化表达..."},
-                            {"period": "一个月", "action": "能力提升", "detail": "深入学习并发编程底层原理..."}
-                          ],
-                          "knowledgePoints": [
-                            {"concept": "微服务架构", "mastery": 0.8, "category": "架构设计"},
-                            {"concept": "Java多线程", "mastery": 0.3, "category": "底层原理"}
-                          ],
-                          "sentimentAnalysis": {
-                            "avgConfidence": 0.72,
-                            "dominantEmotion": "neutral",
-                            "emotionDistribution": {
-                              "neutral": 0.5,
-                              "happy": 0.2,
-                              "sad": 0.05,
-                              "angry": 0.1,
-                              "fearful": 0.15
-                            },
-                            "summary": "候选人整体情绪稳定，在技术深挖阶段略有紧张..."
-                          }
-                        }
-
-                        评分说明：
-                        - score: 0-100 综合得分
-                        - ability 六维能力评级（A/B/C/D/E）
-                        - recommendations: 3条具体的提升建议
-                        - knowledgePoints: 请提取本场面试中暴露或考察到的所有核心底层实体概念（如生命周期、并发锁、响应式等，不少于 3 个）。mastery是 0.0-1.0 的浮点熟练度，category所属技术大类。
-                        - sentimentAnalysis: 基于对话文本分析候选人的情感状态。avgConfidence 为 0.0-1.0 的自信指数，dominantEmotion 为主导情绪（neutral/happy/sad/angry/fearful），emotionDistribution 为各情绪占比（总和为1.0），summary 为1-2句情感分析总结。请从候选人的用词、语气、回答犹豫程度、逻辑流畅度等维度综合判断。
-                        """,
-                wpm);
+        String evaluationPrompt = String.format(interviewPrompts.getEvaluation(), wpm);
 
         List<ChatMessage> evalMessages = new ArrayList<>();
         evalMessages.add(new SystemMessage(evaluationPrompt));

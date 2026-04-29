@@ -32,6 +32,9 @@ public class ResumeServiceImpl implements ResumeService {
     @Autowired
     private ResumeProfileMapper resumeProfileMapper;
 
+    @Autowired
+    private com.interview.config.InterviewPrompts interviewPrompts;
+
     /** 仅用于测试注入 Mock Mapper */
     public void setResumeProfileMapper(ResumeProfileMapper mapper) {
         this.resumeProfileMapper = mapper;
@@ -57,28 +60,7 @@ public class ResumeServiceImpl implements ResumeService {
         log.info("PDF 文件解析完成，提取字符数: {}", rawText.length());
 
         // 2. 构造大模型分析画像的 Prompt
-        String prompt = """
-                你是一个超级资深的互联网技术猎头和技术面试考官。接下来你会收到一份应聘者的纯文本格式简历。
-                请对简历进行深度的结构化剖析，并【仅仅】返回一个原生的 JSON 格式对象数据（不要有 ```json 包装和任何额外问候聊天的话），严格遵循以下格式与字段要求：
-                {
-                  "matchScore": 85, // 你评估这份简历对于中高级开发岗位的匹配分数(0-100)
-                  "coreSkills": [
-                    // 提供从简历里梳理出来的所有核心技术栈实体名称及掌握程度（必须有具体的名称，例如 "Spring Boot"、"Vue3"等），不少于5项
-                    {"name": "Java", "level": "熟练"},
-                    {"name": "TypeScript", "level": "熟悉"}
-                  ],
-                  "projectSummary": [
-                    // 提供简历中的核心项目（2-3个即可），用极度简练的一两句话概括其核心难点或产出
-                    {"name": "项目A名称", "desc": "高并发秒杀系统架构优化。"},
-                    {"name": "项目B名称", "desc": "从零搭建B2C商城核心支付链路。"}
-                  ],
-                  "tailoredQuestions": [
-                    // 根据简历内容中写的技术栈和项目难点，【量身定做生成 5 道】硬核、刁钻且贴合实际业务场景的深挖面试题。不能是基础八股文，必须让候选人展现真正的底子。
-                    "你在简历里提到在这个电商系统使用了 Redis 分布式锁，当时有没有考虑过主从切换时锁丢失的情况？怎么解决的？"
-                  ],
-                  "evaluation": "用仅仅三句话极其精练地总结该候选人的技术亮点和可能的短板。"
-                }
-                """;
+        String prompt = interviewPrompts.getResumeAnalysis();
 
         // 3. 呼叫大模型执行生成
         try {
