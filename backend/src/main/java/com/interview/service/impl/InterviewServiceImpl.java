@@ -61,6 +61,9 @@ public class InterviewServiceImpl implements InterviewService {
     @Autowired
     private com.interview.service.RagRetriever ragRetriever;
 
+    @Autowired
+    private com.interview.service.EvaluationGenerator evaluationGenerator;
+
     // ========== 业务方法 ==========
 
     @Override
@@ -115,14 +118,13 @@ public class InterviewServiceImpl implements InterviewService {
         List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
         List<Content> retrievedContents = ragRetriever.retrieve(position, message, usedAtomIds);
 
-        // 将本轮检索到的原子 ID 记入黑名单
+        // 原子追加新命中原子 ID，避免并发覆盖
+        List<String> newAtomIds = new ArrayList<>();
         for (Content content : retrievedContents) {
             String atomId = content.textSegment().metadata().getString("id");
-            if (atomId != null && !usedAtomIds.contains(atomId)) {
-                usedAtomIds.add(atomId);
-            }
+            if (atomId != null) newAtomIds.add(atomId);
         }
-        sessionStore.saveUsedAtoms(recordId, usedAtomIds);
+        sessionStore.addUsedAtoms(recordId, newAtomIds);
 
         StringBuilder contextBuilder = new StringBuilder();
         for (Content content : retrievedContents)
@@ -301,54 +303,7 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         // ========== AI 评估 ==========
-        String evaluationPrompt = String.format(interviewPrompts.getEvaluation(), wpm);
-
-        List<ChatMessage> evalMessages = new ArrayList<>();
-        evalMessages.add(new SystemMessage(evaluationPrompt));
-        for (ChatMessage msg : historyMessages) {
-            if (!(msg instanceof SystemMessage)) {
-                evalMessages.add(msg);
-            }
-        }
-        evalMessages.add(new UserMessage("面试已结束。请立即输出 JSON 格式的评估报告，不要输出任何其他内容。"));
-
-        try {
-            log.info("开始生成 AI 评估报告 (recordId={}, 对话轮数={})", recordId, historyMessages.size());
-            Response<AiMessage> evalResponse = chatModel.generate(evalMessages);
-            String raw = evalResponse.content().text().replace("```json", "").replace("```", "").trim();
-            log.info("AI 评估原始响应: {}", raw);
-
-            com.alibaba.fastjson2.JSONObject evalObj = JSON.parseObject(raw);
-            record.setScore(evalObj.getInteger("score") != null ? evalObj.getInteger("score") : 0);
-            record.setFeedback(evalObj.getString("feedback") != null ? evalObj.getString("feedback") : "评估内容生成异常");
-            if (evalObj.get("ability") != null)
-                record.setAbilityJson(evalObj.getJSONObject("ability").toJSONString());
-            if (evalObj.get("recommendations") != null)
-                record.setRecommendations(evalObj.getJSONArray("recommendations").toJSONString());
-            if (evalObj.get("knowledgePoints") != null)
-                record.setKnowledgeJson(evalObj.getJSONArray("knowledgePoints").toJSONString());
-            // 文本情感分析：如果没有视频情感数据，使用 AI 基于对话文本的情感分析
-            if ((record.getEmotionJson() == null || record.getEmotionJson().isEmpty())
-                    && evalObj.get("sentimentAnalysis") != null) {
-                com.alibaba.fastjson2.JSONObject sentiment = evalObj.getJSONObject("sentimentAnalysis");
-                sentiment.put("source", "text");
-                record.setEmotionJson(sentiment.toJSONString());
-            } else if (record.getEmotionJson() != null && !record.getEmotionJson().isEmpty()
-                    && evalObj.get("sentimentAnalysis") != null) {
-                // 视频模式：将 AI 的文本情感总结追加到已有的视频情感数据中
-                try {
-                    com.alibaba.fastjson2.JSONObject existing = JSON.parseObject(record.getEmotionJson());
-                    existing.put("source", "video");
-                    String summary = evalObj.getJSONObject("sentimentAnalysis").getString("summary");
-                    if (summary != null) existing.put("summary", summary);
-                    record.setEmotionJson(existing.toJSONString());
-                } catch (Exception ignored) {}
-            }
-        } catch (Exception e) {
-            log.error("评估生成失败 (recordId={})", recordId, e);
-            record.setScore(0);
-            record.setFeedback("AI 评估生成异常: " + e.getMessage());
-        }
+        evaluationGenerator.generate(record, historyMessages, wpm);
 
         interviewRecordMapper.updateById(record);
         return record;

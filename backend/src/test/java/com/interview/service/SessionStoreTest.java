@@ -90,10 +90,37 @@ class SessionStoreTest {
     @Test
     @DisplayName("保存已用原子 ID 后加载应一致")
     void shouldSaveAndLoadUsedAtoms() {
-        List<String> atomIds = List.of("atom-001", "atom-002");
-        store.saveUsedAtoms(1L, atomIds);
+        store.saveUsedAtoms(1L, new ArrayList<>(List.of("atom-001", "atom-002")));
 
         List<String> loaded = store.loadUsedAtoms(1L);
-        assertThat(loaded).containsExactlyElementsOf(atomIds);
+        assertThat(loaded).containsExactlyInAnyOrder("atom-001", "atom-002");
+    }
+
+    @Test
+    @DisplayName("原子追加已用原子 ID 应去重合并")
+    void shouldAtomicallyAddUsedAtomIds() {
+        store.saveUsedAtoms(1L, new ArrayList<>(List.of("atom-001")));
+        store.addUsedAtoms(1L, List.of("atom-002", "atom-003"));
+        store.addUsedAtoms(1L, List.of("atom-002")); // 重复
+
+        List<String> loaded = store.loadUsedAtoms(1L);
+        assertThat(loaded).hasSize(3).contains("atom-001", "atom-002", "atom-003");
+    }
+
+    @Test
+    @DisplayName("并发追加已用原子 ID 不应丢失数据")
+    void shouldNotLoseDataUnderConcurrentAdds() throws Exception {
+        store.saveUsedAtoms(1L, new ArrayList<>());
+
+        Thread t1 = new Thread(() -> {
+            for (int i = 0; i < 100; i++) store.addUsedAtoms(1L, List.of("t1-" + i));
+        });
+        Thread t2 = new Thread(() -> {
+            for (int i = 0; i < 100; i++) store.addUsedAtoms(1L, List.of("t2-" + i));
+        });
+        t1.start(); t2.start();
+        t1.join(); t2.join();
+
+        assertThat(store.loadUsedAtoms(1L)).hasSize(200);
     }
 }

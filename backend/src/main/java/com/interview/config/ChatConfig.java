@@ -1,6 +1,7 @@
 package com.interview.config;
 
 import com.interview.config.PositionCategoryConfig;
+import com.interview.service.EvaluationGenerator;
 import com.interview.service.RagRetriever;
 import com.interview.service.SessionStore;
 import dev.langchain4j.data.segment.TextSegment;
@@ -77,5 +78,11 @@ public class ChatConfig {
                                      EmbeddingModel embeddingModel,
                                      PositionCategoryConfig categoryConfig) {
         return new RagRetriever(embeddingStore, embeddingModel, categoryConfig);
+    }
+
+    @Bean
+    public EvaluationGenerator evaluationGenerator(OpenAiChatModel chatModel,
+                                                   InterviewPrompts prompts) {
+        return new EvaluationGenerator(chatModel, prompts);
     }
 }

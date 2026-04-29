@@ -144,6 +144,20 @@ public class SessionStore {
         return localTailoredCache.get(recordId);
     }
 
+    /** 原子追加已用原子 ID，自动去重，线程安全 */
+    public synchronized void addUsedAtoms(Long recordId, List<String> newIds) {
+        List<String> current = localUsedAtomsCache.computeIfAbsent(recordId, k -> new ArrayList<>());
+        for (String id : newIds) {
+            if (!current.contains(id)) current.add(id);
+        }
+        if (isRedisReady()) {
+            try {
+                redisTemplate.opsForValue().set(USED_ATOMS_KEY_PREFIX + recordId, JSON.toJSONString(current),
+                        SESSION_TTL_HOURS, TimeUnit.HOURS);
+            } catch (Exception ignored) {}
+        }
+    }
+
     public void saveUsedAtoms(Long recordId, List<String> usedIds) {
         localUsedAtomsCache.put(recordId, new ArrayList<>(usedIds));
         if (isRedisReady()) {
