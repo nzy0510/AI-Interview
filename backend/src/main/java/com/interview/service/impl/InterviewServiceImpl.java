@@ -60,6 +60,9 @@ public class InterviewServiceImpl implements InterviewService {
     @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
 
+    @Autowired
+    private com.interview.config.PositionCategoryConfig positionCategoryConfig;
+
     // Redis key 前缀
     private static final String CHAT_KEY_PREFIX = "interview:chat:";
     private static final String TAILORED_KEY_PREFIX = "interview:tailored:";
@@ -304,25 +307,12 @@ public class InterviewServiceImpl implements InterviewService {
         // 1. RAG 检索（含已用原子黑名单，避免重复提问同一知识点）
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
         String position = record != null ? record.getPosition() : "common";
-        // 岗位 → 知识库分类映射（新增子文件夹时同步维护此处）
-        // category 值 = 各 JSON 文件直接父目录名（子文件夹名）
-        Filter categoryFilter = position.contains("Java")
-                ? metadataKey("category").isEqualTo("hot200")
-                        .or(metadataKey("category").isEqualTo("mysql"))
-                        .or(metadataKey("category").isEqualTo("redis"))
-                        .or(metadataKey("category").isEqualTo("spring"))
-                        .or(metadataKey("category").isEqualTo("springboot"))
-                        .or(metadataKey("category").isEqualTo("并发"))
-                        .or(metadataKey("category").isEqualTo("操作系统"))
-                        .or(metadataKey("category").isEqualTo("common"))
-                : position.contains("前端")
-                        ? metadataKey("category").isEqualTo("hot200")
-                                .or(metadataKey("category").isEqualTo("React"))
-                                .or(metadataKey("category").isEqualTo("Vue"))
-                                .or(metadataKey("category").isEqualTo("Flutter"))
-                                .or(metadataKey("category").isEqualTo("HTML"))
-                                .or(metadataKey("category").isEqualTo("common"))
-                        : metadataKey("category").isEqualTo("common");
+        // 岗位 → 知识库分类映射（通过 application.yml 配置，新增分类无需改代码）
+        java.util.List<String> categories = positionCategoryConfig.getCategoriesFor(position);
+        Filter categoryFilter = metadataKey("category").isEqualTo(categories.get(0));
+        for (int i = 1; i < categories.size(); i++) {
+            categoryFilter = categoryFilter.or(metadataKey("category").isEqualTo(categories.get(i)));
+        }
 
         // 加载已用原子黑名单，构建排除 Filter（避免同一知识点被重复追问）
         List<String> usedAtomIds = loadUsedAtoms(recordId);
@@ -610,5 +600,16 @@ public class InterviewServiceImpl implements InterviewService {
 
         interviewRecordMapper.updateById(record);
         return record;
+    }
+
+    @Override
+    public java.util.List<InterviewRecord> getHistoryList(Long userId) {
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<InterviewRecord> query =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        query.eq("user_id", userId)
+             .isNotNull("score")
+             .orderByDesc("create_time")
+             .last("LIMIT 50");
+        return interviewRecordMapper.selectList(query);
     }
 }

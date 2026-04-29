@@ -3,26 +3,24 @@ package com.interview.service;
 import com.interview.entity.InterviewRecord;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.List;
+
 public interface InterviewService {
-    
-    // Start an interview, initialize AI, save to db, return recordId
+
     Long startInterview(Long userId, String position);
 
-    // Start an interview with mode (text/video)
     Long startInterview(Long userId, String position, String mode);
-    
-    // Start an interview with mode and tailored resume questions
+
     Long startInterview(Long userId, String position, String mode, java.util.List<String> resumeQuestions);
-    
-    // Send a message and get SSE stream for typing animation
+
     SseEmitter chatStream(Long userId, Long recordId, String message);
-    
-    // End interview and generate evaluation report
+
     InterviewRecord endInterview(Long recordId);
 
-    // End interview with voice behavioral metrics (wpm = words per minute)
     InterviewRecord endInterview(Long recordId, Integer wpm);
 
-    // End interview with voice metrics and emotion analysis data
     InterviewRecord endInterview(Long recordId, Integer wpm, String emotionJson);
+
+    /** 查询用户面试历史列表（已评分，按时间倒序，最多50条） */
+    List<InterviewRecord> getHistoryList(Long userId);
 }

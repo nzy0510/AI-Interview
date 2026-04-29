@@ -17,12 +17,25 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.interview.entity.ResumeProfile;
+import com.interview.mapper.ResumeProfileMapper;
+import java.time.LocalDateTime;
+
 @Slf4j
 @Service
 public class ResumeServiceImpl implements ResumeService {
 
     @Autowired
     private ChatLanguageModel chatModel;
+
+    @Autowired
+    private ResumeProfileMapper resumeProfileMapper;
+
+    /** 仅用于测试注入 Mock Mapper */
+    public void setResumeProfileMapper(ResumeProfileMapper mapper) {
+        this.resumeProfileMapper = mapper;
+    }
 
     @Override
     public Map<String, Object> parseAndAnalyze(MultipartFile file) throws Exception {
@@ -93,5 +106,42 @@ public class ResumeServiceImpl implements ResumeService {
             log.error("大模型生成简历画像失败", e);
             throw new Exception("AI生成简历画像异常，请重试。" + e.getMessage());
         }
+    }
+
+    @Override
+    public void saveOrUpdateProfile(Long userId, String position, String analysisJson) {
+        LambdaQueryWrapper<ResumeProfile> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ResumeProfile::getUserId, userId);
+        ResumeProfile existing = resumeProfileMapper.selectOne(wrapper);
+        if (existing != null) {
+            existing.setPosition(position);
+            existing.setAnalysisJson(analysisJson);
+            existing.setUpdateTime(LocalDateTime.now());
+            resumeProfileMapper.updateById(existing);
+        } else {
+            ResumeProfile profile = new ResumeProfile();
+            profile.setUserId(userId);
+            profile.setPosition(position);
+            profile.setAnalysisJson(analysisJson);
+            profile.setCreateTime(LocalDateTime.now());
+            profile.setUpdateTime(LocalDateTime.now());
+            resumeProfileMapper.insert(profile);
+        }
+    }
+
+    @Override
+    public Object getProfileByUserId(Long userId) {
+        LambdaQueryWrapper<ResumeProfile> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ResumeProfile::getUserId, userId);
+        ResumeProfile profile = resumeProfileMapper.selectOne(wrapper);
+        if (profile == null) return null;
+        return JSON.parse(profile.getAnalysisJson());
+    }
+
+    @Override
+    public void deleteProfileByUserId(Long userId) {
+        LambdaQueryWrapper<ResumeProfile> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ResumeProfile::getUserId, userId);
+        resumeProfileMapper.delete(wrapper);
     }
 }

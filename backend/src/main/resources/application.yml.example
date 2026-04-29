@@ -44,6 +44,12 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
     map-underscore-to-camel-case: true
 
+# 岗位到知识库分类的映射（新增分类时在此处添加即可，无需改代码）
+interview:
+  position-categories:
+    java: [hot200, mysql, redis, spring, springboot, 并发, 操作系统, common]
+    前端: [hot200, React, Vue, Flutter, HTML, common]
+
 # JWT 签名密钥（生产环境必须通过环境变量注入，无默认值）
 jwt:
   sign-key: ${JWT_SIGN_KEY}

@@ -1,0 +1,4 @@
+interview:
+  position-categories:
+    java: [hot200, mysql, redis, spring, springboot, 并发, 操作系统, common]
+    frontend: [hot200, common]
