@@ -53,183 +53,13 @@ public class InterviewServiceImpl implements InterviewService {
     private OpenAiChatModel chatModel;
 
     @Autowired
-    private EmbeddingStore<TextSegment> embeddingStore;
-
-    @Autowired
-    private EmbeddingModel embeddingModel;
-
-    @Autowired(required = false)
-    private RedisTemplate<String, Object> redisTemplate;
-
-    @Autowired
-    private com.interview.config.PositionCategoryConfig positionCategoryConfig;
-
-    @Autowired
     private com.interview.config.InterviewPrompts interviewPrompts;
 
-    // Redis key 前缀
-    private static final String CHAT_KEY_PREFIX = "interview:chat:";
-    private static final String TAILORED_KEY_PREFIX = "interview:tailored:";
-    private static final String USED_ATOMS_KEY_PREFIX = "interview:used_atoms:"; // 已用知识原子黑名单
-    private static final long SESSION_TTL_HOURS = 2;
+    @Autowired
+    private com.interview.service.SessionStore sessionStore;
 
-    // 本地兜底缓存（Redis 不可用时自动降级到内存）
-    private final Map<Long, List<ChatMessage>> localChatCache = new ConcurrentHashMap<>();
-    private final Map<Long, List<String>> localTailoredCache = new ConcurrentHashMap<>();
-    private final Map<Long, List<String>> localUsedAtomsCache = new ConcurrentHashMap<>(); // 已用原子黑名单
-    private volatile boolean redisAvailable = true; // 标记 Redis 是否可连通
-
-    // ========== 双模式会话存储工具（Redis 优先，内存兜底） ==========
-
-    private boolean isRedisReady() {
-        if (redisTemplate == null)
-            return false;
-        if (!redisAvailable)
-            return false;
-        try {
-            redisTemplate.opsForValue().get("__ping__");
-            return true;
-        } catch (Exception e) {
-            if (redisAvailable) {
-                log.warn("⚠️ Redis 不可用，已自动降级到内存缓存模式: {}", e.getMessage());
-                redisAvailable = false;
-            }
-            return false;
-        }
-    }
-
-    private void saveChatMessages(Long recordId, List<ChatMessage> messages) {
-        // 始终保留内存副本
-        localChatCache.put(recordId, new ArrayList<>(messages));
-        // 尝试同步到 Redis
-        if (isRedisReady()) {
-            try {
-                List<Map<String, String>> serialized = new ArrayList<>();
-                for (ChatMessage msg : messages) {
-                    Map<String, String> m = new HashMap<>();
-                    if (msg instanceof UserMessage) {
-                        m.put("type", "USER");
-                        m.put("text", ((UserMessage) msg).singleText());
-                    } else if (msg instanceof AiMessage) {
-                        m.put("type", "AI");
-                        m.put("text", ((AiMessage) msg).text());
-                    } else if (msg instanceof SystemMessage) {
-                        m.put("type", "SYSTEM");
-                        m.put("text", ((SystemMessage) msg).text());
-                    }
-                    serialized.add(m);
-                }
-                redisTemplate.opsForValue().set(CHAT_KEY_PREFIX + recordId, JSON.toJSONString(serialized),
-                        SESSION_TTL_HOURS, TimeUnit.HOURS);
-            } catch (Exception e) {
-                log.trace("Redis 写入跳过: {}", e.getMessage());
-            }
-        }
-    }
-
-    private List<ChatMessage> loadChatMessages(Long recordId) {
-        // 优先从 Redis 读
-        if (isRedisReady()) {
-            try {
-                Object raw = redisTemplate.opsForValue().get(CHAT_KEY_PREFIX + recordId);
-                if (raw != null) {
-                    String json = raw instanceof String ? (String) raw : JSON.toJSONString(raw);
-                    com.alibaba.fastjson2.JSONArray arr = JSON.parseArray(json);
-                    List<ChatMessage> messages = new ArrayList<>();
-                    for (int i = 0; i < arr.size(); i++) {
-                        com.alibaba.fastjson2.JSONObject obj = arr.getJSONObject(i);
-                        String type = obj.getString("type");
-                        String text = obj.getString("text");
-                        if (text == null)
-                            continue;
-                        switch (type) {
-                            case "USER" -> messages.add(new UserMessage(text));
-                            case "AI" -> messages.add(new AiMessage(text));
-                            case "SYSTEM" -> messages.add(new SystemMessage(text));
-                        }
-                    }
-                    localChatCache.put(recordId, new ArrayList<>(messages));
-                    return messages;
-                }
-            } catch (Exception e) {
-                log.trace("Redis 读取跳过: {}", e.getMessage());
-            }
-        }
-        // 降级从内存取
-        List<ChatMessage> cached = localChatCache.get(recordId);
-        return cached != null ? new ArrayList<>(cached) : null;
-    }
-
-    private void deleteChatSession(Long recordId) {
-        localChatCache.remove(recordId);
-        localTailoredCache.remove(recordId);
-        localUsedAtomsCache.remove(recordId);
-        if (isRedisReady()) {
-            try {
-                redisTemplate.delete(CHAT_KEY_PREFIX + recordId);
-                redisTemplate.delete(TAILORED_KEY_PREFIX + recordId);
-                redisTemplate.delete(USED_ATOMS_KEY_PREFIX + recordId);
-            } catch (Exception ignored) {
-            }
-        }
-    }
-
-    private void saveTailoredQuestions(Long recordId, List<String> questions) {
-        localTailoredCache.put(recordId, questions);
-        if (isRedisReady()) {
-            try {
-                redisTemplate.opsForValue().set(TAILORED_KEY_PREFIX + recordId, JSON.toJSONString(questions),
-                        SESSION_TTL_HOURS, TimeUnit.HOURS);
-            } catch (Exception ignored) {
-            }
-        }
-    }
-
-    private List<String> loadTailoredQuestions(Long recordId) {
-        if (isRedisReady()) {
-            try {
-                Object raw = redisTemplate.opsForValue().get(TAILORED_KEY_PREFIX + recordId);
-                if (raw != null) {
-                    String json = raw instanceof String ? (String) raw : JSON.toJSONString(raw);
-                    return JSON.parseArray(json, String.class);
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        return localTailoredCache.get(recordId);
-    }
-
-    /** 保存本轮面试已使用的知识原子 ID 集合（双模缓存） */
-    private void saveUsedAtoms(Long recordId, List<String> usedIds) {
-        localUsedAtomsCache.put(recordId, new ArrayList<>(usedIds));
-        if (isRedisReady()) {
-            try {
-                redisTemplate.opsForValue().set(
-                        USED_ATOMS_KEY_PREFIX + recordId,
-                        JSON.toJSONString(usedIds),
-                        SESSION_TTL_HOURS, TimeUnit.HOURS);
-            } catch (Exception ignored) {
-            }
-        }
-    }
-
-    /** 读取本轮面试已使用的知识原子 ID 集合（双模缓存） */
-    private List<String> loadUsedAtoms(Long recordId) {
-        if (isRedisReady()) {
-            try {
-                Object raw = redisTemplate.opsForValue().get(USED_ATOMS_KEY_PREFIX + recordId);
-                if (raw != null) {
-                    String json = raw instanceof String ? (String) raw : JSON.toJSONString(raw);
-                    List<String> ids = JSON.parseArray(json, String.class);
-                    localUsedAtomsCache.put(recordId, ids);
-                    return ids;
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        List<String> cached = localUsedAtomsCache.get(recordId);
-        return cached != null ? new ArrayList<>(cached) : new ArrayList<>();
-    }
+    @Autowired
+    private com.interview.service.RagRetriever ragRetriever;
 
     // ========== 业务方法 ==========
 
@@ -254,10 +84,10 @@ public class InterviewServiceImpl implements InterviewService {
         record.setChatHistory("[]");
         interviewRecordMapper.insert(record);
 
-        saveChatMessages(record.getId(), new ArrayList<>());
+        sessionStore.save(record.getId(), new ArrayList<>());
 
         if (resumeQuestions != null && !resumeQuestions.isEmpty()) {
-            saveTailoredQuestions(record.getId(), resumeQuestions);
+            sessionStore.saveTailoredQuestions(record.getId(), resumeQuestions);
         }
 
         return record.getId();
@@ -267,7 +97,7 @@ public class InterviewServiceImpl implements InterviewService {
     public SseEmitter chatStream(Long userId, Long recordId, String message) {
         SseEmitter emitter = new SseEmitter(0L);
 
-        List<ChatMessage> chatHistory = loadChatMessages(recordId);
+        List<ChatMessage> chatHistory = sessionStore.load(recordId);
 
         if (chatHistory == null) {
             try {
@@ -281,26 +111,9 @@ public class InterviewServiceImpl implements InterviewService {
         // 1. RAG 检索（含已用原子黑名单，避免重复提问同一知识点）
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
         String position = record != null ? record.getPosition() : "common";
-        // 岗位 → 知识库分类映射（通过 application.yml 配置，新增分类无需改代码）
-        java.util.List<String> categories = positionCategoryConfig.getCategoriesFor(position);
-        Filter categoryFilter = metadataKey("category").isEqualTo(categories.get(0));
-        for (int i = 1; i < categories.size(); i++) {
-            categoryFilter = categoryFilter.or(metadataKey("category").isEqualTo(categories.get(i)));
-        }
-
-        // 加载已用原子黑名单，构建排除 Filter（避免同一知识点被重复追问）
-        List<String> usedAtomIds = loadUsedAtoms(recordId);
-        Filter finalFilter = usedAtomIds.isEmpty()
-                ? categoryFilter
-                : categoryFilter.and(metadataKey("id").isNotIn(usedAtomIds));
-
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore).embeddingModel(embeddingModel).filter(finalFilter).maxResults(3)
-                .minScore(0.6).build();
-
-        List<Content> retrievedContents = (message != null && message.trim().length() > 2)
-                ? contentRetriever.retrieve(Query.from(message))
-                : new ArrayList<>();
+        // RAG 检索（通过 RagRetriever 封装岗位分类过滤 + 已用原子黑名单）
+        List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
+        List<Content> retrievedContents = ragRetriever.retrieve(position, message, usedAtomIds);
 
         // 将本轮检索到的原子 ID 记入黑名单
         for (Content content : retrievedContents) {
@@ -309,7 +122,7 @@ public class InterviewServiceImpl implements InterviewService {
                 usedAtomIds.add(atomId);
             }
         }
-        saveUsedAtoms(recordId, usedAtomIds);
+        sessionStore.saveUsedAtoms(recordId, usedAtomIds);
 
         StringBuilder contextBuilder = new StringBuilder();
         for (Content content : retrievedContents)
@@ -348,7 +161,7 @@ public class InterviewServiceImpl implements InterviewService {
             currentSystemPrompt = interviewPrompts.getTechnical() + "\n" + interviewPrompts.getAttitudeRule()
                     + "\n以下是本题考核参考点：\n" + contextBuilder.toString();
 
-            List<String> tailoredQuestions = loadTailoredQuestions(recordId);
+            List<String> tailoredQuestions = sessionStore.loadTailoredQuestions(recordId);
             if (tailoredQuestions != null && !tailoredQuestions.isEmpty()) {
                 StringBuilder qb = new StringBuilder("\n【重要指令：你的问题池已结合候选人简历更新，请**优先**依照以下量身定做题库向候选人发问】：\n");
                 for (String q : tailoredQuestions) qb.append("- ").append(q).append("\n");
@@ -389,7 +202,7 @@ public class InterviewServiceImpl implements InterviewService {
                 try {
                     currentHistory.add(new UserMessage(message));
                     currentHistory.add(new AiMessage(aiResponseBuilder.toString()));
-                    saveChatMessages(recordId, currentHistory);
+                    sessionStore.save(recordId, currentHistory);
 
                     emitter.send(JSON.toJSONString(Map.of("done", "true")));
                     emitter.complete();
@@ -424,8 +237,8 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     public InterviewRecord endInterview(Long recordId, Integer wpm, String emotionJson) {
-        List<ChatMessage> historyMessages = loadChatMessages(recordId);
-        deleteChatSession(recordId);
+        List<ChatMessage> historyMessages = sessionStore.load(recordId);
+        sessionStore.delete(recordId);
 
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
 
