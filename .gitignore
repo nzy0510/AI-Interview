@@ -98,3 +98,7 @@ conflicts_render.txt
 **/knowledge_base/archive_original/
 
 变量.txt
+
+# ========== Claude Code & Docs ==========
+CLAUDE.md
+/docs/
