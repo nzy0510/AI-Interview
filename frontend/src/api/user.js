@@ -47,3 +47,23 @@ export const getMentorInsightAPI = () => {
 export const getKnowledgeCoverageAPI = () => {
     return request({ url: '/user/knowledge-coverage', method: 'get' });
 };
+
+export const getCurrentUserAPI = () => {
+    return request({ url: '/user/me', method: 'get' });
+};
+
+export const updateProfileAPI = (data) => {
+    return request({ url: '/user/profile', method: 'put', data });
+};
+
+export const changePasswordAPI = (data) => {
+    return request({ url: '/user/password', method: 'put', data });
+};
+
+export const getPreferenceAPI = () => {
+    return request({ url: '/user/preference', method: 'get' });
+};
+
+export const updatePreferenceAPI = (data) => {
+    return request({ url: '/user/preference', method: 'put', data });
+};

@@ -234,7 +234,9 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Document } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { interviewSetupDefaults, buildSetupSnapshot } from '@/mock/setup'
+import { getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
 import { userKey } from '@/utils/auth'
 
 const router = useRouter()
@@ -324,8 +326,39 @@ const syncFromQuery = () => {
   }
 }
 
-onMounted(() => {
+const loadPreference = async () => {
+  try {
+    const p = await getPreferenceAPI()
+    if (p) {
+      if (p.defaultRole && !route.query.role) role.value = p.defaultRole
+      if (p.defaultMode && !route.query.mode) mode.value = p.defaultMode
+      if (p.difficultyLevel) experienceLevel.value = p.difficultyLevel
+      if (p.focusAreas && !route.query.focus) {
+        try {
+          const areas = typeof p.focusAreas === 'string' ? JSON.parse(p.focusAreas) : p.focusAreas
+          if (Array.isArray(areas) && areas.length) focusAreas.value = areas
+        } catch { /* ignore */ }
+      }
+    }
+  } catch { /* preference load optional */ }
+}
+
+let prefSaveTimer = null
+const autoSavePreference = () => {
+  if (prefSaveTimer) clearTimeout(prefSaveTimer)
+  prefSaveTimer = setTimeout(() => {
+    updatePreferenceAPI({
+      defaultMode: mode.value,
+      defaultRole: role.value,
+      difficultyLevel: experienceLevel.value,
+      focusAreas: JSON.stringify(focusAreas.value)
+    }).catch(() => {})
+  }, 800)
+}
+
+onMounted(async () => {
   readStoredResume()
+  await loadPreference()
   syncFromQuery()
 })
 
@@ -335,6 +368,11 @@ watch(
     syncFromQuery()
   }
 )
+
+// Auto-save preference when selections change
+watch([role, experienceLevel, focusAreas, mode], () => {
+  autoSavePreference()
+}, { deep: true })
 
 const startInterview = (preferredMode) => {
   const nextMode = preferredMode || mode.value || 'text'

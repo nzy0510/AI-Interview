@@ -4,9 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   Document,
   Monitor,
-  Notebook,
   Setting,
-  VideoCamera,
   UserFilled,
   MagicStick
 } from '@element-plus/icons-vue'
@@ -17,8 +15,6 @@ const router = useRouter()
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Monitor },
   { path: '/interview/setup', label: 'Interview Setup', icon: MagicStick },
-  { path: '/interview', label: 'Text Interview', icon: Notebook },
-  { path: '/video-interview', label: 'Video Interview', icon: VideoCamera },
   { path: '/resume', label: 'Resume', icon: UserFilled },
   { path: '/history', label: 'Reports', icon: Document },
   { path: '/settings', label: 'Settings', icon: Setting }

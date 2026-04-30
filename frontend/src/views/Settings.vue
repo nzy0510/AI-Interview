@@ -2,146 +2,88 @@
   <div class="settings-page">
     <header class="settings-header">
       <div class="brand-cluster">
-        <el-button :icon="ArrowLeft" class="icon-button" circle @click="router.push('/history')" />
+        <el-button :icon="ArrowLeft" class="icon-button" circle @click="router.push('/')" />
         <div class="header-copy">
-          <p class="eyebrow">Architectural Intelligence</p>
+          <p class="eyebrow">Preferences</p>
           <h1 class="page-title">偏好中心</h1>
-          <p class="page-subtitle">这里先保留前端占位，后续接入保存逻辑和用户设置接口。</p>
+          <p class="page-subtitle">管理你的账号信息、面试默认设置与密码安全。</p>
         </div>
-      </div>
-
-      <div class="header-actions">
-        <el-tag effect="plain" type="info" class="status-pill">待接入</el-tag>
-        <el-button plain class="secondary-cta" @click="router.push('/history')">返回报告中心</el-button>
-        <el-button type="primary" class="primary-cta" disabled>保存设置</el-button>
       </div>
     </header>
 
     <el-main class="page-body">
-      <section class="surface-card hero-shell">
-        <div class="hero-copy">
-          <p class="section-kicker">Settings Preview</p>
-          <h2 class="hero-title">把账号、面试偏好和隐私策略放到同一处管理</h2>
-          <p class="hero-desc">现在先给 UI 结构和模块位置，动作入口保持禁用，等后续再接真实接口。</p>
+      <!-- Account Section -->
+      <section class="surface-card section-shell">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Account</p>
+            <h2 class="section-title">账号信息</h2>
+          </div>
+          <el-button type="primary" size="small" :loading="savingProfile" @click="saveProfile">保存资料</el-button>
         </div>
-        <div class="hero-side">
-          <div class="recent-box">
-            <div class="recent-label">当前状态</div>
-            <div class="recent-main">
-              <strong>3</strong>
-              <span>个模块预留</span>
-            </div>
-            <div class="recent-sub">
-              <span>账号偏好 / 面试偏好 / 通知隐私</span>
-              <span>全部暂不提交到后端</span>
-            </div>
+        <div class="settings-grid">
+          <div class="settings-block">
+            <el-form label-position="top">
+              <el-form-item label="用户名">
+                <el-input :model-value="profile.username" disabled />
+              </el-form-item>
+              <el-form-item label="展示昵称">
+                <el-input v-model="profile.nickname" placeholder="你的展示名称" maxlength="20" />
+              </el-form-item>
+              <el-form-item label="联系邮箱">
+                <el-input v-model="profile.email" placeholder="you@example.com" />
+              </el-form-item>
+            </el-form>
+          </div>
+          <div class="settings-block password-block">
+            <h4 class="block-title">修改密码</h4>
+            <el-form label-position="top">
+              <el-form-item label="旧密码">
+                <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="输入旧密码" />
+              </el-form-item>
+              <el-form-item label="新密码">
+                <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="至少6位新密码" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="warning" :loading="changingPwd" @click="changePassword">修改密码</el-button>
+              </el-form-item>
+            </el-form>
           </div>
         </div>
       </section>
 
-      <section
-        v-for="section in reportCenter.settingsSections"
-        :key="section.key"
-        class="surface-card section-shell"
-      >
+      <!-- Interview Preferences -->
+      <section class="surface-card section-shell">
         <div class="section-head">
           <div>
-            <p class="section-kicker">{{ section.kicker }}</p>
-            <h2 class="section-title">{{ section.title }}</h2>
-            <p class="section-desc">{{ section.description }}</p>
+            <p class="section-kicker">Interview</p>
+            <h2 class="section-title">面试默认偏好</h2>
+            <p class="section-desc">设置后，面试准备页会自动读取这些默认值。</p>
           </div>
-          <el-tag effect="plain" type="info">{{ section.badge }}</el-tag>
+          <el-button type="primary" size="small" :loading="savingPref" @click="savePreference">保存偏好</el-button>
         </div>
-
-        <div v-if="section.key === 'account'" class="settings-grid">
-          <div class="settings-block">
-            <el-form label-position="top">
-              <el-form-item label="展示名称">
-                <el-input model-value="InterWise 用户" disabled />
-              </el-form-item>
-              <el-form-item label="联系邮箱">
-                <el-input model-value="user@example.com" disabled />
-              </el-form-item>
-              <el-form-item label="时区">
-                <el-select model-value="Asia/Shanghai" disabled>
-                  <el-option label="Asia/Shanghai" value="Asia/Shanghai" />
-                </el-select>
-              </el-form-item>
-            </el-form>
-          </div>
-
-          <div class="settings-block">
-            <div class="settings-row">
-              <div>
-                <strong>个性化欢迎语</strong>
-                <p>根据历史记录生成开场提示。</p>
-              </div>
-              <el-switch disabled :model-value="true" />
-            </div>
-            <div class="settings-row">
-              <div>
-                <strong>最近活跃展示</strong>
-                <p>在首页显示最近一次训练时间。</p>
-              </div>
-              <el-switch disabled :model-value="false" />
-            </div>
-            <el-button plain disabled>更换头像</el-button>
-          </div>
-        </div>
-
-        <div v-else-if="section.key === 'interview'" class="settings-grid">
+        <div class="settings-grid three-col">
           <div class="settings-block">
             <div class="settings-label">默认模式</div>
-            <el-radio-group model-value="text" disabled>
+            <el-radio-group v-model="pref.defaultMode">
               <el-radio-button label="text">文字模式</el-radio-button>
               <el-radio-button label="video">视频模式</el-radio-button>
             </el-radio-group>
-            <div class="settings-note">用于后续快速进入默认的面试状态。</div>
+          </div>
+          <div class="settings-block">
+            <div class="settings-label">默认岗位</div>
+            <el-select v-model="pref.defaultRole" placeholder="选择默认岗位" clearable style="width:100%">
+              <el-option v-for="r in roleOptions" :key="r" :label="r" :value="r" />
+            </el-select>
           </div>
           <div class="settings-block">
             <div class="settings-label">难度倾向</div>
-            <el-slider :model-value="68" disabled show-input />
-            <div class="settings-note">后续可映射为题目深度和追问频率。</div>
-          </div>
-          <div class="settings-block">
-            <div class="settings-label">重点方向</div>
-            <div class="chip-row">
-              <el-tag effect="plain">Java 后端</el-tag>
-              <el-tag effect="plain">Vue 3</el-tag>
-              <el-tag effect="plain">系统设计</el-tag>
-            </div>
-            <el-button plain disabled>编辑重点方向</el-button>
-          </div>
-        </div>
-
-        <div v-else class="settings-grid">
-          <div class="settings-block">
-            <div class="settings-row">
-              <div>
-                <strong>消息提醒</strong>
-                <p>新报告、复盘完成与训练建议。</p>
-              </div>
-              <el-switch disabled :model-value="true" />
-            </div>
-            <div class="settings-row">
-              <div>
-                <strong>摘要邮件</strong>
-                <p>每周生成一次进度摘要。</p>
-              </div>
-              <el-switch disabled :model-value="false" />
-            </div>
-          </div>
-          <div class="settings-block">
-            <div class="settings-label">数据保留时长</div>
-            <el-select model-value="90d" disabled>
-              <el-option label="90 天" value="90d" />
-            </el-select>
-            <div class="settings-note">后续接入真实保存策略后再开放修改。</div>
-          </div>
-          <div class="settings-block">
-            <div class="settings-label">隐私与导出</div>
-            <el-button plain disabled>导出个人数据</el-button>
-            <el-button plain disabled>清理本地缓存</el-button>
+            <el-radio-group v-model="pref.difficultyLevel">
+              <el-radio-button label="junior">应届/0-1年</el-radio-button>
+              <el-radio-button label="mid">1-3年</el-radio-button>
+              <el-radio-button label="senior">3-5年</el-radio-button>
+              <el-radio-button label="principal">5年+</el-radio-button>
+            </el-radio-group>
           </div>
         </div>
       </section>
@@ -150,12 +92,88 @@
 </template>
 
 <script setup>
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { reportCenterConfig } from '@/mock/reports'
+import { ElMessage } from 'element-plus'
+import { getCurrentUserAPI, updateProfileAPI, changePasswordAPI, getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
 
 const router = useRouter()
-const reportCenter = reportCenterConfig
+const savingProfile = ref(false)
+const savingPref = ref(false)
+const changingPwd = ref(false)
+
+const roleOptions = ['Java 后端开发', 'Web 前端开发', '测试开发', '算法工程师', '产品经理']
+
+const profile = reactive({ username: '', nickname: '', email: '' })
+const passwordForm = reactive({ oldPassword: '', newPassword: '' })
+
+const pref = reactive({
+  defaultMode: 'text',
+  defaultRole: '',
+  difficultyLevel: 'mid'
+})
+
+const loadData = async () => {
+  try {
+    const user = await getCurrentUserAPI()
+    if (user) {
+      profile.username = user.username || ''
+      profile.nickname = user.nickname || ''
+      profile.email = user.email || ''
+    }
+  } catch { /* defaults ok */ }
+  try {
+    const p = await getPreferenceAPI()
+    if (p) {
+      pref.defaultMode = p.defaultMode || 'text'
+      pref.defaultRole = p.defaultRole || ''
+      pref.difficultyLevel = p.difficultyLevel || 'mid'
+    }
+  } catch { /* defaults ok */ }
+}
+
+const saveProfile = async () => {
+  savingProfile.value = true
+  try {
+    await updateProfileAPI({ nickname: profile.nickname, email: profile.email })
+    ElMessage.success('资料已更新')
+  } catch (e) {
+    ElMessage.error(e.message || '保存失败')
+  } finally { savingProfile.value = false }
+}
+
+const changePassword = async () => {
+  if (!passwordForm.oldPassword || !passwordForm.newPassword) {
+    ElMessage.warning('请填写旧密码和新密码')
+    return
+  }
+  if (passwordForm.newPassword.length < 6) {
+    ElMessage.warning('新密码至少6位')
+    return
+  }
+  changingPwd.value = true
+  try {
+    await changePasswordAPI(passwordForm)
+    ElMessage.success('密码已修改，下次登录请使用新密码')
+    passwordForm.oldPassword = ''
+    passwordForm.newPassword = ''
+  } catch (e) {
+    ElMessage.error(e.message || '修改失败')
+  } finally { changingPwd.value = false }
+}
+
+const savePreference = async () => {
+  savingPref.value = true
+  try {
+    await updatePreferenceAPI({ ...pref })
+    ElMessage.success('偏好已保存')
+  } catch (e) {
+    ElMessage.error(e.message || '保存失败')
+  } finally { savingPref.value = false }
+}
+
+onMounted(loadData)
 </script>
 
 <style scoped>
@@ -179,20 +197,11 @@ const reportCenter = reportCenterConfig
   border-bottom: 1px solid rgba(69, 70, 82, 0.08);
 }
 
-.brand-cluster {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-width: 0;
-}
+.brand-cluster { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.icon-button { flex: 0 0 auto; }
+.header-copy { min-width: 0; }
 
-.header-copy {
-  min-width: 0;
-}
-
-.eyebrow,
-.section-kicker,
-.settings-label {
+.eyebrow, .section-kicker, .settings-label {
   margin: 0 0 4px;
   color: #3a388b;
   font-size: 11px;
@@ -201,48 +210,8 @@ const reportCenter = reportCenterConfig
   text-transform: uppercase;
 }
 
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  line-height: 1.2;
-  font-weight: 800;
-  color: #191c1e;
-}
-
-.page-subtitle,
-.section-desc,
-.hero-desc,
-.settings-note,
-.settings-row p {
-  margin: 6px 0 0;
-  color: #5a6678;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 0 0 auto;
-}
-
-.status-pill {
-  border-color: rgba(58, 56, 139, 0.12);
-  color: #3a388b;
-  background: #eef0ff;
-}
-
-.primary-cta,
-.secondary-cta {
-  border-radius: 12px;
-}
-
-.secondary-cta {
-  border-color: rgba(58, 56, 139, 0.2);
-  color: #3a388b;
-  background: #f4f3ff;
-}
+.page-title { margin: 0; font-size: 24px; line-height: 1.2; font-weight: 800; color: #191c1e; }
+.page-subtitle, .section-desc { margin: 6px 0 0; color: #5a6678; font-size: 14px; line-height: 1.6; }
 
 .page-body {
   max-width: 1280px;
@@ -255,75 +224,13 @@ const reportCenter = reportCenterConfig
 }
 
 .surface-card {
-  background: #ffffff;
+  background: #fff;
   border: 1px solid rgba(69, 70, 82, 0.08);
   border-radius: 16px;
   box-shadow: 0 12px 30px rgba(25, 28, 30, 0.04);
 }
 
-.hero-shell,
-.section-shell {
-  padding: 24px;
-}
-
-.hero-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
-  gap: 20px;
-}
-
-.hero-title {
-  margin: 0;
-  font-size: 28px;
-  line-height: 1.15;
-  font-weight: 800;
-  color: #191c1e;
-}
-
-.hero-side {
-  min-width: 0;
-}
-
-.recent-box {
-  padding: 18px;
-  border-radius: 14px;
-  background: #faf9f5;
-  border: 1px solid rgba(69, 70, 82, 0.08);
-}
-
-.recent-label {
-  font-size: 12px;
-  color: #5a6678;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 8px;
-}
-
-.recent-main {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.recent-main strong {
-  font-size: 38px;
-  line-height: 1;
-  color: #3a388b;
-}
-
-.recent-main span {
-  color: #5a6678;
-  font-size: 14px;
-}
-
-.recent-sub {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 10px;
-  color: #5a6678;
-  font-size: 13px;
-}
+.section-shell { padding: 24px; }
 
 .section-head {
   display: flex;
@@ -333,95 +240,28 @@ const reportCenter = reportCenterConfig
   margin-bottom: 20px;
 }
 
-.section-title {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-  font-weight: 800;
-  color: #191c1e;
-}
+.section-title { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 800; color: #191c1e; }
 
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
+.settings-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; }
+.settings-grid.three-col { grid-template-columns: repeat(3, 1fr); }
 
 .settings-block {
   padding: 18px;
   border-radius: 14px;
   background: #faf9f5;
   border: 1px solid rgba(69, 70, 82, 0.08);
-  display: grid;
-  gap: 14px;
 }
 
-.settings-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
+.block-title { margin: 0 0 12px; font-size: 16px; color: #191c1e; }
 
-.settings-row strong {
-  display: block;
-  font-size: 15px;
-  color: #191c1e;
-}
-
-.chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-:deep(.el-dialog) {
-  border-radius: 16px;
-}
-
-:deep(.el-input.is-disabled .el-input__wrapper),
-:deep(.el-select.is-disabled .el-select__wrapper),
-:deep(.el-slider.is-disabled) {
-  background: #ffffff;
-}
+:deep(.el-input.is-disabled .el-input__wrapper) { background: #fff; }
 
 @media (max-width: 960px) {
-  .settings-header,
-  .section-head,
-  .hero-shell {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .header-actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
+  .settings-header { flex-direction: column; align-items: stretch; }
+  .settings-grid, .settings-grid.three-col { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
-  .settings-header,
-  .page-body {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  .page-body {
-    padding-top: 20px;
-  }
-
-  .hero-shell,
-  .section-shell {
-    padding: 18px 16px;
-  }
-
-  .page-title,
-  .hero-title {
-    font-size: 20px;
-  }
+  .settings-header, .page-body { padding-left: 16px; padding-right: 16px; }
 }
 </style>

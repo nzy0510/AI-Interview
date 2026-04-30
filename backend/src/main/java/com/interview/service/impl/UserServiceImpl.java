@@ -1,5 +1,6 @@
 package com.interview.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -7,7 +8,9 @@ import com.interview.dto.LoginDTO;
 import com.interview.dto.RegisterDTO;
 import com.interview.dto.ResetPasswordDTO;
 import com.interview.entity.User;
+import com.interview.entity.UserPreference;
 import com.interview.mapper.UserMapper;
+import com.interview.mapper.UserPreferenceMapper;
 import com.interview.service.EmailService;
 import com.interview.service.UserService;
 import com.interview.utils.JwtUtils;
@@ -25,6 +28,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private JwtUtils jwtUtils;
+
+    @Autowired
+    private UserPreferenceMapper prefMapper;
 
     @Override
     public String login(LoginDTO loginDTO) {
@@ -115,5 +121,65 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 3. 更新密码
         user.setPassword(DigestUtil.md5Hex(resetDTO.getNewPassword()));
         this.updateById(user);
+    }
+
+    @Override
+    public void updateProfile(Long userId, String nickname, String email) {
+        User user = this.getById(userId);
+        if (user == null) throw new RuntimeException("用户不存在");
+
+        if (StrUtil.isNotBlank(nickname)) user.setNickname(nickname);
+        if (StrUtil.isNotBlank(email)) {
+            // 检查邮箱唯一
+            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(User::getEmail, email).ne(User::getId, userId);
+            if (this.count(wrapper) > 0) throw new RuntimeException("该邮箱已被使用");
+            user.setEmail(email);
+        }
+        this.updateById(user);
+    }
+
+    @Override
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        User user = this.getById(userId);
+        if (user == null) throw new RuntimeException("用户不存在");
+
+        String oldMd5 = DigestUtil.md5Hex(oldPassword);
+        if (!user.getPassword().equals(oldMd5) && !user.getPassword().equals(oldPassword)) {
+            throw new RuntimeException("旧密码错误");
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new RuntimeException("新密码至少6位");
+        }
+        user.setPassword(DigestUtil.md5Hex(newPassword));
+        this.updateById(user);
+    }
+
+    @Override
+    public UserPreference getPreference(Long userId) {
+        var wrapper = new LambdaQueryWrapper<UserPreference>()
+                .eq(UserPreference::getUserId, userId);
+        UserPreference pref = prefMapper.selectOne(wrapper);
+        if (pref == null) {
+            pref = new UserPreference();
+            pref.setUserId(userId);
+            pref.setDefaultMode("text");
+            pref.setDifficultyLevel("mid");
+        }
+        return pref;
+    }
+
+    @Override
+    public void updatePreference(Long userId, UserPreference pref) {
+        var wrapper = new LambdaQueryWrapper<UserPreference>()
+                .eq(UserPreference::getUserId, userId);
+        UserPreference existing = prefMapper.selectOne(wrapper);
+        if (existing != null) {
+            pref.setId(existing.getId());
+            prefMapper.updateById(pref);
+        } else {
+            pref.setUserId(userId);
+            prefMapper.insert(pref);
+        }
     }
 }
