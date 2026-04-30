@@ -89,6 +89,9 @@ branches.txt
 conflicts.txt
 conflicts_render.txt
 
+# ========== Claude Code 本地配置 ==========
+.claude/
+
 # ========== 知识库相关 ==========
 # 忽略原始大型文档，保留生成的 JSON 原子
 *.pdf
