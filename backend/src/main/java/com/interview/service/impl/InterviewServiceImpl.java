@@ -1,6 +1,7 @@
 package com.interview.service.impl;
 
 import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewRecord;
 import com.interview.entity.RagRetrievalLog;
@@ -108,6 +109,14 @@ public class InterviewServiceImpl implements InterviewService {
     public SseEmitter chatStream(Long userId, Long recordId, String message) {
         SseEmitter emitter = new SseEmitter(0L);
 
+        InterviewRecord record;
+        try {
+            record = loadOwnedRecord(userId, recordId);
+        } catch (RuntimeException e) {
+            sendSseError(emitter, e.getMessage());
+            return emitter;
+        }
+
         List<ChatMessage> chatHistory = sessionStore.load(recordId);
 
         if (chatHistory == null) {
@@ -120,8 +129,7 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         // 1. RAG 检索（含已用原子黑名单，避免重复提问同一知识点）
-        InterviewRecord record = interviewRecordMapper.selectById(recordId);
-        String position = record != null ? record.getPosition() : "common";
+        String position = record.getPosition() != null ? record.getPosition() : "common";
 
         // 构造增强检索 query：上一轮 AI 问题 + 用户当前回答
         String ragQuery = message;
@@ -294,17 +302,26 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     public InterviewRecord endInterview(Long recordId, Integer wpm, String emotionJson) {
-        List<ChatMessage> historyMessages = sessionStore.load(recordId);
-        // 持久化已用知识原子 ID 列表
-        List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
-        sessionStore.delete(recordId);
-
         InterviewRecord record = interviewRecordMapper.selectById(recordId);
-
         if (record == null) {
             log.error("面试记录不存在: recordId={}", recordId);
             return null;
         }
+        return completeInterview(record, wpm, emotionJson);
+    }
+
+    @Override
+    public InterviewRecord endInterview(Long userId, Long recordId, Integer wpm, String emotionJson) {
+        InterviewRecord record = loadOwnedRecord(userId, recordId);
+        return completeInterview(record, wpm, emotionJson);
+    }
+
+    private InterviewRecord completeInterview(InterviewRecord record, Integer wpm, String emotionJson) {
+        Long recordId = record.getId();
+        List<ChatMessage> historyMessages = sessionStore.load(recordId);
+        // 持久化已用知识原子 ID 列表
+        List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
+        sessionStore.delete(recordId);
 
         record.setEndTime(LocalDateTime.now());
         record.setPhase(InterviewPhase.FINISHED.name());
@@ -403,5 +420,32 @@ public class InterviewServiceImpl implements InterviewService {
              .orderByDesc("create_time")
              .last("LIMIT 50");
         return interviewRecordMapper.selectList(query);
+    }
+
+    @Override
+    public InterviewRecord getHistoryDetail(Long userId, Long recordId) {
+        return loadOwnedRecord(userId, recordId);
+    }
+
+    private InterviewRecord loadOwnedRecord(Long userId, Long recordId) {
+        if (userId == null) {
+            throw new RuntimeException("未登录：缺少用户身份");
+        }
+        InterviewRecord record = interviewRecordMapper.selectOne(
+                new LambdaQueryWrapper<InterviewRecord>()
+                        .eq(InterviewRecord::getId, recordId)
+                        .eq(InterviewRecord::getUserId, userId));
+        if (record == null) {
+            throw new RuntimeException("面试记录不存在或无权访问");
+        }
+        return record;
+    }
+
+    private void sendSseError(SseEmitter emitter, String message) {
+        try {
+            emitter.send(JSON.toJSONString(Map.of("error", message)));
+            emitter.complete();
+        } catch (IOException ignored) {
+        }
     }
 }

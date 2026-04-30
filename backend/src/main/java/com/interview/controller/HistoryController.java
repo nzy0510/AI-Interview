@@ -2,7 +2,6 @@ package com.interview.controller;
 
 import com.interview.common.Result;
 import com.interview.entity.InterviewRecord;
-import com.interview.mapper.InterviewRecordMapper;
 import com.interview.service.InterviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -21,9 +20,6 @@ public class HistoryController {
     @Autowired
     private InterviewService interviewService;
 
-    @Autowired
-    private InterviewRecordMapper interviewRecordMapper;
-
     @GetMapping("/list")
     public Result<List<InterviewRecord>> listHistory(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("currentUserId");
@@ -32,11 +28,12 @@ public class HistoryController {
     }
 
     /**
-     * 查看单场面试的完整报告（简单查库，保留 Mapper 直调）
+     * 查看单场面试的完整报告
      */
     @GetMapping("/detail/{id}")
-    public Result<InterviewRecord> detail(@PathVariable Long id) {
-        InterviewRecord record = interviewRecordMapper.selectById(id);
+    public Result<InterviewRecord> detail(@PathVariable Long id, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        InterviewRecord record = interviewService.getHistoryDetail(userId, id);
         return Result.success(record);
     }
 }

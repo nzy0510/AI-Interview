@@ -25,6 +25,10 @@ public class GlobalExceptionHandler {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return Result.error(401, msg);
         }
+        if (msg != null && msg.contains("无权访问")) {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            return Result.error(403, msg);
+        }
         e.printStackTrace();
         return Result.error(msg);
     }

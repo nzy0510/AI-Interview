@@ -21,6 +21,11 @@ public interface InterviewService {
 
     InterviewRecord endInterview(Long recordId, Integer wpm, String emotionJson);
 
+    InterviewRecord endInterview(Long userId, Long recordId, Integer wpm, String emotionJson);
+
     /** 查询用户面试历史列表（已评分，按时间倒序，最多50条） */
     List<InterviewRecord> getHistoryList(Long userId);
+
+    /** 查询当前用户单场面试详情 */
+    InterviewRecord getHistoryDetail(Long userId, Long recordId);
 }

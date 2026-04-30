@@ -1,13 +1,16 @@
 package com.interview.service;
 
 import com.interview.entity.User;
+import com.interview.entity.UserPreference;
 import com.interview.mapper.UserMapper;
+import com.interview.mapper.UserPreferenceMapper;
 import com.interview.service.impl.UserServiceImpl;
 import com.interview.utils.JwtUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,6 +27,9 @@ class UserServiceTest {
 
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private UserPreferenceMapper prefMapper;
 
     @Mock
     private EmailService emailService;
@@ -85,5 +91,64 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.changePassword(1L, "wrong", "654321"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("旧密码错误");
+    }
+
+    @Test
+    @DisplayName("保存偏好：更新时应忽略客户端传入的 userId 并保留未提交字段")
+    void shouldIgnoreClientUserIdWhenUpdatingPreference() {
+        UserPreference existing = new UserPreference();
+        existing.setId(7L);
+        existing.setUserId(1L);
+        existing.setDefaultMode("text");
+        existing.setDefaultRole("Java 后端开发");
+        existing.setFocusAreas("[\"projects\"]");
+        existing.setDifficultyLevel("mid");
+
+        UserPreference input = new UserPreference();
+        input.setId(999L);
+        input.setUserId(42L);
+        input.setDefaultMode("video");
+        input.setDefaultRole("Web 前端开发");
+        input.setDifficultyLevel("senior");
+
+        when(prefMapper.selectOne(any())).thenReturn(existing);
+        when(prefMapper.updateById(any(UserPreference.class))).thenReturn(1);
+
+        userService.updatePreference(1L, input);
+
+        ArgumentCaptor<UserPreference> captor = ArgumentCaptor.forClass(UserPreference.class);
+        verify(prefMapper).updateById(captor.capture());
+        UserPreference saved = captor.getValue();
+        assertThat(saved.getId()).isEqualTo(7L);
+        assertThat(saved.getUserId()).isEqualTo(1L);
+        assertThat(saved.getDefaultMode()).isEqualTo("video");
+        assertThat(saved.getDefaultRole()).isEqualTo("Web 前端开发");
+        assertThat(saved.getFocusAreas()).isEqualTo("[\"projects\"]");
+        assertThat(saved.getDifficultyLevel()).isEqualTo("senior");
+    }
+
+    @Test
+    @DisplayName("保存偏好：新增时应白名单复制字段并回退非法枚举")
+    void shouldWhitelistPreferenceFieldsOnInsert() {
+        UserPreference input = new UserPreference();
+        input.setId(999L);
+        input.setUserId(42L);
+        input.setDefaultMode("admin");
+        input.setDefaultRole("Java 后端开发");
+        input.setDifficultyLevel("root");
+
+        when(prefMapper.selectOne(any())).thenReturn(null);
+        when(prefMapper.insert(any(UserPreference.class))).thenReturn(1);
+
+        userService.updatePreference(1L, input);
+
+        ArgumentCaptor<UserPreference> captor = ArgumentCaptor.forClass(UserPreference.class);
+        verify(prefMapper).insert(captor.capture());
+        UserPreference saved = captor.getValue();
+        assertThat(saved.getId()).isNull();
+        assertThat(saved.getUserId()).isEqualTo(1L);
+        assertThat(saved.getDefaultMode()).isEqualTo("text");
+        assertThat(saved.getDefaultRole()).isEqualTo("Java 后端开发");
+        assertThat(saved.getDifficultyLevel()).isEqualTo("mid");
     }
 }

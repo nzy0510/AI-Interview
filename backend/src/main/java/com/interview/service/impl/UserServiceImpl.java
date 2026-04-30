@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
@@ -174,12 +175,37 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         var wrapper = new LambdaQueryWrapper<UserPreference>()
                 .eq(UserPreference::getUserId, userId);
         UserPreference existing = prefMapper.selectOne(wrapper);
+        UserPreference safePref = buildSafePreference(userId, pref, existing);
         if (existing != null) {
-            pref.setId(existing.getId());
-            prefMapper.updateById(pref);
+            safePref.setId(existing.getId());
+            prefMapper.updateById(safePref);
         } else {
-            pref.setUserId(userId);
-            prefMapper.insert(pref);
+            prefMapper.insert(safePref);
         }
+    }
+
+    private UserPreference buildSafePreference(Long userId, UserPreference input, UserPreference existing) {
+        UserPreference target = existing != null ? existing : new UserPreference();
+        UserPreference source = input != null ? input : new UserPreference();
+
+        target.setUserId(userId);
+        target.setDefaultMode(validOrDefault(source.getDefaultMode(),
+                existing != null ? existing.getDefaultMode() : "text",
+                Set.of("text", "video")));
+        if (source.getDefaultRole() != null) {
+            target.setDefaultRole(source.getDefaultRole());
+        }
+        if (source.getFocusAreas() != null) {
+            target.setFocusAreas(source.getFocusAreas());
+        }
+        target.setDifficultyLevel(validOrDefault(source.getDifficultyLevel(),
+                existing != null ? existing.getDifficultyLevel() : "mid",
+                Set.of("junior", "mid", "senior", "principal")));
+        return target;
+    }
+
+    private String validOrDefault(String value, String fallback, Set<String> allowed) {
+        if (allowed.contains(value)) return value;
+        return StrUtil.isNotBlank(fallback) ? fallback : allowed.iterator().next();
     }
 }

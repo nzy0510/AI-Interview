@@ -40,10 +40,12 @@ public class InterviewController {
     }
 
     @PostMapping("/finish")
-    public Result<?> finishInterview(@Valid @RequestBody FinishInterviewRequest req) {
+    public Result<?> finishInterview(@Valid @RequestBody FinishInterviewRequest req,
+                                     HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
         int wpm = req.getWpm() != null ? req.getWpm() : 0;
         com.interview.entity.InterviewRecord record = interviewService.endInterview(
-                req.getRecordId(), wpm, req.getEmotionJson());
+                userId, req.getRecordId(), wpm, req.getEmotionJson());
         return Result.success(record);
     }
 }

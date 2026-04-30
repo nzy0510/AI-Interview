@@ -14,16 +14,13 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 /**
  * RAG 知识库加载服务：Spring Boot 启动时自动执行
@@ -39,96 +36,89 @@ public class DataLoadingService {
     @Autowired
     private EmbeddingStore<TextSegment> embeddingStore;
 
-    @Autowired
-    private ResourceLoader resourceLoader;
-
     @PostConstruct
     public void init() {
         log.info("🚀 开始进行基于结构化知识原子(Knowledge Atoms)的知识库初始化...");
 
         try {
-            Resource resourcePath = resourceLoader.getResource("classpath:knowledge_base/atoms");
-            File atomsDir = resourcePath.getFile();
+            PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+            Resource[] resources = resolver.getResources("classpath*:knowledge_base/atoms/**/*.json");
 
-            if (!atomsDir.exists() || !atomsDir.isDirectory()) {
-                log.warn("⚠️ 知识原子目录不存在: {}", atomsDir.getAbsolutePath());
+            if (resources.length == 0) {
+                log.warn("⚠️ 未找到知识原子资源: classpath*:knowledge_base/atoms/**/*.json");
                 return;
             }
 
             List<Document> documents = new ArrayList<>();
 
-            try (Stream<Path> paths = Files.walk(Paths.get(atomsDir.toURI()))) {
-                paths.filter(Files::isRegularFile)
-                     .filter(p -> p.toString().endsWith(".json"))
-                     .forEach(path -> {
-                         try {
-                             String content = Files.readString(path);
-                             JSONObject atom = JSON.parseObject(content);
+            for (Resource resource : resources) {
+                try (InputStream inputStream = resource.getInputStream()) {
+                    String content = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+                    JSONObject atom = JSON.parseObject(content);
                              
-                             String subject = atom.getString("subject");
-                             log.info("🔍 正在解析原子: {}", subject);
+                    String subject = atom.getString("subject");
+                    log.info("🔍 正在解析原子: {}", subject);
                              
-                             String id = atom.getString("id");
-                             String category = atom.getString("category");
-                             String difficulty = atom.getString("difficulty");
+                    String id = atom.getString("id");
+                    String category = atom.getString("category");
+                    String difficulty = atom.getString("difficulty");
                              
-                             JSONObject contentObj = atom.getJSONObject("content");
-                             if (contentObj == null) {
-                                 log.warn("⚠️ 原子 [{}] 内容区(content)为空，跳过", subject);
-                                 return;
-                             }
+                    JSONObject contentObj = atom.getJSONObject("content");
+                    if (contentObj == null) {
+                        log.warn("⚠️ 原子 [{}] 内容区(content)为空，跳过", subject);
+                        continue;
+                    }
                              
-                             String principles = contentObj.getString("principles");
+                    String principles = contentObj.getString("principles");
                              
-                             // 构建送入向量库的纯文本
-                             StringBuilder textBuilder = new StringBuilder();
-                             textBuilder.append("考核点: ").append(subject).append("\n");
-                             textBuilder.append("核心原理与标准答案: ").append(principles).append("\n");
+                    // 构建送入向量库的纯文本
+                    StringBuilder textBuilder = new StringBuilder();
+                    textBuilder.append("考核点: ").append(subject).append("\n");
+                    textBuilder.append("核心原理与标准答案: ").append(principles).append("\n");
                              
-                             // 【增强修复】兼容处理 pitfalls (可能是 String 或 Array)
-                             Object pitfallsObj = contentObj.get("pitfalls");
-                             if (pitfallsObj instanceof JSONArray) {
-                                 JSONArray array = (JSONArray) pitfallsObj;
-                                 if (!array.isEmpty()) {
-                                     textBuilder.append("面试常见陷阱与候选人易错点:\n");
-                                     for (int i = 0; i < array.size(); i++) {
-                                         textBuilder.append("- ").append(array.getString(i)).append("\n");
-                                     }
-                                 }
-                             } else if (pitfallsObj instanceof String && !((String) pitfallsObj).isEmpty()) {
-                                 textBuilder.append("面试常见陷阱与候选人易错点: ").append(pitfallsObj).append("\n");
-                             }
+                    // 【增强修复】兼容处理 pitfalls (可能是 String 或 Array)
+                    Object pitfallsObj = contentObj.get("pitfalls");
+                    if (pitfallsObj instanceof JSONArray) {
+                        JSONArray array = (JSONArray) pitfallsObj;
+                        if (!array.isEmpty()) {
+                            textBuilder.append("面试常见陷阱与候选人易错点:\n");
+                            for (int i = 0; i < array.size(); i++) {
+                                textBuilder.append("- ").append(array.getString(i)).append("\n");
+                            }
+                        }
+                    } else if (pitfallsObj instanceof String && !((String) pitfallsObj).isEmpty()) {
+                        textBuilder.append("面试常见陷阱与候选人易错点: ").append(pitfallsObj).append("\n");
+                    }
                              
-                             // 【增强修复】兼容处理 follow_up_paths (可能是 String 或 Array)
-                             Object followUpsObj = contentObj.get("follow_up_paths");
-                             if (followUpsObj instanceof JSONArray) {
-                                 JSONArray array = (JSONArray) followUpsObj;
-                                 if (!array.isEmpty()) {
-                                     textBuilder.append("推荐的深度追问路径:\n");
-                                     for (int i = 0; i < array.size(); i++) {
-                                         textBuilder.append("- ").append(array.getString(i)).append("\n");
-                                     }
-                                 }
-                             } else if (followUpsObj instanceof String && !((String) followUpsObj).isEmpty()) {
-                                 textBuilder.append("推荐的深度追问路径: ").append(followUpsObj).append("\n");
-                             }
+                    // 【增强修复】兼容处理 follow_up_paths (可能是 String 或 Array)
+                    Object followUpsObj = contentObj.get("follow_up_paths");
+                    if (followUpsObj instanceof JSONArray) {
+                        JSONArray array = (JSONArray) followUpsObj;
+                        if (!array.isEmpty()) {
+                            textBuilder.append("推荐的深度追问路径:\n");
+                            for (int i = 0; i < array.size(); i++) {
+                                textBuilder.append("- ").append(array.getString(i)).append("\n");
+                            }
+                        }
+                    } else if (followUpsObj instanceof String && !((String) followUpsObj).isEmpty()) {
+                        textBuilder.append("推荐的深度追问路径: ").append(followUpsObj).append("\n");
+                    }
                              
-                             // 提取 Metadata 元数据
-                             Metadata metadata = new Metadata();
-                             if (id != null) metadata.put("id", id);
-                             if (category != null) metadata.put("category", category);
-                             if (difficulty != null) metadata.put("difficulty", difficulty);
+                    // 提取 Metadata 元数据
+                    Metadata metadata = new Metadata();
+                    if (id != null) metadata.put("id", id);
+                    if (category != null) metadata.put("category", category);
+                    if (difficulty != null) metadata.put("difficulty", difficulty);
                              
-                             Object tagsObj = atom.get("tags");
-                             if (tagsObj instanceof JSONArray) {
-                                 metadata.put("tags", String.join(",", ((JSONArray) tagsObj).toList(String.class)));
-                             }
+                    Object tagsObj = atom.get("tags");
+                    if (tagsObj instanceof JSONArray) {
+                        metadata.put("tags", String.join(",", ((JSONArray) tagsObj).toList(String.class)));
+                    }
                              
-                             documents.add(Document.from(textBuilder.toString(), metadata));
-                         } catch (Exception e) {
-                             log.error("❌ 解析 JSON 知识原子失败 [{}]: {}", path.getFileName(), e.getMessage());
-                         }
-                     });
+                    documents.add(Document.from(textBuilder.toString(), metadata));
+                } catch (Exception e) {
+                    log.error("❌ 解析 JSON 知识原子失败 [{}]: {}", resource.getFilename(), e.getMessage());
+                }
             }
 
             if (documents.isEmpty()) {
