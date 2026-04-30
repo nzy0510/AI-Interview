@@ -5,6 +5,7 @@ import com.interview.dto.LoginDTO;
 import com.interview.dto.MentorInsightResponse;
 import com.interview.dto.RegisterDTO;
 import com.interview.dto.ResetPasswordDTO;
+import com.interview.entity.UserPreference;
 import com.interview.service.MentorService;
 import com.interview.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -91,5 +92,50 @@ public class UserController {
         Long userId = (Long) request.getAttribute("currentUserId");
         MentorInsightResponse insight = mentorService.getInsight(userId);
         return Result.success(insight);
+    }
+
+    /** 更新用户资料（昵称/邮箱） */
+    @PutMapping("/profile")
+    public Result<String> updateProfile(@RequestBody Map<String, String> body, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        userService.updateProfile(userId, body.get("nickname"), body.get("email"));
+        return Result.success("资料已更新");
+    }
+
+    /** 修改密码 */
+    @PutMapping("/password")
+    public Result<String> changePassword(@RequestBody Map<String, String> body, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        userService.changePassword(userId, body.get("oldPassword"), body.get("newPassword"));
+        return Result.success("密码已修改");
+    }
+
+    /** 获取当前用户信息 */
+    @GetMapping("/me")
+    public Result<Map<String, Object>> getCurrentUser(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        var user = userService.getById(userId);
+        return Result.success(Map.of(
+            "id", user.getId(),
+            "username", user.getUsername(),
+            "nickname", user.getNickname() != null ? user.getNickname() : user.getUsername(),
+            "email", user.getEmail() != null ? user.getEmail() : "",
+            "avatar", user.getAvatar() != null ? user.getAvatar() : ""
+        ));
+    }
+
+    /** 获取面试偏好 */
+    @GetMapping("/preference")
+    public Result<UserPreference> getPreference(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        return Result.success(userService.getPreference(userId));
+    }
+
+    /** 保存面试偏好 */
+    @PutMapping("/preference")
+    public Result<String> updatePreference(@RequestBody UserPreference pref, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        userService.updatePreference(userId, pref);
+        return Result.success("偏好已保存");
     }
 }
