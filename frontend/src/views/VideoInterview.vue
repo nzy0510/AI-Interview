@@ -170,6 +170,11 @@ import { userKey } from '@/utils/auth'
 const router = useRouter()
 const route = useRoute()
 const position = ref(route.query.role || 'Java后端开发')
+const difficultyLevel = ref(route.query.difficulty || 'mid')
+const focusAreas = computed(() => {
+  if (typeof route.query.focus !== 'string' || !route.query.focus.trim()) return []
+  return route.query.focus.split(',').map((item) => item.trim()).filter(Boolean)
+})
 
 // ─── State ────────────────────────────────────────────────────────────────────
 const videoRef = ref(null)
@@ -312,7 +317,13 @@ onMounted(async () => {
   }
 
   try {
-    const id = await startInterviewAPI({ position: position.value, mode: 'video', resumeQuestions })
+    const id = await startInterviewAPI({
+      position: position.value,
+      mode: 'video',
+      difficultyLevel: difficultyLevel.value,
+      focusAreas: focusAreas.value,
+      resumeQuestions
+    })
     recordId.value = id
     // 4. AI starts first — trigger opening
     triggerAiTurn()

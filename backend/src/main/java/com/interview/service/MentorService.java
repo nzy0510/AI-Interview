@@ -52,6 +52,16 @@ public class MentorService {
      * 获取 AI Mentor 洞察报告（含缓存）。
      */
     public MentorInsightResponse getInsight(Long userId) {
+        return getInsight(userId, false);
+    }
+
+    /**
+     * 获取 AI Mentor 洞察报告，可按需绕过缓存并重新生成。
+     */
+    public MentorInsightResponse getInsight(Long userId, boolean forceRefresh) {
+        if (forceRefresh) {
+            evictCache(userId);
+        }
         // 尝试缓存命中
         MentorInsightResponse cached = getCached(userId);
         if (cached != null) return cached;
@@ -301,5 +311,17 @@ public class MentorService {
         }
         localCache.put(userId, report);
         localCacheExpiry.put(userId, System.currentTimeMillis() + LOCAL_TTL_MS);
+    }
+
+    private void evictCache(Long userId) {
+        if (redisTemplate != null) {
+            try {
+                redisTemplate.delete(CACHE_KEY_PREFIX + userId);
+            } catch (Exception e) {
+                log.trace("Redis 缓存删除跳过: {}", e.getMessage());
+            }
+        }
+        localCache.remove(userId);
+        localCacheExpiry.remove(userId);
     }
 }

@@ -94,6 +94,16 @@ public class UserController {
         return Result.success(insight);
     }
 
+    /**
+     * 强制刷新 AI Mentor 洞察报告，绕过 24 小时缓存。
+     */
+    @PostMapping("/mentor-insight/refresh")
+    public Result<MentorInsightResponse> refreshMentorInsight(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        MentorInsightResponse insight = mentorService.getInsight(userId, true);
+        return Result.success(insight);
+    }
+
     /** 更新用户资料（昵称/邮箱） */
     @PutMapping("/profile")
     public Result<String> updateProfile(@RequestBody Map<String, String> body, HttpServletRequest request) {

@@ -13,6 +13,9 @@ public interface InterviewService {
 
     Long startInterview(Long userId, String position, String mode, java.util.List<String> resumeQuestions);
 
+    Long startInterview(Long userId, String position, String mode, java.util.List<String> resumeQuestions,
+                        String difficultyLevel, java.util.List<String> focusAreas);
+
     SseEmitter chatStream(Long userId, Long recordId, String message);
 
     InterviewRecord endInterview(Long recordId);

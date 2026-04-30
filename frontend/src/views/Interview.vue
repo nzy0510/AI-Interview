@@ -219,6 +219,11 @@ const route = useRoute()
 const router = useRouter()
 
 const position = ref(route.query.role || '未指定岗位')
+const difficultyLevel = ref(route.query.difficulty || 'mid')
+const focusAreas = computed(() => {
+  if (typeof route.query.focus !== 'string' || !route.query.focus.trim()) return []
+  return route.query.focus.split(',').map((item) => item.trim()).filter(Boolean)
+})
 const recordId = ref(null)
 const messageList = ref([])
 const inputMsg = ref('')
@@ -327,7 +332,13 @@ onMounted(async () => {
   }
 
   try {
-    const id = await startInterviewAPI({ position: position.value, resumeQuestions })
+    const id = await startInterviewAPI({
+      position: position.value,
+      mode: 'text',
+      difficultyLevel: difficultyLevel.value,
+      focusAreas: focusAreas.value,
+      resumeQuestions
+    })
     recordId.value = id
     triggerAiStart()
   } catch {

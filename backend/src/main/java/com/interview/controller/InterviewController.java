@@ -26,7 +26,7 @@ public class InterviewController {
                                       HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("currentUserId");
         Long recordId = interviewService.startInterview(userId, req.getPosition(),
-                req.getMode(), req.getResumeQuestions());
+                req.getMode(), req.getResumeQuestions(), req.getDifficultyLevel(), req.getFocusAreas());
         return Result.success(recordId);
     }
 

@@ -31,6 +31,8 @@ CREATE TABLE `interview_record` (
   `voice_wpm` INT DEFAULT 0 COMMENT '面试平均语速 (Words Per Minute)',
   `emotion_json` TEXT DEFAULT NULL COMMENT '视频面试情感分析数据 (JSON格式，含情绪分布、自信指数等)',
   `interview_mode` VARCHAR(16) DEFAULT 'text' COMMENT '面试模式: text=文字模式, video=视频模式',
+  `difficulty_level` VARCHAR(16) DEFAULT 'mid' COMMENT '准备页难度倾向: junior/mid/senior/principal',
+  `focus_areas` JSON DEFAULT NULL COMMENT '准备页重点能力 JSON 数组',
   `knowledge_json` TEXT DEFAULT NULL COMMENT '星系知识图谱数据 (知识点及掌握熟练度)',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '面试开始时间',
   `end_time` DATETIME DEFAULT NULL COMMENT '面试结束时间'

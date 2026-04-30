@@ -13,4 +13,8 @@ public class StartInterviewRequest {
     private String mode = "text";
 
     private List<String> resumeQuestions;
+
+    private String difficultyLevel = "mid";
+
+    private List<String> focusAreas;
 }

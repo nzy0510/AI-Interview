@@ -4,9 +4,10 @@ import com.interview.config.PositionCategoryConfig;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 
@@ -35,6 +36,22 @@ public class RagRetriever {
      * 根据岗位和用户消息检索 Top-3 相关知识原子，自动排除已用原子。
      */
     public List<Content> retrieve(String position, String userMessage, List<String> usedAtomIds) {
+        List<RetrievedContent> results = retrieveWithScores(position, userMessage, usedAtomIds);
+        List<Content> contents = new ArrayList<>();
+        for (RetrievedContent result : results) {
+            contents.add(result.content());
+        }
+        return contents;
+    }
+
+    /**
+     * 根据岗位和用户消息检索相关知识原子，并保留向量相似度分数，供 RAG 日志使用。
+     */
+    public List<RetrievedContent> retrieveWithScores(String position, String userMessage, List<String> usedAtomIds) {
+        if (userMessage == null || userMessage.trim().length() <= 2) {
+            return new ArrayList<>();
+        }
+
         List<String> categories = categoryConfig.getCategoriesFor(position);
 
         Filter categoryFilter = metadataKey("category").isEqualTo(categories.get(0));
@@ -42,21 +59,26 @@ public class RagRetriever {
             categoryFilter = categoryFilter.or(metadataKey("category").isEqualTo(categories.get(i)));
         }
 
-        Filter finalFilter = usedAtomIds.isEmpty()
+        List<String> excludedAtomIds = usedAtomIds != null ? usedAtomIds : new ArrayList<>();
+        Filter finalFilter = excludedAtomIds.isEmpty()
                 ? categoryFilter
-                : categoryFilter.and(metadataKey("id").isNotIn(usedAtomIds));
+                : categoryFilter.and(metadataKey("id").isNotIn(excludedAtomIds));
 
-        ContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore)
-                .embeddingModel(embeddingModel)
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel.embed(Query.from(userMessage).text()).content())
                 .filter(finalFilter)
                 .maxResults(3)
                 .minScore(0.6)
                 .build();
 
-        if (userMessage != null && userMessage.trim().length() > 2) {
-            return retriever.retrieve(Query.from(userMessage));
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
+        List<RetrievedContent> results = new ArrayList<>();
+        for (EmbeddingMatch<TextSegment> match : searchResult.matches()) {
+            results.add(new RetrievedContent(Content.from(match.embedded()), match.score()));
         }
-        return new ArrayList<>();
+        return results;
+    }
+
+    public record RetrievedContent(Content content, Double score) {
     }
 }

@@ -309,7 +309,7 @@ import {
   TrendCharts, VideoCamera
 } from '@element-plus/icons-vue'
 import { getHistoryListAPI } from '@/api/interview'
-import { getMentorInsightAPI, getKnowledgeCoverageAPI } from '@/api/user'
+import { getMentorInsightAPI, getKnowledgeCoverageAPI, refreshMentorInsightAPI } from '@/api/user'
 import { getUsername, userKey } from '@/utils/auth'
 
 const router = useRouter()
@@ -411,9 +411,16 @@ const loadMentor = async () => {
 
 const refreshMentor = async () => {
   refreshing.value = true
-  // Force refresh: call again (cache key includes userId, so we need backend to bypass cache)
-  // For now, just reload
-  await loadMentor()
+  try {
+    const data = await refreshMentorInsightAPI()
+    if (data) mentorInsight.value = data
+    if (data?.knowledgeCoverage?.details?.length) {
+      knowledgeCats.value = String(data.knowledgeCoverage.details.length)
+    }
+    ElMessage.success('AI Mentor 分析已刷新')
+  } catch {
+    ElMessage.error('刷新失败，请稍后重试')
+  }
   refreshing.value = false
 }
 

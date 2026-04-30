@@ -379,7 +379,8 @@ const startInterview = (preferredMode) => {
   const query = {
     role: role.value || setupDefaults.roleOptions[0],
     focus: focusAreas.value.join(','),
-    mode: nextMode
+    mode: nextMode,
+    difficulty: experienceLevel.value
   }
 
   const path = nextMode === 'video' ? '/video-interview' : '/interview'

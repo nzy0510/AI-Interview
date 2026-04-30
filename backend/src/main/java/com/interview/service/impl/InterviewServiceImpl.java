@@ -87,11 +87,19 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     public Long startInterview(Long userId, String position, String mode, List<String> resumeQuestions) {
+        return startInterview(userId, position, mode, resumeQuestions, "mid", null);
+    }
+
+    @Override
+    public Long startInterview(Long userId, String position, String mode, List<String> resumeQuestions,
+                               String difficultyLevel, List<String> focusAreas) {
         InterviewRecord record = new InterviewRecord();
         record.setUserId(userId);
         record.setPosition(position);
         record.setPhase(InterviewPhase.OPENING.name());
-        record.setInterviewMode(mode != null ? mode : "text");
+        record.setInterviewMode(normalizeMode(mode));
+        record.setDifficultyLevel(normalizeDifficulty(difficultyLevel));
+        record.setFocusAreas(serializeFocusAreas(focusAreas));
         record.setCreateTime(LocalDateTime.now());
         record.setChatHistory("[]");
         interviewRecordMapper.insert(record);
@@ -147,7 +155,12 @@ public class InterviewServiceImpl implements InterviewService {
 
         // RAG 检索（通过 RagRetriever 封装岗位分类过滤 + 已用原子黑名单）
         List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
-        List<Content> retrievedContents = ragRetriever.retrieve(position, ragQuery, usedAtomIds);
+        List<com.interview.service.RagRetriever.RetrievedContent> retrievedResults =
+                ragRetriever.retrieveWithScores(position, ragQuery, usedAtomIds);
+        List<Content> retrievedContents = new ArrayList<>();
+        for (com.interview.service.RagRetriever.RetrievedContent result : retrievedResults) {
+            retrievedContents.add(result.content());
+        }
 
         // 原子追加新命中原子 ID，避免并发覆盖
         List<String> newAtomIds = new ArrayList<>();
@@ -160,12 +173,12 @@ public class InterviewServiceImpl implements InterviewService {
         // 持久化 RAG 检索日志
         int turnIdx = chatHistory.size() / 2 + 1;
         int rank = 0;
-        for (Content content : retrievedContents) {
+        for (com.interview.service.RagRetriever.RetrievedContent result : retrievedResults) {
+            Content content = result.content();
             rank++;
             String atomId = content.textSegment().metadata().getString("id");
             if (atomId == null) continue;
             String category = content.textSegment().metadata().getString("category");
-            Double score = content.textSegment().metadata().getDouble("score");
             RagRetrievalLog logEntry = new RagRetrievalLog();
             logEntry.setUserId(userId);
             logEntry.setRecordId(recordId);
@@ -174,7 +187,7 @@ public class InterviewServiceImpl implements InterviewService {
             logEntry.setPosition(position);
             logEntry.setRetrievedAtomId(atomId);
             logEntry.setRetrievedCategory(category);
-            logEntry.setSimilarityScore(score != null ? score : 0.0);
+            logEntry.setSimilarityScore(result.score() != null ? result.score() : 0.0);
             logEntry.setRankIndex(rank);
             try {
                 ragRetrievalLogMapper.insert(logEntry);
@@ -218,11 +231,14 @@ public class InterviewServiceImpl implements InterviewService {
 
         // 根据阶段构建 System Prompt
         String currentSystemPrompt;
+        String setupInstructions = buildSetupInstructions(record);
         if (phase == InterviewPhase.OPENING) {
             currentSystemPrompt = interviewPrompts.getCoordinator() + "\n" + interviewPrompts.getAttitudeRule()
+                    + setupInstructions
                     + "\n请先让候选人做个简短的自我介绍。";
         } else if (phase == InterviewPhase.TECHNICAL) {
             currentSystemPrompt = interviewPrompts.getTechnical() + "\n" + interviewPrompts.getAttitudeRule()
+                    + setupInstructions
                     + "\n候选知识点（选择最相关的1个追问，不要直接说出标准答案，优先追问候选人回答中缺失的部分）：\n"
                     + contextBuilder.toString();
 
@@ -237,9 +253,10 @@ public class InterviewServiceImpl implements InterviewService {
                 currentSystemPrompt += "\n如果在极其满意的状况下认为无可挑剔且无需再问，你可以提前结束技术部分，并把话题抛给HR同事，此时在这个回答的最末尾追加标记：[SWITCH_TO_HR]\n";
             }
         } else if (phase == InterviewPhase.HR) {
-            currentSystemPrompt = interviewPrompts.getHr() + "\n" + interviewPrompts.getAttitudeRule();
+            currentSystemPrompt = interviewPrompts.getHr() + "\n" + interviewPrompts.getAttitudeRule()
+                    + setupInstructions;
         } else {
-            currentSystemPrompt = interviewPrompts.getClosing();
+            currentSystemPrompt = interviewPrompts.getClosing() + setupInstructions;
         }
 
         // 3. 构造消息列表
@@ -439,6 +456,80 @@ public class InterviewServiceImpl implements InterviewService {
             throw new RuntimeException("面试记录不存在或无权访问");
         }
         return record;
+    }
+
+    private String normalizeMode(String mode) {
+        return "video".equals(mode) ? "video" : "text";
+    }
+
+    private String normalizeDifficulty(String difficultyLevel) {
+        if ("junior".equals(difficultyLevel)
+                || "mid".equals(difficultyLevel)
+                || "senior".equals(difficultyLevel)
+                || "principal".equals(difficultyLevel)) {
+            return difficultyLevel;
+        }
+        return "mid";
+    }
+
+    private String serializeFocusAreas(List<String> focusAreas) {
+        if (focusAreas == null || focusAreas.isEmpty()) {
+            return null;
+        }
+        List<String> cleaned = new ArrayList<>();
+        for (String area : focusAreas) {
+            if (area != null && !area.isBlank() && !cleaned.contains(area.trim())) {
+                cleaned.add(area.trim());
+            }
+        }
+        return cleaned.isEmpty() ? null : JSON.toJSONString(cleaned);
+    }
+
+    private String buildSetupInstructions(InterviewRecord record) {
+        StringBuilder sb = new StringBuilder("\n【候选人本场面试配置】\n");
+        sb.append("- 难度倾向：").append(humanDifficulty(record.getDifficultyLevel())).append("\n");
+        List<String> focusAreas = parseFocusAreas(record.getFocusAreas());
+        if (!focusAreas.isEmpty()) {
+            sb.append("- 重点能力：").append(String.join("、", focusAreas)).append("\n");
+            sb.append("- 提问策略：优先围绕重点能力设计追问，但不要牺牲岗位核心知识覆盖。\n");
+        }
+        sb.append("- 难度策略：根据难度倾向调整追问深度、案例复杂度和容错标准。\n");
+        return sb.toString();
+    }
+
+    private String humanDifficulty(String difficultyLevel) {
+        return switch (normalizeDifficulty(difficultyLevel)) {
+            case "junior" -> "应届/0-1年，重视基础概念、表达清晰度和项目参与度";
+            case "senior" -> "3-5年，重视系统设计、复杂问题定位和技术取舍";
+            case "principal" -> "5年+，重视架构判断、跨团队影响力和深层原理";
+            default -> "1-3年，重视核心原理、业务落地和独立解决问题能力";
+        };
+    }
+
+    private List<String> parseFocusAreas(String raw) {
+        if (raw == null || raw.isBlank()) return new ArrayList<>();
+        try {
+            List<String> values = JSON.parseArray(raw, String.class);
+            List<String> labels = new ArrayList<>();
+            for (String value : values) {
+                labels.add(humanFocusArea(value));
+            }
+            return labels;
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    private String humanFocusArea(String focusArea) {
+        return switch (focusArea) {
+            case "projects" -> "项目经历深挖";
+            case "depth" -> "技术原理深度";
+            case "breadth" -> "知识广度覆盖";
+            case "systemDesign" -> "系统设计与架构";
+            case "communication" -> "表达沟通与协作";
+            case "stress" -> "压力应对与稳定性";
+            default -> focusArea;
+        };
     }
 
     private void sendSseError(SseEmitter emitter, String message) {
