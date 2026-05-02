@@ -63,6 +63,73 @@ export function buildHeatmapData(records, dimKeys, dimLabels) {
   }
 }
 
+export const KNOWLEDGE_ROSE_COLORS = ['#f8e4c8', '#f4b46f', '#e27a3f', '#c9542f', '#8f2f1b']
+
+export function buildKnowledgeRoseOption(details = []) {
+  const source = Array.isArray(details) ? details : []
+  const data = source.length
+    ? source.map((item) => ({
+        name: item.category || '未分类',
+        value: Number(item.covered) || 0,
+        total: Number(item.total) || 0,
+        percent: Number(item.percent) || 0,
+      }))
+    : [{ name: '暂无覆盖', value: 1, total: 0, percent: 0 }]
+
+  return {
+    color: KNOWLEDGE_ROSE_COLORS,
+    tooltip: {
+      ...buildTooltipConfig({ trigger: 'item' }),
+      formatter: (params) => {
+        const item = params.data || {}
+        if (item.name === '暂无覆盖') return '暂无知识覆盖数据'
+        return `${params.marker}${item.name}<br/>命中知识原子: <b>${item.value}</b><br/>覆盖占比: <b>${item.percent}%</b>`
+      },
+    },
+    legend: {
+      type: 'scroll',
+      orient: 'vertical',
+      right: 0,
+      top: 'middle',
+      itemWidth: 10,
+      itemHeight: 10,
+      textStyle: { color: '#5e5d59', fontSize: 12 },
+    },
+    series: [
+      {
+        name: '知识领域覆盖',
+        type: 'pie',
+        roseType: 'radius',
+        radius: ['24%', '76%'],
+        center: ['38%', '50%'],
+        minAngle: 8,
+        avoidLabelOverlap: true,
+        label: {
+          color: '#3f3d38',
+          fontSize: 12,
+          formatter: '{b}',
+        },
+        labelLine: {
+          lineStyle: { color: '#d4a88c' },
+        },
+        itemStyle: {
+          borderColor: '#fffaf2',
+          borderWidth: 2,
+          borderRadius: 5,
+        },
+        emphasis: {
+          scaleSize: 8,
+          itemStyle: {
+            shadowBlur: 18,
+            shadowColor: 'rgba(143, 47, 27, 0.22)',
+          },
+        },
+        data,
+      },
+    ],
+  }
+}
+
 const RADAR_GRADE_MAP = { A: 95, B: 80, C: 65, D: 45, E: 20 }
 
 export function gradeToRadarScore(grade) {

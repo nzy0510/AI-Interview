@@ -84,29 +84,6 @@
           </div>
         </section>
 
-        <!-- Knowledge Coverage -->
-        <section v-if="mentorInsight.knowledgeCoverage?.details?.length" class="surface-card section-shell">
-          <div class="section-head">
-            <div>
-              <p class="section-kicker">Knowledge Coverage</p>
-              <h2 class="section-title">知识领域覆盖</h2>
-              <p class="section-desc">
-                覆盖 {{ mentorInsight.knowledgeCoverage.coveredCategories }} / {{ mentorInsight.knowledgeCoverage.totalCategories }} 个领域
-                （{{ mentorInsight.knowledgeCoverage.coveragePercent }}%）
-              </p>
-            </div>
-          </div>
-          <div class="coverage-list">
-            <div v-for="item in mentorInsight.knowledgeCoverage.details" :key="item.category"
-                 class="coverage-row">
-              <span class="coverage-name">{{ item.category }}</span>
-              <div class="coverage-bar-bg">
-                <div class="coverage-bar-fill" :style="{ width: `${Math.min(item.percent, 100)}%` }" />
-              </div>
-              <span class="coverage-num">{{ item.covered }}</span>
-            </div>
-          </div>
-        </section>
       </template>
     </el-main>
   </div>
@@ -117,7 +94,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { getMentorInsightAPI, getKnowledgeCoverageAPI, refreshMentorInsightAPI } from '@/api/user'
+import { getMentorInsightAPI, refreshMentorInsightAPI } from '@/api/user'
 
 const router = useRouter()
 const mentorInsight = ref(null)
@@ -126,13 +103,6 @@ const loading = ref(true)
 
 const loadMentorData = async () => {
   loading.value = true
-  try {
-    const cov = await getKnowledgeCoverageAPI()
-    if (cov?.knowledgeCoverage?.details?.length) {
-      if (!mentorInsight.value) mentorInsight.value = {}
-      mentorInsight.value.knowledgeCoverage = cov.knowledgeCoverage
-    }
-  } catch { /* optional */ }
   try {
     const data = await getMentorInsightAPI()
     if (data) {
@@ -148,13 +118,6 @@ const refreshMentor = async () => {
     const data = await refreshMentorInsightAPI()
     if (data) {
       mentorInsight.value = data
-      // refreshMentorInsightAPI might not include knowledgeCoverage, reload it
-      try {
-        const cov = await getKnowledgeCoverageAPI()
-        if (cov?.knowledgeCoverage?.details?.length) {
-          mentorInsight.value.knowledgeCoverage = cov.knowledgeCoverage
-        }
-      } catch { /* optional */ }
     }
     ElMessage.success('AI Mentor 分析已刷新')
   } catch {
@@ -297,44 +260,6 @@ onMounted(loadMentorData)
 .action-item:last-child { border-bottom: 0; }
 .action-item strong { display: block; color: #191c1e; font-size: 14px; }
 .action-item p { margin: 4px 0 0; color: #5e5d59; font-size: 13px; line-height: 1.6; }
-
-.coverage-list { display: grid; gap: 12px; }
-
-.coverage-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.coverage-name {
-  width: 100px;
-  font-size: 13px;
-  color: #454652;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.coverage-bar-bg {
-  flex: 1;
-  height: 10px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(58, 56, 139, 0.08);
-}
-
-.coverage-bar-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #3a388b, #5250a4);
-  transition: width 0.6s ease;
-}
-
-.coverage-num {
-  width: 40px;
-  font-size: 13px;
-  color: #454652;
-  text-align: right;
-}
 
 :deep(.el-empty) { padding: 60px 0; }
 

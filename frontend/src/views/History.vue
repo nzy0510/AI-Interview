@@ -162,15 +162,7 @@
             </div>
             <el-tag effect="plain" type="info">{{ knowledgeCoverage.details.length }} 个领域</el-tag>
           </div>
-          <div class="coverage-list">
-            <div v-for="item in knowledgeCoverage.details" :key="item.category" class="coverage-row">
-              <span class="coverage-name">{{ item.category }}</span>
-              <div class="coverage-bar-bg">
-                <div class="coverage-bar-fill" :style="{ width: `${Math.min(item.percent, 100)}%` }" />
-              </div>
-              <span class="coverage-num">{{ item.covered }} 个</span>
-            </div>
-          </div>
+          <KnowledgeCoverageChart :details="knowledgeCoverage.details" />
         </section>
 
         <section class="surface-card section-shell list-shell">
@@ -370,6 +362,8 @@ import { getHistoryListAPI } from '@/api/interview'
 import { getKnowledgeCoverageAPI } from '@/api/user'
 import { reportCenterConfig } from '@/mock/reports'
 import * as echarts from 'echarts'
+import KnowledgeCoverageChart from '@/components/charts/KnowledgeCoverageChart.vue'
+import { buildTooltipConfig, buildHeatmapVisualMap, buildHeatmapData } from '@/utils/chartOptions'
 
 const router = useRouter()
 const loading = ref(true)
@@ -596,22 +590,22 @@ const drawGrowthChart = () => {
 
   if (chartMode.value === 'score') {
     const scores = data.map(r => r.score || 0)
-    
+
     const option = {
       grid: { top: 40, right: 30, bottom: 40, left: 50 },
-      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: '#10b981', textStyle: { color: '#f8fafc' } },
+      tooltip: buildTooltipConfig({ trigger: 'axis' }),
       xAxis: {
         type: 'category',
         data: xAxisData,
-        axisLine: { lineStyle: { color: '#475569' } },
-        axisLabel: { color: '#94a3b8' }
+        axisLine: { lineStyle: { color: '#cfcdc4' } },
+        axisLabel: { color: '#5e5d59' }
       },
       yAxis: {
         type: 'value',
         min: 'dataMin',
         max: 'dataMax',
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)', type: 'dashed' } },
-        axisLabel: { color: '#94a3b8' }
+        splitLine: { lineStyle: { color: '#e8e6dc', type: 'dashed' } },
+        axisLabel: { color: '#5e5d59' }
       },
       series: [
         {
@@ -620,12 +614,12 @@ const drawGrowthChart = () => {
           type: 'line',
           smooth: true,
           symbolSize: 8,
-          itemStyle: { color: '#10b981' },
-          lineStyle: { color: '#10b981', width: 3 },
+          itemStyle: { color: '#c96442' },
+          lineStyle: { color: '#c96442', width: 3 },
           areaStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(16, 185, 129, 0.4)' },
-              { offset: 1, color: 'rgba(16, 185, 129, 0.0)' }
+              { offset: 0, color: 'rgba(201, 100, 66, 0.35)' },
+              { offset: 1, color: 'rgba(201, 100, 66, 0.0)' }
             ])
           }
         }
@@ -636,66 +630,48 @@ const drawGrowthChart = () => {
     // Heatmap mode
     const dimKeys = Object.keys(abilityDimensions)
     const dimLabels = Object.values(abilityDimensions).map(d => d.label)
-    const yAxisData = dimLabels.reverse() // Reverse so top is first dimension
-
-    const gradeVal = { A: 4, B: 3, C: 2, D: 1, E: 0 }
-    const heatmapData = []
-    
-    const revKeys = [...dimKeys].reverse()
-    
-    data.forEach((r, xIndex) => {
-      let ab = {}
-      try { ab = JSON.parse(r.abilityJson || '{}') } catch {}
-      revKeys.forEach((key, yIndex) => {
-        const grade = ab[key] || 'E'
-        heatmapData.push([xIndex, yIndex, gradeVal[grade], grade])
-      })
-    })
+    const { data: hData, yAxisData } = buildHeatmapData(data, dimKeys, dimLabels)
 
     const option = {
-      grid: { top: 30, right: 30, bottom: 40, left: 80 },
+      grid: { top: 30, right: 30, bottom: 50, left: 80 },
       tooltip: {
+        ...buildTooltipConfig(),
         position: 'top',
-        backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: '#10b981', textStyle: { color: '#f8fafc' },
         formatter: (params) => `${params.name} <br/> 维度: <b>${yAxisData[params.value[1]]}</b> <br/> 评级: <b>${params.value[3]}</b>`
       },
       xAxis: {
         type: 'category',
         data: xAxisData,
-        axisLine: { lineStyle: { color: '#475569' } },
-        axisLabel: { color: '#94a3b8' },
-        splitArea: { show: true, areaStyle: { color: ['rgba(255,255,255,0.02)', 'transparent'] } }
+        axisLine: { lineStyle: { color: '#cfcdc4' } },
+        axisLabel: { color: '#5e5d59' },
+        splitArea: { show: true, areaStyle: { color: ['rgba(0,0,0,0.02)', 'transparent'] } }
       },
       yAxis: {
         type: 'category',
         data: yAxisData,
-        axisLine: { lineStyle: { color: '#475569' } },
-        axisLabel: { color: '#94a3b8' }
+        axisLine: { lineStyle: { color: '#cfcdc4' } },
+        axisLabel: { color: '#5e5d59' }
       },
-      visualMap: {
-        min: 0, max: 4,
-        calculable: true,
-        orient: 'horizontal',
-        left: 'center',
-        bottom: 0,
-        show: false,
-        inRange: {
-          color: ['rgba(16,185,129,0.05)', 'rgba(16,185,129,0.3)', 'rgba(16,185,129,0.5)', 'rgba(16,185,129,0.8)', 'rgba(16,185,129,1.0)']
-        }
-      },
+      visualMap: buildHeatmapVisualMap(),
       series: [{
         name: '能力评级',
         type: 'heatmap',
-        data: heatmapData,
+        data: hData,
         label: {
           show: true,
           formatter: (p) => p.data[3],
-          color: '#fff',
+          color: '#141413',
           fontSize: 12,
           fontWeight: 'bold'
         },
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowColor: 'rgba(201, 100, 66, 0.3)'
+          }
+        },
         itemStyle: {
-          borderColor: '#0f172a',
+          borderColor: '#faf9f5',
           borderWidth: 2,
           borderRadius: 4
         }
@@ -761,24 +737,24 @@ const drawGrowthChart = () => {
           shadowBlur: 20,
           shadowColor: color
         },
-        label: { show: true, formatter: '{b}', textStyle: { color: '#e2e8f0', textBorderColor: '#0f172a', textBorderWidth: 2 } }
+        label: { show: true, formatter: '{b}', textStyle: { color: '#4d4c48', textBorderColor: '#faf9f5', textBorderWidth: 2 } }
       })
     })
 
     // If completely empty across all history, show dummy data so user isn't bored
     if (nodes.length === 0) {
-      nodes.push({ name: '暂无知识点', value: 0, symbolSize: 50, itemStyle: { color: '#94a3b8' } })
+      nodes.push({ name: '暂无知识点', value: 0, symbolSize: 50, itemStyle: { color: '#b0aea5' } })
     }
 
     const option = {
       grid: { top: 30, right: 30, bottom: 50, left: 30 },
       tooltip: {
-        backgroundColor: 'rgba(15, 23, 42, 0.95)', borderColor: '#10b981', textStyle: { color: '#f8fafc' },
+        ...buildTooltipConfig(),
         formatter: (params) => {
           if (params.dataType === 'node') {
             const catStr = categories.length > 0 && params.data.category != null ? categories[params.data.category].name : '无'
-            return `<div style="font-weight:bold;font-size:16px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.2)">${params.name}</div>
-                    领域类别: <span style="color:#60a5fa">${catStr}</span> <br/> 
+            return `<div style="font-weight:bold;font-size:16px;margin-bottom:4px;border-bottom:1px solid #e8e6dc;padding-bottom:4px">${params.name}</div>
+                    领域类别: <span style="color:#c96442;font-weight:600">${catStr}</span> <br/>
                     评估熟练度: <span style="color:${params.color};font-weight:bold">${params.value}%</span>`
           }
           return ''
@@ -786,7 +762,7 @@ const drawGrowthChart = () => {
       },
       legend: [{
         data: categories.map(a => a.name),
-        textStyle: { color: '#94a3b8' },
+        textStyle: { color: '#5e5d59' },
         bottom: 10
       }],
       animationDuration: 1500,
@@ -848,23 +824,23 @@ const drawMiniRadar = () => {
         { name: '解题思路', max: 100 }
       ],
       shape: 'polygon',
-      axisName: { color: '#94a3b8', fontSize: 12 },
+      axisName: { color: '#5e5d59', fontSize: 12 },
       splitNumber: 4,
-      splitArea: { areaStyle: { color: ['rgba(16,185,129,0.05)', 'transparent'] } },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+      splitArea: { areaStyle: { color: ['rgba(201, 100, 66, 0.05)', 'transparent'] } },
+      axisLine: { lineStyle: { color: 'rgba(0,0,0,0.1)' } },
+      splitLine: { lineStyle: { color: 'rgba(0,0,0,0.08)' } }
     },
     series: [{
       type: 'radar',
       data: [{
         value: scores,
         symbolSize: 4,
-        itemStyle: { color: '#10b981' },
+        itemStyle: { color: '#c96442' },
         lineStyle: { width: 2 },
-        areaStyle: { 
+        areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(16,185,129,0.5)' },
-            { offset: 1, color: 'rgba(16,185,129,0.1)' }
+            { offset: 0, color: 'rgba(201, 100, 66, 0.45)' },
+            { offset: 1, color: 'rgba(201, 100, 66, 0.08)' }
           ])
         }
       }]
@@ -877,8 +853,8 @@ const drawMiniRadar = () => {
 <style scoped>
 .history-page {
   min-height: 100vh;
-  background: #f7f9fb;
-  color: #191c1e;
+  background: #f5f4ed;
+  color: #141413;
 }
 
 .page-header {
@@ -1496,12 +1472,6 @@ const drawMiniRadar = () => {
 }
 
 /* ─── Knowledge Coverage & Map ─── */
-.coverage-list { display: grid; gap: 10px; }
-.coverage-row { display: flex; align-items: center; gap: 12px; }
-.coverage-name { width: 80px; font-size: 12px; color: #454652; text-align: right; flex-shrink: 0; }
-.coverage-bar-bg { flex: 1; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(58, 56, 139, 0.06); }
-.coverage-bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #3a388b, #5250a4); transition: width 0.6s ease; }
-.coverage-num { width: 48px; font-size: 12px; color: #454652; text-align: right; }
 
 .knowledge-list { display: grid; gap: 12px; }
 .knowledge-item { display: flex; align-items: center; gap: 10px; }
