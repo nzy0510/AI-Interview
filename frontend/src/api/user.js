@@ -76,7 +76,7 @@ export const uploadAvatarAPI = (formData) => {
     return request({
         url: '/user/avatar',
         method: 'post',
-        data: formData,
-        headers: { 'Content-Type': 'multipart/form-data' }
+        data: formData
+        // 不手动设置 Content-Type，让 axios 自动带 boundary
     })
 }

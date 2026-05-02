@@ -19,8 +19,10 @@
             <p class="section-kicker">Account</p>
             <h2 class="section-title">账号信息</h2>
           </div>
-          <el-button type="primary" size="small" :loading="savingProfile" @click="saveProfile">保存资料</el-button>
-          <el-button type="danger" size="small" plain @click="handleLogout">退出登录</el-button>
+          <div class="section-actions">
+            <el-button type="primary" size="small" :loading="savingProfile" @click="saveProfile">保存资料</el-button>
+            <el-button type="danger" size="small" plain @click="handleLogout">退出登录</el-button>
+          </div>
         </div>
         <div class="settings-grid">
           <div class="settings-block">
@@ -114,7 +116,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { getCurrentUserAPI, updateProfileAPI, changePasswordAPI, getPreferenceAPI, updatePreferenceAPI, uploadAvatarAPI } from '@/api/user'
+import { getCurrentUserAPI, updateProfileAPI, changePasswordAPI, getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
 import { logout } from '@/utils/auth'
 
 const router = useRouter()
@@ -208,12 +210,17 @@ const beforeAvatarUpload = (file) => {
 }
 
 const handleAvatarSuccess = (response) => {
-  if (response?.code === 200 && response.data?.avatarUrl) {
-    profile.avatar = response.data.avatarUrl
-    ElMessage.success('头像已更新')
-  } else {
-    ElMessage.error(response?.msg || '上传失败')
+  // el-upload 用自己的 XHR，直接拿到后端返回的原始 JSON
+  const data = response?.data ?? response
+  if (response?.code === 200 && data) {
+    const url = typeof data === 'string' ? data : data.avatarUrl
+    if (url) {
+      profile.avatar = url
+      ElMessage.success('头像已更新')
+      return
+    }
   }
+  ElMessage.error(response?.msg || '上传失败')
 }
 
 const handleAvatarError = () => {
@@ -291,6 +298,13 @@ const handleLogout = () => {
 }
 
 .section-title { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 800; color: #191c1e; }
+
+.section-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
 
 .settings-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; }
 .settings-grid.three-col { grid-template-columns: repeat(3, 1fr); }
