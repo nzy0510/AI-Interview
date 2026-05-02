@@ -176,4 +176,35 @@ class UserServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("用户不存在");
     }
+
+    @Test
+    @DisplayName("上传头像：文件类型不合法时抛异常")
+    void shouldRejectInvalidAvatarType() {
+        User user = createUser();
+        when(userMapper.selectById(1L)).thenReturn(user);
+        org.springframework.web.multipart.MultipartFile file = mock(org.springframework.web.multipart.MultipartFile.class);
+        when(file.getContentType()).thenReturn("image/gif");
+
+        assertThatThrownBy(() -> userService.uploadAvatar(1L, file))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("仅支持");
+
+        verify(userMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("上传头像：文件过大时抛异常")
+    void shouldRejectOversizedAvatar() {
+        User user = createUser();
+        when(userMapper.selectById(1L)).thenReturn(user);
+        org.springframework.web.multipart.MultipartFile file = mock(org.springframework.web.multipart.MultipartFile.class);
+        when(file.getContentType()).thenReturn("image/png");
+        when(file.getSize()).thenReturn(5 * 1024 * 1024L);
+
+        assertThatThrownBy(() -> userService.uploadAvatar(1L, file))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("2MB");
+
+        verify(userMapper, never()).updateById(any());
+    }
 }
