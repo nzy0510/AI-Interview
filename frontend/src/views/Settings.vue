@@ -142,7 +142,7 @@ const loadData = async () => {
       profile.username = user.username || ''
       profile.nickname = user.nickname || ''
       profile.email = user.email || ''
-      profile.avatar = user.avatar || ''
+      profile.avatar = user.avatar ? ((import.meta.env.VITE_API_BASE_URL || '') + user.avatar) : ''
     }
   } catch { /* defaults ok */ }
   try {
@@ -210,17 +210,20 @@ const beforeAvatarUpload = (file) => {
 }
 
 const handleAvatarSuccess = (response) => {
-  // el-upload 用自己的 XHR，直接拿到后端返回的原始 JSON
-  const data = response?.data ?? response
-  if (response?.code === 200 && data) {
-    const url = typeof data === 'string' ? data : data.avatarUrl
-    if (url) {
-      profile.avatar = url
-      ElMessage.success('头像已更新')
-      return
-    }
+  // el-upload 使用原生 XHR，response 可能是未解析的 JSON 字符串
+  let parsed
+  try {
+    parsed = typeof response === 'string' ? JSON.parse(response) : response
+  } catch {
+    parsed = response
   }
-  ElMessage.error(response?.msg || '上传失败')
+  if (parsed?.code === 200 && parsed?.data?.avatarUrl) {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+    profile.avatar = baseUrl + parsed.data.avatarUrl
+    ElMessage.success('头像已更新')
+  } else {
+    ElMessage.error(parsed?.msg || '上传失败')
+  }
 }
 
 const handleAvatarError = () => {
