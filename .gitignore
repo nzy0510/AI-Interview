@@ -100,6 +100,9 @@ conflicts_render.txt
 
 变量.txt
 
-# ========== Claude Code & Docs ==========
-CLAUDE.md
+# ========== Docs ==========
 /docs/
+/uploads/
+backend/uploads/
+**/uploads/
+backend/mvn_result.txt
