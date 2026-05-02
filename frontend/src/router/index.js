@@ -53,6 +53,12 @@ const routes = [
     meta: { title: 'Video Interview' }
   },
   {
+    path: '/mentor',
+    name: 'Mentor',
+    component: loadView('Mentor'),
+    meta: { title: 'AI Mentor' }
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: loadView('Settings'),

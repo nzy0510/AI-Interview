@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  DataAnalysis,
   Document,
   Monitor,
   Setting,
@@ -15,6 +16,7 @@ const router = useRouter()
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Monitor },
   { path: '/interview/setup', label: 'Interview Setup', icon: MagicStick },
+  { path: '/mentor', label: 'AI Mentor', icon: DataAnalysis },
   { path: '/resume', label: 'Resume', icon: UserFilled },
   { path: '/history', label: 'Reports', icon: Document },
   { path: '/settings', label: 'Settings', icon: Setting }

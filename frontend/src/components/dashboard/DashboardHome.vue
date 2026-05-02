@@ -67,59 +67,6 @@
 
     <div class="dashboard-grid">
       <div class="dashboard-main">
-        <section class="section-block mentor-section" v-if="mentorInsight">
-          <div class="section-head">
-            <div>
-              <div class="section-kicker">AI Mentor</div>
-              <h2>智能教练分析</h2>
-            </div>
-            <el-button size="small" :icon="RefreshRight" :loading="refreshing" @click="refreshMentor">
-              刷新分析
-            </el-button>
-          </div>
-
-          <div class="mentor-content">
-            <div class="mentor-columns">
-              <div class="mentor-col">
-                <h4 class="mentor-subtitle">优势</h4>
-                <ul v-if="mentorInsight.diagnosis?.strengths?.length">
-                  <li v-for="s in mentorInsight.diagnosis.strengths" :key="s">{{ s }}</li>
-                </ul>
-                <p v-else class="no-data-hint">暂无优势分析</p>
-              </div>
-              <div class="mentor-col">
-                <h4 class="mentor-subtitle">待提升</h4>
-                <ul v-if="mentorInsight.diagnosis?.weaknesses?.length">
-                  <li v-for="w in mentorInsight.diagnosis.weaknesses" :key="w">{{ w }}</li>
-                </ul>
-                <p v-else class="no-data-hint">暂无弱点分析</p>
-              </div>
-            </div>
-
-            <div v-if="mentorInsight.riskAlerts?.length" class="risk-section">
-              <h4 class="mentor-subtitle">风险预警</h4>
-              <div v-for="alert in mentorInsight.riskAlerts" :key="alert.message"
-                   :class="['risk-badge', alert.severity]">
-                {{ alert.message }}
-              </div>
-            </div>
-
-            <div v-if="mentorInsight.actions?.length" class="actions-section">
-              <h4 class="mentor-subtitle">建议行动</h4>
-              <div v-for="act in mentorInsight.actions.slice(0, 4)" :key="act.message"
-                   class="action-item">
-                <el-tag :type="act.priority === 1 ? 'danger' : act.priority === 2 ? 'warning' : 'info'" size="small">
-                  {{ act.priority === 1 ? '立即' : act.priority === 2 ? '短期' : '长期' }}
-                </el-tag>
-                <div>
-                  <strong>{{ act.category }}</strong>
-                  <p>{{ act.message }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <section class="section-block recent-section">
           <div class="section-head">
             <div>
@@ -144,25 +91,6 @@
             </article>
           </div>
           <el-empty v-else description="还没有面试记录，先开始一场面试吧" />
-        </section>
-
-        <section v-if="mentorInsight?.knowledgeCoverage?.details?.length" class="section-block coverage-section">
-          <div class="section-head">
-            <div>
-              <div class="section-kicker">Knowledge Coverage</div>
-              <h2>知识领域覆盖</h2>
-            </div>
-          </div>
-          <div class="coverage-list">
-            <div v-for="item in mentorInsight.knowledgeCoverage.details.slice(0, 10)" :key="item.category"
-                 class="coverage-row">
-              <span class="coverage-name">{{ item.category }}</span>
-              <div class="coverage-bar-bg">
-                <div class="coverage-bar-fill" :style="{ width: `${Math.min(item.percent, 100)}%` }" />
-              </div>
-              <span class="coverage-num">{{ item.covered }}</span>
-            </div>
-          </div>
         </section>
       </div>
 
@@ -305,11 +233,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  ArrowRight, Document, Loading, Operation, RefreshRight,
+  ArrowRight, Document, Loading, Operation,
   TrendCharts, VideoCamera
 } from '@element-plus/icons-vue'
 import { getHistoryListAPI } from '@/api/interview'
-import { getMentorInsightAPI, getKnowledgeCoverageAPI, refreshMentorInsightAPI, getPreferenceAPI, getCurrentUserAPI } from '@/api/user'
+import { getMentorInsightAPI, getKnowledgeCoverageAPI, getPreferenceAPI, getCurrentUserAPI } from '@/api/user'
 import { getUsername, getNickname, setNickname, userKey } from '@/utils/auth'
 import { interviewSetupDefaults } from '@/mock/setup'
 
@@ -323,7 +251,6 @@ const latestScore = ref('--')
 const knowledgeCats = ref('--')
 const recentInterviews = ref([])
 const mentorInsight = ref(null)
-const refreshing = ref(false)
 
 const showModeDialog = ref(false)
 const showResumeDialog = ref(false)
@@ -432,21 +359,6 @@ const loadMentor = async () => {
     const data = await getMentorInsightAPI()
     if (data) mentorInsight.value = data
   } catch { /* Mentor unavailable */ }
-}
-
-const refreshMentor = async () => {
-  refreshing.value = true
-  try {
-    const data = await refreshMentorInsightAPI()
-    if (data) mentorInsight.value = data
-    if (data?.knowledgeCoverage?.details?.length) {
-      knowledgeCats.value = String(data.knowledgeCoverage.details.length)
-    }
-    ElMessage.success('AI Mentor 分析已刷新')
-  } catch {
-    ElMessage.error('刷新失败，请稍后重试')
-  }
-  refreshing.value = false
 }
 
 const buildInterviewQuery = (mode) => ({
