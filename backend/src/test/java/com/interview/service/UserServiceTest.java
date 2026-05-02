@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 
 @DisplayName("UserService — 用户账号管理")
 @ExtendWith(MockitoExtension.class)
@@ -150,5 +152,28 @@ class UserServiceTest {
         assertThat(saved.getDefaultMode()).isEqualTo("text");
         assertThat(saved.getDefaultRole()).isEqualTo("Java 后端开发");
         assertThat(saved.getDifficultyLevel()).isEqualTo("mid");
+    }
+
+    @Test
+    @DisplayName("更新用户头像链接")
+    void shouldUpdateAvatar() {
+        User user = createUser();
+        when(userMapper.selectById(1L)).thenReturn(user);
+        when(userMapper.updateById(any(User.class))).thenReturn(1);
+
+        userService.updateAvatar(1L, "/uploads/avatars/1_abc123.png");
+
+        assertThat(user.getAvatar()).isEqualTo("/uploads/avatars/1_abc123.png");
+        verify(userMapper).updateById(user);
+    }
+
+    @Test
+    @DisplayName("更新头像：用户不存在时抛异常")
+    void shouldThrowWhenUserNotFoundForAvatar() {
+        when(userMapper.selectById(999L)).thenReturn(null);
+
+        assertThatThrownBy(() -> userService.updateAvatar(999L, "/uploads/avatars/x.png"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("用户不存在");
     }
 }

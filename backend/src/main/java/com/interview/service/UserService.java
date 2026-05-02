@@ -6,6 +6,7 @@ import com.interview.dto.RegisterDTO;
 import com.interview.dto.ResetPasswordDTO;
 import com.interview.entity.User;
 import com.interview.entity.UserPreference;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService extends IService<User> {
     
@@ -26,4 +27,8 @@ public interface UserService extends IService<User> {
     UserPreference getPreference(Long userId);
 
     void updatePreference(Long userId, UserPreference pref);
+
+    void updateAvatar(Long userId, String avatarUrl);
+
+    String uploadAvatar(Long userId, MultipartFile file);
 }

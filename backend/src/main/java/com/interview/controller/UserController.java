@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -147,5 +148,15 @@ public class UserController {
         Long userId = (Long) request.getAttribute("currentUserId");
         userService.updatePreference(userId, pref);
         return Result.success("偏好已保存");
+    }
+
+    /** 上传用户头像 */
+    @PostMapping("/avatar")
+    public Result<Map<String, String>> uploadAvatar(
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        String avatarUrl = userService.uploadAvatar(userId, file);
+        return Result.success(Map.of("avatarUrl", avatarUrl));
     }
 }

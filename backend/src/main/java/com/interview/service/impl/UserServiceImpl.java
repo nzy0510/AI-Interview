@@ -15,11 +15,17 @@ import com.interview.service.EmailService;
 import com.interview.service.UserService;
 import com.interview.utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
@@ -207,5 +213,53 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private String validOrDefault(String value, String fallback, Set<String> allowed) {
         if (allowed.contains(value)) return value;
         return StrUtil.isNotBlank(fallback) ? fallback : allowed.iterator().next();
+    }
+
+    @Override
+    public void updateAvatar(Long userId, String avatarUrl) {
+        User user = this.getById(userId);
+        if (user == null) throw new RuntimeException("用户不存在");
+        user.setAvatar(avatarUrl);
+        this.updateById(user);
+    }
+
+    @Value("${app.upload-dir:uploads}")
+    private String uploadDir;
+
+    @Override
+    public String uploadAvatar(Long userId, MultipartFile file) {
+        User user = this.getById(userId);
+        if (user == null) throw new RuntimeException("用户不存在");
+
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.equals("image/png")
+                && !contentType.equals("image/jpeg")
+                && !contentType.equals("image/webp"))) {
+            throw new RuntimeException("仅支持 PNG / JPG / WebP 格式的头像");
+        }
+
+        if (file.getSize() > 2 * 1024 * 1024) {
+            throw new RuntimeException("头像文件不能超过 2MB");
+        }
+
+        try {
+            String ext = contentType.equals("image/png") ? "png"
+                    : contentType.equals("image/webp") ? "webp" : "jpg";
+            String filename = userId + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
+
+            Path uploadPath = Paths.get(uploadDir, "avatars");
+            Files.createDirectories(uploadPath);
+
+            Path filePath = uploadPath.resolve(filename);
+            file.transferTo(filePath.toFile());
+
+            String avatarUrl = "/uploads/avatars/" + filename;
+            user.setAvatar(avatarUrl);
+            this.updateById(user);
+
+            return avatarUrl;
+        } catch (Exception e) {
+            throw new RuntimeException("头像上传失败: " + e.getMessage());
+        }
     }
 }
