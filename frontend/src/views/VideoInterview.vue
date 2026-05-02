@@ -39,120 +39,26 @@
       </div>
     </main>
 
-    <div v-if="showReport" class="dashboard-overlay">
-      <div class="dashboard-container">
-        <div class="dash-header">
-          <span class="dash-title">📋 智能面试深度体检报告</span>
-          <div class="dash-actions">
-            <el-button @click="router.push('/history')" plain>查看历史</el-button>
-            <el-button type="primary" @click="router.push('/')">返回大厅</el-button>
-          </div>
-        </div>
-
-        <div class="bento-grid">
-          <!-- Top Left: Score -->
-          <div class="bento-card bento-score">
-            <h3 class="bento-card-title">综合能力评定</h3>
-            <div class="score-display">
-              <el-progress type="dashboard" :percentage="displayScore" :color="scoreColor" :width="160" :stroke-width="12">
-                <template #default="{ percentage }">
-                  <div class="score-val">{{ percentage }}</div>
-                  <div class="score-lbl">总分</div>
-                </template>
-              </el-progress>
-              <div class="grade-badge" :style="{ color: scoreColor }">评级: {{ reportData.score >= 90 ? '卓越 (A)' : reportData.score >= 75 ? '良好 (B)' : '及格 (C)' }}</div>
-            </div>
-          </div>
-
-          <!-- Top Right: Radar Diagram -->
-          <div class="bento-card bento-radar">
-            <h3 class="bento-card-title">六维能力图谱</h3>
-            <div ref="radarRef" class="echarts-container"></div>
-          </div>
-
-          <!-- Middle: KPIs -->
-          <div class="bento-card bento-kpis">
-            <div class="kpi-item">
-              <div class="kpi-icon">🎤</div>
-              <div class="kpi-data">
-                <div class="kpi-val">{{ reportData.wpm || '—' }} <span class="unit">WPM</span></div>
-                <div class="kpi-lbl">平均语速</div>
-              </div>
-            </div>
-            <div class="kpi-item">
-              <div class="kpi-icon">🗣️</div>
-              <div class="kpi-data">
-                <div class="kpi-val">{{ totalRounds }}</div>
-                <div class="kpi-lbl">交流轮次</div>
-              </div>
-            </div>
-            <div class="kpi-item" v-if="emotionSummary">
-              <div class="kpi-icon">✨</div>
-              <div class="kpi-data">
-                <div class="kpi-val">{{ (emotionSummary.avgConfidence * 100).toFixed(0) }}<span class="unit">%</span></div>
-                <div class="kpi-lbl">表现自信指数</div>
-              </div>
-            </div>
-            <div class="kpi-item" v-if="emotionSummary">
-              <div class="kpi-icon">🎭</div>
-              <div class="kpi-data">
-                <div class="kpi-val highlight">{{ emotionLabel(emotionSummary.dominantEmotion) }}</div>
-                <div class="kpi-lbl">主导情绪</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Sentiment Analysis Card -->
-          <div v-if="emotionSummary || reportData.emotionFromAI" class="bento-card bento-sentiment">
-            <h3 class="bento-card-title">🧠 情感分析
-              <el-tag size="small" type="success" effect="plain" style="margin-left: 8px">视频模式</el-tag>
-            </h3>
-            <div class="sentiment-content">
-              <div v-if="(emotionSummary || reportData.emotionFromAI)?.emotionDistribution" class="emotion-bars">
-                <div v-for="(val, key) in (emotionSummary || reportData.emotionFromAI).emotionDistribution" :key="key" class="em-bar-row">
-                  <span class="em-name">{{ emotionLabel(key) }}</span>
-                  <div class="em-bar-bg">
-                    <div class="em-bar-fill" :style="{ width: (val * 100) + '%', background: emotionColor(key) }"></div>
-                  </div>
-                  <span class="em-pct">{{ (val * 100).toFixed(0) }}%</span>
-                </div>
-              </div>
-              <div v-if="reportData.emotionSummaryText" class="sentiment-summary">
-                <p>{{ reportData.emotionSummaryText }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bottom Left: AI Eval -->
-          <div class="bento-card bento-feedback">
-            <h3 class="bento-card-title">🤖 面试官综合评价</h3>
-            <div class="markdown-body custom-md" v-html="renderMarkdown(reportData.feedback || '暂无反馈')"></div>
-          </div>
-
-          <!-- Bottom Right: Roadmap -->
-          <div class="bento-card bento-roadmap">
-            <h3 class="bento-card-title">🚀 定制化提升路线</h3>
-            <div v-if="reportData.recommendations?.length" class="timeline-wrapper">
-              <el-timeline>
-                <el-timeline-item
-                  v-for="(rec, i) in reportData.recommendations" :key="i"
-                  :timestamp="rec.period"
-                  placement="top"
-                  :type="i === 0 ? 'success' : 'primary'"
-                  :hollow="i !== 0"
-                >
-                  <div class="roadmap-item">
-                    <h4>{{ rec.action }}</h4>
-                    <p>{{ rec.detail }}</p>
-                  </div>
-                </el-timeline-item>
-              </el-timeline>
-            </div>
-            <el-empty v-else description="暂无针对性建议" />
-          </div>
-        </div>
-      </div>
-    </div>
+    <InterviewReportOverlay
+      v-if="showReport"
+      :display-score="displayScore"
+      :score="reportData.score"
+      :score-color="scoreColor"
+      :metrics="reportMetrics"
+      :emotion-distribution="resolvedEmotionDistribution"
+      :emotion-summary-text="reportData.emotionSummaryText"
+      emotion-tag="视频模式"
+      :feedback-html="renderMarkdown(reportData.feedback || '暂无反馈')"
+      :recommendations="reportData.recommendations"
+      :emotion-label-fn="emotionLabel"
+      :emotion-color-fn="emotionColor"
+      @history="router.push('/history')"
+      @home="router.push('/')"
+    >
+      <template #radar>
+        <div ref="radarRef" class="radar-host"></div>
+      </template>
+    </InterviewReportOverlay>
   </div>
 </template>
 
@@ -167,15 +73,16 @@ import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
 import { getPreferenceAPI } from '@/api/user'
 import { initModels, analyzeFrame, getEmotionSummary, EMOTION_LABELS } from '@/utils/emotionAnalyzer'
 import { userKey } from '@/utils/auth'
+import InterviewReportOverlay from '@/components/interview/InterviewReportOverlay.vue'
+import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
+import { buildVideoInterviewReportMetrics, parseInterviewFinishPayload } from '@/utils/interviewReport'
+import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFallback } from '@/utils/interviewEntry'
 
 const router = useRouter()
 const route = useRoute()
 const position = ref(route.query.role || 'Java后端开发')
 const difficultyLevel = ref(route.query.difficulty || 'mid')
-const focusAreas = computed(() => {
-  if (typeof route.query.focus !== 'string' || !route.query.focus.trim()) return []
-  return route.query.focus.split(',').map((item) => item.trim()).filter(Boolean)
-})
+const focusAreas = computed(() => parseFocusAreas(route.query.focus))
 const effectiveFocusAreas = ref([])
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -201,6 +108,16 @@ const scoreColor = computed(() => {
   if (displayScore.value >= 60) return '#0ea5e9'
   return '#ef4444'
 })
+const resolvedEmotionSource = computed(() => emotionSummary.value || reportData.emotionFromAI || null)
+const resolvedEmotionDistribution = computed(() => resolvedEmotionSource.value?.emotionDistribution || null)
+const reportMetrics = computed(() => {
+  return buildVideoInterviewReportMetrics({
+    wpm: reportData.wpm,
+    totalRounds: totalRounds.value,
+    emotionSummary: resolvedEmotionSource.value,
+    emotionLabel
+  })
+})
 
 const reportData = reactive({
   score: 0, feedback: '', wpm: 0,
@@ -212,6 +129,7 @@ const reportData = reactive({
 const emotionTimeline = ref([])
 const emotionSummary = ref(null)
 let emotionInterval = null
+let eventSource = null
 
 // Media
 let mediaStream = null
@@ -227,16 +145,6 @@ let pendingEndType = null
 let voiceTurns = []
 let turnStart = 0
 
-// ─── Ability dimensions (same as Interview.vue) ─────────────────────────────
-const abilityDimensions = {
-  techDepth:      { label: '技术深度', color: '#409EFF' },
-  breadth:        { label: '知识广度', color: '#67C23A' },
-  problemSolving: { label: '解题思路', color: '#E6A23C' },
-  expression:     { label: '表达清晰', color: '#F56C6C' },
-  logic:          { label: '逻辑思维', color: '#909399' },
-  adaptability:   { label: '应变能力', color: '#C71585' }
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const renderMarkdown = (text) => text ? marked.parse(text) : ''
 
@@ -245,11 +153,6 @@ const emotionLabel = (key) => EMOTION_LABELS[key] || key
 const emotionColor = (key) => {
   const colors = { neutral: '#909399', happy: '#67C23A', sad: '#5B9BD5', angry: '#F56C6C', fearful: '#E6A23C', disgusted: '#C71585', surprised: '#409EFF' }
   return colors[key] || '#909399'
-}
-
-const getGradeType = (grade) => {
-  const map = { A: 'danger', B: 'success', C: 'primary', D: 'warning', E: 'info' }
-  return map[grade] || 'info'
 }
 
 // Agent styling for subtitle label
@@ -289,50 +192,22 @@ onMounted(async () => {
   })
 
   // 3. Start interview session
-  const isTailored = route.query.isTailored === 'true'
-  let resumeQuestions = undefined
-  if (isTailored) {
-    try {
-      const cached = localStorage.getItem(userKey('resume_analysis'))
-      if (cached) {
-        const parsed = JSON.parse(cached)
-        if (parsed && parsed.tailoredQuestions) {
-          resumeQuestions = parsed.tailoredQuestions
-        }
-      }
-    } catch {}
-    // localStorage 无数据时，静默尝试从后端获取
-    if (!resumeQuestions) {
-      try {
-        const token = localStorage.getItem('token')
-        const resp = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/resume/profile', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        if (resp.ok) {
-          const result = await resp.json()
-          if (result.code === 200 && result.data && result.data.tailoredQuestions) {
-            resumeQuestions = result.data.tailoredQuestions
-          }
-        }
-      } catch {}
-    }
-  }
+  const resumeQuestions = await loadTailoredResumeQuestions({
+    isTailored: route.query.isTailored === 'true',
+    storageKey: userKey('resume_analysis'),
+    apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '',
+    token: localStorage.getItem('token'),
+  })
 
   // 兜底：通过非 Setup 入口时，从偏好加载配置
-  if (!route.query.role && !route.query.focus && !route.query.difficulty) {
-    try {
-      const p = await getPreferenceAPI()
-      if (p) {
-        if (p.defaultRole) position.value = p.defaultRole
-        if (p.difficultyLevel) difficultyLevel.value = p.difficultyLevel
-        if (p.focusAreas) {
-          try {
-            const areas = typeof p.focusAreas === 'string' ? JSON.parse(p.focusAreas) : p.focusAreas
-            if (Array.isArray(areas) && areas.length) effectiveFocusAreas.value = areas
-          } catch {}
-        }
-      }
-    } catch {}
+  const preferenceFallback = await loadInterviewPreferenceFallback({
+    query: route.query,
+    getPreference: getPreferenceAPI
+  })
+  if (preferenceFallback) {
+    if (preferenceFallback.position) position.value = preferenceFallback.position
+    if (preferenceFallback.difficultyLevel) difficultyLevel.value = preferenceFallback.difficultyLevel
+    if (preferenceFallback.focusAreas.length) effectiveFocusAreas.value = preferenceFallback.focusAreas
   }
 
   try {
@@ -353,10 +228,18 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
   stopListening()
   stopSpeaking()
   stopEmotionSampling()
   if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null }
+  if (radarChartInstance) {
+    radarChartInstance.dispose()
+    radarChartInstance = null
+  }
 })
 
 // ─── Emotion Sampling (background, every 3 seconds) ──────────────────────────
@@ -398,7 +281,8 @@ function sendToAI(message) {
 
   const token = localStorage.getItem('token') || ''
   const url = `/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(message)}&token=${token}`
-  const eventSource = new EventSource(url)
+  if (eventSource) eventSource.close()
+  eventSource = new EventSource(url)
 
   let fullText = ''
 
@@ -410,6 +294,7 @@ function sendToAI(message) {
       ElMessage.error('AI 错误: ' + d.error)
       isStreaming.value = false
       eventSource.close()
+      eventSource = null
       startListening()
       return
     }
@@ -417,6 +302,7 @@ function sendToAI(message) {
     if (d.done === 'true' || d.done === true) {
       isStreaming.value = false
       eventSource.close()
+      eventSource = null
       totalRounds.value++
       if (pendingEndType) {
         const endType = pendingEndType
@@ -465,6 +351,7 @@ function sendToAI(message) {
   eventSource.onerror = () => {
     isStreaming.value = false
     eventSource.close()
+    eventSource = null
     startListening()
   }
 }
@@ -638,24 +525,14 @@ const performEndInterview = async (endType = 'manual') => {
     loadingMsg.close()
 
     if (res) {
+      const parsedPayload = parseInterviewFinishPayload(res)
       reportData.score = res.score || 0
       reportData.feedback = res.feedback || ''
       reportData.wpm = wpm
-
-      try { reportData.ability = typeof res.abilityJson === 'string' ? JSON.parse(res.abilityJson) : (res.abilityJson || {}) }
-      catch { reportData.ability = {} }
-
-      try { reportData.recommendations = typeof res.recommendations === 'string' ? JSON.parse(res.recommendations) : (res.recommendations || []) }
-      catch { reportData.recommendations = [] }
-
-      // Parse emotion data from backend (contains AI summary text)
-      try {
-        const emotionData = typeof res.emotionJson === 'string' ? JSON.parse(res.emotionJson) : (res.emotionJson || null)
-        if (emotionData) {
-          reportData.emotionFromAI = emotionData
-          reportData.emotionSummaryText = emotionData.summary || ''
-        }
-      } catch { reportData.emotionFromAI = null; reportData.emotionSummaryText = '' }
+      reportData.ability = parsedPayload.ability
+      reportData.recommendations = parsedPayload.recommendations
+      reportData.emotionFromAI = parsedPayload.emotion
+      reportData.emotionSummaryText = parsedPayload.emotion?.summary || ''
 
       showReport.value = true
       nextTick(() => {
@@ -695,57 +572,16 @@ function animateRadar() {
   
   const rec = reportData
   if (!rec) return
-  
-  const gradeToNum = (grade) => {
-    const map = { A: 95, B: 80, C: 65, D: 45, E: 20 }
-    return map[grade] || 45
-  }
 
   const scores = [
-    gradeToNum(rec.ability.techDepth),
-    gradeToNum(rec.ability.breadth),
-    gradeToNum(rec.ability.logic),
-    gradeToNum(rec.ability.expression),
-    gradeToNum(rec.ability.adaptability),
-    gradeToNum(rec.ability.problemSolving)
+    gradeToRadarScore(rec.ability.techDepth),
+    gradeToRadarScore(rec.ability.breadth),
+    gradeToRadarScore(rec.ability.logic),
+    gradeToRadarScore(rec.ability.expression),
+    gradeToRadarScore(rec.ability.adaptability),
+    gradeToRadarScore(rec.ability.problemSolving)
   ]
-
-  const option = {
-    radar: {
-      indicator: [
-        { name: '技术深度', max: 100 },
-        { name: '知识广度', max: 100 },
-        { name: '逻辑思维', max: 100 },
-        { name: '表达清晰', max: 100 },
-        { name: '应变能力', max: 100 },
-        { name: '解题思路', max: 100 }
-      ],
-      shape: 'polygon',
-      axisName: { color: '#cbd5e1', fontSize: 13, fontWeight: 600 },
-      splitNumber: 5,
-      splitArea: { areaStyle: { color: ['rgba(16,185,129,0.06)', 'rgba(16,185,129,0.02)', 'transparent', 'transparent', 'transparent'] } },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } }
-    },
-    tooltip: { trigger: 'item' },
-    series: [{
-      type: 'radar',
-      data: [{
-        value: scores,
-        name: '综合评估',
-        symbolSize: 6,
-        itemStyle: { color: '#10b981', borderColor: '#fff', borderWidth: 2 },
-        lineStyle: { color: '#10b981', width: 2 },
-        areaStyle: { 
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(16,185,129,0.6)' },
-            { offset: 1, color: 'rgba(16,185,129,0.1)' }
-          ])
-        }
-      }]
-    }]
-  }
-  radarChartInstance.setOption(option)
+  radarChartInstance.setOption(buildInterviewRadarOption(echarts, scores))
 }
 </script>
 
@@ -916,292 +752,6 @@ function animateRadar() {
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-.dashboard-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 28px 20px;
-  background:
-    radial-gradient(circle at top, rgba(58, 56, 139, 0.20), transparent 35%),
-    rgba(18, 20, 25, 0.84);
-  backdrop-filter: blur(18px);
-  overflow-y: auto;
-}
-
-.dashboard-container {
-  width: min(1160px, 100%);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.dash-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.dash-title {
-  font-size: 24px;
-  font-weight: 750;
-  color: #f8fafc;
-}
-
-.dash-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.bento-grid {
-  display: grid;
-  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.25fr) minmax(0, 1.25fr);
-  grid-template-rows: auto auto auto;
-  gap: 18px;
-}
-
-.bento-card {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(18px);
-  border-radius: 18px;
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  box-shadow:
-    0 20px 50px rgba(0, 0, 0, 0.18),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-.bento-card-title {
-  margin: 0 0 16px 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #e6ebf2;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.bento-score {
-  grid-column: 1 / 2;
-  grid-row: 1 / 3;
-  align-items: center;
-  text-align: center;
-  justify-content: center;
-}
-
-.score-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  justify-content: center;
-}
-
-.score-val {
-  font-size: 38px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.score-lbl {
-  font-size: 13px;
-  color: rgba(230, 235, 242, 0.72);
-}
-
-.grade-badge {
-  font-size: 16px;
-  font-weight: 700;
-  margin-top: 6px;
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.bento-radar {
-  grid-column: 2 / 4;
-  grid-row: 1 / 2;
-  min-height: 340px;
-}
-
-.echarts-container {
-  width: 100%;
-  height: 100%;
-  min-height: 300px;
-  flex: 1;
-}
-
-.bento-kpis {
-  grid-column: 2 / 4;
-  grid-row: 2 / 3;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  padding: 18px;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.kpi-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.kpi-icon {
-  font-size: 28px;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 10px;
-  border-radius: 14px;
-  line-height: 1;
-}
-
-.kpi-val {
-  font-size: 20px;
-  font-weight: 800;
-  color: #f8fafc;
-}
-
-.kpi-val.highlight {
-  color: #e0d8ff;
-}
-
-.kpi-lbl {
-  font-size: 12px;
-  color: rgba(230, 235, 242, 0.62);
-}
-
-.unit {
-  font-size: 12px;
-  font-weight: normal;
-  color: rgba(230, 235, 242, 0.50);
-  margin-left: 2px;
-}
-
-.bento-sentiment {
-  grid-column: 1 / 4;
-  grid-row: 3 / 4;
-}
-
-.sentiment-content {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-.emotion-bars {
-  flex: 1;
-  min-width: 280px;
-}
-
-.em-bar-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.em-name {
-  width: 40px;
-  font-size: 13px;
-  color: rgba(230, 235, 242, 0.68);
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.em-bar-bg {
-  flex: 1;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.em-bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.8s ease;
-}
-
-.em-pct {
-  width: 40px;
-  font-size: 13px;
-  color: rgba(230, 235, 242, 0.78);
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.sentiment-summary {
-  flex: 1;
-  min-width: 220px;
-}
-
-.sentiment-summary p {
-  color: #dce3ec;
-  font-size: 14px;
-  line-height: 1.75;
-  margin: 0;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 14px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-}
-
-.bento-feedback {
-  grid-column: 1 / 3;
-  grid-row: 4 / 5;
-  min-height: 300px;
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.bento-roadmap {
-  grid-column: 3 / 4;
-  grid-row: 4 / 5;
-  min-height: 300px;
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.custom-md {
-  color: #e4eaf1;
-  font-size: 15px;
-  line-height: 1.78;
-}
-
-.custom-md :deep(h1),
-.custom-md :deep(h2),
-.custom-md :deep(h3) {
-  color: #f8fafc;
-  margin-top: 0;
-  padding-bottom: 8px;
-}
-
-.custom-md :deep(strong) {
-  color: #b9afff;
-}
-
-.roadmap-item h4 {
-  margin: 0 0 6px 0;
-  color: #f8fafc;
-  font-size: 15px;
-}
-
-.roadmap-item p {
-  margin: 0;
-  color: rgba(230, 235, 242, 0.80);
-  font-size: 13.5px;
-  line-height: 1.65;
-}
-
-:deep(.el-timeline-item__content) {
-  padding-bottom: 16px;
-}
-
 :deep(.el-input__wrapper) {
   background: var(--surface-strong);
   box-shadow: 0 0 0 1px rgba(23, 26, 31, 0.06) inset;
@@ -1222,41 +772,16 @@ function animateRadar() {
     0 0 0 3px rgba(58, 56, 139, 0.08);
 }
 
-:deep(.el-button.is-plain) {
-  background: rgba(255, 255, 255, 0.55);
-  color: var(--ink);
-  box-shadow: 0 0 0 1px rgba(23, 26, 31, 0.06);
-}
-
 @media (max-width: 1100px) {
   .camera-stage {
     height: calc(100vh - 110px);
     height: calc(100dvh - 110px);
   }
-
-  .bento-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .bento-score,
-  .bento-radar,
-  .bento-kpis,
-  .bento-sentiment,
-  .bento-feedback,
-  .bento-roadmap {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .bento-kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 860px) {
   .vi-header,
-  .vi-main,
-  .dashboard-overlay {
+  .vi-main {
     padding-left: 16px;
     padding-right: 16px;
   }
@@ -1286,21 +811,6 @@ function animateRadar() {
 
   .subtitle-text {
     max-height: 100px;
-  }
-
-  .dash-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .dash-actions {
-    width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-
-  .sentiment-content {
-    flex-direction: column;
   }
 
   .kpi-item {
