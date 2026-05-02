@@ -158,6 +158,13 @@
             <artifactId>flyway-mysql</artifactId>
         </dependency>
 
+        <!-- .env 文件加载（本地开发自动读取环境变量） -->
+        <dependency>
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>java-dotenv</artifactId>
+            <version>5.2.2</version>
+        </dependency>
+
         <!-- Spring Boot Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

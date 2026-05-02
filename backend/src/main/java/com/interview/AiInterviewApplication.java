@@ -1,5 +1,6 @@
 package com.interview;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -15,6 +16,13 @@ import java.nio.file.Paths;
 @ConfigurationPropertiesScan
 public class AiInterviewApplication {
     public static void main(String[] args) {
+        // 本地开发时自动加载项目根目录 .env 到系统属性，Docker 环境跳过
+        Dotenv dotenv = Dotenv.configure().directory("../").ignoreIfMissing().load();
+        dotenv.entries().forEach(e -> {
+            if (System.getProperty(e.getKey()) == null) {
+                System.setProperty(e.getKey(), e.getValue());
+            }
+        });
         SpringApplication.run(AiInterviewApplication.class, args);
         System.out.println("====== AI Interview Backend Started ======");
     }
