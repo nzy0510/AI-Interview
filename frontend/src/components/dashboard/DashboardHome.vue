@@ -485,8 +485,12 @@ const confirmMode = (mode) => {
     role = resumeProfile.value.position || resumeProfile.value.targetRole || ''
   }
   if (!role) role = pref.value.defaultRole || interviewSetupDefaults.roleOptions[0]
+  const focus = (() => {
+    try { const areas = JSON.parse(pref.value.focusAreas || '[]'); return Array.isArray(areas) ? areas.join(',') : '' }
+    catch { return '' }
+  })()
   const path = mode === 'video' ? '/video-interview' : '/interview'
-  router.push({ path, query: { role, isTailored, difficulty: pref.value.difficultyLevel || 'mid' } })
+  router.push({ path, query: { role, isTailored, difficulty: pref.value.difficultyLevel || 'mid', focus } })
 }
 
 const loadPreference = async () => {
