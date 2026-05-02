@@ -71,3 +71,12 @@ export const getPreferenceAPI = () => {
 export const updatePreferenceAPI = (data) => {
     return request({ url: '/user/preference', method: 'put', data });
 };
+
+export const uploadAvatarAPI = (formData) => {
+    return request({
+        url: '/user/avatar',
+        method: 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
+}

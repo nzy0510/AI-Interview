@@ -20,9 +20,26 @@
             <h2 class="section-title">账号信息</h2>
           </div>
           <el-button type="primary" size="small" :loading="savingProfile" @click="saveProfile">保存资料</el-button>
+          <el-button type="danger" size="small" plain @click="handleLogout">退出登录</el-button>
         </div>
         <div class="settings-grid">
           <div class="settings-block">
+            <div class="avatar-section">
+              <el-upload
+                class="avatar-uploader"
+                :action="avatarUploadUrl"
+                :headers="uploadHeaders"
+                :show-file-list="false"
+                :before-upload="beforeAvatarUpload"
+                :on-success="handleAvatarSuccess"
+                :on-error="handleAvatarError"
+                accept="image/png,image/jpeg,image/webp"
+              >
+                <el-avatar v-if="profile.avatar" :src="profile.avatar" :size="72" />
+                <el-icon v-else class="avatar-uploader-icon" :size="72"><UserFilled /></el-icon>
+              </el-upload>
+              <p class="avatar-hint">点击上传头像，支持 PNG / JPG / WebP，最大 2MB</p>
+            </div>
             <el-form label-position="top">
               <el-form-item label="用户名">
                 <el-input :model-value="profile.username" disabled />
@@ -95,9 +112,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ArrowLeft, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { getCurrentUserAPI, updateProfileAPI, changePasswordAPI, getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
+import { getCurrentUserAPI, updateProfileAPI, changePasswordAPI, getPreferenceAPI, updatePreferenceAPI, uploadAvatarAPI } from '@/api/user'
+import { logout } from '@/utils/auth'
 
 const router = useRouter()
 const savingProfile = ref(false)
@@ -106,7 +124,7 @@ const changingPwd = ref(false)
 
 const roleOptions = ['Java 后端开发', 'Web 前端开发', '测试开发', '算法工程师', '产品经理']
 
-const profile = reactive({ username: '', nickname: '', email: '' })
+const profile = reactive({ username: '', nickname: '', email: '', avatar: '' })
 const passwordForm = reactive({ oldPassword: '', newPassword: '' })
 
 const pref = reactive({
@@ -122,6 +140,7 @@ const loadData = async () => {
       profile.username = user.username || ''
       profile.nickname = user.nickname || ''
       profile.email = user.email || ''
+      profile.avatar = user.avatar || ''
     }
   } catch { /* defaults ok */ }
   try {
@@ -176,6 +195,35 @@ const savePreference = async () => {
 }
 
 onMounted(loadData)
+
+const avatarUploadUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/user/avatar`
+const uploadHeaders = { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
+
+const beforeAvatarUpload = (file) => {
+  const isImage = ['image/png', 'image/jpeg', 'image/webp'].includes(file.type)
+  const isLt2M = file.size / 1024 / 1024 < 2
+  if (!isImage) { ElMessage.error('仅支持 PNG / JPG / WebP 格式！'); return false }
+  if (!isLt2M) { ElMessage.error('头像文件不能超过 2MB！'); return false }
+  return true
+}
+
+const handleAvatarSuccess = (response) => {
+  if (response?.code === 200 && response.data?.avatarUrl) {
+    profile.avatar = response.data.avatarUrl
+    ElMessage.success('头像已更新')
+  } else {
+    ElMessage.error(response?.msg || '上传失败')
+  }
+}
+
+const handleAvatarError = () => {
+  ElMessage.error('头像上传失败，请重试')
+}
+
+const handleLogout = () => {
+  logout()
+  router.push('/login')
+}
 </script>
 
 <style scoped>
@@ -273,5 +321,39 @@ onMounted(loadData)
 
 @media (max-width: 640px) {
   .settings-header, .page-body { padding-left: 16px; padding-right: 16px; }
+}
+
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.avatar-uploader :deep(.el-upload) {
+  border: 2px dashed rgba(69, 70, 82, 0.15);
+  border-radius: 50%;
+  cursor: pointer;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s;
+}
+.avatar-uploader :deep(.el-upload):hover {
+  border-color: #3a388b;
+}
+
+.avatar-uploader-icon {
+  color: #b0aea5;
+}
+
+.avatar-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
 }
 </style>
