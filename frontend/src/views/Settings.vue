@@ -26,6 +26,7 @@
             <el-form label-position="top">
               <el-form-item label="用户名">
                 <el-input :model-value="profile.username" disabled />
+                <span class="field-hint">用户名为账户唯一标识，注册后不可修改</span>
               </el-form-item>
               <el-form-item label="展示昵称">
                 <el-input v-model="profile.nickname" placeholder="你的展示名称" maxlength="20" />
@@ -255,6 +256,14 @@ onMounted(loadData)
 .block-title { margin: 0 0 12px; font-size: 16px; color: #191c1e; }
 
 :deep(.el-input.is-disabled .el-input__wrapper) { background: #fff; }
+
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
 
 @media (max-width: 960px) {
   .settings-header { flex-direction: column; align-items: stretch; }

@@ -4,7 +4,7 @@
       <div class="brand-cluster">
         <el-button :icon="ArrowLeft" class="icon-button" circle @click="router.push('/')" />
         <div class="header-copy">
-          <p class="eyebrow">Architectural Intelligence</p>
+          <p class="eyebrow">面试报告</p>
           <h1 class="page-title">面试评估报告</h1>
           <p class="page-subtitle">把每一次面试整理成可回看的趋势、能力与反馈档案。</p>
         </div>
@@ -12,7 +12,7 @@
 
       <div class="header-actions">
         <el-tag effect="plain" type="info" class="status-pill">历史归档</el-tag>
-        <el-button type="primary" class="primary-cta" @click="router.push('/')">开始面试</el-button>
+        <el-button type="primary" class="primary-cta" @click="router.push('/interview/setup')">开始面试</el-button>
       </div>
     </header>
 
@@ -58,7 +58,7 @@
       <template v-if="!loading && historyList.length === 0">
         <section class="surface-card empty-shell">
           <el-empty :description="reportCenter.emptyStates.all">
-            <el-button type="primary" class="primary-cta" @click="router.push('/')">开始面试</el-button>
+            <el-button type="primary" class="primary-cta" @click="router.push('/interview/setup')">开始面试</el-button>
           </el-empty>
         </section>
       </template>
@@ -67,7 +67,7 @@
         <section class="surface-card section-shell overview-shell">
           <div class="section-head">
             <div>
-              <p class="section-kicker">Overview</p>
+              <p class="section-kicker">数据概览</p>
               <h2 class="section-title">筛选与摘要</h2>
               <p class="section-desc">先从模式和关键字收窄范围，再看趋势和列表。</p>
             </div>
@@ -103,7 +103,7 @@
         <section class="surface-card section-shell chart-shell">
           <div class="section-head">
             <div>
-              <p class="section-kicker">Growth Lens</p>
+              <p class="section-kicker">成长趋势</p>
               <h2 class="section-title">能力成长曲线</h2>
               <p class="section-desc">在评分和能力热力图之间切换，观察长期变化趋势。</p>
             </div>
@@ -128,7 +128,7 @@
         <section class="surface-card section-shell performance-shell">
           <div class="section-head compact">
             <div>
-              <p class="section-kicker">Recent Performance</p>
+              <p class="section-kicker">近期表现</p>
               <h2 class="section-title">最近表现与能力画像</h2>
             </div>
           </div>
@@ -156,7 +156,7 @@
         <section v-if="knowledgeCoverage?.details?.length" class="surface-card section-shell coverage-section">
           <div class="section-head">
             <div>
-              <p class="section-kicker">Knowledge Coverage</p>
+              <p class="section-kicker">知识覆盖</p>
               <h2 class="section-title">知识领域覆盖</h2>
               <p class="section-desc">基于所有历史面试中 RAG 真实命中的知识原子，按分类统计覆盖度。</p>
             </div>
@@ -176,7 +176,7 @@
         <section class="surface-card section-shell list-shell">
           <div class="section-head compact">
             <div>
-              <p class="section-kicker">Interview Ledger</p>
+              <p class="section-kicker">面试记录</p>
               <h2 class="section-title">历史面试记录</h2>
             </div>
             <div class="list-meta">
@@ -246,7 +246,7 @@
         <section class="drawer-panel">
           <div class="section-head compact">
             <div>
-              <p class="section-kicker">Radar View</p>
+              <p class="section-kicker">能力雷达</p>
               <h2 class="section-title">六维能力评级</h2>
             </div>
           </div>
@@ -265,7 +265,7 @@
         <section class="drawer-panel">
           <div class="section-head compact">
             <div>
-              <p class="section-kicker">AI Review</p>
+              <p class="section-kicker">AI 点评</p>
               <h2 class="section-title">综合反馈</h2>
             </div>
           </div>
@@ -276,7 +276,7 @@
           <section class="drawer-panel">
             <div class="section-head compact">
               <div>
-                <p class="section-kicker">Sentiment</p>
+                <p class="section-kicker">情绪分析</p>
                 <h2 class="section-title">情感分析</h2>
               </div>
               <el-tag size="small" :type="selectedEmotion.source === 'video' ? 'success' : 'primary'" effect="plain">
@@ -318,7 +318,7 @@
           <section class="drawer-panel">
             <div class="section-head compact">
               <div>
-                <p class="section-kicker">Knowledge Map</p>
+                <p class="section-kicker">知识图谱</p>
                 <h2 class="section-title">知识星图 · 本场面试</h2>
               </div>
               <el-tag size="small" effect="plain" type="primary">{{ selectedKnowledges.length }} 个概念</el-tag>
@@ -339,7 +339,7 @@
         <section class="drawer-panel">
           <div class="section-head compact">
             <div>
-              <p class="section-kicker">Next Moves</p>
+              <p class="section-kicker">后续行动</p>
               <h2 class="section-title">提升建议</h2>
             </div>
           </div>
@@ -467,7 +467,7 @@ const summaryCards = computed(() => {
 })
 const overviewMetrics = computed(() => [
   {
-    kicker: 'Volume',
+    kicker: '报告数',
     label: '累计报告',
     value: sortedHistoryList.value.length || '--',
     trend: sortedHistoryList.value.length ? '稳步积累' : '待开始',
@@ -475,7 +475,7 @@ const overviewMetrics = computed(() => [
     description: '所有归档面试记录都会在这里汇总。'
   },
   {
-    kicker: 'Score',
+    kicker: '平均分',
     label: '平均得分',
     value: sortedHistoryList.value.length ? `${averageScore.value}` : '--',
     trend: sortedHistoryList.value.length ? '基线' : '暂无',
@@ -483,7 +483,7 @@ const overviewMetrics = computed(() => [
     description: '用来快速判断整体稳定性。'
   },
   {
-    kicker: 'Mode Mix',
+    kicker: '模式分布',
     label: '视频 / 文字',
     value: sortedHistoryList.value.length
       ? `${sortedHistoryList.value.filter((row) => row.interviewMode === 'video').length} / ${sortedHistoryList.value.filter((row) => row.interviewMode !== 'video').length}`
@@ -493,7 +493,7 @@ const overviewMetrics = computed(() => [
     description: '帮助查看训练模式的分布。'
   },
   {
-    kicker: 'Trend',
+    kicker: '变化趋势',
     label: '最近变化',
     value: scoreDelta.value == null ? '--' : `${scoreDelta.value > 0 ? '+' : ''}${scoreDelta.value}`,
     trend: scoreDelta.value == null ? '无对比' : scoreDelta.value > 0 ? '上升' : scoreDelta.value < 0 ? '回落' : '持平',

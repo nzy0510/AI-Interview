@@ -142,27 +142,6 @@
                 </button>
               </div>
             </section>
-
-            <section class="surface-card section-block">
-              <div class="block-head">
-                <div>
-                  <p class="section-kicker">Focus</p>
-                  <h3 class="section-title">重点能力</h3>
-                </div>
-                <el-tag effect="plain" type="info">{{ focusAreas.length }} 项已选</el-tag>
-              </div>
-
-              <el-checkbox-group v-model="focusAreas" class="focus-grid">
-                <el-checkbox
-                  v-for="item in setupDefaults.focusOptions"
-                  :key="item.value"
-                  :label="item.value"
-                  border
-                >
-                  {{ item.label }}
-                </el-checkbox>
-              </el-checkbox-group>
-            </section>
           </div>
 
           <aside class="side-column">
@@ -205,20 +184,20 @@
             <section class="surface-card section-block">
               <div class="block-head">
                 <div>
-                  <p class="section-kicker">Checklist</p>
-                  <h3 class="section-title">准备清单</h3>
+                  <p class="section-kicker">Focus</p>
+                  <h3 class="section-title">重点能力</h3>
                 </div>
-                <el-tag effect="plain" type="info">{{ completedChecklist.length }}/{{ setupDefaults.checklist.length }}</el-tag>
+                <el-tag effect="plain" type="info">{{ focusAreas.length }} 项已选</el-tag>
               </div>
-
-              <el-checkbox-group v-model="completedChecklist" class="checklist-stack">
+              <p class="focus-hint">选中的能力会通过提问策略影响 AI 面试官的追问方向。</p>
+              <el-checkbox-group v-model="focusAreas" class="focus-stack">
                 <el-checkbox
-                  v-for="item in setupDefaults.checklist"
-                  :key="item"
-                  :label="item"
+                  v-for="item in setupDefaults.focusOptions"
+                  :key="item.value"
+                  :label="item.value"
                   border
                 >
-                  {{ item }}
+                  {{ item.label }}
                 </el-checkbox>
               </el-checkbox-group>
             </section>
@@ -251,10 +230,6 @@ const role = ref('')
 const experienceLevel = ref('mid')
 const focusAreas = ref([])
 const mode = ref('text')
-const completedChecklist = ref([
-  setupDefaults.checklist[0],
-  setupDefaults.checklist[1]
-])
 
 const readStoredResume = () => {
   const keys = [
@@ -709,11 +684,23 @@ const startInterview = (preferredMode) => {
   margin-top: 8px;
 }
 
-.focus-grid,
-.checklist-stack {
+.focus-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.focus-hint {
+  margin: 0 0 14px;
+  color: #5a6678;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.focus-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .sticky-panel {
@@ -844,8 +831,7 @@ const startInterview = (preferredMode) => {
   .status-grid,
   .resume-summary,
   .experience-grid,
-  .focus-grid,
-  .checklist-stack {
+  .focus-grid {
     grid-template-columns: 1fr;
   }
 }

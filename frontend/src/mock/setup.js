@@ -33,30 +33,6 @@ export const interviewSetupDefaults = {
       description: '适合进行更接近真实场景的对话训练，当前先保留入口。',
       tag: '进阶模式'
     }
-  ],
-  checklist: [
-    '确认目标岗位是否准确',
-    '检查简历画像是否已加载',
-    '勾选本次最想强化的能力',
-    '先选择文字或视频模式',
-    '点击开始后进入对应面试页'
-  ],
-  placeholderModules: [
-    {
-      title: '题库联动',
-      status: '待接入',
-      description: '后续可把岗位题库与个人画像动态拼装。'
-    },
-    {
-      title: '情境模拟',
-      status: '待接入',
-      description: '后续可加入压力面、追问和白板题流程。'
-    },
-    {
-      title: '准备建议',
-      status: '待接入',
-      description: '后续可按岗位、简历和经验等级输出建议。'
-    }
   ]
 }
 
