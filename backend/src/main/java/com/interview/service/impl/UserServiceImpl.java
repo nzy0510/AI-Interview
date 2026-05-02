@@ -247,7 +247,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     : contentType.equals("image/webp") ? "webp" : "jpg";
             String filename = userId + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
 
-            Path uploadPath = Paths.get(uploadDir, "avatars");
+            Path basePath = Paths.get(uploadDir);
+            if (!basePath.isAbsolute()) {
+                basePath = Paths.get(System.getProperty("user.dir")).resolve(basePath);
+            }
+            Path uploadPath = basePath.resolve("avatars");
             Files.createDirectories(uploadPath);
 
             Path filePath = uploadPath.resolve(filename);
