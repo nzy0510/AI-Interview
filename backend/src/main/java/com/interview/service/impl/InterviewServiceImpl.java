@@ -524,10 +524,10 @@ public class InterviewServiceImpl implements InterviewService {
         return switch (focusArea) {
             case "projects" -> "项目经历深挖";
             case "depth" -> "技术原理深度";
-            case "breadth" -> "知识广度覆盖";
-            case "systemDesign" -> "系统设计与架构";
+            case "architecture" -> "系统设计与架构";
+            case "algorithm" -> "算法基础与思维";
             case "communication" -> "表达沟通与协作";
-            case "stress" -> "压力应对与稳定性";
+            case "pressure" -> "压力应对与稳定性";
             default -> focusArea;
         };
     }
