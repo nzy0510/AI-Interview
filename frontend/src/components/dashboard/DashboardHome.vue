@@ -309,8 +309,9 @@ import {
   TrendCharts, VideoCamera
 } from '@element-plus/icons-vue'
 import { getHistoryListAPI } from '@/api/interview'
-import { getMentorInsightAPI, getKnowledgeCoverageAPI, refreshMentorInsightAPI } from '@/api/user'
+import { getMentorInsightAPI, getKnowledgeCoverageAPI, refreshMentorInsightAPI, getPreferenceAPI } from '@/api/user'
 import { getUsername, userKey } from '@/utils/auth'
+import { interviewSetupDefaults } from '@/mock/setup'
 
 const router = useRouter()
 
@@ -331,6 +332,13 @@ const isParsing = ref(false)
 const selectedRole = ref('')
 const uploadUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/resume/parse`
 const uploadHeaders = ref({ Authorization: `Bearer ${localStorage.getItem('token') || ''}` })
+
+const pref = ref({
+  defaultMode: 'text',
+  defaultRole: interviewSetupDefaults.roleOptions[0],
+  difficultyLevel: 'mid',
+  focusAreas: '[]'
+})
 
 const getScoreType = (s) => s >= 85 ? 'success' : s >= 70 ? 'primary' : s >= 55 ? 'warning' : 'danger'
 const formatTime = (d) => d ? new Date(d).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '--'
@@ -424,9 +432,19 @@ const refreshMentor = async () => {
   refreshing.value = false
 }
 
+const buildInterviewQuery = (mode) => ({
+  role: selectedRole.value || pref.value.defaultRole || interviewSetupDefaults.roleOptions[0],
+  focus: (() => {
+    try { const areas = JSON.parse(pref.value.focusAreas || '[]'); return Array.isArray(areas) ? areas.join(',') : '' }
+    catch { return '' }
+  })(),
+  mode,
+  difficulty: pref.value.difficultyLevel || 'mid'
+})
+
 const goSetup = () => router.push('/interview/setup')
-const goTextInterview = () => router.push('/interview')
-const goVideoInterview = () => router.push('/video-interview')
+const goTextInterview = () => router.push({ path: '/interview', query: buildInterviewQuery('text') })
+const goVideoInterview = () => router.push({ path: '/video-interview', query: buildInterviewQuery('video') })
 const goResumePage = () => { showResumeManager.value = false; router.push({ path: '/resume' }) }
 const openResumeManager = () => { showResumeManager.value = true }
 const useExistingResume = () => { showResumeDialog.value = false; showModeDialog.value = true }
@@ -461,12 +479,30 @@ const handleResumeError = () => { isParsing.value = false; ElMessage.error('简�
 const confirmMode = (mode) => {
   showModeDialog.value = false
   const isTailored = hasResume.value ? 'true' : 'false'
+  // Extract role from resume profile if available, otherwise from preferences
+  let role = selectedRole.value
+  if (!role && resumeProfile.value) {
+    role = resumeProfile.value.position || resumeProfile.value.targetRole || ''
+  }
+  if (!role) role = pref.value.defaultRole || interviewSetupDefaults.roleOptions[0]
   const path = mode === 'video' ? '/video-interview' : '/interview'
-  router.push({ path, query: { role: selectedRole.value, isTailored } })
+  router.push({ path, query: { role, isTailored, difficulty: pref.value.difficultyLevel || 'mid' } })
+}
+
+const loadPreference = async () => {
+  try {
+    const p = await getPreferenceAPI()
+    if (p) {
+      pref.value.defaultMode = p.defaultMode || 'text'
+      pref.value.defaultRole = p.defaultRole || interviewSetupDefaults.roleOptions[0]
+      pref.value.difficultyLevel = p.difficultyLevel || 'mid'
+      pref.value.focusAreas = p.focusAreas || '[]'
+    }
+  } catch { /* dashboard works without preferences */ }
 }
 
 onMounted(async () => {
-  await Promise.all([checkExistingResume(), loadHistory()])
+  await Promise.all([checkExistingResume(), loadHistory(), loadPreference()])
   // 页面核心数据已就绪，Mentor 异步加载不阻塞渲染
   loadMentor()
 })

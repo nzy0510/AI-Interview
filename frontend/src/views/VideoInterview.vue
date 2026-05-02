@@ -164,6 +164,7 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 import { marked } from 'marked'
 import * as echarts from 'echarts'
 import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
+import { getPreferenceAPI } from '@/api/user'
 import { initModels, analyzeFrame, getEmotionSummary, EMOTION_LABELS } from '@/utils/emotionAnalyzer'
 import { userKey } from '@/utils/auth'
 
@@ -175,6 +176,7 @@ const focusAreas = computed(() => {
   if (typeof route.query.focus !== 'string' || !route.query.focus.trim()) return []
   return route.query.focus.split(',').map((item) => item.trim()).filter(Boolean)
 })
+const effectiveFocusAreas = ref([])
 
 // ─── State ────────────────────────────────────────────────────────────────────
 const videoRef = ref(null)
@@ -316,12 +318,29 @@ onMounted(async () => {
     }
   }
 
+  // 兜底：通过非 Setup 入口时，从偏好加载配置
+  if (!route.query.role && !route.query.focus && !route.query.difficulty) {
+    try {
+      const p = await getPreferenceAPI()
+      if (p) {
+        if (p.defaultRole) position.value = p.defaultRole
+        if (p.difficultyLevel) difficultyLevel.value = p.difficultyLevel
+        if (p.focusAreas) {
+          try {
+            const areas = typeof p.focusAreas === 'string' ? JSON.parse(p.focusAreas) : p.focusAreas
+            if (Array.isArray(areas) && areas.length) effectiveFocusAreas.value = areas
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
   try {
     const id = await startInterviewAPI({
       position: position.value,
       mode: 'video',
       difficultyLevel: difficultyLevel.value,
-      focusAreas: focusAreas.value,
+      focusAreas: effectiveFocusAreas.value.length ? effectiveFocusAreas.value : focusAreas.value,
       resumeQuestions
     })
     recordId.value = id

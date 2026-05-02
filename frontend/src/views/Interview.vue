@@ -211,6 +211,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Microphone, ArrowLeft, UserFilled, PieChart } from '@element-plus/icons-vue'
 import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
+import { getPreferenceAPI } from '@/api/user'
 import * as echarts from 'echarts'
 import { marked } from 'marked'
 import { userKey } from '@/utils/auth'
@@ -224,6 +225,7 @@ const focusAreas = computed(() => {
   if (typeof route.query.focus !== 'string' || !route.query.focus.trim()) return []
   return route.query.focus.split(',').map((item) => item.trim()).filter(Boolean)
 })
+const effectiveFocusAreas = ref([])
 const recordId = ref(null)
 const messageList = ref([])
 const inputMsg = ref('')
@@ -331,12 +333,29 @@ onMounted(async () => {
     }
   }
 
+  // 兜底：通过非 Setup 入口（如 Dashboard 直接进入、书签）时，从偏好加载配置
+  if (!route.query.role && !route.query.focus && !route.query.difficulty) {
+    try {
+      const p = await getPreferenceAPI()
+      if (p) {
+        if (p.defaultRole) position.value = p.defaultRole
+        if (p.difficultyLevel) difficultyLevel.value = p.difficultyLevel
+        if (p.focusAreas) {
+          try {
+            const areas = typeof p.focusAreas === 'string' ? JSON.parse(p.focusAreas) : p.focusAreas
+            if (Array.isArray(areas) && areas.length) effectiveFocusAreas.value = areas
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
   try {
     const id = await startInterviewAPI({
       position: position.value,
       mode: 'text',
       difficultyLevel: difficultyLevel.value,
-      focusAreas: focusAreas.value,
+      focusAreas: effectiveFocusAreas.value.length ? effectiveFocusAreas.value : focusAreas.value,
       resumeQuestions
     })
     recordId.value = id
