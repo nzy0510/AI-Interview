@@ -166,6 +166,7 @@ import 'echarts-wordcloud'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import { userKey } from '@/utils/auth'
+import { getPreferenceAPI } from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
@@ -173,11 +174,22 @@ const role = route.query.role || '软件开发'
 
 const analysis = ref(null)
 const showModeDialog = ref(false)
+const pref = ref({ defaultRole: '', difficultyLevel: 'mid', focusAreas: '[]' })
 
 let gaugeChartInstance = null
 let cloudChartInstance = null
 
 onMounted(async () => {
+  // 加载偏好用于面试入口
+  try {
+    const p = await getPreferenceAPI()
+    if (p) {
+      pref.value.defaultRole = p.defaultRole || ''
+      pref.value.difficultyLevel = p.difficultyLevel || 'mid'
+      pref.value.focusAreas = p.focusAreas || '[]'
+    }
+  } catch {}
+
   let profileData = null
   try {
     // 静默请求：用原生 axios 避免触发拦截器的 ElMessage.error
@@ -354,11 +366,18 @@ const initWordCloud = () => {
 // === 跳转面试 ===
 const confirmStart = (mode) => {
   showModeDialog.value = false
+  const effectiveRole = role.value !== '软件开发' ? role.value : (pref.value.defaultRole || 'Java 后端开发')
+  const focus = (() => {
+    try { const areas = JSON.parse(pref.value.focusAreas || '[]'); return Array.isArray(areas) ? areas.join(',') : '' }
+    catch { return '' }
+  })()
   const path = mode === 'video' ? '/video-interview' : '/interview'
-  
-  // 把特别定制题通过 query 或 ls 带过去 (由于过长，选用 localstorage 或直接依赖已有的 resume_analysis)
-  // 此处原先代码可以直接取 localStorage.getItem('resume_analysis') 在 Interview.vue 里作为 SystemPrompt 注入
-  router.push({ path, query: { role, isTailored: 'true' } })
+  router.push({ path, query: {
+    role: effectiveRole,
+    isTailored: 'true',
+    difficulty: pref.value.difficultyLevel || 'mid',
+    focus
+  }})
 }
 
 </script>
