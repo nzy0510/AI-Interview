@@ -366,7 +366,7 @@ const initWordCloud = () => {
 // === 跳转面试 ===
 const confirmStart = (mode) => {
   showModeDialog.value = false
-  const effectiveRole = role.value !== '软件开发' ? role.value : (pref.value.defaultRole || 'Java 后端开发')
+  const effectiveRole = role !== '软件开发' ? role : (pref.value.defaultRole || 'Java 后端开发')
   const focus = (() => {
     try { const areas = JSON.parse(pref.value.focusAreas || '[]'); return Array.isArray(areas) ? areas.join(',') : '' }
     catch { return '' }
