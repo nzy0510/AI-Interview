@@ -138,6 +138,7 @@ const saveProfile = async () => {
   savingProfile.value = true
   try {
     await updateProfileAPI({ nickname: profile.nickname, email: profile.email })
+    import('@/utils/auth').then(({ setNickname }) => setNickname(profile.nickname))
     ElMessage.success('资料已更新')
   } catch (e) {
     ElMessage.error(e.message || '保存失败')

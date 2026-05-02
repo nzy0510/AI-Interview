@@ -37,3 +37,35 @@ export function userKey(key) {
   const uid = getUserId()
   return uid ? `${key}_${uid}` : key
 }
+
+/**
+ * 获取缓存的昵称（用于跨页面同步）
+ */
+export function getNickname() {
+  return localStorage.getItem('cached_nickname') || null
+}
+
+/**
+ * 缓存昵称（Settings 保存后调用）
+ */
+export function setNickname(nickname) {
+  if (nickname) {
+    localStorage.setItem('cached_nickname', nickname)
+  } else {
+    localStorage.removeItem('cached_nickname')
+  }
+}
+
+/**
+ * 清除所有登录态（退出登录时调用）
+ */
+export function logout() {
+  const userId = getUserId()
+  localStorage.removeItem('token')
+  localStorage.removeItem('cached_nickname')
+  if (userId) {
+    Object.keys(localStorage).forEach(key => {
+      if (key.endsWith(`_${userId}`)) localStorage.removeItem(key)
+    })
+  }
+}

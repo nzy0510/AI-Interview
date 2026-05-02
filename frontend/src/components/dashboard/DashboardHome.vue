@@ -4,7 +4,7 @@
       <div class="hero-copy">
         <div class="eyebrow">Architectural Intelligence</div>
         <div class="hero-headline">
-          <h1>{{ username }}</h1>
+          <h1>{{ displayName }}</h1>
           <p>把面试拆成可以演练、复盘、再优化的工作台。</p>
         </div>
         <p class="hero-description">{{ statusText }}</p>
@@ -309,13 +309,13 @@ import {
   TrendCharts, VideoCamera
 } from '@element-plus/icons-vue'
 import { getHistoryListAPI } from '@/api/interview'
-import { getMentorInsightAPI, getKnowledgeCoverageAPI, refreshMentorInsightAPI, getPreferenceAPI } from '@/api/user'
-import { getUsername, userKey } from '@/utils/auth'
+import { getMentorInsightAPI, getKnowledgeCoverageAPI, refreshMentorInsightAPI, getPreferenceAPI, getCurrentUserAPI } from '@/api/user'
+import { getUsername, getNickname, setNickname, userKey } from '@/utils/auth'
 import { interviewSetupDefaults } from '@/mock/setup'
 
 const router = useRouter()
 
-const username = ref(getUsername() || '用户')
+const displayName = ref(getNickname() || getUsername() || '用户')
 const hasResume = ref(false)
 const resumeProfile = ref(null)
 const historyTotal = ref(0)
@@ -400,6 +400,23 @@ const loadHistory = async () => {
       latestScore.value = latest.score != null ? String(latest.score) : '--'
     }
   } catch { /* Dashboard still works without history */ }
+}
+
+const loadNickname = async () => {
+  const cached = getNickname()
+  if (cached) {
+    displayName.value = cached
+    return
+  }
+  try {
+    const user = await getCurrentUserAPI()
+    if (user?.nickname) {
+      displayName.value = user.nickname
+      setNickname(user.nickname)
+    } else if (user?.username) {
+      displayName.value = user.username
+    }
+  } catch { /* fallback to getUsername() already set */ }
 }
 
 const loadMentor = async () => {
@@ -506,7 +523,7 @@ const loadPreference = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([checkExistingResume(), loadHistory(), loadPreference()])
+  await Promise.all([checkExistingResume(), loadHistory(), loadPreference(), loadNickname()])
   // 页面核心数据已就绪，Mentor 异步加载不阻塞渲染
   loadMentor()
 })
