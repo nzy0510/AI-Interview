@@ -172,10 +172,18 @@
               </div>
 
               <div class="start-actions">
-                <el-button type="primary" class="start-button" @click="startInterview('text')">
+                <el-button
+                  :type="mode === 'text' ? 'primary' : 'default'"
+                  class="start-button"
+                  @click="startInterview('text')"
+                >
                   开始文字面试
                 </el-button>
-                <el-button class="start-button secondary" @click="startInterview('video')">
+                <el-button
+                  :type="mode === 'video' ? 'primary' : 'default'"
+                  class="start-button"
+                  @click="startInterview('video')"
+                >
                   开始视频面试
                 </el-button>
               </div>
