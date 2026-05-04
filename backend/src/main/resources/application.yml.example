@@ -36,6 +36,12 @@ spring:
           auth: true
           starttls:
             enable: true
+            required: true
+          ssl:
+            trust: ${MAIL_HOST:smtp.qq.com}
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
 
 # MyBatis-Plus Configuration
 mybatis-plus:
