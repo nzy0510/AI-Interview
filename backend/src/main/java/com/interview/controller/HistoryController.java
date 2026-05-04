@@ -14,7 +14,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/history")
-@CrossOrigin
 public class HistoryController {
 
     @Autowired

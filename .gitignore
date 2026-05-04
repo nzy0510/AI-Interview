@@ -40,7 +40,9 @@ Thumbs.db
 
 # ========== 环境变量与敏感配置 (重要：绝不提交) ==========
 .env
+.env.*
 !.env.example
+!.env.prod.example
 docker-compose.yml
 !docker-compose.example.yml
 **/application.yml

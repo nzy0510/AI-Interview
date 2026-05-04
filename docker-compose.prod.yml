@@ -1,0 +1,72 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: interview-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    networks:
+      - interview-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: interview-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./redis_data:/data
+    networks:
+      - interview-network
+
+  backend:
+    build:
+      context: ./backend
+    container_name: interview-backend
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    environment:
+      DB_URL: jdbc:mysql://db:3306/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SIGN_KEY: ${JWT_SIGN_KEY}
+      JWT_EXPIRE_MS: ${JWT_EXPIRE_MS:-86400000}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+      APP_UPLOAD_DIR: /app/uploads
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - interview-network
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: interview-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - interview-network
+
+networks:
+  interview-network:
+    driver: bridge

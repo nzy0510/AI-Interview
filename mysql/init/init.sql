@@ -38,10 +38,6 @@ CREATE TABLE `interview_record` (
   `end_time` DATETIME DEFAULT NULL COMMENT '面试结束时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='面试记录表';
 
--- 注入默认管理员（密码: 123456 → MD5 哈希）
-INSERT IGNORE INTO `user` (`id`, `username`, `password`, `nickname`)
-VALUES (1, 'admin', 'e10adc3949ba59abbe56e057f20f883e', '系统管理员');
-
 -- 3. 简历画像表
 CREATE TABLE IF NOT EXISTS `resume_profile` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,

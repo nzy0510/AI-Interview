@@ -18,7 +18,6 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/resume")
-@CrossOrigin(origins = "*")
 public class ResumeController {
 
     @Autowired

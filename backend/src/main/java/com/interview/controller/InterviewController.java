@@ -15,7 +15,6 @@ import jakarta.servlet.http.HttpServletRequest;
  */
 @RestController
 @RequestMapping("/api/interview")
-@CrossOrigin
 public class InterviewController {
 
     @Autowired

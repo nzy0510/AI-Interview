@@ -39,6 +39,3 @@ CREATE TABLE IF NOT EXISTS `resume_profile` (
   UNIQUE KEY `uk_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户简历画像';
 
--- Seed admin user (password: 123456, MD5 hashed)
-INSERT IGNORE INTO `user` (`id`, `username`, `password`, `nickname`)
-VALUES (1, 'admin', 'e10adc3949ba59abbe56e057f20f883e', '系统管理员');
