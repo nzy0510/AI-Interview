@@ -306,23 +306,25 @@
           </section>
         </template>
 
-        <template v-if="selectedKnowledges.length">
+        <template v-if="selectedKnowledgePoints.length">
           <section class="drawer-panel">
             <div class="section-head compact">
               <div>
-                <p class="section-kicker">知识图谱</p>
-                <h2 class="section-title">知识星图 · 本场面试</h2>
+                <p class="section-kicker">知识点评估</p>
+                <h2 class="section-title">本场考察知识点</h2>
               </div>
-              <el-tag size="small" effect="plain" type="primary">{{ selectedKnowledges.length }} 个概念</el-tag>
+              <el-tag size="small" effect="plain" type="primary">{{ selectedKnowledgePoints.length }} 个知识点</el-tag>
             </div>
-            <div class="knowledge-list">
-              <div v-for="k in selectedKnowledges" :key="k.concept" class="knowledge-item">
-                <el-progress :percentage="Math.round(k.mastery * 100)" :color="getMasteryColor(k.mastery)" :stroke-width="8">
-                  <template #default>
-                    <span class="knowledge-concept">{{ k.concept }}</span>
-                  </template>
-                </el-progress>
-                <span class="knowledge-cat">{{ k.category || '' }}</span>
+            <div class="knowledge-bars">
+              <div v-for="k in selectedKnowledgePoints" :key="`${k.concept}-${k.category}`" class="knowledge-bar-row">
+                <div class="knowledge-bar-meta">
+                  <strong>{{ k.concept }}</strong>
+                  <span>{{ k.category }}</span>
+                </div>
+                <div class="knowledge-bar-track" aria-hidden="true">
+                  <div class="knowledge-bar-fill" :style="{ width: `${k.percent}%` }"></div>
+                </div>
+                <span class="knowledge-bar-value">掌握度 {{ k.percent }}%</span>
               </div>
             </div>
           </section>
@@ -357,13 +359,14 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, RefreshRight, Search, Setting } from '@element-plus/icons-vue'
+import { ArrowLeft, RefreshRight, Search } from '@element-plus/icons-vue'
 import { getHistoryListAPI } from '@/api/interview'
 import { getKnowledgeCoverageAPI } from '@/api/user'
 import { reportCenterConfig } from '@/mock/reports'
 import * as echarts from 'echarts'
 import KnowledgeCoverageChart from '@/components/charts/KnowledgeCoverageChart.vue'
 import { buildTooltipConfig, buildHeatmapVisualMap, buildHeatmapData } from '@/utils/chartOptions'
+import { normalizeKnowledgePoints } from '@/utils/reportMetrics'
 
 const router = useRouter()
 const loading = ref(true)
@@ -678,122 +681,15 @@ const drawGrowthChart = () => {
       }]
     }
     growthChartInstance.setOption(option, true)
-  } else if (chartMode.value === 'graph') {
-    // 🌌 Knowledge Graph Force Directed
-    const nodeMap = new Map()
-    const edges = []
-    
-    data.forEach(r => {
-      let kPoints = []
-      try { kPoints = JSON.parse(r.knowledgeJson || '[]') } catch {}
-      
-      if (kPoints && kPoints.length > 0) {
-        for (let i = 0; i < kPoints.length; i++) {
-          const p = kPoints[i]
-          const name = p.concept || '未知知识点'
-          const mastery = p.mastery != null ? parseFloat(p.mastery) : 0.5
-          const cat = p.category || '综合'
-          
-          if (nodeMap.has(name)) {
-            const nd = nodeMap.get(name)
-            nd.masterySum += mastery
-            nd.count += 1
-          } else {
-            nodeMap.set(name, { name, masterySum: mastery, count: 1, category: cat })
-          }
-          
-          // Connect to subsequent concepts in the SAME interview session
-          for (let j = i + 1; j < kPoints.length; j++) {
-            const TargetName = kPoints[j].concept || '未知知识点'
-            edges.push({ source: name, target: TargetName })
-          }
-        }
-      }
-    })
-
-    const nodes = []
-    const categories = []
-    const categoryMap = new Map()
-
-    nodeMap.forEach((val, key) => {
-      const avg = val.masterySum / val.count
-      if (!categoryMap.has(val.category)) {
-        categoryMap.set(val.category, categories.length)
-        categories.push({ name: val.category })
-      }
-
-      let color = '#5B9BD5' 
-      if (avg >= 0.8) color = '#10b981' // Green (Good mastery)
-      else if (avg >= 0.6) color = '#E6A23C' // Yellow (Avg)
-      else color = '#F56C6C' // Red (Poor)
-
-      nodes.push({
-        name: key,
-        value: (avg * 100).toFixed(1),
-        symbolSize: Math.min(80, 20 + val.count * 12),
-        category: categoryMap.get(val.category),
-        itemStyle: {
-          color: color,
-          shadowBlur: 20,
-          shadowColor: color
-        },
-        label: { show: true, formatter: '{b}', textStyle: { color: '#4d4c48', textBorderColor: '#faf9f5', textBorderWidth: 2 } }
-      })
-    })
-
-    // If completely empty across all history, show dummy data so user isn't bored
-    if (nodes.length === 0) {
-      nodes.push({ name: '暂无知识点', value: 0, symbolSize: 50, itemStyle: { color: '#b0aea5' } })
-    }
-
-    const option = {
-      grid: { top: 30, right: 30, bottom: 50, left: 30 },
-      tooltip: {
-        ...buildTooltipConfig(),
-        formatter: (params) => {
-          if (params.dataType === 'node') {
-            const catStr = categories.length > 0 && params.data.category != null ? categories[params.data.category].name : '无'
-            return `<div style="font-weight:bold;font-size:16px;margin-bottom:4px;border-bottom:1px solid #e8e6dc;padding-bottom:4px">${params.name}</div>
-                    领域类别: <span style="color:#c96442;font-weight:600">${catStr}</span> <br/>
-                    评估熟练度: <span style="color:${params.color};font-weight:bold">${params.value}%</span>`
-          }
-          return ''
-        }
-      },
-      legend: [{
-        data: categories.map(a => a.name),
-        textStyle: { color: '#5e5d59' },
-        bottom: 10
-      }],
-      animationDuration: 1500,
-      animationEasingUpdate: 'quinticInOut',
-      series: [
-        {
-          name: '星系知识图谱',
-          type: 'graph',
-          layout: 'force',
-          data: nodes,
-          links: edges,
-          categories: categories,
-          roam: true,
-          label: { position: 'right' },
-          force: { repulsion: 300, edgeLength: 120, layoutAnimation: true },
-          lineStyle: { color: 'source', curveness: 0.2, opacity: 0.2, width: 1.5 }
-        }
-      ]
-    }
-    growthChartInstance.setOption(option, true)
   }
 }
 
-// ─── Mini Radar ───────────────────────────────────────────────────────────────
-const selectedKnowledges = computed(() => {
-  try { return selected.value?.knowledgeJson ? JSON.parse(selected.value.knowledgeJson) : [] }
-  catch { return [] }
+// ─── Drawer Derived Data ─────────────────────────────────────────────────────
+const selectedKnowledgePoints = computed(() => {
+  return normalizeKnowledgePoints(selected.value?.knowledgeJson)
 })
 
-const getMasteryColor = (m) => m >= 0.8 ? '#10b981' : m >= 0.6 ? '#e6a23c' : '#f56c6c'
-
+// ─── Mini Radar ───────────────────────────────────────────────────────────────
 const drawMiniRadar = () => {
   const container = miniRadarRef.value
   if (!container || !selected.value) return
@@ -1471,13 +1367,65 @@ const drawMiniRadar = () => {
   border-left: 3px solid #3a388b;
 }
 
-/* ─── Knowledge Coverage & Map ─── */
+/* ─── Knowledge Points ─── */
+.knowledge-bars {
+  display: grid;
+  gap: 14px;
+}
 
-.knowledge-list { display: grid; gap: 12px; }
-.knowledge-item { display: flex; align-items: center; gap: 10px; }
-.knowledge-item :deep(.el-progress) { flex: 1; }
-.knowledge-concept { font-size: 13px; color: #191c1e; font-weight: 700; }
-.knowledge-cat { width: 64px; font-size: 11px; color: #87867f; text-align: right; flex-shrink: 0; }
+.knowledge-bar-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) minmax(0, 1fr) 82px;
+  gap: 12px;
+  align-items: center;
+}
+
+.knowledge-bar-meta {
+  min-width: 0;
+}
+
+.knowledge-bar-meta strong {
+  display: block;
+  overflow: hidden;
+  color: #191c1e;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-bar-meta span {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #87867f;
+  font-size: 12px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-bar-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eceff3;
+}
+
+.knowledge-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f4b46f, #c9542f);
+  transition: width 0.45s ease;
+}
+
+.knowledge-bar-value {
+  color: #454652;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
 
 @media (max-width: 960px) {
   .page-header,
@@ -1509,8 +1457,13 @@ const drawMiniRadar = () => {
   .metric-grid,
   .summary-grid,
   .performance-grid,
-  .emotion-metrics {
+  .emotion-metrics,
+  .knowledge-bar-row {
     grid-template-columns: 1fr;
+  }
+
+  .knowledge-bar-value {
+    text-align: left;
   }
 
   .echarts-growth-container {

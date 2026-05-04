@@ -157,6 +157,7 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agent
 
 ## 功能添加要求
 
+- 按照生产级项目规范修改，增加功能
 - 准备一份更新文档，在添加新功能时，记录下所做的修改，防止后续遗忘，导致重复出现相同的错误
 - 更新每个功能前，详细询问确认用户需求，一次性考虑周全，而非将应用跑起来就"完事大吉"，要符合生产级应用的需要
 - 更新后对每个更改内容进行说明并解释
@@ -190,7 +191,7 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agent
 - commit message 使用 Conventional Commits，例如 `feat:`、`fix:`、`docs:`、`refactor:`、`test:`、`chore:`。
 
 ## 功能开发规则
-在进行难度较大的开发工作时，优先采用tdd工作流进行测试开发。
+- 在进行难度较大的开发工作时，优先采用tdd工作流进行测试开发。
 
 ## 记忆文件
 - 完成一个较大的功能后，将其录入记忆文件中

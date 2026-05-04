@@ -106,3 +106,5 @@ conflicts_render.txt
 backend/uploads/
 **/uploads/
 backend/mvn_result.txt
+.superpowers/
+.superpower/

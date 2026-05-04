@@ -65,7 +65,7 @@ public class InterviewRecord {
     private String focusAreas;
 
     /**
-     * 星系知识图谱数据 JSON，格式如：
+     * 本场覆盖知识点数据 JSON，格式如：
      * [{"concept":"微服务架构","mastery":0.8,"category":"架构设计"},...]
      */
     private String knowledgeJson;

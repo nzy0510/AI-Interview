@@ -14,33 +14,20 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.store.embedding.filter.Filter;
-import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
-import dev.langchain4j.rag.query.Query;
 
 @Service
 @Slf4j
@@ -51,9 +38,6 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Autowired
     private OpenAiStreamingChatModel streamingChatModel;
-
-    @Autowired
-    private OpenAiChatModel chatModel;
 
     @Autowired
     private com.interview.config.InterviewPrompts interviewPrompts;
