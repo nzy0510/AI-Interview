@@ -239,29 +239,34 @@ const experienceLevel = ref('mid')
 const focusAreas = ref([])
 const mode = ref('text')
 
-const readStoredResume = () => {
-  const keys = [
-    userKey('resume_analysis'),
-    userKey('interview_resume_analysis'),
-    'resume_analysis',
-    'interview_resume_analysis'
-  ]
-  for (const key of keys) {
-    const raw = localStorage.getItem(key)
-    if (!raw) continue
-    try {
-      const parsed = JSON.parse(raw)
-      if (parsed) {
-        resumeAnalysis.value = parsed
-        resumeReady.value = true
-        return
-      }
-    } catch {
-      continue
-    }
-  }
+const clearResumeState = () => {
   resumeAnalysis.value = null
   resumeReady.value = false
+}
+
+const loadResumeProfile = async () => {
+  clearResumeState()
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/resume/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!resp.ok) {
+      localStorage.removeItem(userKey('resume_analysis'))
+      return
+    }
+    const result = await resp.json()
+    if (result.code === 200 && result.data) {
+      resumeAnalysis.value = result.data
+      resumeReady.value = true
+      localStorage.setItem(userKey('resume_analysis'), JSON.stringify(result.data))
+    } else {
+      localStorage.removeItem(userKey('resume_analysis'))
+    }
+  } catch {
+    localStorage.removeItem(userKey('resume_analysis'))
+  }
 }
 
 const resumeSnapshot = computed(() => buildSetupSnapshot(resumeAnalysis.value, hasToken.value))
@@ -340,7 +345,7 @@ const autoSavePreference = () => {
 }
 
 onMounted(async () => {
-  readStoredResume()
+  await loadResumeProfile()
   await loadPreference()
   syncFromQuery()
 })

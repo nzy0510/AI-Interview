@@ -88,6 +88,7 @@ application-prod.yml
 /redis_data/
 /qdrant_data/
 /document/
+/backups/
 
 # ========== 临时/测试文件 ==========
 测试简历.pdf

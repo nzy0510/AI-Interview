@@ -34,24 +34,19 @@ export async function loadTailoredResumeQuestions({
   if (!isTailored) return undefined
 
   try {
-    const cached = localStorage.getItem(storageKey)
-    if (cached) {
-      const parsed = JSON.parse(cached)
-      if (parsed && parsed.tailoredQuestions) {
-        return parsed.tailoredQuestions
-      }
-    }
-  } catch {}
-
-  try {
     const resp = await fetchImpl(`${apiBaseUrl || ''}/api/resume/profile`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-    if (!resp.ok) return undefined
+    if (!resp.ok) {
+      localStorage.removeItem(storageKey)
+      return undefined
+    }
     const result = await resp.json()
     if (result.code === 200 && result.data && result.data.tailoredQuestions) {
+      localStorage.setItem(storageKey, JSON.stringify(result.data))
       return result.data.tailoredQuestions
     }
+    localStorage.removeItem(storageKey)
   } catch {}
 
   return undefined

@@ -287,20 +287,12 @@ const displayTitle = computed(() => {
 })
 
 const readCachedResume = () => {
-  const cached = localStorage.getItem(userKey('resume_analysis'))
-  if (cached) {
-    try {
-      const parsed = JSON.parse(cached)
-      if (parsed) { hasResume.value = true; resumeProfile.value = parsed; return }
-    } catch { /* ignore */ }
-  }
   hasResume.value = false
   resumeProfile.value = null
 }
 
 const checkExistingResume = async () => {
   readCachedResume()
-  if (hasResume.value) return
   try {
     const token = localStorage.getItem('token')
     const resp = await fetch(uploadUrl.replace('/parse', '/profile'), {
@@ -312,9 +304,15 @@ const checkExistingResume = async () => {
         localStorage.setItem(userKey('resume_analysis'), JSON.stringify(result.data))
         hasResume.value = true
         resumeProfile.value = result.data
+      } else {
+        localStorage.removeItem(userKey('resume_analysis'))
       }
+    } else {
+      localStorage.removeItem(userKey('resume_analysis'))
     }
-  } catch { /* Dashboard still works without resume */ }
+  } catch {
+    localStorage.removeItem(userKey('resume_analysis'))
+  }
 }
 
 const loadHistory = async () => {
