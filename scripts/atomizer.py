@@ -26,7 +26,7 @@ import time
 # 配置区 —— 仅使用 DeepSeek API
 # ============================================================
 BASE_URL   = "https://api.deepseek.com/v1"
-API_KEY    = os.getenv("DEEPSEEK_API_KEY", "sk-4b4d8849b9234412a4f7e740e53f6f67")
+API_KEY    = os.getenv("DEEPSEEK_API_KEY", "")
 MODEL_NAME = "deepseek-chat"
 
 # 输出根目录（对应后端 classpath 下的知识库目录）

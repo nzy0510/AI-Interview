@@ -21,7 +21,7 @@
         <section v-if="!analysis" class="surface-card empty-shell">
           <div class="empty-copy">
             <p class="section-kicker">Resume Intake</p>
-            <h2 class="section-title">无缓存的简历解析记录</h2>
+            <h2 class="section-title">暂无简历解析记录</h2>
             <p class="section-desc">请重新上传简历，系统会在这里重新生成画像与定制问题。</p>
           </div>
         </section>
@@ -165,7 +165,6 @@ import * as echarts from 'echarts'
 import 'echarts-wordcloud'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
-import { userKey } from '@/utils/auth'
 import { getPreferenceAPI } from '@/api/user'
 
 const router = useRouter()
@@ -205,18 +204,6 @@ onMounted(async () => {
     }
   } catch (error) {
     console.log('暂无简历画像:', error.message)
-  }
-
-  // 后端无数据时，尝试从 localStorage 读取
-  if (!profileData) {
-    try {
-      const cached = localStorage.getItem(userKey('resume_analysis'))
-      if (cached) {
-        profileData = JSON.parse(cached)
-      }
-    } catch (e) {
-      console.log('本地缓存解析失败:', e.message)
-    }
   }
 
   if (profileData) {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Interview Question Bank"
+  short_description: "Generate, review, import, and reindex AI Interview question-bank atoms."
+  default_prompt: "Maintain the AI Interview question bank from source documents or JSON atoms, then validate, import, and verify the result."

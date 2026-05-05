@@ -5,9 +5,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewRecord;
 import com.interview.entity.RagRetrievalLog;
+import com.interview.dto.questionbank.QuestionBankSearchRequest;
+import com.interview.dto.questionbank.QuestionBankSearchResult;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.service.InterviewService;
+import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -27,8 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import dev.langchain4j.rag.content.Content;
-
 @Service
 @Slf4j
 public class InterviewServiceImpl implements InterviewService {
@@ -46,7 +47,7 @@ public class InterviewServiceImpl implements InterviewService {
     private com.interview.service.SessionStore sessionStore;
 
     @Autowired
-    private com.interview.service.RagRetriever ragRetriever;
+    private QuestionBankService questionBankService;
 
     @Autowired
     private com.interview.service.EvaluationGenerator evaluationGenerator;
@@ -137,32 +138,29 @@ public class InterviewServiceImpl implements InterviewService {
             }
         }
 
-        // RAG 检索（通过 RagRetriever 封装岗位分类过滤 + 已用原子黑名单）
+        // RAG 检索（通过数据库题库 + Qdrant 向量检索封装岗位分类过滤和已用原子黑名单）
         List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
-        List<com.interview.service.RagRetriever.RetrievedContent> retrievedResults =
-                ragRetriever.retrieveWithScores(position, ragQuery, usedAtomIds);
-        List<Content> retrievedContents = new ArrayList<>();
-        for (com.interview.service.RagRetriever.RetrievedContent result : retrievedResults) {
-            retrievedContents.add(result.content());
-        }
+        QuestionBankSearchRequest searchRequest = new QuestionBankSearchRequest();
+        searchRequest.setPosition(position);
+        searchRequest.setQuery(ragQuery);
+        searchRequest.setExcludeAtomIds(usedAtomIds);
+        searchRequest.setLimit(3);
+        List<QuestionBankSearchResult> retrievedResults = questionBankService.search(searchRequest);
 
         // 原子追加新命中原子 ID，避免并发覆盖
         List<String> newAtomIds = new ArrayList<>();
-        for (Content content : retrievedContents) {
-            String atomId = content.textSegment().metadata().getString("id");
-            if (atomId != null) newAtomIds.add(atomId);
+        for (QuestionBankSearchResult result : retrievedResults) {
+            if (result.getAtomId() != null) newAtomIds.add(result.getAtomId());
         }
         sessionStore.addUsedAtoms(recordId, newAtomIds);
 
         // 持久化 RAG 检索日志
         int turnIdx = chatHistory.size() / 2 + 1;
         int rank = 0;
-        for (com.interview.service.RagRetriever.RetrievedContent result : retrievedResults) {
-            Content content = result.content();
+        for (QuestionBankSearchResult result : retrievedResults) {
             rank++;
-            String atomId = content.textSegment().metadata().getString("id");
+            String atomId = result.getAtomId();
             if (atomId == null) continue;
-            String category = content.textSegment().metadata().getString("category");
             RagRetrievalLog logEntry = new RagRetrievalLog();
             logEntry.setUserId(userId);
             logEntry.setRecordId(recordId);
@@ -170,8 +168,8 @@ public class InterviewServiceImpl implements InterviewService {
             logEntry.setQueryText(ragQuery.length() > 500 ? ragQuery.substring(0, 500) : ragQuery);
             logEntry.setPosition(position);
             logEntry.setRetrievedAtomId(atomId);
-            logEntry.setRetrievedCategory(category);
-            logEntry.setSimilarityScore(result.score() != null ? result.score() : 0.0);
+            logEntry.setRetrievedCategory(result.getCategory());
+            logEntry.setSimilarityScore(result.getScore());
             logEntry.setRankIndex(rank);
             try {
                 ragRetrievalLogMapper.insert(logEntry);
@@ -181,12 +179,11 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         StringBuilder contextBuilder = new StringBuilder();
-        for (int i = 0; i < retrievedContents.size(); i++) {
-            Content content = retrievedContents.get(i);
-            String atomId = content.textSegment().metadata().getString("id");
+        for (int i = 0; i < retrievedResults.size(); i++) {
+            QuestionBankSearchResult result = retrievedResults.get(i);
             contextBuilder.append(i + 1).append(". [atom_id: ")
-                    .append(atomId != null ? atomId : "unknown")
-                    .append("]\n").append(content.textSegment().text()).append("\n\n");
+                    .append(result.getAtomId() != null ? result.getAtomId() : "unknown")
+                    .append("]\n").append(result.getPromptContext()).append("\n\n");
         }
 
         // 2. 根据显式面试阶段选择 Agent 人设（替代隐式 turn 计算）

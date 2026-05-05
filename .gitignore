@@ -61,6 +61,8 @@ docker-compose.yml
 /lib/
 !**/WEB-INF/lib/
 node_modules/
+__pycache__/
+**/__pycache__/
 
 # 构建输出
 dist/
@@ -81,8 +83,12 @@ application-prod.yml
 
 # ========== 数据库与持久化数据 (重要：绝不提交) ==========
 /mysql_data/
+/mysql_data_80*/
+/mysql_data_backup_57_*/
 /redis_data/
+/qdrant_data/
 /document/
+/backups/
 
 # ========== 临时/测试文件 ==========
 测试简历.pdf
@@ -99,6 +105,7 @@ conflicts_render.txt
 # 忽略原始大型文档，保留生成的 JSON 原子
 *.pdf
 **/knowledge_base/archive_original/
+/question_bank_imports/
 
 变量.txt
 
