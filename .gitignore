@@ -83,6 +83,8 @@ application-prod.yml
 
 # ========== 数据库与持久化数据 (重要：绝不提交) ==========
 /mysql_data/
+/mysql_data_80*/
+/mysql_data_backup_57_*/
 /redis_data/
 /qdrant_data/
 /document/

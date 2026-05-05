@@ -123,7 +123,9 @@ public class QuestionBankService {
         batch.setTargetCategory(request.getTargetCategory());
         batch.setMode(mode);
         batch.setAtomCount(request.getAtoms() != null ? request.getAtoms().size() : 0);
-        batch.setValidationReport(JSON.toJSONString(request.getValidationReport()));
+        batch.setValidationReport(errors.isEmpty()
+                ? JSON.toJSONString(request.getValidationReport())
+                : JSON.toJSONString(Map.of("errors", errors)));
         batch.setReviewReport(JSON.toJSONString(request.getReviewReport()));
         batch.setStatus(errors.isEmpty() ? "CREATED" : "FAILED");
         batchMapper.insert(batch);
@@ -269,10 +271,6 @@ public class QuestionBankService {
             if (isBlank(category)) errors.add(atom.getId() + ": category is required");
             if (atom.getContent() == null || isBlank(atom.getContent().getPrinciples())) {
                 errors.add(atom.getId() + ": content.principles is required");
-            }
-            if (atom.getContent() != null && atom.getContent().getFollowUpPaths() != null
-                    && atom.getContent().getFollowUpPaths().size() < 2) {
-                errors.add(atom.getId() + ": at least 2 follow_up_paths are recommended");
             }
             if (!isBlank(atom.getId())) seen.merge(atom.getId(), 1, Integer::sum);
         }

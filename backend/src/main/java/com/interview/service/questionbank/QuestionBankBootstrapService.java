@@ -17,7 +17,9 @@ import org.springframework.stereotype.Service;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -56,7 +58,7 @@ public class QuestionBankBootstrapService {
     private void seedLegacyJsonAtoms() throws Exception {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource[] resources = resolver.getResources("classpath*:knowledge_base/atoms/**/*.json");
-        List<KnowledgeAtomPayload> atoms = new ArrayList<>();
+        Map<String, KnowledgeAtomPayload> atomsById = new LinkedHashMap<>();
         for (Resource resource : resources) {
             try (InputStream inputStream = resource.getInputStream()) {
                 String content = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
@@ -78,18 +80,22 @@ public class QuestionBankBootstrapService {
                 }
                 payload.setContent(atomContent);
                 if (payload.getId() != null && payload.getSubject() != null && atomContent.getPrinciples() != null) {
-                    atoms.add(payload);
+                    KnowledgeAtomPayload previous = atomsById.putIfAbsent(payload.getId(), payload);
+                    if (previous != null) {
+                        log.warn("Legacy atom seed duplicate id skipped: {} from {}", payload.getId(), resource.getFilename());
+                    }
                 }
             } catch (Exception e) {
                 log.warn("Legacy atom seed skipped for {}: {}", resource.getFilename(), e.getMessage());
             }
         }
+        List<KnowledgeAtomPayload> atoms = new ArrayList<>(atomsById.values());
         if (atoms.isEmpty()) {
             log.warn("No legacy JSON atoms found for question bank bootstrap");
             return;
         }
         QuestionBankImportRequest request = new QuestionBankImportRequest();
-        request.setBatchId("seed-legacy-json-atoms");
+        request.setBatchId("seed-legacy-json-atoms-" + System.currentTimeMillis());
         request.setSourceRef("classpath:knowledge_base/atoms");
         request.setMode("AUTO_PUBLISH");
         request.setAtoms(atoms);
