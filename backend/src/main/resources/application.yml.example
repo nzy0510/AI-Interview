@@ -138,6 +138,29 @@ interview:
         "evaluation": "用仅仅三句话极其精练地总结该候选人的技术亮点和可能的短板。"
       }
 
+# 题库 / MCP / Qdrant 配置
+question-bank:
+  # 开发者维护题库用 token；为空时不校验，生产建议必须配置
+  admin-token: ${QUESTION_BANK_ADMIN_TOKEN:}
+  mcp:
+    # 外部 AI 客户端只读调用 token；为空时不校验
+    read-token: ${MCP_READ_TOKEN:}
+    # 浏览器来源白名单，逗号分隔；为空时默认允许同源和 localhost/127.0.0.1
+    allowed-origins: ${MCP_ALLOWED_ORIGINS:}
+  qdrant:
+    enabled: ${QDRANT_ENABLED:true}
+    url: ${QDRANT_URL:http://localhost:6333}
+    collection: ${QDRANT_COLLECTION:interview_atoms}
+    vector-size: ${QDRANT_VECTOR_SIZE:384}
+  bootstrap:
+    # 首次启动时把旧 JSON 题库导入 MySQL，之后以数据库为准
+    seed-from-json: ${QUESTION_BANK_SEED_FROM_JSON:true}
+    # 启动时补建未同步的 Qdrant 向量
+    reindex-unsynced-on-startup: ${QUESTION_BANK_REINDEX_ON_STARTUP:true}
+  legacy-loader:
+    # 旧内存 RAG 加载器默认关闭，避免和数据库题库重复索引
+    enabled: ${QUESTION_BANK_LEGACY_LOADER_ENABLED:false}
+
 # JWT 签名密钥 签名密钥（生产环境必须通过环境变量注入，无默认值）
 jwt:
   sign-key: ${JWT_SIGN_KEY}

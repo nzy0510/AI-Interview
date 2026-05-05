@@ -25,6 +25,16 @@ services:
     networks:
       - interview-network
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: interview-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+    networks:
+      - interview-network
+
   backend:
     build:
       context: ./backend
@@ -32,6 +42,7 @@ services:
     depends_on:
       - db
       - redis
+      - qdrant
     environment:
       DB_URL: jdbc:mysql://${DB_HOST:-db}:3306/${DB_NAME:-ai_interview_ds}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
       DB_USERNAME: ${DB_USERNAME}
@@ -39,6 +50,16 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-interview_atoms}
+      QDRANT_VECTOR_SIZE: ${QDRANT_VECTOR_SIZE:-384}
+      QUESTION_BANK_ADMIN_TOKEN: ${QUESTION_BANK_ADMIN_TOKEN}
+      MCP_READ_TOKEN: ${MCP_READ_TOKEN}
+      MCP_ALLOWED_ORIGINS: ${MCP_ALLOWED_ORIGINS}
+      QUESTION_BANK_SEED_FROM_JSON: ${QUESTION_BANK_SEED_FROM_JSON:-true}
+      QUESTION_BANK_REINDEX_ON_STARTUP: ${QUESTION_BANK_REINDEX_ON_STARTUP:-true}
+      QUESTION_BANK_LEGACY_LOADER_ENABLED: ${QUESTION_BANK_LEGACY_LOADER_ENABLED:-false}
       MAIL_HOST: ${MAIL_HOST:-smtp.qq.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME}

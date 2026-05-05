@@ -13,6 +13,7 @@ import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
@@ -36,8 +37,15 @@ public class DataLoadingService {
     @Autowired
     private EmbeddingStore<TextSegment> embeddingStore;
 
+    @Value("${question-bank.legacy-loader.enabled:false}")
+    private boolean legacyLoaderEnabled;
+
     @PostConstruct
     public void init() {
+        if (!legacyLoaderEnabled) {
+            log.info("Legacy file-based knowledge loader disabled; database question bank bootstrap owns indexing.");
+            return;
+        }
         log.info("🚀 开始进行基于结构化知识原子(Knowledge Atoms)的知识库初始化...");
 
         try {
