@@ -13,7 +13,7 @@ services:
       - ./mysql_data:/var/lib/mysql
       - ./mysql/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      test: [ "CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent" ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -56,6 +56,8 @@ services:
       DB_URL: jdbc:mysql://db:3306/${DB_NAME:-ai_interview_ds}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
       DB_USERNAME: ${DB_USERNAME:-nzy333}
       DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SIGN_KEY: ${JWT_SIGN_KEY}
+      JWT_EXPIRE_MS: ${JWT_EXPIRE_MS:-86400000}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
