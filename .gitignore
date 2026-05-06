@@ -107,7 +107,7 @@ conflicts_render.txt
 **/knowledge_base/archive_original/
 /question_bank_imports/
 
-变量.txt
+配置变量.txt
 
 # ========== Docs ==========
 /docs/
