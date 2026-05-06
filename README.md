@@ -222,6 +222,8 @@ python scripts/question_bank_import.py --input .\materials\redis.pdf --category 
 $env:QUESTION_BANK_ADMIN_TOKEN="your-token"
 python scripts/question_bank_import.py --input .\materials\java --category java --mode AUTO_PUBLISH --submit
 ```
+## 说明
+mcp 和 skill现已放在新仓库中
 
 ## 本地开发
 
