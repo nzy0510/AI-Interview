@@ -275,32 +275,3 @@ npm exec vitest -- --run
 ```
 
 当前项目在 Windows 环境中偶尔会遇到 Vitest / esbuild `spawn EPERM`，通常提升权限重跑即可。
-
-## 常见问题
-
-### 1. 为什么我的旧账号不见了？
-
-如果从 MySQL 5.7 切到 MySQL 8.0，并使用了新的数据目录，旧数据不会自动进入新库。当前项目建议以 MySQL 8.0 新库为准；需要迁移时请先用 MySQL 5.7 导出 SQL，再按业务需要导入。
-
-### 2. 为什么没上传简历却出现旧画像？
-
-旧版本前端曾使用浏览器本地缓存兜底。当前版本已经改为以后端 `/api/resume/profile` 为准，后端没有画像时会显示未上传，并清理当前用户的简历缓存。
-
-### 3. Redis 是数据库吗？
-
-不是。Redis 只负责短期会话和 Mentor 洞察缓存；用户、简历、面试记录、题库都以 MySQL 为准。
-
-### 4. Qdrant 做什么？
-
-Qdrant 存储已发布题目的向量，用于语义检索。MySQL 保存题库原文和状态，Qdrant 保存检索索引，两者配合完成题库 RAG。
-
-### 5. 是否还有默认管理员账号？
-
-没有。当前版本不再依赖 `admin / 123456`。题库维护通过 token、Skill、内部 API 或 MCP 完成。
-
-## 安全说明
-
-- 不要提交 `.env`、`docker-compose.yml`、数据库目录、Redis/Qdrant 数据目录。
-- 生产环境必须替换 `JWT_SIGN_KEY`、`QUESTION_BANK_ADMIN_TOKEN`、`MCP_READ_TOKEN`。
-- DeepSeek API Key、SMTP 授权码泄露后请立即轮换。
-- 生产部署建议只暴露前端入口，MySQL、Redis、Qdrant 和后端服务放在内网。
