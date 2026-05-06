@@ -1,8 +1,15 @@
 package com.interview.service;
 
+import com.interview.config.InterviewPrompts;
+import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewRecord;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.service.impl.InterviewServiceImpl;
+import com.interview.service.questionbank.QuestionBankService;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,12 +17,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +39,15 @@ class InterviewServiceImplTest {
 
     @Mock
     private SessionStore sessionStore;
+
+    @Mock
+    private OpenAiStreamingChatModel streamingChatModel;
+
+    @Mock
+    private InterviewPrompts interviewPrompts;
+
+    @Mock
+    private QuestionBankService questionBankService;
 
     @InjectMocks
     private InterviewServiceImpl interviewService;
@@ -85,5 +105,35 @@ class InterviewServiceImplTest {
         assertThat(saved.getInterviewMode()).isEqualTo("video");
         assertThat(saved.getDifficultyLevel()).isEqualTo("senior");
         assertThat(saved.getFocusAreas()).contains("projects", "systemDesign");
+    }
+
+    @Test
+    @DisplayName("题库检索失败时仍继续请求 AI 输出")
+    void shouldContinueStreamingWhenQuestionBankSearchFails() {
+        InterviewRecord record = new InterviewRecord();
+        record.setId(20L);
+        record.setUserId(1L);
+        record.setPosition("测试开发");
+        record.setPhase(InterviewPhase.OPENING.name());
+
+        when(interviewRecordMapper.selectOne(any())).thenReturn(record);
+        when(sessionStore.load(20L)).thenReturn(new ArrayList<>());
+        when(sessionStore.loadUsedAtoms(20L)).thenReturn(List.of());
+        when(questionBankService.search(any()))
+                .thenThrow(new IllegalArgumentException("未配置岗位对应的知识库分类: 测试开发"));
+        when(interviewPrompts.getCoordinator()).thenReturn("coordinator");
+        when(interviewPrompts.getAttitudeRule()).thenReturn("");
+        doAnswer(invocation -> {
+            StreamingResponseHandler<AiMessage> handler = invocation.getArgument(1);
+            handler.onNext("你好");
+            handler.onComplete(Response.from(new AiMessage("你好")));
+            return null;
+        }).when(streamingChatModel).generate(anyList(), any());
+
+        SseEmitter emitter = interviewService.chatStream(1L, 20L, "你好");
+
+        assertThat(emitter).isNotNull();
+        verify(questionBankService).search(any());
+        verify(streamingChatModel).generate(anyList(), any());
     }
 }

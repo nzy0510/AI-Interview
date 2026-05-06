@@ -145,7 +145,14 @@ public class InterviewServiceImpl implements InterviewService {
         searchRequest.setQuery(ragQuery);
         searchRequest.setExcludeAtomIds(usedAtomIds);
         searchRequest.setLimit(3);
-        List<QuestionBankSearchResult> retrievedResults = questionBankService.search(searchRequest);
+        List<QuestionBankSearchResult> retrievedResults;
+        try {
+            retrievedResults = questionBankService.search(searchRequest);
+        } catch (Exception e) {
+            log.warn("RAG 检索失败，跳过题库上下文: recordId={}, position={}, error={}",
+                    recordId, position, e.getMessage());
+            retrievedResults = List.of();
+        }
 
         // 原子追加新命中原子 ID，避免并发覆盖
         List<String> newAtomIds = new ArrayList<>();

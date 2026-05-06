@@ -36,7 +36,7 @@ class PositionCategoryConfigTest {
     @Test
     @DisplayName("前端岗位匹配 2 个分类")
     void shouldReturnTwoCategoriesForFrontendPosition() {
-        List<String> categories = config.getCategoriesFor("前端工程师");
+        List<String> categories = config.getCategoriesFor("Web 前端开发");
         assertThat(categories)
                 .hasSize(2)
                 .contains("hot200", "common");

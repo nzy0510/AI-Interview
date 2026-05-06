@@ -275,6 +275,10 @@ const modeLabel = computed(() => {
   return setupDefaults.modeOptions.find((item) => item.value === mode.value)?.title || '文字面试'
 })
 
+const normalizeSupportedRole = (value) => {
+  return setupDefaults.roleOptions.includes(value) ? value : setupDefaults.roleOptions[0]
+}
+
 const resumeSummary = computed(() => {
   const data = resumeAnalysis.value
   if (!data || typeof data !== 'object') return []
@@ -318,7 +322,7 @@ const loadPreference = async () => {
   try {
     const p = await getPreferenceAPI()
     if (p) {
-      if (p.defaultRole && !route.query.role) role.value = p.defaultRole
+      if (p.defaultRole && !route.query.role) role.value = normalizeSupportedRole(p.defaultRole)
       if (p.defaultMode && !route.query.mode) mode.value = p.defaultMode
       if (p.difficultyLevel) experienceLevel.value = p.difficultyLevel
       if (p.focusAreas && !route.query.focus) {

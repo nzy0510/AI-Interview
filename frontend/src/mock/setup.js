@@ -1,10 +1,7 @@
 export const interviewSetupDefaults = {
   roleOptions: [
     'Java 后端开发',
-    'Web 前端开发',
-    '测试开发',
-    '算法工程师',
-    '产品经理'
+    'Web 前端开发'
   ],
   experienceLevels: [
     { label: '应届 / 0-1 年', value: 'junior', hint: '基础题与项目追问' },

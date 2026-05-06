@@ -118,13 +118,14 @@ import { ArrowLeft, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getCurrentUserAPI, updateProfileAPI, changePasswordAPI, getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
 import { logout } from '@/utils/auth'
+import { interviewSetupDefaults } from '@/mock/setup'
 
 const router = useRouter()
 const savingProfile = ref(false)
 const savingPref = ref(false)
 const changingPwd = ref(false)
 
-const roleOptions = ['Java 后端开发', 'Web 前端开发', '测试开发', '算法工程师', '产品经理']
+const roleOptions = interviewSetupDefaults.roleOptions
 
 const profile = reactive({ username: '', nickname: '', email: '', avatar: '' })
 const passwordForm = reactive({ oldPassword: '', newPassword: '' })
@@ -149,7 +150,7 @@ const loadData = async () => {
     const p = await getPreferenceAPI()
     if (p) {
       pref.defaultMode = p.defaultMode || 'text'
-      pref.defaultRole = p.defaultRole || ''
+      pref.defaultRole = roleOptions.includes(p.defaultRole) ? p.defaultRole : ''
       pref.difficultyLevel = p.difficultyLevel || 'mid'
     }
   } catch { /* defaults ok */ }
