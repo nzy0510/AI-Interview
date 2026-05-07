@@ -1,21 +1,25 @@
-# InterWise Oracle Cloud Always Free 部署指南
+# InterWise Azure VM 部署指南
 
-本指南用于单台 Oracle Cloud Always Free 云服务器的内测部署。内测阶段可以先使用公网 IP 访问文字面试；视频面试、麦克风和摄像头能力必须等域名和 HTTPS 完成后再开放给用户。
+本指南用于单台 Azure Ubuntu 虚拟机的内测部署。内测阶段可以先使用公网 IP 访问文字面试；视频面试、麦克风和摄像头能力必须等域名和 HTTPS 完成后再开放给用户。
 
-Oracle 官方 Always Free 文档说明，Ampere A1 `VM.Standard.A1.Flex` 在免费额度内可按总量分配到 4 OCPU 和 24 GB 内存。当前项目包含 Spring Boot、MySQL、Redis、Qdrant、Vue 前端和本地 embedding，建议优先创建一台 A1 Flex，至少 2 OCPU / 8 GB，能申请到资源时建议 4 OCPU / 16-24 GB。
+当前项目包含 Spring Boot、MySQL、Redis、Qdrant、Vue 前端和本地 embedding。内测推荐使用 2 vCPU / 8 GiB 内存级别的 VM，例如 `Standard_B2ms` 或 `Standard_D2s_v3`。如果使用 2 vCPU / 4 GiB 内存，建议额外配置 4 GiB swap。
 
-参考：Oracle Always Free 资源说明 <https://docs.oracle.com/iaas/Content/FreeTier/resourceref.htm>，Docker Ubuntu 安装文档 <https://docs.docker.com/installation/ubuntulinux/>。
+参考：Azure Linux VM 文档 <https://learn.microsoft.com/azure/virtual-machines/linux/>，Docker Ubuntu 安装文档 <https://docs.docker.com/installation/ubuntulinux/>。
 
-## 1. Oracle 服务器准备
+## 1. Azure 服务器准备
 
-在 Oracle Cloud Console 中创建实例：
+在 Azure Portal 中创建虚拟机：
 
-- 镜像：Ubuntu 22.04 LTS 或 Ubuntu 24.04 LTS，选择 Always Free Eligible
-- Shape：`VM.Standard.A1.Flex`
-- OCPU / 内存：最低 2 OCPU / 8 GB，推荐 4 OCPU / 16-24 GB
-- Boot volume：建议 100 GB 起步，题库、镜像、数据库和上传文件都会占用磁盘
+- 资源组：例如 `rg-interwise-test`
+- 虚拟机名称：例如 `vm-interwise-test`
+- 区域：选择离主要用户较近的区域，例如 Japan East
+- 镜像：Ubuntu Server 22.04 LTS 或 24.04 LTS，x64
+- 大小：推荐 `Standard_B2ms` 或 `Standard_D2s_v3`
+- OS 磁盘：建议 64 GiB 起步，128 GiB 更稳
+- 身份验证：SSH 公钥
+- 入站端口：只开放 `22` 和 `80`，`443` 后续 HTTPS 再开放
 
-OCI VCN 安全列表或网络安全组只开放：
+Azure 网络安全组只开放：
 
 - `22`：SSH
 - `80`：Web 访问
@@ -27,7 +31,7 @@ SSH 登录后安装基础工具：
 
 ```bash
 sudo apt update
-sudo apt install -y ca-certificates curl git vim
+sudo apt install -y ca-certificates curl git vim openssl
 ```
 
 按 Docker 官方 Ubuntu 文档安装 Docker Engine 和 Compose plugin：
@@ -58,26 +62,38 @@ docker --version
 docker compose version
 ```
 
+建议配置 4 GiB swap：
+
+```bash
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+free -h
+```
+
 将项目放到服务器目录：
 
 ```bash
-mkdir -p /opt/interwise
+sudo mkdir -p /opt/interwise
+sudo chown -R "$USER:$USER" /opt/interwise
 cd /opt/interwise
-git clone <your-repo-url> .
+git clone -b codex/azure-deployment-hardening https://github.com/nzy0510/AI-Interview .
 ```
 
 ## 2. 配置环境变量
 
 ```bash
 cp .env.prod.example .env
-vim .env
+nano .env
 ```
 
-必须替换所有 `replace_with_...` 值。`APP_CORS_ALLOWED_ORIGINS` 在没有域名时填写公网 IP 来源，例如：
+必须替换所有 `replace_with_...` 值。`APP_CORS_ALLOWED_ORIGINS` 和 `MCP_ALLOWED_ORIGINS` 在没有域名时填写 Azure VM 公网 IP 来源，例如：
 
 ```env
-APP_CORS_ALLOWED_ORIGINS=http://123.123.123.123
-MCP_ALLOWED_ORIGINS=http://123.123.123.123
+APP_CORS_ALLOWED_ORIGINS=http://52.140.216.52
+MCP_ALLOWED_ORIGINS=http://52.140.216.52
 ```
 
 `JWT_SIGN_KEY`、`DB_PASSWORD`、`MYSQL_ROOT_PASSWORD`、`QUESTION_BANK_ADMIN_TOKEN`、`MCP_READ_TOKEN` 必须使用强随机值，不要复用示例内容。可以在服务器上生成：
@@ -88,20 +104,42 @@ openssl rand -base64 32
 
 邮件验证码需要 SMTP 授权码，不是邮箱登录密码。QQ 邮箱需要先在邮箱设置中开启 SMTP 服务。
 
-## 3. 构建并启动
+配置完成后保护 `.env` 权限：
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs -f backend
+chmod 600 .env
 ```
 
-首次启动会初始化 MySQL、导入 JSON 题库并同步 Qdrant 向量，Oracle A1 免费实例上可能需要几分钟。只要 `backend` 日志没有持续报错，等待初始化完成即可。
+检查占位符是否已经替换完：
+
+```bash
+grep -n "replace_with" .env
+```
+
+如果没有输出，说明占位符已经替换完。
+
+## 3. 构建并启动
+
+先校验 Compose 配置：
+
+```bash
+docker compose --env-file .env -f docker-compose.prod.yml config
+```
+
+启动服务：
+
+```bash
+docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env -f docker-compose.prod.yml ps
+docker compose --env-file .env -f docker-compose.prod.yml logs --tail=100 backend
+```
+
+首次启动会初始化 MySQL、导入 JSON 题库并同步 Qdrant 向量，可能需要几分钟。只要 `backend` 日志没有持续报错，等待初始化完成即可。
 
 启动后访问：
 
 ```text
-http://服务器公网IP
+http://Azure公网IP
 ```
 
 生产 Compose 只暴露前端 `80` 端口；后端、MySQL、Redis、Qdrant 只在 Docker 网络内访问。
@@ -116,16 +154,45 @@ http://服务器公网IP
 - 面试结束后生成报告
 - 历史记录、AI Mentor 页面
 - 头像上传和刷新后仍可访问
-- `docker compose -f docker-compose.prod.yml restart` 后数据和上传文件不丢失
+- `docker compose --env-file .env -f docker-compose.prod.yml restart` 后数据和上传文件不丢失
 
 公网 IP + HTTP 阶段不验收视频面试。浏览器摄像头和麦克风要求 HTTPS 或 localhost，等域名和 HTTPS 完成后再开放。
 
-## 5. HTTPS 与视频面试
+## 5. 日常更新
+
+服务器上的代码更新：
+
+```bash
+cd /opt/interwise
+git pull
+docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env -f docker-compose.prod.yml ps
+```
+
+只查看状态：
+
+```bash
+docker compose --env-file .env -f docker-compose.prod.yml ps
+```
+
+查看后端日志：
+
+```bash
+docker compose --env-file .env -f docker-compose.prod.yml logs -f backend
+```
+
+只重启后端：
+
+```bash
+docker compose --env-file .env -f docker-compose.prod.yml restart backend
+```
+
+## 6. HTTPS 与视频面试
 
 视频面试上线前必须完成：
 
-- 购买域名并将 `A` 记录解析到 Oracle 公网 IP
-- OCI 安全列表开放 `443`
+- 购买域名并将 `A` 记录解析到 Azure VM 公网 IP
+- Azure 网络安全组开放 `443`
 - 配置 HTTPS 证书
 - 将 `.env` 中的来源改成 HTTPS 域名，例如：
 
@@ -136,31 +203,33 @@ MCP_ALLOWED_ORIGINS=https://interwise.example.com
 
 当前 `frontend/nginx.conf` 只提供容器内 HTTP。正式 HTTPS 可以在宿主机前置 Caddy / Nginx / Traefik 做 TLS 终止，再反向代理到前端容器 `80`。
 
-## 6. 备份与更新
+## 7. 备份与恢复
 
-上线后每天备份 MySQL：
+上线后定期备份 MySQL：
 
 ```bash
+cd /opt/interwise
 mkdir -p backups
-docker compose -f docker-compose.prod.yml exec -T db sh -c \
-  'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
-  > "backups/interwise-$(date +%F).sql"
+set -a
+source .env
+set +a
+docker compose --env-file .env -f docker-compose.prod.yml exec -T db mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" "$DB_NAME" > "backups/interwise-$(date +%F).sql"
 find backups -name "interwise-*.sql" -mtime +7 -delete
 ```
 
-更新前先备份，再拉代码重建：
+备份上传文件：
 
 ```bash
-git pull
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml logs -f backend
+tar -czf "backups/uploads-$(date +%F).tar.gz" uploads
 ```
 
 `.env`、`mysql_data/`、`redis_data/`、`qdrant_data/`、`uploads/`、`backups/` 不要提交 Git。
 
-## 7. 正式商用前待补
+## 8. 正式商用前待补
 
-- 购买域名、备案、DNS 解析、HTTPS
+- 轮换曾经暴露过的 DeepSeek Key、SMTP 授权码、JWT 和管理 token
+- 购买域名、DNS 解析、HTTPS
+- 稳定备份和异地保存
 - 云数据库、云 Redis、对象存储
 - 接口限流、防刷、日志监控和异常告警
 - 隐私政策、用户协议、数据删除和导出机制
