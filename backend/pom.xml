@@ -26,22 +26,6 @@
         <jaxb.version>2.3.1</jaxb.version>
     </properties>
 
-    <!-- 配置阿里云的 Maven 镜像，解决 Docker 内部构建时的网络墙问题 -->
-    <repositories>
-        <repository>
-            <id>central</id>
-            <name>阿里云公共仓库</name>
-            <url>https://maven.aliyun.com/repository/public</url>
-        </repository>
-    </repositories>
-    <pluginRepositories>
-        <pluginRepository>
-            <id>central</id>
-            <name>阿里云公共仓库</name>
-            <url>https://maven.aliyun.com/repository/public</url>
-        </pluginRepository>
-    </pluginRepositories>
-
     <dependencies>
         <!-- Spring Boot Web Starter -->
         <dependency>
