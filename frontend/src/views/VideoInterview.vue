@@ -155,6 +155,11 @@ const emotionColor = (key) => {
   return colors[key] || '#909399'
 }
 
+const isMediaSecureContext = () => {
+  const host = window.location.hostname
+  return window.isSecureContext || host === 'localhost' || host === '127.0.0.1' || host === '::1'
+}
+
 // Agent styling for subtitle label
 const agentClass = ref('coordinator')
 const agentEmoji = ref('👔')
@@ -166,6 +171,13 @@ watch(currentAgent, (v) => {
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(async () => {
+  if (!isMediaSecureContext()) {
+    ElMessageBox.alert('视频面试需要 HTTPS 或 localhost 环境。当前公网 IP 的 HTTP 内测仅支持文字面试。', '无法启动视频面试', {
+      confirmButtonText: '返回设置'
+    }).finally(() => router.replace('/interview/setup'))
+    return
+  }
+
   // 1. Open camera + microphone (Requesting 720p/1080p high resolution)
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({

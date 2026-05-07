@@ -14,6 +14,12 @@ services:
       - --collation-server=utf8mb4_0900_ai_ci
     volumes:
       - ./mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     networks:
       - interview-network
 
@@ -24,6 +30,20 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - ./redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - interview-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: interview-qdrant
+    restart: unless-stopped
+    volumes:
+      - ./qdrant_data:/qdrant/storage
     networks:
       - interview-network
 
@@ -33,8 +53,12 @@ services:
     container_name: interview-backend
     restart: unless-stopped
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
     environment:
       DB_URL: jdbc:mysql://db:3306/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
       DB_USERNAME: ${DB_USERNAME}
@@ -44,6 +68,16 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-interview_atoms}
+      QDRANT_VECTOR_SIZE: ${QDRANT_VECTOR_SIZE:-384}
+      QUESTION_BANK_ADMIN_TOKEN: ${QUESTION_BANK_ADMIN_TOKEN}
+      MCP_READ_TOKEN: ${MCP_READ_TOKEN}
+      MCP_ALLOWED_ORIGINS: ${MCP_ALLOWED_ORIGINS}
+      QUESTION_BANK_SEED_FROM_JSON: ${QUESTION_BANK_SEED_FROM_JSON:-true}
+      QUESTION_BANK_REINDEX_ON_STARTUP: ${QUESTION_BANK_REINDEX_ON_STARTUP:-true}
+      QUESTION_BANK_LEGACY_LOADER_ENABLED: ${QUESTION_BANK_LEGACY_LOADER_ENABLED:-false}
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_USERNAME: ${MAIL_USERNAME}

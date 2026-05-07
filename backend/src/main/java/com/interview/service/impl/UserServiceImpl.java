@@ -1,6 +1,7 @@
 package com.interview.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.digest.BCrypt;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -50,10 +51,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new RuntimeException("邮箱或用户名不存在");
         }
 
-        String md5Password = DigestUtil.md5Hex(loginDTO.getPassword());
-        if (!user.getPassword().equals(md5Password) && !user.getPassword().equals(loginDTO.getPassword())) {
+        if (!matchesPassword(loginDTO.getPassword(), user.getPassword())) {
             throw new RuntimeException("密码错误");
         }
+        upgradeLegacyPasswordIfNeeded(user, loginDTO.getPassword());
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("id", user.getId());
@@ -86,7 +87,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 4. 创建用户
         User user = new User();
         user.setUsername(registerDTO.getUsername());
-        user.setPassword(DigestUtil.md5Hex(registerDTO.getPassword()));
+        user.setPassword(hashPassword(registerDTO.getPassword()));
         user.setEmail(registerDTO.getEmail());
         user.setNickname("User_" + System.currentTimeMillis() % 10000);
 
@@ -126,7 +127,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         // 3. 更新密码
-        user.setPassword(DigestUtil.md5Hex(resetDTO.getNewPassword()));
+        user.setPassword(hashPassword(resetDTO.getNewPassword()));
         this.updateById(user);
     }
 
@@ -151,15 +152,42 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = this.getById(userId);
         if (user == null) throw new RuntimeException("用户不存在");
 
-        String oldMd5 = DigestUtil.md5Hex(oldPassword);
-        if (!user.getPassword().equals(oldMd5) && !user.getPassword().equals(oldPassword)) {
+        if (!matchesPassword(oldPassword, user.getPassword())) {
             throw new RuntimeException("旧密码错误");
         }
         if (newPassword == null || newPassword.length() < 6) {
             throw new RuntimeException("新密码至少6位");
         }
-        user.setPassword(DigestUtil.md5Hex(newPassword));
+        user.setPassword(hashPassword(newPassword));
         this.updateById(user);
+    }
+
+    private String hashPassword(String rawPassword) {
+        return BCrypt.hashpw(rawPassword, BCrypt.gensalt());
+    }
+
+    private boolean matchesPassword(String rawPassword, String storedHash) {
+        if (rawPassword == null || storedHash == null || storedHash.isBlank()) {
+            return false;
+        }
+        if (isBcryptHash(storedHash)) {
+            return BCrypt.checkpw(rawPassword, storedHash);
+        }
+        return DigestUtil.md5Hex(rawPassword).equals(storedHash);
+    }
+
+    private void upgradeLegacyPasswordIfNeeded(User user, String rawPassword) {
+        if (user == null || rawPassword == null || isBcryptHash(user.getPassword())) {
+            return;
+        }
+        if (DigestUtil.md5Hex(rawPassword).equals(user.getPassword())) {
+            user.setPassword(hashPassword(rawPassword));
+            this.updateById(user);
+        }
+    }
+
+    private boolean isBcryptHash(String value) {
+        return value != null && (value.startsWith("$2a$") || value.startsWith("$2b$") || value.startsWith("$2y$"));
     }
 
     @Override

@@ -47,6 +47,7 @@ docker-compose.yml
 !docker-compose.example.yml
 **/application.yml
 !**/application.yml.example
+!backend/src/main/resources/application.yml
 
 # ========== JavaEE 项目核心忽略 ==========
 # 编译产物

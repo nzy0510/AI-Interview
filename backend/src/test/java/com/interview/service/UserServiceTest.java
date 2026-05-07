@@ -2,10 +2,12 @@ package com.interview.service;
 
 import com.interview.entity.User;
 import com.interview.entity.UserPreference;
+import com.interview.dto.LoginDTO;
 import com.interview.mapper.UserMapper;
 import com.interview.mapper.UserPreferenceMapper;
 import com.interview.service.impl.UserServiceImpl;
 import com.interview.utils.JwtUtils;
+import cn.hutool.crypto.digest.BCrypt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -81,7 +83,44 @@ class UserServiceTest {
 
         userService.changePassword(1L, "123456", "654321");
 
+        assertThat(user.getPassword()).startsWith("$2");
+        assertThat(BCrypt.checkpw("654321", user.getPassword())).isTrue();
         verify(userMapper).updateById(user);
+    }
+
+    @Test
+    @DisplayName("登录：旧 MD5 密码验证成功后自动升级为 BCrypt")
+    void shouldUpgradeLegacyMd5PasswordOnLogin() {
+        User user = createUser();
+        LoginDTO loginDTO = new LoginDTO();
+        loginDTO.setUsername("admin");
+        loginDTO.setPassword("123456");
+        when(userMapper.selectOne(any(), eq(true))).thenReturn(user);
+        when(userMapper.updateById(any(User.class))).thenReturn(1);
+        when(jwtUtils.generateJwt(any())).thenReturn("jwt-token");
+
+        String token = userService.login(loginDTO);
+
+        assertThat(token).isEqualTo("jwt-token");
+        assertThat(user.getPassword()).startsWith("$2");
+        assertThat(BCrypt.checkpw("123456", user.getPassword())).isTrue();
+        verify(userMapper).updateById(user);
+    }
+
+    @Test
+    @DisplayName("登录：不再兼容数据库中的明文密码")
+    void shouldRejectPlaintextStoredPassword() {
+        User user = createUser();
+        user.setPassword("123456");
+        LoginDTO loginDTO = new LoginDTO();
+        loginDTO.setUsername("admin");
+        loginDTO.setPassword("123456");
+        when(userMapper.selectOne(any(), eq(true))).thenReturn(user);
+
+        assertThatThrownBy(() -> userService.login(loginDTO))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("密码错误");
+        verify(userMapper, never()).updateById(any());
     }
 
     @Test
