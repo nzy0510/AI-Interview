@@ -1,0 +1,17 @@
+http://{$DOMAIN_NAME} {
+    redir https://{$DOMAIN_NAME}{uri} permanent
+}
+
+:80 {
+    reverse_proxy frontend:80 {
+        flush_interval -1
+    }
+}
+
+https://{$DOMAIN_NAME} {
+    encode zstd gzip
+
+    reverse_proxy frontend:80 {
+        flush_interval -1
+    }
+}

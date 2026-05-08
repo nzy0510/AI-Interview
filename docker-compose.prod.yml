@@ -97,7 +97,25 @@ services:
     depends_on:
       - backend
     ports:
+      - "${FRONTEND_HTTP_BIND:-80}:80"
+    networks:
+      - interview-network
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: interview-caddy
+    restart: unless-stopped
+    profiles:
+      - https
+    depends_on:
+      - frontend
+    ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy_data:/data
+      - ./caddy_config:/config
     networks:
       - interview-network
 

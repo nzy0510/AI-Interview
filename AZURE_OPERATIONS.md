@@ -346,6 +346,23 @@ chmod 600 .env
 4. 使用 Caddy、Nginx + Certbot 或 Azure 前置服务配置 HTTPS
 5. 将 `.env` 中的来源改为 `https://你的域名`
 
+当前生产 Compose 支持可选 Caddy 入口。启用 HTTPS 时，`.env` 应包含：
+
+```env
+APP_CORS_ALLOWED_ORIGINS=https://你的域名
+MCP_ALLOWED_ORIGINS=https://你的域名
+DOMAIN_NAME=你的域名
+FRONTEND_HTTP_BIND=127.0.0.1:8080
+```
+
+启动 HTTPS profile：
+
+```bash
+cd /opt/interwise
+docker compose --env-file .env -f docker-compose.prod.yml --profile https up -d
+docker compose --env-file .env -f docker-compose.prod.yml --profile https logs --tail=100 caddy
+```
+
 ## 8. 是否可以改成 Azure 平台托管
 
 可以，但不是当前项目的最小成本路径。

@@ -199,9 +199,20 @@ docker compose --env-file .env -f docker-compose.prod.yml restart backend
 ```env
 APP_CORS_ALLOWED_ORIGINS=https://interwise.example.com
 MCP_ALLOWED_ORIGINS=https://interwise.example.com
+DOMAIN_NAME=interwise.example.com
+FRONTEND_HTTP_BIND=127.0.0.1:8080
 ```
 
-当前 `frontend/nginx.conf` 只提供容器内 HTTP。正式 HTTPS 可以在宿主机前置 Caddy / Nginx / Traefik 做 TLS 终止，再反向代理到前端容器 `80`。
+当前生产 Compose 支持可选的 Caddy HTTPS 入口。启用 HTTPS 时，前端容器只绑定到宿主机本地端口 `127.0.0.1:8080`，公网 `80` 和 `443` 由 Caddy 接管并自动申请/续期证书：
+
+```bash
+cd /opt/interwise
+docker compose --env-file .env -f docker-compose.prod.yml --profile https up -d
+docker compose --env-file .env -f docker-compose.prod.yml --profile https ps
+docker compose --env-file .env -f docker-compose.prod.yml --profile https logs --tail=100 caddy
+```
+
+如果需要回退到公网 IP + HTTP，先停止 Caddy profile，删除或改回 `.env` 中的 HTTPS 变量，再重新启动普通 Compose。
 
 ## 7. 备份与恢复
 
