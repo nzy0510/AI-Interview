@@ -363,6 +363,8 @@ docker compose --env-file .env -f docker-compose.prod.yml --profile https up -d
 docker compose --env-file .env -f docker-compose.prod.yml --profile https logs --tail=100 caddy
 ```
 
+测试阶段 Caddy 会同时保留 HTTP 访问，不强制跳转 HTTPS。这样如果国内网络、代理或运营商链路对 443/TLS 不稳定，仍可用 HTTP 域名或公网 IP 完成基础功能测试。
+
 ## 8. 是否可以改成 Azure 平台托管
 
 可以，但不是当前项目的最小成本路径。

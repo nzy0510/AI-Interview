@@ -203,7 +203,7 @@ DOMAIN_NAME=interwise.example.com
 FRONTEND_HTTP_BIND=127.0.0.1:8080
 ```
 
-当前生产 Compose 支持可选的 Caddy HTTPS 入口。启用 HTTPS 时，前端容器只绑定到宿主机本地端口 `127.0.0.1:8080`，公网 `80` 和 `443` 由 Caddy 接管并自动申请/续期证书：
+当前生产 Compose 支持可选的 Caddy HTTPS 入口。启用 HTTPS 时，前端容器只绑定到宿主机本地端口 `127.0.0.1:8080`，公网 `80` 和 `443` 由 Caddy 接管并自动申请/续期证书。测试阶段 Caddy 会同时保留 HTTP 访问，不强制跳转 HTTPS，方便在国内网络或代理环境下排查 443/TLS 问题：
 
 ```bash
 cd /opt/interwise
