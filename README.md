@@ -277,3 +277,6 @@ npm exec vitest -- --run
 ```
 
 当前项目在 Windows 环境中偶尔会遇到 Vitest / esbuild `spawn EPERM`，通常提升权限重跑即可。
+
+## Azure 云端服务器部署
+- 该项目已完成 Azure 云端部署，当前内测地址为 https://interwise.japaneast.cloudapp.azure.com
