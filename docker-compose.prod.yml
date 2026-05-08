@@ -109,6 +109,8 @@ services:
       - https
     depends_on:
       - frontend
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
     ports:
       - "80:80"
       - "443:443"
