@@ -1,3 +1,7 @@
+{
+    auto_https disable_redirects
+}
+
 :80 {
     reverse_proxy frontend:80 {
         flush_interval -1
