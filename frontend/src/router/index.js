@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { trackPageView } from '@/utils/analytics'
 
 const viewModules = import.meta.glob('../views/*.vue')
 const commonModules = import.meta.glob('../components/common/*.vue')
@@ -63,6 +64,12 @@ const routes = [
     name: 'Settings',
     component: loadView('Settings'),
     meta: { title: 'Settings' }
+  },
+  {
+    path: '/admin/analytics',
+    name: 'AdminAnalytics',
+    component: loadView('AdminAnalytics'),
+    meta: { title: 'Operations' }
   }
 ]
 
@@ -79,6 +86,10 @@ router.beforeEach((to, from, next) => {
   } else {
     next()
   }
+})
+
+router.afterEach((to) => {
+  trackPageView(to)
 })
 
 export default router

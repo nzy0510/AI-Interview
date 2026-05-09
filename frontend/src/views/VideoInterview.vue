@@ -77,6 +77,8 @@ import InterviewReportOverlay from '@/components/interview/InterviewReportOverla
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
 import { buildVideoInterviewReportMetrics, parseInterviewFinishPayload } from '@/utils/interviewReport'
 import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFallback } from '@/utils/interviewEntry'
+import { trackEvent } from '@/utils/analytics'
+import { getAnonymousId } from '@/utils/visitor'
 
 const router = useRouter()
 const route = useRoute()
@@ -231,6 +233,7 @@ onMounted(async () => {
       resumeQuestions
     })
     recordId.value = id
+    trackEvent('INTERVIEW_START_CLIENT', { mode: 'video', position: position.value })
     // 4. AI starts first — trigger opening
     triggerAiTurn()
   } catch {
@@ -292,7 +295,7 @@ function sendToAI(message) {
   else currentAgent.value = '技术面试官'
 
   const token = localStorage.getItem('token') || ''
-  const url = `/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(message)}&token=${token}`
+  const url = `/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(message)}&token=${token}&aid=${getAnonymousId()}`
   if (eventSource) eventSource.close()
   eventSource = new EventSource(url)
 
@@ -303,7 +306,7 @@ function sendToAI(message) {
     try { d = JSON.parse(e.data) } catch { return }
 
     if (d.error) {
-      ElMessage.error('AI 错误: ' + d.error)
+      ElMessage.error(d.error)
       isStreaming.value = false
       eventSource.close()
       eventSource = null
@@ -534,6 +537,7 @@ const performEndInterview = async (endType = 'manual') => {
       wpm,
       emotionJson: emotionSummary.value ? JSON.stringify(emotionSummary.value) : null
     })
+    trackEvent('INTERVIEW_FINISH_CLIENT', { mode: 'video', recordId: recordId.value })
     loadingMsg.close()
 
     if (res) {

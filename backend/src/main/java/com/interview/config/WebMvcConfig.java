@@ -22,11 +22,24 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Autowired
     private JwtInterceptor jwtInterceptor;
 
+    @Autowired
+    private AuditLoggingInterceptor auditLoggingInterceptor;
+
+    @Autowired
+    private RateLimitInterceptor rateLimitInterceptor;
+
     @Value("${app.cors.allowed-origins:http://localhost,http://localhost:5173,http://127.0.0.1:5173}")
     private String allowedOrigins;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(auditLoggingInterceptor)
+                .addPathPatterns("/api/**", "/mcp/**");
+
+        registry.addInterceptor(rateLimitInterceptor)
+                .addPathPatterns("/api/**", "/mcp/**")
+                .excludePathPatterns("/api/health");
+
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/api/**")           // 拦截所有 /api/ 接口
                 .excludePathPatterns(                 // 放行登录注册及密码重置相关
@@ -34,7 +47,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/user/register",
                         "/api/user/send-code",
                         "/api/user/forgot-password",
-                        "/api/user/reset-password"
+                        "/api/user/reset-password",
+                        "/api/analytics/event",
+                        "/api/feedback",
+                        "/api/health"
                 );
     }
 

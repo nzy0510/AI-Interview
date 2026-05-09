@@ -10,6 +10,7 @@ import com.interview.dto.questionbank.QuestionBankSearchResult;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.service.InterviewService;
+import com.interview.service.UsageQuotaService;
 import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -58,6 +59,12 @@ public class InterviewServiceImpl implements InterviewService {
     @Autowired
     private com.interview.service.MentorService mentorService;
 
+    @Autowired(required = false)
+    private UsageQuotaService usageQuotaService;
+
+    @Autowired(required = false)
+    private com.interview.service.AppEventService appEventService;
+
     // ========== 业务方法 ==========
 
     @Override
@@ -78,6 +85,8 @@ public class InterviewServiceImpl implements InterviewService {
     @Override
     public Long startInterview(Long userId, String position, String mode, List<String> resumeQuestions,
                                String difficultyLevel, List<String> focusAreas) {
+        consumeQuota(userId, UsageQuotaService.INTERVIEW_START);
+
         InterviewRecord record = new InterviewRecord();
         record.setUserId(userId);
         record.setPosition(position);
@@ -101,6 +110,13 @@ public class InterviewServiceImpl implements InterviewService {
     @Override
     public SseEmitter chatStream(Long userId, Long recordId, String message) {
         SseEmitter emitter = new SseEmitter(0L);
+
+        try {
+            consumeQuota(userId, UsageQuotaService.AI_CHAT_TURN);
+        } catch (RuntimeException e) {
+            sendSseError(emitter, e.getMessage());
+            return emitter;
+        }
 
         InterviewRecord record;
         try {
@@ -151,6 +167,8 @@ public class InterviewServiceImpl implements InterviewService {
         } catch (Exception e) {
             log.warn("RAG 检索失败，跳过题库上下文: recordId={}, position={}, error={}",
                     recordId, position, e.getMessage());
+            recordSystemEvent(userId, "RAG_RETRIEVAL_FAILED", "system",
+                    Map.of("recordId", recordId, "position", position), false, e.getMessage());
             retrievedResults = List.of();
         }
 
@@ -284,6 +302,8 @@ public class InterviewServiceImpl implements InterviewService {
             @Override
             public void onError(Throwable error) {
                 log.error("AI 响应错误: ", error);
+                recordSystemEvent(userId, "DEEPSEEK_STREAM_FAILED", "system",
+                        Map.of("recordId", recordId), false, error.getMessage());
                 try {
                     emitter.send(JSON.toJSONString(Map.of("error", error.getMessage())));
                     emitter.complete();
@@ -323,6 +343,11 @@ public class InterviewServiceImpl implements InterviewService {
 
     private InterviewRecord completeInterview(InterviewRecord record, Integer wpm, String emotionJson) {
         Long recordId = record.getId();
+        if (InterviewPhase.FINISHED.name().equals(record.getPhase()) && record.getScore() != null) {
+            log.info("面试已完成，跳过重复评估生成 recordId={}", recordId);
+            return record;
+        }
+
         List<ChatMessage> historyMessages = sessionStore.load(recordId);
         // 持久化已用知识原子 ID 列表
         List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
@@ -525,6 +550,19 @@ public class InterviewServiceImpl implements InterviewService {
             emitter.send(JSON.toJSONString(Map.of("error", message)));
             emitter.complete();
         } catch (IOException ignored) {
+        }
+    }
+
+    private void consumeQuota(Long userId, String quotaType) {
+        if (usageQuotaService != null) {
+            usageQuotaService.consume(userId, quotaType);
+        }
+    }
+
+    private void recordSystemEvent(Long userId, String eventType, String category,
+                                   Map<String, Object> metadata, boolean success, String errorMessage) {
+        if (appEventService != null) {
+            appEventService.recordSystemEvent(userId, eventType, category, metadata, success, errorMessage);
         }
     }
 }

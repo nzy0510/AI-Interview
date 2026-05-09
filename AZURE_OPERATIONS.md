@@ -7,7 +7,7 @@
 - Azure VM：`vm-interwise-test`
 - 用户：`azureuser`
 - 项目目录：`/opt/interwise`
-- 访问地址：`http://52.140.216.52`
+- 访问地址：`https://interwise.japaneast.cloudapp.azure.com`
 - Compose 文件：`docker-compose.prod.yml`
 - 生产环境变量：`.env`
 
@@ -64,11 +64,12 @@ docker compose --env-file .env -f docker-compose.prod.yml ps
 - `interview-db`
 - `interview-redis`
 - `interview-qdrant`
+- `interview-caddy`（启用 HTTPS profile 时）
 
-启动或重新部署：
+启动或重新部署（当前 HTTPS profile）：
 
 ```bash
-docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env -f docker-compose.prod.yml --profile https up -d --build
 ```
 
 含义：
@@ -159,12 +160,12 @@ docker compose --env-file .env -f docker-compose.prod.yml down -v
 
 `-v` 会删除 Docker volume。虽然当前主要数据是绑定目录，但生产环境中不要养成这个习惯。
 
-更新代码：
+更新代码（当前 HTTPS profile）：
 
 ```bash
 cd /opt/interwise
 git pull
-docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env -f docker-compose.prod.yml --profile https up -d --build
 docker compose --env-file .env -f docker-compose.prod.yml ps
 ```
 
@@ -197,8 +198,8 @@ docker compose --env-file .env -f docker-compose.prod.yml ps
 如果公网 IP 变化，需要修改 `.env`：
 
 ```env
-APP_CORS_ALLOWED_ORIGINS=http://新公网IP
-MCP_ALLOWED_ORIGINS=http://新公网IP
+APP_CORS_ALLOWED_ORIGINS=https://interwise.japaneast.cloudapp.azure.com
+MCP_ALLOWED_ORIGINS=https://interwise.japaneast.cloudapp.azure.com
 ```
 
 然后重启后端或重新启动 Compose：
@@ -247,7 +248,7 @@ tmux new -s deploy
 
 ```bash
 cd /opt/interwise
-docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env -f docker-compose.prod.yml --profile https up -d --build
 ```
 
 如果 SSH 断开，重新登录后恢复现场：
@@ -312,8 +313,8 @@ tar -czf backups/qdrant_data_$(date +%F_%H%M).tar.gz qdrant_data
 端口暴露原则：
 
 - 开放 `22`：SSH
-- 开放 `80`：HTTP 访问
-- 后续开放 `443`：HTTPS
+- 开放 `80`：HTTP 兼容入口和证书续签
+- 开放 `443`：HTTPS 正式访问
 - 不要开放 `3306`、`6379`、`6333`、`8080`
 
 `.env` 权限建议：
@@ -325,9 +326,9 @@ chmod 600 .env
 
 不要把 `.env` 提交到 GitHub。
 
-## 7. HTTP、HTTPS 和视频面试
+## 7. HTTPS、视频面试和域名
 
-当前公网 IP + HTTP 可以用于：
+当前 Azure DNS + HTTPS 可以用于：
 
 - 注册
 - 登录
@@ -335,15 +336,17 @@ chmod 600 .env
 - 简历上传
 - 报告生成
 - 历史记录
+- 视频面试
+- 麦克风和摄像头授权
 
-视频面试、麦克风、摄像头能力需要 HTTPS。浏览器通常只允许在安全上下文中调用摄像头和麦克风 API，公网 IP 的 HTTP 环境不能完整验收视频能力。
+视频面试、麦克风、摄像头能力需要 HTTPS。浏览器通常只允许在安全上下文中调用摄像头和麦克风 API，因此正式测试应优先使用 `https://interwise.japaneast.cloudapp.azure.com`。
 
-后续正式开放给用户前建议：
+后续如果购买自有域名：
 
 1. 购买域名
 2. 将域名 A 记录指向 Azure 公网 IP
 3. 开放 `443`
-4. 使用 Caddy、Nginx + Certbot 或 Azure 前置服务配置 HTTPS
+4. 将 `DOMAIN_NAME` 改为自有域名
 5. 将 `.env` 中的来源改为 `https://你的域名`
 
 当前生产 Compose 支持可选 Caddy 入口。启用 HTTPS 时，`.env` 应包含：
@@ -365,7 +368,36 @@ docker compose --env-file .env -f docker-compose.prod.yml --profile https logs -
 
 测试阶段 Caddy 会同时保留 HTTP 访问，不强制跳转 HTTPS。这样如果国内网络、代理或运营商链路对 443/TLS 不稳定，仍可用 HTTP 域名或公网 IP 完成基础功能测试。
 
-## 8. 是否可以改成 Azure 平台托管
+## 8. 访问统计、限流和每日额度
+
+当前生产配置默认开启：
+
+- API 限流：登录、注册、验证码、重置密码、开始面试、AI 对话、报告生成、简历解析、Mentor 刷新、反馈提交和 MCP。
+- 每日额度：默认每用户每天可开始面试 5 次、AI 对话 80 轮、简历解析 3 次、AI Mentor 生成 3 次。
+- 行为记录：访问、登录注册、面试开始/结束、报告查看、异常、限流命中和反馈会写入 MySQL。
+
+`.env` 需要设置：
+
+```env
+APP_ADMIN_TOKEN=强随机管理令牌
+APP_ANALYTICS_HASH_SALT=强随机统计哈希盐
+APP_RATE_LIMIT_ENABLED=true
+APP_QUOTA_ENABLED=true
+APP_DAILY_INTERVIEW_LIMIT=5
+APP_DAILY_AI_CHAT_TURN_LIMIT=80
+APP_DAILY_RESUME_PARSE_LIMIT=3
+APP_DAILY_MENTOR_GENERATE_LIMIT=3
+```
+
+登录网站后访问：
+
+```text
+https://interwise.japaneast.cloudapp.azure.com/admin/analytics
+```
+
+输入 `APP_ADMIN_TOKEN` 可以查看运营统计、今日额度使用和最新反馈。
+
+## 9. 是否可以改成 Azure 平台托管
 
 可以，但不是当前项目的最小成本路径。
 
@@ -403,14 +435,14 @@ Azure 托管化方向包括：
 
 现阶段建议继续使用 VM + Docker Compose。等确认有稳定用户、稳定功能和真实增长需求后，再迁移到托管架构。
 
-## 9. 日常维护检查清单
+## 10. 日常维护检查清单
 
 每次更新代码：
 
 ```bash
 cd /opt/interwise
 git pull
-docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env -f docker-compose.prod.yml --profile https up -d --build
 docker compose --env-file .env -f docker-compose.prod.yml ps
 docker compose --env-file .env -f docker-compose.prod.yml logs --tail=100 backend
 ```
@@ -463,7 +495,7 @@ docker compose down -v
 docker system prune -a --volumes
 ```
 
-## 10. 推荐的后续路线
+## 11. 推荐的后续路线
 
 短期：
 

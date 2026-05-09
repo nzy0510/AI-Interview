@@ -188,6 +188,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Operation, Message, DataLine, Lock } from '@element-plus/icons-vue'
 import { loginAPI, registerAPI, sendCodeAPI, forgotPasswordAPI, resetPasswordAPI } from '@/api/user'
+import { trackEvent } from '@/utils/analytics'
 
 const router = useRouter()
 const activeTab = ref('login')
@@ -308,6 +309,7 @@ const handleLogin = async () => {
       try {
         const token = await loginAPI(loginForm.value)
         localStorage.setItem('token', token)
+        trackEvent('LOGIN_SUCCESS')
         ElMessage.success('登录成功！')
         router.push('/')
       } catch (error) {
@@ -326,6 +328,7 @@ const handleRegister = async () => {
       loading.value = true
       try {
         await registerAPI(registerForm.value)
+        trackEvent('REGISTER_SUCCESS')
         ElMessage.success('注册成功，请切换至登录页面登录')
         activeTab.value = 'login'
         registerForm.value = { username: '', password: '', email: '', code: '' }
@@ -345,6 +348,7 @@ const handleResetPassword = async () => {
       loading.value = true
       try {
         await resetPasswordAPI(forgotForm.value)
+        trackEvent('PASSWORD_RESET_SUCCESS')
         ElMessage.success('密码重置成功，请使用新密码登录')
         activeTab.value = 'login'
         forgotForm.value = { email: '', code: '', newPassword: '' }

@@ -45,6 +45,10 @@
               <span class="meta-label">当前模式</span>
               <strong>{{ modeLabel }}</strong>
             </div>
+            <div class="meta-chip">
+              <span class="meta-label">今日面试额度</span>
+              <strong>{{ interviewQuotaText }}</strong>
+            </div>
           </div>
         </section>
 
@@ -224,6 +228,7 @@ import { ArrowLeft, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { interviewSetupDefaults, buildSetupSnapshot } from '@/mock/setup'
 import { getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
+import { getMyQuotaAPI } from '@/api/analytics'
 import { userKey } from '@/utils/auth'
 
 const router = useRouter()
@@ -238,6 +243,7 @@ const role = ref('')
 const experienceLevel = ref('mid')
 const focusAreas = ref([])
 const mode = ref('text')
+const quotaItems = ref([])
 
 const clearResumeState = () => {
   resumeAnalysis.value = null
@@ -273,6 +279,12 @@ const resumeSnapshot = computed(() => buildSetupSnapshot(resumeAnalysis.value, h
 
 const modeLabel = computed(() => {
   return setupDefaults.modeOptions.find((item) => item.value === mode.value)?.title || '文字面试'
+})
+
+const interviewQuotaText = computed(() => {
+  const item = quotaItems.value.find((q) => q.quotaType === 'interview_start')
+  if (!item) return '加载中'
+  return `${item.remaining}/${item.limit}`
 })
 
 const normalizeSupportedRole = (value) => {
@@ -335,6 +347,15 @@ const loadPreference = async () => {
   } catch { /* preference load optional */ }
 }
 
+const loadQuota = async () => {
+  try {
+    const data = await getMyQuotaAPI()
+    quotaItems.value = data?.items || []
+  } catch {
+    quotaItems.value = []
+  }
+}
+
 let prefSaveTimer = null
 const autoSavePreference = () => {
   if (prefSaveTimer) clearTimeout(prefSaveTimer)
@@ -351,6 +372,7 @@ const autoSavePreference = () => {
 onMounted(async () => {
   await loadResumeProfile()
   await loadPreference()
+  await loadQuota()
   syncFromQuery()
 })
 
@@ -508,7 +530,7 @@ const startInterview = (preferredMode) => {
 
 .hero-meta {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   min-width: 0;
 }

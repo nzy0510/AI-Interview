@@ -14,6 +14,7 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目采
 - 题库维护 Skill：`skills/interview-question-bank` 支持从 PDF、DOCX、TXT、MD、JSON 生成导入包，并调用项目 API 发布。
 - 简历画像：PDF 简历解析后写入 `resume_profile`，前端以服务端状态为准，避免旧浏览器缓存误用。
 - AI Mentor：聚合面试历史、知识覆盖、风险提醒和行动建议，Redis 缓存 24 小时并支持刷新。
+- 访问统计与成本保护：记录页面访问、关键行为、反馈、异常和限流命中；使用 Redis + MySQL 快照限制每日 AI 面试、对话、简历解析和 Mentor 生成额度。
 - Docker 本地启动：`frontend + backend + mysql + redis + qdrant` 一键编排。
 
 ## 技术栈
@@ -73,7 +74,7 @@ graph LR
 │   │   ├── service/                # 面试、简历、Mentor、RAG、题库服务
 │   │   └── utils/                  # JwtUtils 等工具
 │   └── src/main/resources/
-│       ├── db/migration/           # Flyway 迁移，V1 - V6
+│       ├── db/migration/           # Flyway 迁移，V1 - V7
 │       └── knowledge_base/atoms/   # 旧 JSON 题库种子，启动时可导入数据库
 ├── frontend/
 │   └── src/
@@ -116,11 +117,14 @@ DEEPSEEK_API_KEY=your_deepseek_api_key
 JWT_SIGN_KEY=your_jwt_signing_key_at_least_32_characters
 QUESTION_BANK_ADMIN_TOKEN=your_strong_admin_token
 MCP_READ_TOKEN=your_strong_read_token
+APP_ADMIN_TOKEN=your_strong_ops_admin_token
+APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
 MAIL_USERNAME=your_email@qq.com
 MAIL_PASSWORD=your_smtp_authorization_code
 ```
 
 `QUESTION_BANK_ADMIN_TOKEN` 用于开发者维护题库；`MCP_READ_TOKEN` 用于外部 AI 客户端只读调用 MCP。生产环境请使用强随机值。
+`APP_ADMIN_TOKEN` 用于前端 Operations 统计页和管理反馈接口；不要把真实值写入代码或提交到 Git。
 
 ### 3. 启动
 
@@ -146,7 +150,8 @@ docker compose up -d --build
 1. `mysql/init/init.sql` 创建基础表。
 2. Flyway 自动执行 `backend/src/main/resources/db/migration` 下的版本迁移。
 3. `V6__add_question_bank.sql` 创建题库相关表。
-4. 当 `QUESTION_BANK_SEED_FROM_JSON=true` 且题库为空时，后端会从 `knowledge_base/atoms/**/*.json` 导入题库种子。
+4. `V7__add_analytics_rate_limit_tables.sql` 创建访问事件、每日额度和反馈表。
+5. 当 `QUESTION_BANK_SEED_FROM_JSON=true` 且题库为空时，后端会从 `knowledge_base/atoms/**/*.json` 导入题库种子。
 
 当前题库导入逻辑会跳过旧 JSON 中重复的 `atom_id`，唯一题目发布后会同步到 Qdrant。
 
@@ -277,6 +282,31 @@ npm exec vitest -- --run
 ```
 
 当前项目在 Windows 环境中偶尔会遇到 Vitest / esbuild `spawn EPERM`，通常提升权限重跑即可。
+
+## 访问统计、限流与每日额度
+
+生产默认开启接口限流和每日 AI 成本额度：
+
+- 登录、注册、验证码、重置密码、开始面试、AI 对话、报告生成、简历解析、Mentor 刷新、反馈提交和 MCP 请求都会按 IP 或用户维度限流。
+- 每个登录用户默认每日额度：开始面试 5 次、AI 对话 80 轮、简历解析 3 次、AI Mentor 生成 3 次。
+- 超限统一返回 `429` 和友好提示，例如“今日 AI 对话额度已用完，请明天再试”。
+- 页面访问、登录注册、面试开始/结束、报告查看、反馈、异常和限流命中会写入 `app_event_log`。
+- 额度使用会同步到 `user_daily_usage`，反馈写入 `user_feedback`。
+
+相关环境变量：
+
+```env
+APP_ADMIN_TOKEN=replace_with_a_strong_admin_analytics_token
+APP_ANALYTICS_HASH_SALT=replace_with_a_long_random_analytics_hash_salt
+APP_RATE_LIMIT_ENABLED=true
+APP_QUOTA_ENABLED=true
+APP_DAILY_INTERVIEW_LIMIT=5
+APP_DAILY_AI_CHAT_TURN_LIMIT=80
+APP_DAILY_RESUME_PARSE_LIMIT=3
+APP_DAILY_MENTOR_GENERATE_LIMIT=3
+```
+
+登录后访问 `/admin/analytics`，输入 `APP_ADMIN_TOKEN` 可查看 PV、UV、注册、登录、面试完成率、限流命中、今日额度使用和最新反馈。
 
 ## Azure 云端服务器部署
 - 该项目已完成 Azure 云端部署，当前内测地址为 https://interwise.japaneast.cloudapp.azure.com
