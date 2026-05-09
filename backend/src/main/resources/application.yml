@@ -181,6 +181,10 @@ app:
       ai-chat-turn: ${APP_DAILY_AI_CHAT_TURN_LIMIT:80}
       resume-parse: ${APP_DAILY_RESUME_PARSE_LIMIT:3}
       mentor-generate: ${APP_DAILY_MENTOR_GENERATE_LIMIT:3}
+  developer:
+    exempt-user-ids: ${APP_DEVELOPER_EXEMPT_USER_IDS:}
+    exempt-usernames: ${APP_DEVELOPER_EXEMPT_USERNAMES:}
+    exempt-emails: ${APP_DEVELOPER_EXEMPT_EMAILS:}
 
 # DeepSeek AI 配置 (LangChain4j OpenAI 兼容格式)
 langchain4j:

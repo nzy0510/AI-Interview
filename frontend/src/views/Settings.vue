@@ -107,6 +107,20 @@
           </div>
         </div>
       </section>
+
+      <!-- Operations -->
+      <section class="surface-card section-shell">
+        <div class="section-head operations-head">
+          <div>
+            <p class="section-kicker">Operations</p>
+            <h2 class="section-title">运营入口</h2>
+            <p class="section-desc">访问统计、用户反馈与额度保护集中在这里查看。</p>
+          </div>
+          <el-button type="primary" :icon="DataAnalysis" @click="router.push('/admin/analytics')">
+            打开统计
+          </el-button>
+        </div>
+      </section>
     </el-main>
   </div>
 </template>
@@ -114,7 +128,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, UserFilled } from '@element-plus/icons-vue'
+import { ArrowLeft, DataAnalysis, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getCurrentUserAPI, updateProfileAPI, changePasswordAPI, getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
 import { logout } from '@/utils/auth'
@@ -308,6 +322,11 @@ const handleLogout = () => {
   gap: 8px;
   align-items: center;
   flex-shrink: 0;
+}
+
+.operations-head {
+  align-items: center;
+  margin-bottom: 0;
 }
 
 .settings-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; }

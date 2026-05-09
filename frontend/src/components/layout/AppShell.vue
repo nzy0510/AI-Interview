@@ -22,7 +22,6 @@ const navItems = [
   { path: '/mentor', label: 'AI Mentor', icon: DataAnalysis },
   { path: '/resume', label: 'Resume', icon: UserFilled },
   { path: '/history', label: 'Reports', icon: Document },
-  { path: '/admin/analytics', label: 'Operations', icon: DataAnalysis },
   { path: '/settings', label: 'Settings', icon: Setting }
 ]
 

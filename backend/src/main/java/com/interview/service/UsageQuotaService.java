@@ -35,6 +35,7 @@ public class UsageQuotaService {
     private StringRedisTemplate stringRedisTemplate;
 
     private final UserDailyUsageMapper usageMapper;
+    private final DeveloperAccessService developerAccessService;
     private final Map<String, LocalCounter> localCounters = new ConcurrentHashMap<>();
 
     @Value("${app.quota.enabled:true}")
@@ -52,14 +53,18 @@ public class UsageQuotaService {
     @Value("${app.quota.daily.mentor-generate:3}")
     private int mentorGenerateLimit;
 
-    public UsageQuotaService(UserDailyUsageMapper usageMapper) {
+    public UsageQuotaService(UserDailyUsageMapper usageMapper, DeveloperAccessService developerAccessService) {
         this.usageMapper = usageMapper;
+        this.developerAccessService = developerAccessService;
     }
 
     public void consume(Long userId, String quotaType) {
         if (!quotaEnabled) return;
         if (userId == null) {
             throw new QuotaExceededException(quotaType, 0, "请先登录后再使用该功能");
+        }
+        if (developerAccessService.isDeveloper(userId)) {
+            return;
         }
         int limit = limitFor(quotaType);
         if (limit <= 0) return;

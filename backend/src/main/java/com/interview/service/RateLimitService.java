@@ -21,14 +21,18 @@ public class RateLimitService {
 
     private final ClientFingerprintService fingerprintService;
     private final RequestUserResolver userResolver;
+    private final DeveloperAccessService developerAccessService;
     private final ConcurrentMap<String, LocalCounter> localCounters = new ConcurrentHashMap<>();
 
     @Value("${app.rate-limit.enabled:true}")
     private boolean enabled;
 
-    public RateLimitService(ClientFingerprintService fingerprintService, RequestUserResolver userResolver) {
+    public RateLimitService(ClientFingerprintService fingerprintService,
+                            RequestUserResolver userResolver,
+                            DeveloperAccessService developerAccessService) {
         this.fingerprintService = fingerprintService;
         this.userResolver = userResolver;
+        this.developerAccessService = developerAccessService;
     }
 
     public void check(HttpServletRequest request) {
@@ -41,6 +45,7 @@ public class RateLimitService {
         String method = request.getMethod();
         Long userId = userResolver.resolveUserId(request);
         String actor = userId != null ? "u:" + userId + ":ip:" + fingerprintService.ipHash(request) : ipSubject;
+        boolean developer = developerAccessService.isDeveloper(userId);
 
         if (is(method, path, "POST", "/api/user/login")) {
             apply("login", ipSubject, 20, Duration.ofMinutes(10), "登录尝试过于频繁，请稍后再试");
@@ -52,17 +57,17 @@ public class RateLimitService {
         } else if (is(method, path, "POST", "/api/user/reset-password")) {
             apply("password-reset", ipSubject, 10, Duration.ofHours(1), "密码重置请求过于频繁，请稍后再试");
         } else if (is(method, path, "POST", "/api/interview/start")) {
-            apply("interview-start", actor, 20, Duration.ofMinutes(10), "开始面试过于频繁，请稍后再试");
+            applyForUser("interview-start", actor, developer, 20, Duration.ofMinutes(10), "开始面试过于频繁，请稍后再试");
         } else if (is(method, path, "GET", "/api/interview/chatStream")) {
-            apply("interview-chat", actor, 80, Duration.ofMinutes(10), "AI 对话请求过于频繁，请稍后再试");
+            applyForUser("interview-chat", actor, developer, 80, Duration.ofMinutes(10), "AI 对话请求过于频繁，请稍后再试");
         } else if (is(method, path, "POST", "/api/interview/finish")) {
-            apply("interview-finish", actor, 10, Duration.ofMinutes(30), "报告生成请求过于频繁，请稍后再试");
+            applyForUser("interview-finish", actor, developer, 10, Duration.ofMinutes(30), "报告生成请求过于频繁，请稍后再试");
         } else if (is(method, path, "POST", "/api/resume/parse")) {
-            apply("resume-parse", actor, 10, Duration.ofHours(1), "简历解析请求过于频繁，请稍后再试");
+            applyForUser("resume-parse", actor, developer, 10, Duration.ofHours(1), "简历解析请求过于频繁，请稍后再试");
         } else if (is(method, path, "POST", "/api/user/mentor-insight/refresh")) {
-            apply("mentor-refresh", actor, 10, Duration.ofHours(1), "AI Mentor 刷新过于频繁，请稍后再试");
+            applyForUser("mentor-refresh", actor, developer, 10, Duration.ofHours(1), "AI Mentor 刷新过于频繁，请稍后再试");
         } else if (is(method, path, "POST", "/api/feedback")) {
-            apply("feedback", actor, 10, Duration.ofHours(1), "反馈提交过于频繁，请稍后再试");
+            applyForUser("feedback", actor, developer, 10, Duration.ofHours(1), "反馈提交过于频繁，请稍后再试");
         } else if (path.startsWith("/mcp")) {
             apply("mcp", ipSubject, 120, Duration.ofMinutes(1), "MCP 请求过于频繁，请稍后再试");
         }
@@ -78,6 +83,13 @@ public class RateLimitService {
         if (count > limit) {
             throw new RateLimitExceededException(message, window.toSeconds());
         }
+    }
+
+    private void applyForUser(String rule, String subject, boolean developer, int limit, Duration window, String message) {
+        if (developer) {
+            return;
+        }
+        apply(rule, subject, limit, window, message);
     }
 
     private long increment(String rule, String subject, Duration window) {

@@ -21,10 +21,13 @@ class UsageQuotaServiceTest {
     @Mock
     private UserDailyUsageMapper usageMapper;
 
+    @Mock
+    private DeveloperAccessService developerAccessService;
+
     @Test
     @DisplayName("超过每日面试次数时拒绝继续开始面试")
     void shouldRejectWhenDailyInterviewQuotaExceeded() {
-        UsageQuotaService service = new UsageQuotaService(usageMapper);
+        UsageQuotaService service = new UsageQuotaService(usageMapper, developerAccessService);
         ReflectionTestUtils.setField(service, "quotaEnabled", true);
         ReflectionTestUtils.setField(service, "interviewStartLimit", 2);
 
@@ -36,5 +39,19 @@ class UsageQuotaServiceTest {
                 .hasMessageContaining("今日可开始面试次数已用完");
 
         verify(usageMapper, times(3)).upsertUsage(any());
+    }
+
+    @Test
+    @DisplayName("开发者白名单账号不消耗每日 AI 成本额度")
+    void shouldSkipDailyQuotaForDeveloper() {
+        UsageQuotaService service = new UsageQuotaService(usageMapper, developerAccessService);
+        ReflectionTestUtils.setField(service, "quotaEnabled", true);
+        ReflectionTestUtils.setField(service, "interviewStartLimit", 1);
+        org.mockito.Mockito.when(developerAccessService.isDeveloper(1L)).thenReturn(true);
+
+        service.consume(1L, UsageQuotaService.INTERVIEW_START);
+        service.consume(1L, UsageQuotaService.INTERVIEW_START);
+
+        verify(usageMapper, org.mockito.Mockito.never()).upsertUsage(any());
     }
 }
