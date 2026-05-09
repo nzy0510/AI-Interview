@@ -7,10 +7,23 @@ import org.springframework.stereotype.Service;
 @Service
 public class AdminGuardService {
 
+    private final DeveloperAccessService developerAccessService;
+    private final RequestUserResolver requestUserResolver;
+
     @Value("${app.admin-token:}")
     private String adminToken;
 
+    public AdminGuardService(DeveloperAccessService developerAccessService,
+                             RequestUserResolver requestUserResolver) {
+        this.developerAccessService = developerAccessService;
+        this.requestUserResolver = requestUserResolver;
+    }
+
     public void requireAdmin(HttpServletRequest request) {
+        Long userId = requestUserResolver.resolveUserId(request);
+        if (!developerAccessService.isDeveloper(userId)) {
+            throw new RuntimeException("无权访问管理数据");
+        }
         if (adminToken == null || adminToken.isBlank()) {
             throw new RuntimeException("无权访问管理数据：管理员令牌未配置，请先设置 APP_ADMIN_TOKEN");
         }

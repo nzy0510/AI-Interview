@@ -25,7 +25,7 @@
         placeholder="输入 APP_ADMIN_TOKEN 后查看统计"
         @keyup.enter="loadSummary"
       />
-      <el-button :loading="loading" @click="saveTokenAndLoad">保存并加载</el-button>
+      <el-button :loading="loading" @click="loadSummary">加载统计</el-button>
     </section>
 
     <el-empty v-if="!summary && !loading" description="输入管理令牌后加载运营数据" />
@@ -99,9 +99,9 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getAnalyticsSummaryAPI } from '@/api/analytics'
 
-const TOKEN_KEY = 'interwise_admin_token'
+const LEGACY_TOKEN_KEY = 'interwise_admin_token'
 
-const adminToken = ref(localStorage.getItem(TOKEN_KEY) || '')
+const adminToken = ref('')
 const days = ref(7)
 const loading = ref(false)
 const summary = ref(null)
@@ -124,26 +124,24 @@ const metrics = computed(() => {
   ]
 })
 
-const saveTokenAndLoad = () => {
-  localStorage.setItem(TOKEN_KEY, adminToken.value)
-  loadSummary()
-}
-
 const loadSummary = async () => {
   if (!adminToken.value.trim()) {
     ElMessage.warning('请先输入管理令牌')
+    summary.value = null
     return
   }
   loading.value = true
   try {
     summary.value = await getAnalyticsSummaryAPI(days.value, adminToken.value.trim())
+  } catch (e) {
+    summary.value = null
   } finally {
     loading.value = false
   }
 }
 
 onMounted(() => {
-  if (adminToken.value) loadSummary()
+  localStorage.removeItem(LEGACY_TOKEN_KEY)
 })
 </script>
 
