@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">InterWise 系统架构图</title>
+  <desc id="desc">InterWise AI 模拟面试系统的前端、后端、AI 服务、数据层和 Azure 部署关系。</desc>
+  <defs>
+    <linearGradient id="headerGradient" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#475569"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 42px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 18px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #475569; }
+      .section { fill: #ffffff; stroke: #dbe3ef; stroke-width: 2; rx: 18; }
+      .section-title { font: 700 24px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #0f172a; }
+      .box-title { font: 700 19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #0f172a; }
+      .box-text { font: 400 15px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #475569; }
+      .pill { fill: #e0f2fe; stroke: #7dd3fc; stroke-width: 1.5; rx: 12; }
+      .pill-green { fill: #dcfce7; stroke: #86efac; }
+      .pill-orange { fill: #ffedd5; stroke: #fdba74; }
+      .pill-violet { fill: #ede9fe; stroke: #c4b5fd; }
+      .pill-red { fill: #fee2e2; stroke: #fca5a5; }
+      .arrow { stroke: #475569; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
+      .arrow-dashed { stroke: #64748b; stroke-width: 2.2; fill: none; stroke-dasharray: 8 7; marker-end: url(#arrow); }
+      .label { font: 600 14px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #334155; }
+      .legend { font: 400 14px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #475569; }
+      .accent { fill: url(#headerGradient); }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="1000"/>
+  <rect class="accent" x="0" y="0" width="1600" height="14"/>
+  <text class="title" x="70" y="72">InterWise 系统架构图</text>
+  <text class="subtitle" x="72" y="108">Vue 3 前端 + Spring Boot 后端 + DeepSeek + MySQL / Redis / Qdrant，面向 Azure 单机 Docker Compose 内测部署。</text>
+
+  <rect class="section" x="58" y="148" width="280" height="264"/>
+  <text class="section-title" x="82" y="188">用户入口</text>
+  <rect class="pill" x="88" y="214" width="220" height="58"/>
+  <text class="box-title" x="110" y="239">浏览器用户</text>
+  <text class="box-text" x="110" y="262">注册登录 / 简历 / 面试</text>
+  <rect class="pill pill-green" x="88" y="292" width="220" height="76"/>
+  <text class="box-title" x="110" y="319">开发者账号</text>
+  <text class="box-text" x="110" y="342">Settings 中进入 Operations</text>
+  <text class="box-text" x="110" y="362">需 token + 白名单校验</text>
+
+  <rect class="section" x="404" y="148" width="280" height="264"/>
+  <text class="section-title" x="428" y="188">公网与静态入口</text>
+  <rect class="pill pill-violet" x="434" y="214" width="220" height="72"/>
+  <text class="box-title" x="456" y="240">Azure DNS / HTTPS</text>
+  <text class="box-text" x="456" y="263">interwise.japaneast.cloudapp.azure.com</text>
+  <rect class="pill" x="434" y="306" width="220" height="58"/>
+  <text class="box-title" x="456" y="331">Caddy / Nginx</text>
+  <text class="box-text" x="456" y="354">TLS 终止 + 前端静态资源</text>
+
+  <rect class="section" x="750" y="148" width="300" height="264"/>
+  <text class="section-title" x="774" y="188">Vue 3 前端</text>
+  <rect class="pill" x="780" y="214" width="240" height="58"/>
+  <text class="box-title" x="802" y="239">应用页面</text>
+  <text class="box-text" x="802" y="262">首页 / 面试 / 简历 / Mentor / 设置</text>
+  <rect class="pill pill-green" x="780" y="292" width="240" height="76"/>
+  <text class="box-title" x="802" y="319">浏览器能力</text>
+  <text class="box-text" x="802" y="342">SSE、Web Speech、摄像头</text>
+  <text class="box-text" x="802" y="362">ECharts 统计与反馈入口</text>
+
+  <rect class="section" x="1116" y="122" width="410" height="342"/>
+  <text class="section-title" x="1140" y="162">Spring Boot 后端</text>
+  <rect class="pill" x="1146" y="188" width="156" height="78"/>
+  <text class="box-title" x="1164" y="215">Controller</text>
+  <text class="box-text" x="1164" y="238">REST / SSE / MCP</text>
+  <rect class="pill pill-green" x="1326" y="188" width="156" height="78"/>
+  <text class="box-title" x="1344" y="215">Service</text>
+  <text class="box-text" x="1344" y="238">面试 / 简历 / Mentor</text>
+  <rect class="pill pill-orange" x="1146" y="288" width="156" height="86"/>
+  <text class="box-title" x="1164" y="315">AI 编排</text>
+  <text class="box-text" x="1164" y="338">InterviewPhase 状态机</text>
+  <text class="box-text" x="1164" y="358">RAG 追问 / 报告生成</text>
+  <rect class="pill pill-red" x="1326" y="288" width="156" height="86"/>
+  <text class="box-title" x="1344" y="315">安全与治理</text>
+  <text class="box-text" x="1344" y="338">JWT / 额度 / 限流</text>
+  <text class="box-text" x="1344" y="358">事件统计 / 反馈</text>
+  <text class="legend" x="1148" y="418">核心原则：Controller 只做入口，Service 编排业务，数据与密钥走环境变量。</text>
+
+  <rect class="section" x="58" y="560" width="1468" height="290"/>
+  <text class="section-title" x="82" y="602">数据层、AI 服务与外部集成</text>
+
+  <rect class="pill pill-orange" x="88" y="632" width="236" height="100"/>
+  <text class="box-title" x="112" y="662">DeepSeek API</text>
+  <text class="box-text" x="112" y="688">面试提问 / 追问</text>
+  <text class="box-text" x="112" y="710">报告、Mentor 建议</text>
+
+  <rect class="pill" x="372" y="632" width="236" height="100"/>
+  <text class="box-title" x="396" y="662">MySQL 8</text>
+  <text class="box-text" x="396" y="688">用户、面试记录</text>
+  <text class="box-text" x="396" y="710">题库、RAG 日志、统计</text>
+
+  <rect class="pill pill-green" x="656" y="632" width="236" height="100"/>
+  <text class="box-title" x="680" y="662">Redis 7</text>
+  <text class="box-text" x="680" y="688">会话缓存、Mentor 缓存</text>
+  <text class="box-text" x="680" y="710">限流计数、每日额度</text>
+
+  <rect class="pill pill-violet" x="940" y="632" width="236" height="100"/>
+  <text class="box-title" x="964" y="662">Qdrant</text>
+  <text class="box-text" x="964" y="688">题库向量索引</text>
+  <text class="box-text" x="964" y="710">Top-K 语义检索</text>
+
+  <rect class="pill" x="1224" y="632" width="236" height="100"/>
+  <text class="box-title" x="1248" y="662">文件与邮件</text>
+  <text class="box-text" x="1248" y="688">uploads 简历文件</text>
+  <text class="box-text" x="1248" y="710">SMTP 验证码 / 找回密码</text>
+
+  <rect class="pill pill-red" x="286" y="768" width="310" height="54"/>
+  <text class="box-title" x="310" y="800">后端、MySQL、Redis、Qdrant 仅 Docker 内网可达</text>
+  <rect class="pill pill-green" x="646" y="768" width="310" height="54"/>
+  <text class="box-title" x="670" y="800">公网只暴露 80 / 443，由 Caddy 转发到前端</text>
+  <rect class="pill pill-violet" x="1006" y="768" width="310" height="54"/>
+  <text class="box-title" x="1030" y="800">HTTPS 保障视频面试与浏览器媒体能力</text>
+
+  <path class="arrow" d="M338 278 C366 278, 374 278, 404 278"/>
+  <text class="label" x="354" y="260">HTTPS</text>
+  <path class="arrow" d="M684 278 C712 278, 722 278, 750 278"/>
+  <text class="label" x="704" y="260">静态资源</text>
+  <path class="arrow" d="M1050 278 C1076 278, 1088 278, 1116 278"/>
+  <text class="label" x="1060" y="260">HTTP / SSE</text>
+
+  <path class="arrow-dashed" d="M1220 464 C1140 520, 560 545, 500 632"/>
+  <text class="label" x="780" y="528">JDBC / MyBatis-Plus</text>
+  <path class="arrow-dashed" d="M1294 464 C1190 530, 875 545, 786 632"/>
+  <text class="label" x="925" y="552">缓存 / 限流</text>
+  <path class="arrow-dashed" d="M1360 464 C1270 540, 1082 548, 1060 632"/>
+  <text class="label" x="1130" y="574">向量检索</text>
+  <path class="arrow-dashed" d="M1168 464 C940 540, 345 548, 216 632"/>
+  <text class="label" x="550" y="574">LLM 调用</text>
+  <path class="arrow-dashed" d="M1430 464 C1465 520, 1410 570, 1342 632"/>
+  <text class="label" x="1380" y="566">SMTP / 上传</text>
+
+  <text class="legend" x="72" y="920">说明：生产环境采用 Azure Ubuntu VM + Docker Compose；配置来自 .env，敏感值不进入 Git。MySQL 保存业务真相，Qdrant 保存语义索引，Redis 承担缓存与成本保护。</text>
+</svg>

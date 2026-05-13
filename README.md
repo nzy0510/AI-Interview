@@ -60,6 +60,11 @@ graph LR
     External["外部 AI 客户端"] --> MCP
 ```
 
+配套 SVG 图可直接在仓库中查看：
+
+- [InterWise 系统架构图](image/架构图/InterWise-系统架构图.svg)
+- [InterWise RAG 流程图](image/架构图/InterWise-RAG流程图.svg)
+
 ## 主要目录
 
 ```text
@@ -88,6 +93,7 @@ graph LR
 │   ├── atomizer.py                 # 旧知识原子生成脚本
 │   └── reclassify_hot200.py        # 旧题库分类整理脚本
 ├── skills/interview-question-bank/ # Codex 题库维护 Skill
+├── image/架构图/                   # 系统架构图与 RAG 流程图
 ├── docker-compose.example.yml      # 本地 Docker Compose 模板
 ├── docker-compose.prod.yml         # 生产部署模板
 ├── .env.example                    # 环境变量模板
@@ -227,8 +233,10 @@ python scripts/question_bank_import.py --input .\materials\redis.pdf --category 
 $env:QUESTION_BANK_ADMIN_TOKEN="your-token"
 python scripts/question_bank_import.py --input .\materials\java --category java --mode AUTO_PUBLISH --submit
 ```
-## 说明
-mcp 和 skill现已放在新仓库中
+
+## 外部维护说明
+
+MCP 服务由后端 `/mcp` 提供，题库维护 Skill 在本仓库保留与当前应用匹配的可运行副本；如果后续使用独立仓库版本，请以独立仓库的最新说明为准，并保持 token、接口地址和后端版本一致。
 
 ## 本地开发
 

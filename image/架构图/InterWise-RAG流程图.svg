@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050" role="img" aria-labelledby="title desc">
+  <title id="title">InterWise RAG 流程图</title>
+  <desc id="desc">InterWise 题库入库、向量索引、面试阶段检索、Prompt 注入和追问生成流程。</desc>
+  <defs>
+    <linearGradient id="top" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#475569"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .bar { fill: url(#top); }
+      .title { font: 700 42px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 18px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #475569; }
+      .lane { fill: #ffffff; stroke: #dbe3ef; stroke-width: 2; rx: 20; }
+      .lane-title { font: 700 24px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #0f172a; }
+      .box { fill: #eff6ff; stroke: #93c5fd; stroke-width: 1.8; rx: 14; }
+      .box-green { fill: #ecfdf5; stroke: #86efac; }
+      .box-orange { fill: #fff7ed; stroke: #fdba74; }
+      .box-violet { fill: #f5f3ff; stroke: #c4b5fd; }
+      .box-red { fill: #fef2f2; stroke: #fca5a5; }
+      .box-title { font: 700 18px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #0f172a; }
+      .box-text { font: 400 14px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #475569; }
+      .num { fill: #2563eb; }
+      .num-text { font: 700 16px Arial, sans-serif; fill: #ffffff; text-anchor: middle; dominant-baseline: central; }
+      .arrow { stroke: #475569; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
+      .arrow-dashed { stroke: #64748b; stroke-width: 2.2; fill: none; stroke-dasharray: 8 7; marker-end: url(#arrow); }
+      .label { font: 600 14px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #334155; }
+      .note { font: 400 14px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #64748b; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="1050"/>
+  <rect class="bar" x="0" y="0" width="1600" height="14"/>
+  <text class="title" x="70" y="72">InterWise RAG 流程图</text>
+  <text class="subtitle" x="72" y="108">从题库资料到知识原子，再到面试阶段检索与 DeepSeek 追问生成；MySQL 管业务真相，Qdrant 管语义索引。</text>
+
+  <rect class="lane" x="58" y="148" width="1484" height="300"/>
+  <text class="lane-title" x="82" y="190">一、题库入库与索引构建</text>
+
+  <rect class="box" x="86" y="232" width="190" height="110"/>
+  <circle class="num" cx="110" cy="256" r="15"/><text class="num-text" x="110" y="256">1</text>
+  <text class="box-title" x="134" y="262">资料来源</text>
+  <text class="box-text" x="110" y="292">PDF / DOCX / TXT</text>
+  <text class="box-text" x="110" y="314">MD / JSON / 手工题库</text>
+
+  <rect class="box box-green" x="324" y="232" width="210" height="110"/>
+  <circle class="num" cx="348" cy="256" r="15"/><text class="num-text" x="348" y="256">2</text>
+  <text class="box-title" x="372" y="262">导入包生成</text>
+  <text class="box-text" x="348" y="292">question_bank_import.py</text>
+  <text class="box-text" x="348" y="314">字段校验 / 分类 / 难度</text>
+
+  <rect class="box box-orange" x="582" y="232" width="210" height="110"/>
+  <circle class="num" cx="606" cy="256" r="15"/><text class="num-text" x="606" y="256">3</text>
+  <text class="box-title" x="630" y="262">导入 API</text>
+  <text class="box-text" x="606" y="292">/internal/question-bank/import</text>
+  <text class="box-text" x="606" y="314">DRAFT / AUTO_PUBLISH</text>
+
+  <rect class="box box-violet" x="840" y="232" width="210" height="110"/>
+  <circle class="num" cx="864" cy="256" r="15"/><text class="num-text" x="864" y="256">4</text>
+  <text class="box-title" x="888" y="262">MySQL 知识原子</text>
+  <text class="box-text" x="864" y="292">knowledge_atom</text>
+  <text class="box-text" x="864" y="314">版本、状态、分类、标签</text>
+
+  <rect class="box box-green" x="1098" y="232" width="210" height="110"/>
+  <circle class="num" cx="1122" cy="256" r="15"/><text class="num-text" x="1122" y="256">5</text>
+  <text class="box-title" x="1146" y="262">Embedding</text>
+  <text class="box-text" x="1122" y="292">AllMiniLmL6V2</text>
+  <text class="box-text" x="1122" y="314">384 维向量</text>
+
+  <rect class="box box-red" x="1356" y="232" width="150" height="110"/>
+  <circle class="num" cx="1380" cy="256" r="15"/><text class="num-text" x="1380" y="256">6</text>
+  <text class="box-title" x="1404" y="262">Qdrant</text>
+  <text class="box-text" x="1380" y="292">interview_atoms</text>
+  <text class="box-text" x="1380" y="314">向量 + 轻量元数据</text>
+
+  <path class="arrow" d="M276 287 L324 287"/>
+  <path class="arrow" d="M534 287 L582 287"/>
+  <path class="arrow" d="M792 287 L840 287"/>
+  <path class="arrow" d="M1050 287 L1098 287"/>
+  <path class="arrow" d="M1308 287 L1356 287"/>
+
+  <text class="note" x="90" y="395">启动或手动重建时，已发布知识原子会重新同步到 Qdrant；Qdrant 不替代 MySQL，只承担面试时的语义召回。</text>
+
+  <rect class="lane" x="58" y="498" width="1484" height="360"/>
+  <text class="lane-title" x="82" y="540">二、面试中的 RAG 追问生成</text>
+
+  <rect class="box" x="86" y="584" width="195" height="128"/>
+  <circle class="num" cx="110" cy="608" r="15"/><text class="num-text" x="110" y="608">1</text>
+  <text class="box-title" x="134" y="614">用户上下文</text>
+  <text class="box-text" x="110" y="644">岗位、难度、重点能力</text>
+  <text class="box-text" x="110" y="666">简历画像、历史问答</text>
+  <text class="box-text" x="110" y="688">当前 InterviewPhase</text>
+
+  <rect class="box box-orange" x="330" y="584" width="205" height="128"/>
+  <circle class="num" cx="354" cy="608" r="15"/><text class="num-text" x="354" y="608">2</text>
+  <text class="box-title" x="378" y="614">InterviewService</text>
+  <text class="box-text" x="354" y="644">状态机控制流程</text>
+  <text class="box-text" x="354" y="666">构造检索 query</text>
+  <text class="box-text" x="354" y="688">排除已用 atom</text>
+
+  <rect class="box box-violet" x="584" y="584" width="220" height="128"/>
+  <circle class="num" cx="608" cy="608" r="15"/><text class="num-text" x="608" y="608">3</text>
+  <text class="box-title" x="632" y="614">RagRetriever</text>
+  <text class="box-text" x="608" y="644">岗位 / 分类 / 阶段过滤</text>
+  <text class="box-text" x="608" y="666">Qdrant Top-K 语义召回</text>
+  <text class="box-text" x="608" y="688">不可用时 LIKE 降级</text>
+
+  <rect class="box box-green" x="854" y="584" width="220" height="128"/>
+  <circle class="num" cx="878" cy="608" r="15"/><text class="num-text" x="878" y="608">4</text>
+  <text class="box-title" x="902" y="614">上下文组装</text>
+  <text class="box-text" x="878" y="644">Top-K 原子 + 分数</text>
+  <text class="box-text" x="878" y="666">题目意图、参考点</text>
+  <text class="box-text" x="878" y="688">阶段与追问约束</text>
+
+  <rect class="box box-red" x="1124" y="584" width="180" height="128"/>
+  <circle class="num" cx="1148" cy="608" r="15"/><text class="num-text" x="1148" y="608">5</text>
+  <text class="box-title" x="1172" y="614">DeepSeek</text>
+  <text class="box-text" x="1148" y="644">生成追问</text>
+  <text class="box-text" x="1148" y="666">报告总结</text>
+  <text class="box-text" x="1148" y="688">Mentor 建议</text>
+
+  <rect class="box" x="1354" y="584" width="152" height="128"/>
+  <circle class="num" cx="1378" cy="608" r="15"/><text class="num-text" x="1378" y="608">6</text>
+  <text class="box-title" x="1402" y="614">前端呈现</text>
+  <text class="box-text" x="1378" y="644">SSE 流式输出</text>
+  <text class="box-text" x="1378" y="666">文字 / 视频面试</text>
+  <text class="box-text" x="1378" y="688">报告与复盘</text>
+
+  <path class="arrow" d="M281 648 L330 648"/>
+  <path class="arrow" d="M535 648 L584 648"/>
+  <path class="arrow" d="M804 648 L854 648"/>
+  <path class="arrow" d="M1074 648 L1124 648"/>
+  <path class="arrow" d="M1304 648 L1354 648"/>
+
+  <path class="arrow-dashed" d="M690 584 C750 505, 960 440, 945 342"/>
+  <text class="label" x="716" y="515">读取题库业务数据</text>
+  <path class="arrow-dashed" d="M720 584 C875 512, 1328 454, 1430 342"/>
+  <text class="label" x="1050" y="504">向量召回</text>
+
+  <rect class="box box-orange" x="330" y="760" width="350" height="58"/>
+  <text class="box-title" x="354" y="795">RAG 日志写入 MySQL：记录命中 atom、相似度、面试记录与后续复盘证据</text>
+  <rect class="box box-green" x="744" y="760" width="350" height="58"/>
+  <text class="box-title" x="768" y="795">Redis 成本保护：AI 对话轮次、开始面试、简历解析、Mentor 生成限额</text>
+
+  <rect class="lane" x="58" y="904" width="1484" height="92"/>
+  <text class="lane-title" x="82" y="944">治理边界</text>
+  <text class="note" x="224" y="943">题库维护需要 X-Question-Bank-Token；MCP 读操作使用 Bearer token；Operations 统计页需要 APP_ADMIN_TOKEN 与开发者白名单。</text>
+  <text class="note" x="224" y="970">普通用户只接触面试、简历、报告和反馈，不直接访问题库管理、MCP 写操作或后台统计接口。</text>
+</svg>
