@@ -40,6 +40,12 @@ public class MentorService {
     @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
 
+    @Autowired(required = false)
+    private UsageQuotaService usageQuotaService;
+
+    @Autowired(required = false)
+    private AppEventService appEventService;
+
     /** 内存缓存回退（Redis 不可用时使用，TTL 12小时） */
     private final Map<Long, MentorInsightResponse> localCache = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<Long, Long> localCacheExpiry = new java.util.concurrent.ConcurrentHashMap<>();
@@ -149,6 +155,10 @@ public class MentorService {
     }
 
     private String callMentorLLM(Long userId, List<InterviewRecord> history, KnowledgeCoverage coverage) {
+        if (usageQuotaService != null) {
+            usageQuotaService.consume(userId, UsageQuotaService.MENTOR_GENERATE);
+        }
+
         // 构造简洁的面试历史摘要
         StringBuilder historySummary = new StringBuilder();
         for (int i = 0; i < history.size(); i++) {
@@ -201,9 +211,21 @@ public class MentorService {
                 new SystemMessage(systemPrompt),
                 new UserMessage(historySummary.toString())
         );
-        Response<AiMessage> response = chatModel.generate(messages);
-        return response.content().text()
-                .replace("```json", "").replace("```", "").trim();
+        try {
+            Response<AiMessage> response = chatModel.generate(messages);
+            if (appEventService != null) {
+                appEventService.recordSystemEvent(userId, "MENTOR_GENERATE", "ai",
+                        Map.of("historyCount", history.size()), true, null);
+            }
+            return response.content().text()
+                    .replace("```json", "").replace("```", "").trim();
+        } catch (RuntimeException e) {
+            if (appEventService != null) {
+                appEventService.recordSystemEvent(userId, "DEEPSEEK_MENTOR_FAILED", "system",
+                        Map.of("historyCount", history.size()), false, e.getMessage());
+            }
+            throw e;
+        }
     }
 
     private void parseAiOutput(String raw, MentorInsightResponse report) {

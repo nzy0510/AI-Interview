@@ -23,10 +23,16 @@ public class EvaluationGenerator {
 
     private final ChatLanguageModel chatModel;
     private final InterviewPrompts prompts;
+    private final AppEventService appEventService;
 
     public EvaluationGenerator(ChatLanguageModel chatModel, InterviewPrompts prompts) {
+        this(chatModel, prompts, null);
+    }
+
+    public EvaluationGenerator(ChatLanguageModel chatModel, InterviewPrompts prompts, AppEventService appEventService) {
         this.chatModel = chatModel;
         this.prompts = prompts;
+        this.appEventService = appEventService;
     }
 
     /**
@@ -76,6 +82,10 @@ public class EvaluationGenerator {
             }
         } catch (Exception e) {
             log.error("评估生成失败 (recordId={})", record.getId(), e);
+            if (appEventService != null) {
+                appEventService.recordSystemEvent(record.getUserId(), "DEEPSEEK_EVALUATION_FAILED", "system",
+                        java.util.Map.of("recordId", record.getId()), false, e.getMessage());
+            }
             record.setScore(0);
             record.setFeedback("AI 评估生成异常: " + e.getMessage());
         }

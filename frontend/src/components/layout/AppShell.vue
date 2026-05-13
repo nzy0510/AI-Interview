@@ -1,7 +1,9 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import {
+  ChatLineRound,
   DataAnalysis,
   Document,
   Monitor,
@@ -9,20 +11,28 @@ import {
   UserFilled,
   MagicStick
 } from '@element-plus/icons-vue'
+import { submitFeedbackAPI } from '@/api/analytics'
 
 const route = useRoute()
 const router = useRouter()
 
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: Monitor },
-  { path: '/interview/setup', label: 'Interview Setup', icon: MagicStick },
+  { path: '/', label: '工作台', icon: Monitor },
+  { path: '/interview/setup', label: '面试准备', icon: MagicStick },
   { path: '/mentor', label: 'AI Mentor', icon: DataAnalysis },
-  { path: '/resume', label: 'Resume', icon: UserFilled },
-  { path: '/history', label: 'Reports', icon: Document },
-  { path: '/settings', label: 'Settings', icon: Setting }
+  { path: '/resume', label: '简历画像', icon: UserFilled },
+  { path: '/history', label: '历史报告', icon: Document },
+  { path: '/settings', label: '设置', icon: Setting }
 ]
 
-const currentTitle = computed(() => route.meta?.title || 'Workspace')
+const currentTitle = computed(() => route.meta?.title || '工作台')
+const feedbackVisible = ref(false)
+const feedbackLoading = ref(false)
+const feedbackForm = reactive({
+  category: 'bug',
+  content: '',
+  contact: ''
+})
 
 const isActive = (path) => {
   return route.path === path
@@ -31,6 +41,25 @@ const isActive = (path) => {
 const navigate = (path) => {
   if (route.path !== path) {
     router.push(path)
+  }
+}
+
+const submitFeedback = async () => {
+  if (!feedbackForm.content.trim()) {
+    ElMessage.warning('请先填写反馈内容')
+    return
+  }
+  feedbackLoading.value = true
+  try {
+    await submitFeedbackAPI({
+      ...feedbackForm,
+      pageUrl: route.fullPath
+    })
+    ElMessage.success('反馈已收到')
+    feedbackForm.content = ''
+    feedbackVisible.value = false
+  } finally {
+    feedbackLoading.value = false
   }
 }
 </script>
@@ -42,7 +71,7 @@ const navigate = (path) => {
         <div class="app-shell__brand-mark">I</div>
         <div class="app-shell__brand-copy">
           <div class="app-shell__brand-name">InterWise</div>
-          <div class="app-shell__brand-subtitle">Editorial interview workspace</div>
+          <div class="app-shell__brand-subtitle">AI 面试练习工作台</div>
         </div>
       </button>
 
@@ -65,22 +94,23 @@ const navigate = (path) => {
 
       <div class="app-shell__sidebar-footer">
         <div class="app-shell__status-dot" />
-        <span>Stitch-aligned layout</span>
+        <span>服务运行正常</span>
       </div>
     </aside>
 
     <div class="app-shell__main">
       <header class="app-shell__topbar">
         <div class="app-shell__title-block">
-          <p class="app-shell__eyebrow">Workspace</p>
+          <p class="app-shell__eyebrow">InterWise</p>
           <h1 class="app-shell__title">{{ currentTitle }}</h1>
         </div>
 
         <div class="app-shell__actions">
           <el-button type="primary" :icon="MagicStick" @click="navigate('/interview/setup')">
-            Start
+            开始练习
           </el-button>
-          <el-button :icon="Setting" @click="navigate('/settings')">Settings</el-button>
+          <el-button :icon="ChatLineRound" @click="feedbackVisible = true">反馈</el-button>
+          <el-button :icon="Setting" @click="navigate('/settings')">设置</el-button>
         </div>
       </header>
 
@@ -88,6 +118,41 @@ const navigate = (path) => {
         <slot />
       </main>
     </div>
+
+    <el-dialog
+      v-model="feedbackVisible"
+      title="提交反馈"
+      width="min(92vw, 560px)"
+      :close-on-click-modal="false"
+    >
+      <div class="feedback-form">
+        <el-segmented
+          v-model="feedbackForm.category"
+          :options="[
+            { label: '问题', value: 'bug' },
+            { label: '建议', value: 'suggestion' },
+            { label: '体验', value: 'experience' }
+          ]"
+        />
+        <el-input
+          v-model="feedbackForm.content"
+          type="textarea"
+          :rows="5"
+          maxlength="2000"
+          show-word-limit
+          placeholder="描述你遇到的问题、期待的能力或页面体验"
+        />
+        <el-input
+          v-model="feedbackForm.contact"
+          maxlength="120"
+          placeholder="联系方式，可选"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="feedbackVisible = false">取消</el-button>
+        <el-button type="primary" :loading="feedbackLoading" @click="submitFeedback">提交</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -267,6 +332,11 @@ const navigate = (path) => {
   flex: 1;
   min-width: 0;
   padding: 28px;
+}
+
+.feedback-form {
+  display: grid;
+  gap: 14px;
 }
 
 @media (max-width: 1024px) {

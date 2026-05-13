@@ -30,6 +30,9 @@ public class EmailService {
     @Value("${spring.mail.username:}")
     private String fromEmail;
 
+    @Autowired(required = false)
+    private AppEventService appEventService;
+
     // 验证码缓存：key = email, value = CodeEntry(code, expireTime)
     private final Map<String, CodeEntry> codeCache = new ConcurrentHashMap<>();
     private final ScheduledExecutorService cleaner = Executors.newSingleThreadScheduledExecutor();
@@ -81,6 +84,10 @@ public class EmailService {
         } catch (MailException e) {
             codeCache.remove(toEmail);
             log.error("邮件发送失败: {}", rootCauseMessage(e), e);
+            if (appEventService != null) {
+                appEventService.recordSystemEvent(null, "VERIFICATION_CODE_FAILED", "system",
+                        Map.of("purpose", purpose != null ? purpose : ""), false, rootCauseMessage(e));
+            }
             throw new RuntimeException(classifyMailError(e));
         }
     }

@@ -119,6 +119,8 @@ import InterviewReportOverlay from '@/components/interview/InterviewReportOverla
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
 import { buildTextInterviewReportMetrics, parseInterviewFinishPayload } from '@/utils/interviewReport'
 import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFallback } from '@/utils/interviewEntry'
+import { trackEvent } from '@/utils/analytics'
+import { getAnonymousId } from '@/utils/visitor'
 
 const route = useRoute()
 const router = useRouter()
@@ -226,6 +228,7 @@ onMounted(async () => {
       resumeQuestions
     })
     recordId.value = id
+    trackEvent('INTERVIEW_START_CLIENT', { mode: 'text', position: position.value })
     triggerAiStart()
   } catch {
     ElMessage.error('连接失败，请确认后端已启动')
@@ -450,7 +453,7 @@ const streamAiResponse = (msg) => {
 
   const token = localStorage.getItem('token') || ''
   const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
-  const url = `${baseUrl}/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(msg)}&token=${token}`
+  const url = `${baseUrl}/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(msg)}&token=${token}&aid=${getAnonymousId()}`
   if (eventSource) eventSource.close()
   eventSource = new EventSource(url)
 
@@ -467,7 +470,7 @@ const streamAiResponse = (msg) => {
     }
 
     if (d.error) {
-      ElMessage.error('AI 错误: ' + d.error)
+      ElMessage.error(d.error)
       aiMsg.streaming = false
       isStreaming.value = false
       eventSource.close()
@@ -547,6 +550,7 @@ const performEndInterview = async (endType = 'manual') => {
   
   try {
     const res = await finishInterviewAPI({ recordId: recordId.value, wpm, voiceRounds: voiceRoundCount })
+    trackEvent('INTERVIEW_FINISH_CLIENT', { mode: 'text', recordId: recordId.value })
     loadingMsg.close()
 
     if (res) {

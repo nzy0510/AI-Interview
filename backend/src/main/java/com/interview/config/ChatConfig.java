@@ -82,7 +82,8 @@ public class ChatConfig {
 
     @Bean
     public EvaluationGenerator evaluationGenerator(OpenAiChatModel chatModel,
-                                                   InterviewPrompts prompts) {
-        return new EvaluationGenerator(chatModel, prompts);
+                                                   InterviewPrompts prompts,
+                                                   com.interview.service.AppEventService appEventService) {
+        return new EvaluationGenerator(chatModel, prompts, appEventService);
     }
 }

@@ -6,6 +6,7 @@ import com.interview.dto.MentorInsightResponse;
 import com.interview.dto.RegisterDTO;
 import com.interview.dto.ResetPasswordDTO;
 import com.interview.entity.UserPreference;
+import com.interview.service.DeveloperAccessService;
 import com.interview.service.MentorService;
 import com.interview.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,9 @@ public class UserController {
 
     @Autowired
     private MentorService mentorService;
+
+    @Autowired
+    private DeveloperAccessService developerAccessService;
 
     @PostMapping("/login")
     public Result<String> login(@RequestBody @Validated LoginDTO loginDTO) {
@@ -130,7 +134,8 @@ public class UserController {
             "username", user.getUsername(),
             "nickname", user.getNickname() != null ? user.getNickname() : user.getUsername(),
             "email", user.getEmail() != null ? user.getEmail() : "",
-            "avatar", user.getAvatar() != null ? user.getAvatar() : ""
+            "avatar", user.getAvatar() != null ? user.getAvatar() : "",
+            "isDeveloper", developerAccessService.isDeveloper(userId)
         ));
     }
 

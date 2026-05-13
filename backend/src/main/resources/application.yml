@@ -166,6 +166,26 @@ jwt:
   sign-key: ${JWT_SIGN_KEY}
   expire-ms: ${JWT_EXPIRE_MS:86400000}
 
+# 访问统计、管理令牌、限流与 AI 成本额度
+app:
+  admin-token: ${APP_ADMIN_TOKEN:}
+  upload-dir: ${APP_UPLOAD_DIR:uploads}
+  analytics:
+    hash-salt: ${APP_ANALYTICS_HASH_SALT:interwise-dev-hash-salt}
+  rate-limit:
+    enabled: ${APP_RATE_LIMIT_ENABLED:true}
+  quota:
+    enabled: ${APP_QUOTA_ENABLED:true}
+    daily:
+      interview-start: ${APP_DAILY_INTERVIEW_LIMIT:5}
+      ai-chat-turn: ${APP_DAILY_AI_CHAT_TURN_LIMIT:80}
+      resume-parse: ${APP_DAILY_RESUME_PARSE_LIMIT:3}
+      mentor-generate: ${APP_DAILY_MENTOR_GENERATE_LIMIT:3}
+  developer:
+    exempt-user-ids: ${APP_DEVELOPER_EXEMPT_USER_IDS:}
+    exempt-usernames: ${APP_DEVELOPER_EXEMPT_USERNAMES:}
+    exempt-emails: ${APP_DEVELOPER_EXEMPT_EMAILS:}
+
 # DeepSeek AI 配置 (LangChain4j OpenAI 兼容格式)
 langchain4j:
   open-ai:

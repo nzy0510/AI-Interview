@@ -2,6 +2,7 @@ package com.interview.controller;
 
 import com.interview.common.Result;
 import com.interview.service.ResumeService;
+import com.interview.service.UsageQuotaService;
 import com.interview.utils.JwtUtils;
 import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,9 @@ public class ResumeController {
     @Autowired
     private JwtUtils jwtUtils;
 
+    @Autowired
+    private UsageQuotaService usageQuotaService;
+
     /**
      * 上传并解析简历（首次上传或覆盖更新）
      * 解析成功后自动存入 resume_profile 表
@@ -39,6 +43,7 @@ public class ResumeController {
         }
         try {
             Long userId = getUserIdFromRequest(request);
+            usageQuotaService.consume(userId, UsageQuotaService.RESUME_PARSE);
             Map<String, Object> analysisResult = resumeService.parseAndAnalyze(file);
 
             // 持久化到数据库（UPSERT）

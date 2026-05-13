@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { trackPageView } from '@/utils/analytics'
 
 const viewModules = import.meta.glob('../views/*.vue')
 const commonModules = import.meta.glob('../components/common/*.vue')
@@ -20,37 +21,37 @@ const routes = [
     path: '/',
     name: 'Home',
     component: loadView('Home'),
-    meta: { title: 'Dashboard' }
+    meta: { title: '工作台' }
   },
   {
     path: '/interview/setup',
     name: 'InterviewSetup',
     component: loadView('InterviewSetup'),
-    meta: { title: 'Interview Setup' }
+    meta: { title: '面试准备' }
   },
   {
     path: '/interview',
     name: 'Interview',
     component: loadView('Interview'),
-    meta: { title: 'Text Interview' }
+    meta: { title: '文字面试' }
   },
   {
     path: '/history',
     name: 'History',
     component: loadView('History'),
-    meta: { title: 'Reports' }
+    meta: { title: '历史报告' }
   },
   {
     path: '/resume',
     name: 'Resume',
     component: loadView('Resume'),
-    meta: { title: 'Resume' }
+    meta: { title: '简历画像' }
   },
   {
     path: '/video-interview',
     name: 'VideoInterview',
     component: loadView('VideoInterview'),
-    meta: { title: 'Video Interview' }
+    meta: { title: '视频面试' }
   },
   {
     path: '/mentor',
@@ -62,7 +63,13 @@ const routes = [
     path: '/settings',
     name: 'Settings',
     component: loadView('Settings'),
-    meta: { title: 'Settings' }
+    meta: { title: '设置' }
+  },
+  {
+    path: '/admin/analytics',
+    name: 'AdminAnalytics',
+    component: loadView('AdminAnalytics'),
+    meta: { title: '运营统计' }
   }
 ]
 
@@ -79,6 +86,10 @@ router.beforeEach((to, from, next) => {
   } else {
     next()
   }
+})
+
+router.afterEach((to) => {
+  trackPageView(to)
 })
 
 export default router
