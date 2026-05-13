@@ -7,12 +7,12 @@
             <el-icon><Operation /></el-icon>
           </div>
           <div>
-            <p class="brand-kicker">Architectural Intelligence</p>
-            <h1>面试不是筛选，而是架构对话。</h1>
+            <p class="brand-kicker">AI Interview Coach</p>
+            <h1>让每一次练习，都更接近真实面试。</h1>
           </div>
         </div>
         <p class="hero-copy">
-          将简历、岗位画像与实时追问整合为一条清晰的面试路径，让每一次练习都更接近真实的技术评审。
+          InterWise 会结合你的简历、目标岗位与练习表现，生成更有针对性的追问、复盘和提升建议。
         </p>
 
         <div class="hero-cards">
@@ -21,8 +21,8 @@
               <el-icon><Message /></el-icon>
             </div>
             <div>
-              <h3>统一入口</h3>
-              <p>登录、注册与找回密码在同一界面完成，流程更顺手。</p>
+              <h3>快速开始</h3>
+              <p>注册、登录与找回密码集中处理，几步就能进入练习。</p>
             </div>
           </article>
           <article class="hero-card">
@@ -30,8 +30,8 @@
               <el-icon><DataLine /></el-icon>
             </div>
             <div>
-              <h3>面试画像</h3>
-              <p>简历解析、岗位选择与能力提问保持同一上下文。</p>
+              <h3>贴合岗位</h3>
+              <p>围绕简历、目标岗位和经验等级，组织更贴近真实场景的问题。</p>
             </div>
           </article>
           <article class="hero-card">
@@ -39,8 +39,8 @@
               <el-icon><Lock /></el-icon>
             </div>
             <div>
-              <h3>安全收敛</h3>
-              <p>验证码、密码重置与跳转逻辑保留原有业务闭环。</p>
+              <h3>安全验证</h3>
+              <p>邮箱验证码与密码重置流程帮助你保护账号安全。</p>
             </div>
           </article>
         </div>
@@ -229,7 +229,7 @@ const startCooldown = (type) => {
 }
 
 const loginRules = {
-  username: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入邮箱或用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
@@ -548,7 +548,7 @@ const handleResetPassword = async () => {
 
 .auth-form :deep(.el-input__wrapper) {
   border-radius: 12px;
-  box-shadow: 0 0 0 1px #dedc01 inset;
+  box-shadow: 0 0 0 1px #dedce8 inset;
   background: #ffffff;
 }
 

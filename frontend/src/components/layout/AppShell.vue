@@ -17,15 +17,15 @@ const route = useRoute()
 const router = useRouter()
 
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: Monitor },
-  { path: '/interview/setup', label: 'Interview Setup', icon: MagicStick },
+  { path: '/', label: '工作台', icon: Monitor },
+  { path: '/interview/setup', label: '面试准备', icon: MagicStick },
   { path: '/mentor', label: 'AI Mentor', icon: DataAnalysis },
-  { path: '/resume', label: 'Resume', icon: UserFilled },
-  { path: '/history', label: 'Reports', icon: Document },
-  { path: '/settings', label: 'Settings', icon: Setting }
+  { path: '/resume', label: '简历画像', icon: UserFilled },
+  { path: '/history', label: '历史报告', icon: Document },
+  { path: '/settings', label: '设置', icon: Setting }
 ]
 
-const currentTitle = computed(() => route.meta?.title || 'Workspace')
+const currentTitle = computed(() => route.meta?.title || '工作台')
 const feedbackVisible = ref(false)
 const feedbackLoading = ref(false)
 const feedbackForm = reactive({
@@ -71,7 +71,7 @@ const submitFeedback = async () => {
         <div class="app-shell__brand-mark">I</div>
         <div class="app-shell__brand-copy">
           <div class="app-shell__brand-name">InterWise</div>
-          <div class="app-shell__brand-subtitle">Editorial interview workspace</div>
+          <div class="app-shell__brand-subtitle">AI 面试练习工作台</div>
         </div>
       </button>
 
@@ -94,23 +94,23 @@ const submitFeedback = async () => {
 
       <div class="app-shell__sidebar-footer">
         <div class="app-shell__status-dot" />
-        <span>Stitch-aligned layout</span>
+        <span>服务运行正常</span>
       </div>
     </aside>
 
     <div class="app-shell__main">
       <header class="app-shell__topbar">
         <div class="app-shell__title-block">
-          <p class="app-shell__eyebrow">Workspace</p>
+          <p class="app-shell__eyebrow">InterWise</p>
           <h1 class="app-shell__title">{{ currentTitle }}</h1>
         </div>
 
         <div class="app-shell__actions">
           <el-button type="primary" :icon="MagicStick" @click="navigate('/interview/setup')">
-            Start
+            开始练习
           </el-button>
-          <el-button :icon="ChatLineRound" @click="feedbackVisible = true">Feedback</el-button>
-          <el-button :icon="Setting" @click="navigate('/settings')">Settings</el-button>
+          <el-button :icon="ChatLineRound" @click="feedbackVisible = true">反馈</el-button>
+          <el-button :icon="Setting" @click="navigate('/settings')">设置</el-button>
         </div>
       </header>
 

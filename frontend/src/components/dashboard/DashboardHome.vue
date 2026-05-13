@@ -2,7 +2,7 @@
   <div class="dashboard-home">
     <section class="hero-slab">
       <div class="hero-copy">
-        <div class="eyebrow">Architectural Intelligence</div>
+        <div class="eyebrow">AI 面试工作台</div>
         <div class="hero-headline">
           <h1>{{ displayName }}</h1>
           <p>把面试拆成可以演练、复盘、再优化的工作台。</p>
@@ -70,7 +70,7 @@
         <section class="section-block recent-section">
           <div class="section-head">
             <div>
-              <div class="section-kicker">Recent Interviews</div>
+              <div class="section-kicker">最近练习</div>
               <h2>最近面试记录</h2>
             </div>
             <el-button size="small" plain @click="router.push('/history')">查看全部</el-button>
