@@ -60,10 +60,10 @@ graph LR
     External["外部 AI 客户端"] --> MCP
 ```
 
-配套 SVG 图可直接在仓库中查看：
+配套架构图可直接在 GitHub 中预览：
 
-- [InterWise 系统架构图](image/架构图/InterWise-系统架构图.svg)
-- [InterWise RAG 流程图](image/架构图/InterWise-RAG流程图.svg)
+- [InterWise 系统架构图](image/架构图/InterWise-系统架构图.png)
+- [InterWise RAG 流程图](image/架构图/InterWise-RAG流程图.png)
 
 ## 主要目录
 
@@ -93,7 +93,7 @@ graph LR
 │   ├── atomizer.py                 # 旧知识原子生成脚本
 │   └── reclassify_hot200.py        # 旧题库分类整理脚本
 ├── skills/interview-question-bank/ # Codex 题库维护 Skill
-├── image/架构图/                   # 系统架构图与 RAG 流程图
+├── image/架构图/                   # 系统架构图与 RAG 流程图 PNG
 ├── docker-compose.example.yml      # 本地 Docker Compose 模板
 ├── docker-compose.prod.yml         # 生产部署模板
 ├── .env.example                    # 环境变量模板
