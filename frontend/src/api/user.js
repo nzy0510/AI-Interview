@@ -72,6 +72,22 @@ export const updatePreferenceAPI = (data) => {
     return request({ url: '/user/preference', method: 'put', data });
 };
 
+export const getMcpTokenAPI = () => {
+    return request({ url: '/mcp/token', method: 'get' });
+};
+
+export const generateMcpTokenAPI = () => {
+    return request({ url: '/mcp/token', method: 'post' });
+};
+
+export const revokeMcpTokenAPI = () => {
+    return request({ url: '/mcp/token', method: 'delete' });
+};
+
+export const getMcpUsageAPI = () => {
+    return request({ url: '/mcp/usage', method: 'get' });
+};
+
 export const uploadAvatarAPI = (formData) => {
     return request({
         url: '/user/avatar',

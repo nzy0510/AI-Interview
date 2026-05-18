@@ -10,7 +10,7 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目采
 - 多角色面试流程：基于 `InterviewPhase` 状态机在开场、技术、HR、收尾和结束阶段流转。
 - 岗位化追问：结合岗位、难度、重点能力、简历画像和题库检索生成追问。
 - 数据库题库：知识原子落入 MySQL，发布后的题目同步到 Qdrant，供 RAG 和 MCP 检索。
-- MCP 外部服务：通过 `/mcp` 暴露题库搜索、上下文生成、分类查询、导入校验、导入发布和重建索引工具。
+- MCP 外部服务：通过独立 `services/mcp-skill` 容器公开 `/mcp` 只读题库服务，用户在 Settings 生成个人 token。
 - 题库维护 Skill：`skills/interview-question-bank` 支持从 PDF、DOCX、TXT、MD、JSON 生成导入包，并调用项目 API 发布。
 - 简历画像：PDF 简历解析后写入 `resume_profile`，前端以服务端状态为准，避免旧浏览器缓存误用。
 - AI Mentor：聚合面试历史、知识覆盖、风险提醒和行动建议，Redis 缓存 24 小时并支持刷新。
@@ -55,9 +55,10 @@ graph LR
     Backend --> MySQL[("MySQL 8")]
     Backend --> Redis[("Redis")]
     Backend --> Qdrant[("Qdrant")]
-    Backend --> MCP["/mcp JSON-RPC"]
-    Skill["interview-question-bank Skill"] --> Backend
-    External["外部 AI 客户端"] --> MCP
+    External["外部 AI 客户端"] --> MCP["Standalone MCP /mcp"]
+    MCP --> MySQL
+    MCP --> Qdrant
+    Skill["interview-question-bank Skill"] --> MCP
 ```
 
 配套架构图可直接在 GitHub 中预览：
@@ -79,8 +80,9 @@ graph LR
 │   │   ├── service/                # 面试、简历、Mentor、RAG、题库服务
 │   │   └── utils/                  # JwtUtils 等工具
 │   └── src/main/resources/
-│       ├── db/migration/           # Flyway 迁移，V1 - V7
+│       ├── db/migration/           # Flyway 迁移，V1 - V8
 │       └── knowledge_base/atoms/   # 旧 JSON 题库种子，启动时可导入数据库
+├── services/mcp-skill/             # 独立题库 MCP 服务 submodule
 ├── frontend/
 │   └── src/
 │       ├── views/                  # 首页、面试、视频面试、简历、历史、Mentor、设置
@@ -122,14 +124,13 @@ DB_PASSWORD=your_mysql_password
 DEEPSEEK_API_KEY=your_deepseek_api_key
 JWT_SIGN_KEY=your_jwt_signing_key_at_least_32_characters
 QUESTION_BANK_ADMIN_TOKEN=your_strong_admin_token
-MCP_READ_TOKEN=your_strong_read_token
 APP_ADMIN_TOKEN=your_strong_ops_admin_token
 APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
 MAIL_USERNAME=your_email@qq.com
 MAIL_PASSWORD=your_smtp_authorization_code
 ```
 
-`QUESTION_BANK_ADMIN_TOKEN` 用于开发者维护题库；`MCP_READ_TOKEN` 用于外部 AI 客户端只读调用 MCP。生产环境请使用强随机值。
+`QUESTION_BANK_ADMIN_TOKEN` 用于开发者维护题库；普通用户 MCP token 在登录后的 Settings 页面生成，明文只展示一次。
 `APP_ADMIN_TOKEN` 用于前端 Operations 统计页和管理反馈接口；不要把真实值写入代码或提交到 Git。
 
 ### 3. 启动
@@ -145,7 +146,7 @@ docker compose up -d --build
 - MySQL：`localhost:13307`
 - Redis：`localhost:6379`
 - Qdrant：`http://localhost:6333`
-- MCP：`http://localhost:8080/mcp`
+- MCP：`http://localhost/mcp`
 
 如果 Windows 提示端口不可用，优先检查 Docker Desktop 是否已启动，以及本机端口是否被占用或被系统排除。
 
@@ -173,7 +174,7 @@ graph TD
     API --> MySQL[("knowledge_atom")]
     MySQL --> Qdrant[("interview_atoms collection")]
     Qdrant --> Interview["面试 RAG 追问"]
-    Qdrant --> MCP["/mcp 外部检索"]
+    Qdrant --> MCP["standalone /mcp 外部检索"]
 ```
 
 ### 内部维护 API
@@ -186,9 +187,19 @@ graph TD
 - `POST /internal/question-bank/import`
 - `POST /internal/question-bank/reindex`
 
-### MCP 工具
+### 独立 MCP 工具
 
-MCP 使用 JSON-RPC，读操作使用 `Authorization: Bearer <MCP_READ_TOKEN>`，写操作使用管理员 token。当前工具包括：
+MCP 使用 JSON-RPC。普通用户访问 `POST /mcp`，使用 Settings 页面生成的个人 token；管理工具访问独立服务的 `/mcp-admin`，只建议通过服务器内网或 SSH 隧道使用 `QUESTION_BANK_ADMIN_TOKEN`。
+
+普通用户工具：
+
+- `search_interview_atoms`
+- `get_interview_atom_summary`
+- `list_interview_categories`
+- `generate_interview_context`
+- `get_mcp_usage_status`
+
+管理工具：
 
 - `search_interview_atoms`
 - `get_interview_atom`
@@ -201,8 +212,9 @@ MCP 使用 JSON-RPC，读操作使用 `Authorization: Bearer <MCP_READ_TOKEN>`�
 初始化示例：
 
 ```powershell
-$body = @{ jsonrpc='2.0'; id=1; method='initialize' } | ConvertTo-Json -Compress
-Invoke-WebRequest -Uri 'http://localhost:8080/mcp' -Method POST -ContentType 'application/json' -Body $body
+$token = '<Settings 中生成的 MCP token>'
+$body = @{ jsonrpc='2.0'; id=1; method='tools/list'; params=@{} } | ConvertTo-Json -Depth 8 -Compress
+Invoke-WebRequest -Uri 'http://localhost/mcp' -Method POST -ContentType 'application/json' -Headers @{ Authorization="Bearer $token" } -Body $body
 ```
 
 ## 题库维护 Skill
@@ -236,7 +248,7 @@ python scripts/question_bank_import.py --input .\materials\java --category java 
 
 ## 外部维护说明
 
-MCP 服务由后端 `/mcp` 提供，题库维护 Skill 在本仓库保留与当前应用匹配的可运行副本；如果后续使用独立仓库版本，请以独立仓库的最新说明为准，并保持 token、接口地址和后端版本一致。
+MCP 服务由独立 `MCP-Skill` 仓库提供，主项目通过 submodule 固定到可部署版本。题库维护 Skill 可以连接 `/mcp-admin` 做导入、校验和重建索引；普通用户只能使用 `/mcp` 的只读摘要检索。
 
 ## 本地开发
 

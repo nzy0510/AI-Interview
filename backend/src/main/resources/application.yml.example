@@ -138,12 +138,49 @@ interview:
         "evaluation": "用仅仅三句话极其精练地总结该候选人的技术亮点和可能的短板。"
       }
 
+# 应用治理、额度与 MCP token 配置
+app:
+  admin-token: ${APP_ADMIN_TOKEN:}
+  analytics:
+    hash-salt: ${APP_ANALYTICS_HASH_SALT:}
+  rate-limit:
+    enabled: ${APP_RATE_LIMIT_ENABLED:true}
+  quota:
+    enabled: ${APP_QUOTA_ENABLED:true}
+    daily:
+      interview-start: ${APP_DAILY_INTERVIEW_LIMIT:5}
+      ai-chat-turn: ${APP_DAILY_AI_CHAT_TURN_LIMIT:80}
+      resume-parse: ${APP_DAILY_RESUME_PARSE_LIMIT:3}
+      mentor-generate: ${APP_DAILY_MENTOR_GENERATE_LIMIT:3}
+  developer:
+    exempt-user-ids: ${APP_DEVELOPER_EXEMPT_USER_IDS:}
+    exempt-usernames: ${APP_DEVELOPER_EXEMPT_USERNAMES:}
+    exempt-emails: ${APP_DEVELOPER_EXEMPT_EMAILS:}
+  mcp:
+    # 留空时后端会根据当前访问域名生成 https://domain/mcp
+    public-url: ${APP_MCP_PUBLIC_URL:}
+    daily:
+      total: ${MCP_DAILY_TOTAL_LIMIT:150}
+      search: ${MCP_DAILY_SEARCH_LIMIT:80}
+      context: ${MCP_DAILY_CONTEXT_LIMIT:40}
+      detail: ${MCP_DAILY_DETAIL_LIMIT:60}
+      categories: ${MCP_DAILY_CATEGORIES_LIMIT:30}
+      usage-status: ${MCP_DAILY_USAGE_STATUS_LIMIT:30}
+    developer:
+      daily:
+        total: ${MCP_DEVELOPER_DAILY_TOTAL_LIMIT:2000}
+        search: ${MCP_DEVELOPER_DAILY_SEARCH_LIMIT:1000}
+        context: ${MCP_DEVELOPER_DAILY_CONTEXT_LIMIT:500}
+        detail: ${MCP_DEVELOPER_DAILY_DETAIL_LIMIT:500}
+        categories: ${MCP_DEVELOPER_DAILY_CATEGORIES_LIMIT:300}
+        usage-status: ${MCP_DEVELOPER_DAILY_USAGE_STATUS_LIMIT:300}
+
 # 题库 / MCP / Qdrant 配置
 question-bank:
   # 开发者维护题库用 token；为空时不校验，生产建议必须配置
   admin-token: ${QUESTION_BANK_ADMIN_TOKEN:}
   mcp:
-    # 外部 AI 客户端只读调用 token；为空时不校验
+    # 旧内嵌 /mcp 兼容开关用 token。公开服务已迁移到独立 MCP-Skill 容器。
     read-token: ${MCP_READ_TOKEN:}
     # 浏览器来源白名单，逗号分隔；为空时默认允许同源和 localhost/127.0.0.1
     allowed-origins: ${MCP_ALLOWED_ORIGINS:}

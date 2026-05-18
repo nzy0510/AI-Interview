@@ -307,7 +307,8 @@ tar -czf backups/qdrant_data_$(date +%F_%H%M).tar.gz qdrant_data
 - 邮箱 SMTP 授权码
 - `JWT_SIGN_KEY`
 - `QUESTION_BANK_ADMIN_TOKEN`
-- `MCP_READ_TOKEN`
+- `APP_ADMIN_TOKEN` 与 `APP_ANALYTICS_HASH_SALT`
+- 已经发给 MCP 客户端的用户 token，需要在 Settings 中撤销后重新生成
 - 数据库密码，若已经有真实用户数据，改数据库密码前要谨慎规划
 
 端口暴露原则：

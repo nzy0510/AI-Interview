@@ -2,7 +2,7 @@
 
 本指南用于单台 Azure Ubuntu 虚拟机的内测部署。内测阶段可以先使用公网 IP 访问文字面试；视频面试、麦克风和摄像头能力必须等域名和 HTTPS 完成后再开放给用户。
 
-当前项目包含 Spring Boot、MySQL、Redis、Qdrant、Vue 前端和本地 embedding。内测推荐使用 2 vCPU / 8 GiB 内存级别的 VM，例如 `Standard_B2ms` 或 `Standard_D2s_v3`。如果使用 2 vCPU / 4 GiB 内存，建议额外配置 4 GiB swap。
+当前项目包含 Spring Boot、MySQL、Redis、Qdrant、Vue 前端、独立 MCP-Skill 服务和本地 embedding。内测推荐使用 2 vCPU / 8 GiB 内存级别的 VM，例如 `Standard_B2ms` 或 `Standard_D2s_v3`。如果使用 2 vCPU / 4 GiB 内存，建议额外配置 4 GiB swap。
 
 参考：Azure Linux VM 文档 <https://learn.microsoft.com/azure/virtual-machines/linux/>，Docker Ubuntu 安装文档 <https://docs.docker.com/installation/ubuntulinux/>。
 
@@ -79,7 +79,8 @@ free -h
 sudo mkdir -p /opt/interwise
 sudo chown -R "$USER:$USER" /opt/interwise
 cd /opt/interwise
-git clone -b codex/azure-deployment-hardening https://github.com/nzy0510/AI-Interview .
+git clone --recurse-submodules https://github.com/nzy0510/AI-Interview .
+git submodule update --init --recursive
 ```
 
 ## 2. 配置环境变量
@@ -96,13 +97,19 @@ APP_CORS_ALLOWED_ORIGINS=http://52.140.216.52
 MCP_ALLOWED_ORIGINS=http://52.140.216.52
 ```
 
-`JWT_SIGN_KEY`、`DB_PASSWORD`、`MYSQL_ROOT_PASSWORD`、`QUESTION_BANK_ADMIN_TOKEN`、`MCP_READ_TOKEN` 必须使用强随机值，不要复用示例内容。可以在服务器上生成：
+`JWT_SIGN_KEY`、`DB_PASSWORD`、`MYSQL_ROOT_PASSWORD`、`QUESTION_BANK_ADMIN_TOKEN`、`APP_ADMIN_TOKEN`、`APP_ANALYTICS_HASH_SALT` 必须使用强随机值，不要复用示例内容。可以在服务器上生成：
 
 ```bash
 openssl rand -base64 32
 ```
 
 邮件验证码需要 SMTP 授权码，不是邮箱登录密码。QQ 邮箱需要先在邮箱设置中开启 SMTP 服务。
+
+普通用户的 MCP token 不写在 `.env` 中，而是在登录后进入 Settings 页面生成。`.env` 中的 `APP_MCP_PUBLIC_URL` 应填写公开 MCP 地址，例如：
+
+```env
+APP_MCP_PUBLIC_URL=https://interwise.japaneast.cloudapp.azure.com/mcp
+```
 
 配置完成后保护 `.env` 权限：
 
@@ -132,9 +139,10 @@ docker compose --env-file .env -f docker-compose.prod.yml config
 docker compose --env-file .env -f docker-compose.prod.yml up -d --build
 docker compose --env-file .env -f docker-compose.prod.yml ps
 docker compose --env-file .env -f docker-compose.prod.yml logs --tail=100 backend
+docker compose --env-file .env -f docker-compose.prod.yml logs --tail=100 mcp-skill
 ```
 
-首次启动会初始化 MySQL、导入 JSON 题库并同步 Qdrant 向量，可能需要几分钟。只要 `backend` 日志没有持续报错，等待初始化完成即可。
+首次启动会初始化 MySQL、导入 JSON 题库、同步 Qdrant 向量，并构建独立 MCP-Skill 容器的本地 embedding 依赖，可能需要几分钟。只要 `backend` 和 `mcp-skill` 日志没有持续报错，等待初始化完成即可。
 
 启动后访问：
 
@@ -154,6 +162,7 @@ http://Azure公网IP
 - 面试结束后生成报告
 - 历史记录、AI Mentor 页面
 - 头像上传和刷新后仍可访问
+- Settings 中生成 MCP token，调用 `POST /mcp` 的 `tools/list` 能返回只读工具
 - `docker compose --env-file .env -f docker-compose.prod.yml restart` 后数据和上传文件不丢失
 
 公网 IP + HTTP 阶段不验收视频面试。浏览器摄像头和麦克风要求 HTTPS 或 localhost，等域名和 HTTPS 完成后再开放。
@@ -164,7 +173,8 @@ http://Azure公网IP
 
 ```bash
 cd /opt/interwise
-git pull
+git pull --recurse-submodules
+git submodule update --init --recursive
 docker compose --env-file .env -f docker-compose.prod.yml up -d --build
 docker compose --env-file .env -f docker-compose.prod.yml ps
 ```
@@ -199,6 +209,7 @@ docker compose --env-file .env -f docker-compose.prod.yml restart backend
 ```env
 APP_CORS_ALLOWED_ORIGINS=https://interwise.example.com
 MCP_ALLOWED_ORIGINS=https://interwise.example.com
+APP_MCP_PUBLIC_URL=https://interwise.example.com/mcp
 DOMAIN_NAME=interwise.example.com
 FRONTEND_HTTP_BIND=127.0.0.1:8080
 ```
@@ -242,5 +253,5 @@ tar -czf "backups/uploads-$(date +%F).tar.gz" uploads
 - 购买域名、DNS 解析、HTTPS
 - 稳定备份和异地保存
 - 云数据库、云 Redis、对象存储
-- 接口限流、防刷、日志监控和异常告警
+- 日志监控和异常告警
 - 隐私政策、用户协议、数据删除和导出机制

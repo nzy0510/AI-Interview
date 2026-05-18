@@ -1,0 +1,4 @@
+[submodule "services/mcp-skill"]
+	path = services/mcp-skill
+	url = https://github.com/nzy0510/MCP-Skill
+	branch = feat/user-token-public-mcp
