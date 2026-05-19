@@ -205,8 +205,8 @@ public class McpTokenService {
     }
 
     private String claudeCommand(String token, String endpoint) {
-        return "claude mcp add --transport http --scope user --header \"Authorization: Bearer "
-                + token + "\" interview-question-bank " + endpoint;
+        return "claude mcp add --transport http --scope user interview-question-bank "
+                + endpoint + " --header \"Authorization: Bearer " + token + "\"";
     }
 
     private String jsonConfig(String token, String endpoint) {
