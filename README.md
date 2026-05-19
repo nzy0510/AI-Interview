@@ -66,10 +66,18 @@ graph LR
 - [InterWise 系统架构图](image/架构图/InterWise-系统架构图.png)
 - [InterWise RAG 流程图](image/架构图/InterWise-RAG流程图.png)
 
+架构语言与关键决策：
+
+- [领域上下文与术语](CONTEXT.md)
+- [ADR 0001：独立题库 MCP 边界](docs/adr/0001-standalone-question-bank-mcp.md)
+- [ADR 0002：题库导入生命周期](docs/adr/0002-question-bank-import-lifecycle.md)
+- [ADR 0003：MCP 使用记录隐私边界](docs/adr/0003-privacy-preserving-mcp-usage-records.md)
+
 ## 主要目录
 
 ```text
 .
+├── CONTEXT.md                      # InterWise 根级领域语言与边界
 ├── backend/
 │   ├── src/main/java/com/interview/
 │   │   ├── config/                 # LLM、Redis、Prompt、岗位分类、JWT 配置
@@ -95,6 +103,7 @@ graph LR
 │   ├── atomizer.py                 # 旧知识原子生成脚本
 │   └── reclassify_hot200.py        # 旧题库分类整理脚本
 ├── skills/interview-question-bank/ # Codex 题库维护 Skill
+├── docs/adr/                       # 架构决策记录
 ├── image/架构图/                   # 系统架构图与 RAG 流程图 PNG
 ├── docker-compose.example.yml      # 本地 Docker Compose 模板
 ├── docker-compose.prod.yml         # 生产部署模板

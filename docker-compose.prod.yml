@@ -118,6 +118,8 @@ services:
       context: ./services/mcp-skill
     container_name: interview-mcp-skill
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:8765:8765"
     depends_on:
       db:
         condition: service_healthy
