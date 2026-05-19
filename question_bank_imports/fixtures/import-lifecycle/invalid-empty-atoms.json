@@ -1,0 +1,7 @@
+{
+  "batchId": "qb-contract-empty",
+  "sourceRef": "contract-fixture.md",
+  "targetCategory": "java",
+  "mode": "DRY_RUN",
+  "atoms": []
+}

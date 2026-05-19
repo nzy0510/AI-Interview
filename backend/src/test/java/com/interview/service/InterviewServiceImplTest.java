@@ -1,6 +1,5 @@
 package com.interview.service;
 
-import com.interview.config.InterviewPrompts;
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewRecord;
 import com.interview.mapper.InterviewRecordMapper;
@@ -44,10 +43,10 @@ class InterviewServiceImplTest {
     private OpenAiStreamingChatModel streamingChatModel;
 
     @Mock
-    private InterviewPrompts interviewPrompts;
+    private QuestionBankService questionBankService;
 
     @Mock
-    private QuestionBankService questionBankService;
+    private InterviewTurnPlanner interviewTurnPlanner;
 
     @InjectMocks
     private InterviewServiceImpl interviewService;
@@ -119,10 +118,11 @@ class InterviewServiceImplTest {
         when(interviewRecordMapper.selectOne(any())).thenReturn(record);
         when(sessionStore.load(20L)).thenReturn(new ArrayList<>());
         when(sessionStore.loadUsedAtoms(20L)).thenReturn(List.of());
+        when(sessionStore.loadTailoredQuestions(20L)).thenReturn(List.of());
         when(questionBankService.search(any()))
                 .thenThrow(new IllegalArgumentException("未配置岗位对应的知识库分类: 测试开发"));
-        when(interviewPrompts.getCoordinator()).thenReturn("coordinator");
-        when(interviewPrompts.getAttitudeRule()).thenReturn("");
+        when(interviewTurnPlanner.plan(any(), anyList(), any(), any()))
+                .thenReturn(new InterviewTurnPlanner.InterviewTurnPlan(InterviewPhase.OPENING, "coordinator"));
         doAnswer(invocation -> {
             StreamingResponseHandler<AiMessage> handler = invocation.getArgument(1);
             handler.onNext("你好");

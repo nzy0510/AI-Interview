@@ -1,0 +1,14 @@
+{
+  "atomId": "contract-java-hashmap",
+  "subject": "HashMap 扩容机制",
+  "category": "java",
+  "difficulty": "mid",
+  "tagsJson": "[\"java\",\"hashmap\",\"collections\"]",
+  "principles": "HashMap 在容量超过阈值时会触发扩容，容量通常翻倍，并根据新的桶长度重新计算元素位置。",
+  "pitfalls": "只说数组加链表而忽略负载因子、扰动函数和 JDK 8 树化条件，会导致回答不完整。",
+  "followUpPathsJson": "[\"为什么 HashMap 容量通常是 2 的幂？\",\"JDK 8 链表转红黑树的条件是什么？\"]",
+  "status": "DRAFT",
+  "sourceRef": "contract-fixture.md",
+  "checksum": "3c1865406b2a52fe2c9c51627f1a9e40123b275357633bbadc95f20a785962d2",
+  "vectorStatus": "SKIPPED"
+}

@@ -1,0 +1,5 @@
+{
+  "emptyAtoms": ["atoms must not be empty"],
+  "missingPrinciples": ["contract-missing-principles: content.principles is required"],
+  "duplicateId": ["duplicate atom id in package: contract-duplicate"]
+}

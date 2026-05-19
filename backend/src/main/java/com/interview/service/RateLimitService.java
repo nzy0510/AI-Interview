@@ -68,8 +68,6 @@ public class RateLimitService {
             applyForUser("mentor-refresh", actor, developer, 10, Duration.ofHours(1), "AI Mentor 刷新过于频繁，请稍后再试");
         } else if (is(method, path, "POST", "/api/feedback")) {
             applyForUser("feedback", actor, developer, 10, Duration.ofHours(1), "反馈提交过于频繁，请稍后再试");
-        } else if (path.startsWith("/mcp")) {
-            apply("mcp", ipSubject, 120, Duration.ofMinutes(1), "MCP 请求过于频繁，请稍后再试");
         }
     }
 

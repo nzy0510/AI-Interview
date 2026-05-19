@@ -104,7 +104,6 @@ public class AppEventService {
         if ("POST".equalsIgnoreCase(method) && "/api/user/mentor-insight/refresh".equals(path)) return "MENTOR_REFRESH";
         if ("GET".equalsIgnoreCase(method) && path.startsWith("/api/history/detail/")) return "REPORT_VIEW";
         if ("POST".equalsIgnoreCase(method) && "/api/feedback".equals(path)) return "FEEDBACK_SUBMIT";
-        if (path.startsWith("/mcp")) return "MCP_REQUEST";
         return "API_REQUEST";
     }
 

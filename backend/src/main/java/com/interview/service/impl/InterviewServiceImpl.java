@@ -10,6 +10,7 @@ import com.interview.dto.questionbank.QuestionBankSearchResult;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.service.InterviewService;
+import com.interview.service.InterviewTurnPlanner;
 import com.interview.service.UsageQuotaService;
 import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
@@ -42,9 +43,6 @@ public class InterviewServiceImpl implements InterviewService {
     private OpenAiStreamingChatModel streamingChatModel;
 
     @Autowired
-    private com.interview.config.InterviewPrompts interviewPrompts;
-
-    @Autowired
     private com.interview.service.SessionStore sessionStore;
 
     @Autowired
@@ -58,6 +56,9 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Autowired
     private com.interview.service.MentorService mentorService;
+
+    @Autowired
+    private InterviewTurnPlanner interviewTurnPlanner;
 
     @Autowired(required = false)
     private UsageQuotaService usageQuotaService;
@@ -212,62 +213,15 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         // 2. 根据显式面试阶段选择 Agent 人设（替代隐式 turn 计算）
-        int turn = chatHistory.size() / 2;
-        String currentPhase = record.getPhase();
-        if (currentPhase == null || currentPhase.isEmpty()) {
-            currentPhase = InterviewPhase.OPENING.name();
-        }
-
-        // 检测上一轮 AI 回复中的阶段切换标记
-        boolean switchToHrMarker = false;
-        boolean autoFinishMarker = false;
-        for (ChatMessage m : chatHistory) {
-            if (m instanceof AiMessage) {
-                String text = m.text();
-                if (text.contains("[SWITCH_TO_HR]")) switchToHrMarker = true;
-                if (text.contains("[AUTO_FINISH]")) autoFinishMarker = true;
-            }
-        }
-
-        // 状态转换
-        InterviewPhase phase = determineNextPhase(
-                InterviewPhase.valueOf(currentPhase), turn, switchToHrMarker, autoFinishMarker);
-        record.setPhase(phase.name());
+        List<String> tailoredQuestions = sessionStore.loadTailoredQuestions(recordId);
+        InterviewTurnPlanner.InterviewTurnPlan turnPlan =
+                interviewTurnPlanner.plan(record, chatHistory, contextBuilder.toString(), tailoredQuestions);
+        record.setPhase(turnPlan.phase().name());
         interviewRecordMapper.updateById(record);
-
-        // 根据阶段构建 System Prompt
-        String currentSystemPrompt;
-        String setupInstructions = buildSetupInstructions(record);
-        if (phase == InterviewPhase.OPENING) {
-            currentSystemPrompt = interviewPrompts.getCoordinator() + "\n" + interviewPrompts.getAttitudeRule()
-                    + setupInstructions
-                    + "\n请先让候选人做个简短的自我介绍。";
-        } else if (phase == InterviewPhase.TECHNICAL) {
-            currentSystemPrompt = interviewPrompts.getTechnical() + "\n" + interviewPrompts.getAttitudeRule()
-                    + setupInstructions
-                    + "\n候选知识点（选择最相关的1个追问，不要直接说出标准答案，优先追问候选人回答中缺失的部分）：\n"
-                    + contextBuilder.toString();
-
-            List<String> tailoredQuestions = sessionStore.loadTailoredQuestions(recordId);
-            if (tailoredQuestions != null && !tailoredQuestions.isEmpty()) {
-                StringBuilder qb = new StringBuilder("\n【重要指令：你的问题池已结合候选人简历更新，请**优先**依照以下量身定做题库向候选人发问】：\n");
-                for (String q : tailoredQuestions) qb.append("- ").append(q).append("\n");
-                qb.append("\n要求：如果在充分考察完上述定制题后，或者候选人在某点回答极其完善完美，**请务必主动发散到其他核心甚至进阶领域**，确保深挖候选人的知识广度。\n");
-                qb.append("如果在极其满意的状况下认为无需进行任何技术面试了，你可以提前结束技术部分，并把话题抛给HR同事，此时在这个回答的最末尾追加标记：[SWITCH_TO_HR]\n");
-                currentSystemPrompt += qb.toString();
-            } else {
-                currentSystemPrompt += "\n如果在极其满意的状况下认为无可挑剔且无需再问，你可以提前结束技术部分，并把话题抛给HR同事，此时在这个回答的最末尾追加标记：[SWITCH_TO_HR]\n";
-            }
-        } else if (phase == InterviewPhase.HR) {
-            currentSystemPrompt = interviewPrompts.getHr() + "\n" + interviewPrompts.getAttitudeRule()
-                    + setupInstructions;
-        } else {
-            currentSystemPrompt = interviewPrompts.getClosing() + setupInstructions;
-        }
 
         // 3. 构造消息列表
         List<ChatMessage> messages = new ArrayList<>();
-        messages.add(new SystemMessage(currentSystemPrompt));
+        messages.add(new SystemMessage(turnPlan.systemPrompt()));
         messages.addAll(chatHistory);
         messages.add(new UserMessage(message));
 
@@ -427,20 +381,6 @@ public class InterviewServiceImpl implements InterviewService {
         return record;
     }
 
-    /** 显式状态机：根据当前阶段、轮次和 AI 标记决定下一阶段 */
-    private InterviewPhase determineNextPhase(InterviewPhase current, int turn,
-                                             boolean switchToHrMarker, boolean autoFinishMarker) {
-        if (current == InterviewPhase.FINISHED) return InterviewPhase.FINISHED;
-        if (autoFinishMarker) return InterviewPhase.FINISHED;
-        if (current == InterviewPhase.OPENING && turn >= 1) return InterviewPhase.TECHNICAL;
-        if (current == InterviewPhase.TECHNICAL) {
-            if (switchToHrMarker || turn > 8) return InterviewPhase.HR;
-            return InterviewPhase.TECHNICAL;
-        }
-        if (current == InterviewPhase.HR && turn > 11) return InterviewPhase.CLOSING;
-        return current;
-    }
-
     @Override
     public java.util.List<InterviewRecord> getHistoryList(Long userId) {
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<InterviewRecord> query =
@@ -496,53 +436,6 @@ public class InterviewServiceImpl implements InterviewService {
             }
         }
         return cleaned.isEmpty() ? null : JSON.toJSONString(cleaned);
-    }
-
-    private String buildSetupInstructions(InterviewRecord record) {
-        StringBuilder sb = new StringBuilder("\n【候选人本场面试配置】\n");
-        sb.append("- 难度倾向：").append(humanDifficulty(record.getDifficultyLevel())).append("\n");
-        List<String> focusAreas = parseFocusAreas(record.getFocusAreas());
-        if (!focusAreas.isEmpty()) {
-            sb.append("- 重点能力：").append(String.join("、", focusAreas)).append("\n");
-            sb.append("- 提问策略：优先围绕重点能力设计追问，但不要牺牲岗位核心知识覆盖。\n");
-        }
-        sb.append("- 难度策略：根据难度倾向调整追问深度、案例复杂度和容错标准。\n");
-        return sb.toString();
-    }
-
-    private String humanDifficulty(String difficultyLevel) {
-        return switch (normalizeDifficulty(difficultyLevel)) {
-            case "junior" -> "应届/0-1年，重视基础概念、表达清晰度和项目参与度";
-            case "senior" -> "3-5年，重视系统设计、复杂问题定位和技术取舍";
-            case "principal" -> "5年+，重视架构判断、跨团队影响力和深层原理";
-            default -> "1-3年，重视核心原理、业务落地和独立解决问题能力";
-        };
-    }
-
-    private List<String> parseFocusAreas(String raw) {
-        if (raw == null || raw.isBlank()) return new ArrayList<>();
-        try {
-            List<String> values = JSON.parseArray(raw, String.class);
-            List<String> labels = new ArrayList<>();
-            for (String value : values) {
-                labels.add(humanFocusArea(value));
-            }
-            return labels;
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-
-    private String humanFocusArea(String focusArea) {
-        return switch (focusArea) {
-            case "projects" -> "项目经历深挖";
-            case "depth" -> "技术原理深度";
-            case "architecture" -> "系统设计与架构";
-            case "algorithm" -> "算法基础与思维";
-            case "communication" -> "表达沟通与协作";
-            case "pressure" -> "压力应对与稳定性";
-            default -> focusArea;
-        };
     }
 
     private void sendSseError(SseEmitter emitter, String message) {

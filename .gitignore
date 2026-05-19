@@ -103,10 +103,13 @@ conflicts_render.txt
 .worktrees/
 
 # ========== 知识库相关 ==========
-# 忽略原始大型文档，保留生成的 JSON 原子
+# 忽略原始大型文档，保留导入契约 fixtures
 *.pdf
 **/knowledge_base/archive_original/
-/question_bank_imports/
+/question_bank_imports/*
+!/question_bank_imports/fixtures/
+!/question_bank_imports/fixtures/import-lifecycle/
+!/question_bank_imports/fixtures/import-lifecycle/*.json
 
 配置变量.txt
 
@@ -115,6 +118,8 @@ conflicts_render.txt
 !/docs/
 !/docs/adr/
 !/docs/adr/*.md
+!/docs/contracts/
+!/docs/contracts/*.md
 # Local resume/interview-prep drafts generated for private delivery preparation
 /docs/codex-resume-ai-llm-20260511/
 /docs/AI大模型应用开发简历模板.md

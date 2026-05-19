@@ -34,10 +34,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(auditLoggingInterceptor)
-                .addPathPatterns("/api/**", "/mcp/**");
+                .addPathPatterns("/api/**");
 
         registry.addInterceptor(rateLimitInterceptor)
-                .addPathPatterns("/api/**", "/mcp/**")
+                .addPathPatterns("/api/**")
                 .excludePathPatterns("/api/health");
 
         registry.addInterceptor(jwtInterceptor)

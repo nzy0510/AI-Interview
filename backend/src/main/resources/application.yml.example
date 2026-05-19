@@ -53,7 +53,7 @@ mybatis-plus:
 # 岗位到知识库分类的映射（新增分类时在此处添加即可，无需改代码）
 interview:
   position-categories:
-    java: [hot200, mysql, redis, spring, springboot, 并发, 操作系统, common]
+    java: [hot200, mysql, redis, spring, springboot, 并发, 操作系统, common, 后端场景题]
     前端: [hot200, React, Vue, Flutter, HTML, common]
 
   # AI 提示词模板（集中管理，无需重新编译即可调整）
@@ -159,31 +159,12 @@ app:
   mcp:
     # 留空时后端会根据当前访问域名生成 https://domain/mcp
     public-url: ${APP_MCP_PUBLIC_URL:}
-    daily:
-      total: ${MCP_DAILY_TOTAL_LIMIT:150}
-      search: ${MCP_DAILY_SEARCH_LIMIT:80}
-      context: ${MCP_DAILY_CONTEXT_LIMIT:40}
-      detail: ${MCP_DAILY_DETAIL_LIMIT:60}
-      categories: ${MCP_DAILY_CATEGORIES_LIMIT:30}
-      usage-status: ${MCP_DAILY_USAGE_STATUS_LIMIT:30}
-    developer:
-      daily:
-        total: ${MCP_DEVELOPER_DAILY_TOTAL_LIMIT:2000}
-        search: ${MCP_DEVELOPER_DAILY_SEARCH_LIMIT:1000}
-        context: ${MCP_DEVELOPER_DAILY_CONTEXT_LIMIT:500}
-        detail: ${MCP_DEVELOPER_DAILY_DETAIL_LIMIT:500}
-        categories: ${MCP_DEVELOPER_DAILY_CATEGORIES_LIMIT:300}
-        usage-status: ${MCP_DEVELOPER_DAILY_USAGE_STATUS_LIMIT:300}
+    # 每日调用额度以 mcp_quota_policy 表为准，mcp_daily_usage 只保存当天使用快照。
 
-# 题库 / MCP / Qdrant 配置
+# 题库 / Qdrant 配置
 question-bank:
   # 开发者维护题库用 token；为空时不校验，生产建议必须配置
   admin-token: ${QUESTION_BANK_ADMIN_TOKEN:}
-  mcp:
-    # 旧内嵌 /mcp 兼容开关用 token。公开服务已迁移到独立 MCP-Skill 容器。
-    read-token: ${MCP_READ_TOKEN:}
-    # 浏览器来源白名单，逗号分隔；为空时默认允许同源和 localhost/127.0.0.1
-    allowed-origins: ${MCP_ALLOWED_ORIGINS:}
   qdrant:
     enabled: ${QDRANT_ENABLED:true}
     url: ${QDRANT_URL:http://localhost:6333}

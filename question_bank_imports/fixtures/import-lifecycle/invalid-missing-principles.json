@@ -1,0 +1,19 @@
+{
+  "batchId": "qb-contract-missing-principles",
+  "sourceRef": "contract-fixture.md",
+  "targetCategory": "java",
+  "mode": "DRY_RUN",
+  "atoms": [
+    {
+      "id": "contract-missing-principles",
+      "subject": "HashMap 扩容机制",
+      "category": "java",
+      "difficulty": "mid",
+      "tags": ["java"],
+      "content": {
+        "pitfalls": "缺少标准答案正文时不能导入。",
+        "followUpPaths": []
+      }
+    }
+  ]
+}

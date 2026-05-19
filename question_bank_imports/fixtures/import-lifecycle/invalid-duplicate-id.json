@@ -1,0 +1,30 @@
+{
+  "batchId": "qb-contract-duplicate",
+  "sourceRef": "contract-fixture.md",
+  "targetCategory": "java",
+  "mode": "DRY_RUN",
+  "atoms": [
+    {
+      "id": "contract-duplicate",
+      "subject": "第一个重复题目",
+      "category": "java",
+      "difficulty": "easy",
+      "tags": ["java"],
+      "content": {
+        "principles": "第一个题目的标准答案。",
+        "followUpPaths": []
+      }
+    },
+    {
+      "id": "contract-duplicate",
+      "subject": "第二个重复题目",
+      "category": "java",
+      "difficulty": "easy",
+      "tags": ["java"],
+      "content": {
+        "principles": "第二个题目的标准答案。",
+        "followUpPaths": []
+      }
+    }
+  ]
+}

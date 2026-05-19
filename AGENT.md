@@ -7,7 +7,7 @@
 InterWise 是一个 **AI 模拟面试平台**，支持文字面试、视频面试、简历画像、RAG 追问、面试复盘与 AI Mentor。
 - **后端**：Java 17 / Spring Boot 3.2 / MyBatis-Plus / LangChain4j / DeepSeek / MySQL 8 / Redis 7 / Qdrant
 - **前端**：Vue 3.5 / Vite 7 / Element Plus / ECharts / face-api.js / Web Speech API
-- **部署**：Docker Compose 一键编排（frontend + backend + mysql + redis + qdrant）
+- **部署**：Docker Compose 一键编排（frontend + backend + mysql + redis + qdrant + mcp-skill）
 - **生产环境**：Azure Ubuntu VM + `docker-compose.prod.yml`，当前为内测阶段（HTTPS，Azure DNS 名称访问）
 
 ## 2. 核心架构
@@ -26,7 +26,7 @@ User → Vue3 前端 → HTTP/SSE → Spring Boot 后端 → DeepSeek LLM
 ### 后端 `backend/src/main/java/com/interview/`
 | 包 | 职责 | 重要文件 |
 |---|------|---------|
-| `controller/` | REST API 入口 | `InterviewController`, `UserController`, `ResumeController`, `QuestionBankMcpController` |
+| `controller/` | REST API 入口 | `InterviewController`, `UserController`, `ResumeController`, `McpTokenController` |
 | `service/impl/` | 核心业务 | `InterviewServiceImpl`(面试主逻辑+SSE), `UserServiceImpl`, `ResumeServiceImpl` |
 | `service/` | 接口与辅助 | `MentorService`, `SessionStore`, `RagRetriever`, `EvaluationGenerator`, `EmailService` |
 | `service/questionbank/` | 题库子系统 | `QuestionBankService`, `QdrantVectorService`, `QuestionBankBootstrapService` |
@@ -51,7 +51,7 @@ User → Vue3 前端 → HTTP/SSE → Spring Boot 后端 → DeepSeek LLM
 - **面试**：前端 SSE 连接 → `InterviewController` → `InterviewServiceImpl` 按 Phase 调度 → DeepSeek + RAG 追问
 - **简历**：PDF 上传 → `ResumeController` → `ResumeServiceImpl` → 解析写入 `resume_profile`
 - **题库**：PDF/DOCX 等 → `scripts/question_bank_import.py` → `/internal/question-bank/import` API → MySQL `knowledge_atom` → Qdrant 向量索引
-- **MCP**：外部 AI 客户端通过 `/mcp` JSON-RPC 调用题库搜索、上下文生成等工具
+- **MCP**：外部 AI 客户端通过独立 MCP-Skill 服务的 `/mcp` 调用只读题库检索与上下文生成；主项目只负责用户 token 生命周期
 - **Mentor**：`MentorService` 聚合面试历史 + 知识覆盖 + 风险提醒，Redis 缓存 24h
 
 ## 5. 开发约定
