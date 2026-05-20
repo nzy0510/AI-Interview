@@ -287,7 +287,7 @@ public class QuestionBankService {
         if (!isBlank(request.getPosition())) {
             return categoryConfig.getCategoriesFor(request.getPosition());
         }
-        return List.of("common");
+        return List.of();
     }
 
     private List<QuestionBankSearchResult> loadHits(List<QdrantVectorService.VectorHit> hits) {

@@ -19,27 +19,29 @@ class PositionCategoryConfigTest {
     void setUp() {
         config = new PositionCategoryConfig();
         config.setPositionCategories(Map.of(
-                "java", List.of("hot200", "mysql", "redis", "spring", "springboot", "并发", "操作系统", "common"),
-                "前端", List.of("hot200", "common")
+                "java", List.of("hot200", "mysql", "redis", "spring", "springboot", "并发", "操作系统"),
+                "前端", List.of("hot200", "Vue")
         ));
     }
 
     @Test
-    @DisplayName("Java 岗位匹配 8 个分类")
-    void shouldReturnEightCategoriesForJavaPosition() {
+    @DisplayName("Java 岗位匹配技术分类且不混入 HR 软技能来源")
+    void shouldReturnTechnicalCategoriesForJavaPosition() {
         List<String> categories = config.getCategoriesFor("Java 后端开发");
         assertThat(categories)
-                .hasSize(8)
-                .contains("hot200", "mysql", "redis", "spring", "springboot", "并发", "操作系统", "common");
+                .hasSize(7)
+                .contains("hot200", "mysql", "redis", "spring", "springboot", "并发", "操作系统")
+                .doesNotContain("common", "HR软技能");
     }
 
     @Test
-    @DisplayName("前端岗位匹配 2 个分类")
-    void shouldReturnTwoCategoriesForFrontendPosition() {
+    @DisplayName("前端岗位匹配技术分类且不混入 HR 软技能来源")
+    void shouldReturnFrontendTechnicalCategories() {
         List<String> categories = config.getCategoriesFor("Web 前端开发");
         assertThat(categories)
                 .hasSize(2)
-                .contains("hot200", "common");
+                .contains("hot200", "Vue")
+                .doesNotContain("common", "HR软技能");
     }
 
     @Test
@@ -62,6 +64,6 @@ class PositionCategoryConfigTest {
     @DisplayName("大小写不敏感匹配")
     void shouldMatchCaseInsensitive() {
         List<String> categories = config.getCategoriesFor("JAVA 开发工程师");
-        assertThat(categories).hasSize(8);
+        assertThat(categories).hasSize(7);
     }
 }

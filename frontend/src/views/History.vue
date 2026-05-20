@@ -261,7 +261,7 @@
               <h2 class="section-title">综合反馈</h2>
             </div>
           </div>
-          <div class="feedback-box"><pre class="feedback-text">{{ selected.feedback }}</pre></div>
+          <div class="feedback-box"><pre class="feedback-text">{{ selectedFeedback }}</pre></div>
         </section>
 
         <template v-if="selectedEmotion && Object.keys(selectedEmotion).length > 0">
@@ -367,6 +367,7 @@ import * as echarts from 'echarts'
 import KnowledgeCoverageChart from '@/components/charts/KnowledgeCoverageChart.vue'
 import { buildTooltipConfig, buildHeatmapVisualMap, buildHeatmapData } from '@/utils/chartOptions'
 import { normalizeKnowledgePoints } from '@/utils/reportMetrics'
+import { normalizeAbility, parseStructuredField, stripInterviewControlMarkers } from '@/utils/interviewReport'
 
 const router = useRouter()
 const loading = ref(true)
@@ -397,17 +398,17 @@ const getGradeType = g => ({ A: 'danger', B: 'success', C: 'primary', D: 'warnin
 const getScoreType = s => s >= 85 ? 'success' : s >= 70 ? 'primary' : s >= 55 ? 'warning' : 'danger'
 
 const selectedAbility = computed(() => {
-  try { return selected.value?.abilityJson ? JSON.parse(selected.value.abilityJson) : {} }
-  catch { return {} }
+  return normalizeAbility(selected.value?.abilityJson)
 })
 const selectedRecs = computed(() => {
-  try { return selected.value?.recommendations ? JSON.parse(selected.value.recommendations) : [] }
-  catch { return [] }
+  const recommendations = parseStructuredField(selected.value?.recommendations, [])
+  return Array.isArray(recommendations) ? recommendations : []
 })
 const selectedEmotion = computed(() => {
-  try { return selected.value?.emotionJson ? JSON.parse(selected.value.emotionJson) : null }
-  catch { return null }
+  const emotion = parseStructuredField(selected.value?.emotionJson, null)
+  return emotion && typeof emotion === 'object' ? emotion : null
 })
+const selectedFeedback = computed(() => stripInterviewControlMarkers(selected.value?.feedback || ''))
 
 const EMOTION_LABELS = { neutral: '平静', happy: '积极', sad: '低落', angry: '紧张', fearful: '焦虑', disgusted: '不适', surprised: '惊讶' }
 const emotionLabel = (key) => EMOTION_LABELS[key] || key
@@ -500,9 +501,8 @@ const overviewMetrics = computed(() => [
 ])
 const strongestAbility = computed(() => {
   const source = selected.value || latestRecord.value
-  let ability = {}
-  try { ability = source?.abilityJson ? JSON.parse(source.abilityJson) : {} } catch { ability = {} }
-  const entries = Object.entries(ability)
+  const ability = normalizeAbility(source?.abilityJson)
+  const entries = Object.entries(ability).filter(([key]) => abilityDimensions[key])
   if (!entries.length) {
     return { label: '暂无画像', grade: '--', description: '等到报告详情展开后，会在这里显示主能力项。' }
   }
@@ -560,7 +560,10 @@ watch([chartMode, visibleHistoryList], () => {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'
-const excerpt = (t) => t ? (t.length > 60 ? t.slice(0, 60) + '...' : t) : ''
+const excerpt = (t) => {
+  const cleaned = stripInterviewControlMarkers(t || '')
+  return cleaned ? (cleaned.length > 60 ? cleaned.slice(0, 60) + '...' : cleaned) : ''
+}
 
 const openDetail = (row) => {
   selected.value = row

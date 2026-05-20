@@ -75,7 +75,12 @@ import { initModels, analyzeFrame, getEmotionSummary, EMOTION_LABELS } from '@/u
 import { userKey } from '@/utils/auth'
 import InterviewReportOverlay from '@/components/interview/InterviewReportOverlay.vue'
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
-import { buildVideoInterviewReportMetrics, parseInterviewFinishPayload } from '@/utils/interviewReport'
+import {
+  buildVideoInterviewReportMetrics,
+  detectInterviewControlMarkers,
+  parseInterviewFinishPayload,
+  stripInterviewControlMarkers
+} from '@/utils/interviewReport'
 import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFallback } from '@/utils/interviewEntry'
 import { trackEvent } from '@/utils/analytics'
 import { getAnonymousId } from '@/utils/visitor'
@@ -97,6 +102,7 @@ const isListening = ref(false)
 const isSpeaking = ref(false)
 const showReport = ref(false)
 const currentAiText = ref('')
+const currentPhase = ref('OPENING')
 const totalRounds = ref(0)
 const hrOverridden = ref(false)
 const currentAgent = ref('面试组长')
@@ -314,6 +320,17 @@ function sendToAI(message) {
       return
     }
 
+    if (d.phase) {
+      currentPhase.value = d.phase
+      if (d.phase === 'HR') {
+        hrOverridden.value = true
+        currentAgent.value = 'HR 面试官'
+      } else if (d.phase === 'CLOSING') {
+        currentAgent.value = '面试组长'
+      }
+      return
+    }
+
     if (d.done === 'true' || d.done === true) {
       isStreaming.value = false
       eventSource.close()
@@ -339,27 +356,21 @@ function sendToAI(message) {
     if (d.content !== undefined && d.content !== null) {
       fullText += d.content
 
-      // Check for [SWITCH_TO_HR]
-      if (fullText.includes('[SWITCH_TO_HR]')) {
-        fullText = fullText.replace('[SWITCH_TO_HR]', '')
+      const markers = detectInterviewControlMarkers(fullText)
+      if (markers.switchToHr) {
         hrOverridden.value = true
-        // Switch immediately visually
         currentAgent.value = 'HR 面试官'
       }
-
-      if (fullText.includes('[AUTO_FINISH]')) {
-        fullText = fullText.replace('[AUTO_FINISH]', '').trim()
+      if (markers.autoFinish && currentPhase.value === 'CLOSING') {
         pendingEndType = 'normal'
       }
-
-      currentAiText.value = fullText
-
-      // Check for [TERMINATE]
-      if (fullText.includes('[TERMINATE]')) {
-        currentAiText.value = fullText.replace('[TERMINATE]', '').trim()
-        fullText = currentAiText.value
+      if (markers.terminate) {
         pendingEndType = 'abnormal'
       }
+      if (markers.switchToHr || markers.autoFinish || markers.terminate) {
+        fullText = stripInterviewControlMarkers(fullText)
+      }
+      currentAiText.value = fullText
     }
   }
 

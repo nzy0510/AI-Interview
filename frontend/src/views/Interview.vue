@@ -117,7 +117,12 @@ import { marked } from 'marked'
 import { userKey } from '@/utils/auth'
 import InterviewReportOverlay from '@/components/interview/InterviewReportOverlay.vue'
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
-import { buildTextInterviewReportMetrics, parseInterviewFinishPayload } from '@/utils/interviewReport'
+import {
+  buildTextInterviewReportMetrics,
+  detectInterviewControlMarkers,
+  parseInterviewFinishPayload,
+  stripInterviewControlMarkers
+} from '@/utils/interviewReport'
 import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFallback } from '@/utils/interviewEntry'
 import { trackEvent } from '@/utils/analytics'
 import { getAnonymousId } from '@/utils/visitor'
@@ -133,6 +138,7 @@ const recordId = ref(null)
 const messageList = ref([])
 const inputMsg = ref('')
 const isStreaming = ref(false)
+const currentPhase = ref('OPENING')
 const chatMainRef = ref(null)
 const isFinishing = ref(false)
 const showReport = ref(false)
@@ -477,6 +483,11 @@ const streamAiResponse = (msg) => {
       return
     }
 
+    if (d.phase) {
+      currentPhase.value = d.phase
+      return
+    }
+
     if (d.done === 'true' || d.done === true) {
       aiMsg.streaming = false
       isStreaming.value = false
@@ -497,20 +508,16 @@ const streamAiResponse = (msg) => {
 
     if (d.content !== undefined && d.content !== null) {
       aiMsg.content += d.content
-      
-      if (aiMsg.content.includes('[SWITCH_TO_HR]')) {
-        aiMsg.content = aiMsg.content.replace('[SWITCH_TO_HR]', '').trim()
-      }
 
-      if (aiMsg.content.includes('[AUTO_FINISH]')) {
-        aiMsg.content = aiMsg.content.replace('[AUTO_FINISH]', '').trim()
+      const markers = detectInterviewControlMarkers(aiMsg.content)
+      if (markers.autoFinish && currentPhase.value === 'CLOSING') {
         pendingEndType = 'normal'
       }
-
-      // Check for termination marker
-      if (aiMsg.content.includes('[TERMINATE]')) {
-        aiMsg.content = aiMsg.content.replace('[TERMINATE]', '').trim()
+      if (markers.terminate) {
         pendingEndType = 'abnormal'
+      }
+      if (markers.switchToHr || markers.autoFinish || markers.terminate) {
+        aiMsg.content = stripInterviewControlMarkers(aiMsg.content)
       }
       
       scrollToBottom()

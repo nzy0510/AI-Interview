@@ -1,3 +1,5 @@
+import { normalizeAbility } from '@/utils/interviewReport'
+
 /**
  * ECharts tooltip — warm light style
  */
@@ -44,12 +46,7 @@ export function buildHeatmapData(records, dimKeys, dimLabels) {
   const data = []
 
   records.forEach((r, xIndex) => {
-    let ab = {}
-    try {
-      ab = JSON.parse(r.abilityJson || '{}')
-    } catch {
-      /* malformed JSON, fallback to empty */
-    }
+    const ab = normalizeAbility(r.abilityJson)
     revKeys.forEach((key, yIndex) => {
       const grade = ab[key] || 'E'
       const val = GRADE_MAP[grade] ?? 0

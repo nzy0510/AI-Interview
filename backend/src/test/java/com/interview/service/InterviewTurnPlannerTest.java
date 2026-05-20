@@ -41,6 +41,17 @@ class InterviewTurnPlannerTest {
     }
 
     @Test
+    @DisplayName("自动结束标记只能在收尾阶段结束面试")
+    void shouldOnlyAutoFinishFromClosingPhase() {
+        assertThat(planner.determineNextPhase(InterviewPhase.TECHNICAL, 5, false, true))
+                .isEqualTo(InterviewPhase.TECHNICAL);
+        assertThat(planner.determineNextPhase(InterviewPhase.HR, 10, false, true))
+                .isEqualTo(InterviewPhase.HR);
+        assertThat(planner.determineNextPhase(InterviewPhase.CLOSING, 13, false, true))
+                .isEqualTo(InterviewPhase.FINISHED);
+    }
+
+    @Test
     @DisplayName("技术阶段 prompt 包含 RAG 上下文和面试配置")
     void shouldBuildTechnicalPromptWithRagContextAndSetup() {
         InterviewRecord record = record(InterviewPhase.TECHNICAL);
@@ -60,6 +71,23 @@ class InterviewTurnPlannerTest {
                 .contains("3-5年")
                 .contains("项目经历深挖、系统设计与架构")
                 .contains("[SWITCH_TO_HR]");
+    }
+
+    @Test
+    @DisplayName("HR 阶段 prompt 使用 HR 软技能题库上下文")
+    void shouldBuildHrPromptWithRagContext() {
+        InterviewRecord record = record(InterviewPhase.HR);
+
+        InterviewTurnPlanner.InterviewTurnPlan plan = planner.plan(
+                record,
+                List.of(new UserMessage("我会先沟通再推动"), new AiMessage("HR 问题")),
+                "1. [atom_id: hr-conflict]\n团队冲突处理参考要点",
+                List.of());
+
+        assertThat(plan.phase()).isEqualTo(InterviewPhase.HR);
+        assertThat(plan.systemPrompt())
+                .contains("hr")
+                .contains("团队冲突处理参考要点");
     }
 
     @Test

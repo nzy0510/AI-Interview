@@ -28,6 +28,18 @@ _Avoid_: Any atom, draft atom.
 The process of selecting relevant published atoms from the question bank to ground interview follow-up questions and external MCP responses.
 _Avoid_: DeepSeek memory, database search only.
 
+**Technical Interview Stage**:
+The interview phase that evaluates role-specific engineering knowledge, project depth, architecture trade-offs, and implementation reasoning.
+_Avoid_: Whole interview, HR interview.
+
+**Technical Interviewer**:
+The AI interviewer persona responsible for project deep-dives, scenario-based technical questions, broad role-relevant coverage, and follow-up questions grounded in the technical question bank.
+_Avoid_: Generic chatbot, HR interviewer, evaluator.
+
+**HR Soft-Skill Stage**:
+The interview phase that evaluates behavioral, communication, motivation, pressure-handling, collaboration, and career-planning signals through a dedicated HR question-bank category.
+_Avoid_: Common category, generic RAG supplement, technical follow-up.
+
 **Standalone MCP Service**:
 The independent service that exposes question-bank tools to external AI clients without depending on the Spring Boot runtime code.
 _Avoid_: Embedded MCP, backend MCP controller.
@@ -106,6 +118,9 @@ _Avoid_: Standard answer, official answer.
 - The **Main App** owns users, interviews, Settings, **Operations**, and **User MCP Token** lifecycle.
 - The **Question Bank** contains many **Knowledge Atoms**.
 - Only **Published Atoms** participate in **RAG Retrieval** and **Public MCP Endpoint** results.
+- The **Technical Interview Stage** uses role-specific categories and should not retrieve soft-skill atoms from a shared common category.
+- The **Technical Interviewer** should emphasize candidate project deep-dives, prefer scenario-based questions, and balance depth with broad role-relevant knowledge coverage.
+- The **HR Soft-Skill Stage** uses a dedicated HR soft-skill category and should not depend on role-specific technical categories.
 - The **Public MCP Endpoint** accepts **User MCP Tokens**, exposes the **Public MCP Toolset**, returns **Desensitized Results**, and writes **MCP Usage Records**.
 - The **Public MCP Toolset** may search published atoms, retrieve reference summaries, list categories, generate interview context, and report usage status.
 - The **Public MCP Toolset** must not import content, publish atoms, reindex the question bank, or return full atom payloads.
@@ -139,3 +154,5 @@ _Avoid_: Standard answer, official answer.
 - "Quota" was used for both website AI cost controls and public MCP traffic controls. Resolved: **AI Usage Quota** and **MCP Usage Quota** are separate pools.
 - "Developer account" could imply unrestricted root access. Resolved: a **Developer Account** only receives development and maintenance-oriented exemptions or higher quotas; authorization and audit still apply.
 - "Usage log" could imply storing user prompts. Resolved: **MCP Usage Records** are operational records and must not store raw query text.
+- "Common" was used for shared soft-skill atoms inside technical role retrieval. Resolved: retire the generic common soft-skill source and use the **HR Soft-Skill Stage** with a dedicated HR soft-skill category.
+- "Technical officer" was used for the technical persona. Resolved: use **Technical Interviewer** and constrain it to project deep-dives, scenario-based questions, and broad role-relevant coverage.

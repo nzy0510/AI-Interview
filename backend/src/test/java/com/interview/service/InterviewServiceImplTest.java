@@ -2,6 +2,7 @@ package com.interview.service;
 
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewRecord;
+import com.interview.dto.questionbank.QuestionBankSearchRequest;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.service.impl.InterviewServiceImpl;
 import com.interview.service.questionbank.QuestionBankService;
@@ -119,6 +120,8 @@ class InterviewServiceImplTest {
         when(sessionStore.load(20L)).thenReturn(new ArrayList<>());
         when(sessionStore.loadUsedAtoms(20L)).thenReturn(List.of());
         when(sessionStore.loadTailoredQuestions(20L)).thenReturn(List.of());
+        when(interviewTurnPlanner.determineNextPhase(any(), anyList()))
+                .thenReturn(InterviewPhase.TECHNICAL);
         when(questionBankService.search(any()))
                 .thenThrow(new IllegalArgumentException("未配置岗位对应的知识库分类: 测试开发"));
         when(interviewTurnPlanner.plan(any(), anyList(), any(), any()))
@@ -135,5 +138,40 @@ class InterviewServiceImplTest {
         assertThat(emitter).isNotNull();
         verify(questionBankService).search(any());
         verify(streamingChatModel).generate(anyList(), any());
+    }
+
+    @Test
+    @DisplayName("HR 阶段题库检索只使用 HR 软技能分类")
+    void shouldRouteHrStageSearchToHrSoftSkillCategory() {
+        InterviewRecord record = new InterviewRecord();
+        record.setId(21L);
+        record.setUserId(1L);
+        record.setPosition("Java 后端开发");
+        record.setPhase(InterviewPhase.TECHNICAL.name());
+
+        when(interviewRecordMapper.selectOne(any())).thenReturn(record);
+        when(sessionStore.load(21L)).thenReturn(new ArrayList<>());
+        when(sessionStore.loadUsedAtoms(21L)).thenReturn(List.of("used-atom"));
+        when(sessionStore.loadTailoredQuestions(21L)).thenReturn(List.of());
+        when(interviewTurnPlanner.determineNextPhase(any(), anyList()))
+                .thenReturn(InterviewPhase.HR);
+        when(questionBankService.search(any())).thenReturn(List.of());
+        when(interviewTurnPlanner.plan(any(), anyList(), any(), any()))
+                .thenReturn(new InterviewTurnPlanner.InterviewTurnPlan(InterviewPhase.HR, "hr"));
+        doAnswer(invocation -> {
+            StreamingResponseHandler<AiMessage> handler = invocation.getArgument(1);
+            handler.onNext("请讲一次团队冲突处理经历");
+            handler.onComplete(Response.from(new AiMessage("请讲一次团队冲突处理经历")));
+            return null;
+        }).when(streamingChatModel).generate(anyList(), any());
+
+        interviewService.chatStream(1L, 21L, "我上一题答完了");
+
+        ArgumentCaptor<QuestionBankSearchRequest> captor = ArgumentCaptor.forClass(QuestionBankSearchRequest.class);
+        verify(questionBankService).search(captor.capture());
+        QuestionBankSearchRequest request = captor.getValue();
+        assertThat(request.getPosition()).isEqualTo("Java 后端开发");
+        assertThat(request.getCategories()).containsExactly("HR软技能");
+        assertThat(request.getExcludeAtomIds()).containsExactly("used-atom");
     }
 }

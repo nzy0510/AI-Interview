@@ -24,17 +24,21 @@ public class InterviewTurnPlanner {
                                   List<ChatMessage> chatHistory,
                                   String ragContext,
                                   List<String> tailoredQuestions) {
+        InterviewPhase phase = determineNextPhase(record, chatHistory);
+        return new InterviewTurnPlan(phase, buildSystemPrompt(record, phase, ragContext, tailoredQuestions));
+    }
+
+    public InterviewPhase determineNextPhase(InterviewRecord record, List<ChatMessage> chatHistory) {
         int turn = chatHistory.size() / 2;
         InterviewTurnMarkers markers = detectMarkers(chatHistory);
-        InterviewPhase phase = determineNextPhase(
+        return determineNextPhase(
                 currentPhase(record.getPhase()), turn, markers.switchToHr(), markers.autoFinish());
-        return new InterviewTurnPlan(phase, buildSystemPrompt(record, phase, ragContext, tailoredQuestions));
     }
 
     public InterviewPhase determineNextPhase(InterviewPhase current, int turn,
                                              boolean switchToHrMarker, boolean autoFinishMarker) {
         if (current == InterviewPhase.FINISHED) return InterviewPhase.FINISHED;
-        if (autoFinishMarker) return InterviewPhase.FINISHED;
+        if (current == InterviewPhase.CLOSING && autoFinishMarker) return InterviewPhase.FINISHED;
         if (current == InterviewPhase.OPENING && turn >= 1) return InterviewPhase.TECHNICAL;
         if (current == InterviewPhase.TECHNICAL) {
             if (switchToHrMarker || turn > 8) return InterviewPhase.HR;
@@ -93,7 +97,9 @@ public class InterviewTurnPlanner {
         }
         if (phase == InterviewPhase.HR) {
             return interviewPrompts.getHr() + "\n" + interviewPrompts.getAttitudeRule()
-                    + setupInstructions;
+                    + setupInstructions
+                    + "\nHR 软技能参考要点（选择最相关的1个行为证据追问，不要直接说出参考答案）：\n"
+                    + ragContext;
         }
         return interviewPrompts.getClosing() + setupInstructions;
     }

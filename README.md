@@ -7,8 +7,8 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目采
 ## 核心能力
 
 - 文字 / 视频双模式面试：支持 SSE 流式回答、语音识别、语音播报、摄像头情绪分析。
-- 多角色面试流程：基于 `InterviewPhase` 状态机在开场、技术、HR、收尾和结束阶段流转。
-- 岗位化追问：结合岗位、难度、重点能力、简历画像和题库检索生成追问。
+- 多角色面试流程：基于 `InterviewPhase` 状态机在开场、技术、HR、收尾和结束阶段流转，完整面试会进入独立 HR 软技能专项阶段。
+- 岗位化追问：技术阶段结合岗位、难度、重点能力、简历画像和题库检索生成追问；HR 阶段独立使用 `HR软技能` 题库分类。
 - 数据库题库：知识原子落入 MySQL，发布后的题目同步到 Qdrant，供 RAG 和 MCP 检索。
 - MCP 外部服务：通过独立 `services/mcp-skill` 容器公开 `/mcp` 只读题库服务，用户在 Settings 生成个人 token。
 - 题库维护 Skill：`skills/interview-question-bank` 支持从 PDF、DOCX、TXT、MD、JSON 生成导入包，并调用项目 API 发布。
@@ -241,6 +241,8 @@ skills/interview-question-bank/
 3. 按需评审导入包。
 4. 使用 `DRAFT` 暂存，或使用 `AUTO_PUBLISH` 直接发布并同步 Qdrant。
 5. 通过内部 API 或 MCP 搜索验证。
+
+HR 软技能题库应使用 `HR软技能` 分类，先生成 `DRAFT` 导入包并通过 `validate_atom_import_package` 校验；人工确认后再提交、发布和重建索引。
 
 示例：
 

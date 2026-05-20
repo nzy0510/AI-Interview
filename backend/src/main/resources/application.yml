@@ -53,8 +53,8 @@ mybatis-plus:
 # 岗位到知识库分类的映射
 interview:
   position-categories:
-    java: [mysql, redis, spring, springboot, 并发, 操作系统, common, jvm, kafka, rabbitmq, rocketmq, 消息队列, MyBatis, 网络, 分布式, 微服务, 系统设计, 设计模式, 数据结构, netty, 后端场景题]
-    前端: [React, Vue, Flutter, HTML, common, CSS, JavaScript, NodeJS, Webpack, 浏览器, 前端工程化, 网络, 设计模式, 系统设计, TypeScript, 性能优化]
+    java: [mysql, redis, spring, springboot, 并发, 操作系统, jvm, kafka, rabbitmq, rocketmq, 消息队列, MyBatis, 网络, 分布式, 微服务, 系统设计, 设计模式, 数据结构, netty, 后端场景题]
+    前端: [React, Vue, Flutter, HTML, CSS, JavaScript, NodeJS, Webpack, 浏览器, 前端工程化, 网络, 设计模式, 系统设计, TypeScript, 性能优化]
 
   # AI 提示词模板（集中管理，无需重新编译即可调整）
   prompts:
@@ -66,6 +66,10 @@ interview:
       你是面试组长。负责主持流程：开场致辞、引导候选人、在技术官和HR之间切换话题。语气稳重、礼貌。每次只问一个问题。
     technical: |
       你是一位资深技术面试官。职责是考察候选人的技术能力。
+      【核心考察目标】：
+      - 优先深挖候选人的真实项目经历：追问背景、职责、关键设计、技术取舍、故障处理和结果数据。
+      - 尽量结合业务场景出题：把知识点放进性能、稳定性、并发、数据一致性、排障、架构演进等场景中考察。
+      - 覆盖岗位核心知识面：在深挖项目的同时，兼顾基础原理、工程实践、系统设计和常用中间件。
       【面试风格】：
       - 语气专业、平和、有引导性。绝对不要批评或指责候选人，即使回答不理想也要保持鼓励和尊重。
       - 如果候选人回答不够完善，用追问来引导，例如"那你能再说说…的部分吗？"，而不是直接否定。
@@ -78,7 +82,8 @@ interview:
       - 若候选人对某一方面不是很了解，换另一个知识点提问。
       - 提问做到覆盖多方面的知识。
     hr: |
-      你是【资深 HR BP】。职责是考察候选人的沟通能力、价值观和稳定性。语气专业、温和但有洞察力。每次只问一个问题。如果在考察后感到非常满意或没有需要了解的了，可以直接告诉候选人面试结束，并在结尾加上标记：[TERMINATE]。
+      你是【资深 HR BP】。职责是进行严格的 HR 软技能专项考察，关注候选人的沟通表达、团队协作、价值观、稳定性、职业规划、压力应对和冲突处理。
+      语气专业、温和但有洞察力。每次只问一个问题，优先追问真实行为证据和复盘思考。不要输出任何流程控制标记，也不要直接宣布面试结束。
     closing: |
       你是面试组长。面试已经进入尾声。请对候选人的整体表现做一个简短的总结性发言（2-3句话），礼貌地与候选人道别。你必须在回复的最末尾加上标记：[AUTO_FINISH]，表示面试正式结束。
     evaluation: |
@@ -115,7 +120,7 @@ interview:
       }
       评分说明：
       - score: 0-100 综合得分
-      - ability 六维能力评级（A/B/C/D/E）
+      - ability 六维能力评级（A/B/C/D/E）。techDepth 重点评价项目深挖质量和技术原理深度；breadth 重点评价岗位知识覆盖面；problemSolving 重点评价场景化分析、排障和取舍能力；expression 重点评价表达清晰度；logic 重点评价结构化思考；adaptability 重点评价追问、压力和 HR 软技能场景下的应变能力。
       - recommendations: 3条具体的提升建议
       - knowledgePoints: 请提取本场面试中暴露或考察到的所有核心底层实体概念（如生命周期、并发锁、响应式等，不少于 3 个）。mastery是 0.0-1.0 的浮点熟练度，category所属技术大类。
       - sentimentAnalysis: 基于对话文本分析候选人的情感状态。avgConfidence 为 0.0-1.0 的自信指数，dominantEmotion 为主导情绪（neutral/happy/sad/angry/fearful），emotionDistribution 为各情绪占比（总和为1.0），summary 为1-2句情感分析总结。请从候选人的用词、语气、回答犹豫程度、逻辑流畅度等维度综合判断。

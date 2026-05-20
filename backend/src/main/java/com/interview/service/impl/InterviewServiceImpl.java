@@ -36,6 +36,8 @@ import java.util.Map;
 @Slf4j
 public class InterviewServiceImpl implements InterviewService {
 
+    private static final List<String> HR_SOFT_SKILL_CATEGORIES = List.of("HR软技能");
+
     @Autowired
     private InterviewRecordMapper interviewRecordMapper;
 
@@ -155,16 +157,14 @@ public class InterviewServiceImpl implements InterviewService {
             }
         }
 
+        InterviewPhase nextPhase = interviewTurnPlanner.determineNextPhase(record, chatHistory);
+
         // RAG 检索（通过数据库题库 + Qdrant 向量检索封装岗位分类过滤和已用原子黑名单）
         List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
-        QuestionBankSearchRequest searchRequest = new QuestionBankSearchRequest();
-        searchRequest.setPosition(position);
-        searchRequest.setQuery(ragQuery);
-        searchRequest.setExcludeAtomIds(usedAtomIds);
-        searchRequest.setLimit(3);
+        QuestionBankSearchRequest searchRequest = buildSearchRequest(position, ragQuery, usedAtomIds, nextPhase);
         List<QuestionBankSearchResult> retrievedResults;
         try {
-            retrievedResults = questionBankService.search(searchRequest);
+            retrievedResults = searchRequest != null ? questionBankService.search(searchRequest) : List.of();
         } catch (Exception e) {
             log.warn("RAG 检索失败，跳过题库上下文: recordId={}, position={}, error={}",
                     recordId, position, e.getMessage());
@@ -218,6 +218,12 @@ public class InterviewServiceImpl implements InterviewService {
                 interviewTurnPlanner.plan(record, chatHistory, contextBuilder.toString(), tailoredQuestions);
         record.setPhase(turnPlan.phase().name());
         interviewRecordMapper.updateById(record);
+        try {
+            emitter.send(JSON.toJSONString(Map.of("phase", turnPlan.phase().name())));
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+            return emitter;
+        }
 
         // 3. 构造消息列表
         List<ChatMessage> messages = new ArrayList<>();
@@ -267,6 +273,24 @@ public class InterviewServiceImpl implements InterviewService {
         });
 
         return emitter;
+    }
+
+    private QuestionBankSearchRequest buildSearchRequest(String position, String ragQuery,
+                                                         List<String> usedAtomIds,
+                                                         InterviewPhase nextPhase) {
+        if (nextPhase != InterviewPhase.TECHNICAL && nextPhase != InterviewPhase.HR) {
+            return null;
+        }
+
+        QuestionBankSearchRequest searchRequest = new QuestionBankSearchRequest();
+        searchRequest.setPosition(position);
+        searchRequest.setQuery(ragQuery);
+        searchRequest.setExcludeAtomIds(usedAtomIds);
+        searchRequest.setLimit(3);
+        if (nextPhase == InterviewPhase.HR) {
+            searchRequest.setCategories(HR_SOFT_SKILL_CATEGORIES);
+        }
+        return searchRequest;
     }
 
     @Override

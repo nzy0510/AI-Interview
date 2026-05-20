@@ -2,7 +2,32 @@ function formatWpm(wpm) {
   return wpm || '—'
 }
 
-function parseStructuredField(value, fallback) {
+const INTERVIEW_CONTROL_MARKER_PATTERN = /\[(SWITCH_TO_HR|AUTO_FINISH|TERMINATE)\]/g
+
+const ABILITY_ALIASES = {
+  techDepth: ['techDepth', 'technicalDepth', 'tech', 'technical', 'projectDepth'],
+  breadth: ['breadth', 'knowledgeBreadth', 'coverage', 'knowledgeCoverage'],
+  problemSolving: ['problemSolving', 'problem', 'solution', 'algorithm', 'scenarioReasoning'],
+  expression: ['expression', 'communication', 'communicationAbility', 'clarity'],
+  logic: ['logic', 'logicalThinking', 'structure'],
+  adaptability: ['adaptability', 'resilience', 'pressure', 'stressResistance']
+}
+
+export function stripInterviewControlMarkers(text) {
+  if (text == null) return ''
+  return String(text).replace(INTERVIEW_CONTROL_MARKER_PATTERN, '').trim()
+}
+
+export function detectInterviewControlMarkers(text) {
+  const source = String(text || '')
+  return {
+    switchToHr: source.includes('[SWITCH_TO_HR]'),
+    autoFinish: source.includes('[AUTO_FINISH]'),
+    terminate: source.includes('[TERMINATE]')
+  }
+}
+
+export function parseStructuredField(value, fallback) {
   if (value == null || value === '') return fallback
   if (typeof value === 'string') {
     try {
@@ -14,9 +39,20 @@ function parseStructuredField(value, fallback) {
   return value
 }
 
-function parseAbility(value) {
+export function normalizeAbility(value) {
   const parsed = parseStructuredField(value, {})
-  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+
+  const normalized = {}
+  Object.entries(ABILITY_ALIASES).forEach(([targetKey, aliases]) => {
+    for (const alias of aliases) {
+      if (parsed[alias]) {
+        normalized[targetKey] = parsed[alias]
+        return
+      }
+    }
+  })
+  return { ...parsed, ...normalized }
 }
 
 function parseRecommendations(value) {
@@ -98,7 +134,7 @@ export function buildVideoInterviewReportMetrics({
 
 export function parseInterviewFinishPayload(response) {
   return {
-    ability: parseAbility(response?.abilityJson),
+    ability: normalizeAbility(response?.abilityJson),
     recommendations: parseRecommendations(response?.recommendations),
     emotion: parseEmotion(response?.emotionJson)
   }
