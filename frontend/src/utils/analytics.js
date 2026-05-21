@@ -1,3 +1,4 @@
+import { withAuthHeaders } from '@/utils/auth'
 import { getAnonymousId } from '@/utils/visitor'
 
 export const trackEvent = (eventType, metadata = {}, category = 'product') => {
@@ -12,14 +13,12 @@ export const trackEvent = (eventType, metadata = {}, category = 'product') => {
   }
 
   const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-  const token = localStorage.getItem('token')
   fetch(`${baseUrl}/analytics/event`, {
     method: 'POST',
-    headers: {
+    headers: withAuthHeaders({
       'Content-Type': 'application/json',
-      'X-Anonymous-Id': getAnonymousId(),
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    },
+      'X-Anonymous-Id': getAnonymousId()
+    }),
     body: JSON.stringify(payload),
     keepalive: true
   }).catch(() => {

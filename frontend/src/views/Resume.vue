@@ -166,6 +166,7 @@ import 'echarts-wordcloud'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import { getPreferenceAPI } from '@/api/user'
+import { withAuthHeaders } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -192,9 +193,8 @@ onMounted(async () => {
   let profileData = null
   try {
     // 静默请求：用原生 axios 避免触发拦截器的 ElMessage.error
-    const token = localStorage.getItem('token')
     const resp = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/resume/profile', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: withAuthHeaders()
     })
     if (resp.ok) {
       const result = await resp.json()

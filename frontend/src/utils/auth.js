@@ -1,4 +1,19 @@
 /**
+ * 获取当前登录 Token
+ */
+export function getToken() {
+  return localStorage.getItem('token') || ''
+}
+
+/**
+ * 生成带认证信息的请求头
+ */
+export function withAuthHeaders(headers = {}) {
+  const token = getToken()
+  return token ? { ...headers, Authorization: `Bearer ${token}` } : { ...headers }
+}
+
+/**
  * 从 JWT Token 中解码用户信息
  */
 export function parseToken(token) {
@@ -16,7 +31,7 @@ export function parseToken(token) {
  * 获取当前登录用户的 ID
  */
 export function getUserId() {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const info = parseToken(token)
   return info?.id || null
 }
@@ -25,7 +40,7 @@ export function getUserId() {
  * 获取当前登录用户名
  */
 export function getUsername() {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const info = parseToken(token)
   return info?.username || null
 }

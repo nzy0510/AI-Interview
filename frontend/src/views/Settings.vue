@@ -129,7 +129,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { computed, ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, DataAnalysis, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -140,7 +140,7 @@ import {
   getPreferenceAPI,
   updatePreferenceAPI
 } from '@/api/user'
-import { logout } from '@/utils/auth'
+import { logout, withAuthHeaders } from '@/utils/auth'
 import McpClientSetup from '@/components/settings/McpClientSetup.vue'
 import QuestionBankAdmin from '@/components/settings/QuestionBankAdmin.vue'
 import { interviewSetupDefaults } from '@/mock/setup'
@@ -227,7 +227,7 @@ const savePreference = async () => {
 onMounted(loadData)
 
 const avatarUploadUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/user/avatar`
-const uploadHeaders = { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
+const uploadHeaders = computed(() => withAuthHeaders())
 
 const beforeAvatarUpload = (file) => {
   const isImage = ['image/png', 'image/jpeg', 'image/webp'].includes(file.type)

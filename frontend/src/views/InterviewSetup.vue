@@ -229,13 +229,13 @@ import { ElMessage } from 'element-plus'
 import { interviewSetupDefaults, buildSetupSnapshot } from '@/mock/setup'
 import { getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
 import { getMyQuotaAPI } from '@/api/analytics'
-import { userKey } from '@/utils/auth'
+import { getToken, userKey, withAuthHeaders } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
 
 const setupDefaults = interviewSetupDefaults
-const hasToken = ref(Boolean(localStorage.getItem('token')))
+const hasToken = ref(Boolean(getToken()))
 const resumeReady = ref(false)
 const resumeAnalysis = ref(null)
 
@@ -253,10 +253,9 @@ const clearResumeState = () => {
 const loadResumeProfile = async () => {
   clearResumeState()
   try {
-    const token = localStorage.getItem('token')
-    if (!token) return
+    if (!getToken()) return
     const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/resume/profile`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: withAuthHeaders()
     })
     if (!resp.ok) {
       localStorage.removeItem(userKey('resume_analysis'))

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { trackPageView } from '@/utils/analytics'
+import { getToken } from '@/utils/auth'
 
 const viewModules = import.meta.glob('../views/*.vue')
 const commonModules = import.meta.glob('../components/common/*.vue')
@@ -80,7 +81,7 @@ const router = createRouter({
 
 // Navigation Guard
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   if (to.path !== '/login' && !token) {
     next('/login')
   } else {

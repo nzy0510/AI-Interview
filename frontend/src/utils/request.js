@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
 import router from '@/router';
+import { logout, withAuthHeaders } from '@/utils/auth';
 import { getAnonymousId } from '@/utils/visitor';
 
 // Create Axios Instance
@@ -12,11 +13,7 @@ const request = axios.create({
 // Request Interceptor
 request.interceptors.request.use(
     config => {
-        // Add Authorization header token if it exists in localStorage
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
+        config.headers = withAuthHeaders(config.headers || {});
         config.headers['X-Anonymous-Id'] = getAnonymousId();
         return config;
     },
@@ -45,7 +42,7 @@ request.interceptors.response.use(
         
         if (error.response && error.response.status === 401) {
             ElMessage.error("未登录或 Token 过期，请重新登录！");
-            localStorage.removeItem('token');
+            logout();
             router.push('/login');
         } else if (error.response && error.response.status === 429) {
             const msg = error.response.data?.msg || '请求过于频繁，请稍后再试';

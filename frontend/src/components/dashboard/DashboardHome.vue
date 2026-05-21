@@ -238,7 +238,7 @@ import {
 } from '@element-plus/icons-vue'
 import { getHistoryListAPI } from '@/api/interview'
 import { getMentorInsightAPI, getKnowledgeCoverageAPI, getPreferenceAPI, getCurrentUserAPI } from '@/api/user'
-import { getUsername, getNickname, setNickname, userKey } from '@/utils/auth'
+import { getUsername, getNickname, setNickname, userKey, withAuthHeaders } from '@/utils/auth'
 import { interviewSetupDefaults } from '@/mock/setup'
 
 const router = useRouter()
@@ -258,7 +258,7 @@ const showResumeManager = ref(false)
 const isParsing = ref(false)
 const selectedRole = ref('')
 const uploadUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/resume/parse`
-const uploadHeaders = ref({ Authorization: `Bearer ${localStorage.getItem('token') || ''}` })
+const uploadHeaders = ref(withAuthHeaders())
 
 const pref = ref({
   defaultMode: 'text',
@@ -294,9 +294,8 @@ const readCachedResume = () => {
 const checkExistingResume = async () => {
   readCachedResume()
   try {
-    const token = localStorage.getItem('token')
     const resp = await fetch(uploadUrl.replace('/parse', '/profile'), {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: withAuthHeaders()
     })
     if (resp.ok) {
       const result = await resp.json()
@@ -380,7 +379,7 @@ const skipResumeAndSelectMode = () => { showResumeDialog.value = false; showMode
 const beforeResumeUpload = (file) => {
   if (file.type !== 'application/pdf') { ElMessage.error('只能上传 PDF 格式的简历！'); return false }
   isParsing.value = true
-  uploadHeaders.value = { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
+  uploadHeaders.value = withAuthHeaders()
   return true
 }
 
