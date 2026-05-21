@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/admin/question-bank")
+@RequestMapping("/api/admin/question-bank")
 public class QuestionBankAdminController {
 
     private final QuestionBankService questionBankService;
