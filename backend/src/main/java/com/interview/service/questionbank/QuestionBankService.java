@@ -4,8 +4,14 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.interview.config.PositionCategoryConfig;
 import com.interview.dto.questionbank.KnowledgeAtomPayload;
+import com.interview.dto.questionbank.QuestionBankAtomListItem;
+import com.interview.dto.questionbank.QuestionBankAtomQueryRequest;
+import com.interview.dto.questionbank.QuestionBankBatchDetailResponse;
+import com.interview.dto.questionbank.QuestionBankBatchListItem;
+import com.interview.dto.questionbank.QuestionBankImportPreviewResponse;
 import com.interview.dto.questionbank.QuestionBankImportRequest;
 import com.interview.dto.questionbank.QuestionBankImportResult;
+import com.interview.dto.questionbank.QuestionBankPageResponse;
 import com.interview.dto.questionbank.QuestionBankSearchRequest;
 import com.interview.dto.questionbank.QuestionBankSearchResult;
 import com.interview.entity.KnowledgeAtom;
@@ -25,8 +31,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -109,6 +117,215 @@ public class QuestionBankService {
         return validateImport(request);
     }
 
+    public QuestionBankImportPreviewResponse previewImport(QuestionBankImportRequest request) {
+        QuestionBankImportPreviewResponse response = new QuestionBankImportPreviewResponse();
+        String batchId = nonBlank(request.getBatchId(), "qb-" + UUID.randomUUID());
+        response.setBatchId(batchId);
+        response.setMode(normalizeMode(request.getMode()));
+        response.setTargetCategory(request.getTargetCategory());
+        response.setSourceRef(request.getSourceRef());
+        response.setReceived(request.getAtoms() != null ? request.getAtoms().size() : 0);
+        response.setErrors(validateImport(request));
+        response.setBatchIdExists(batchExists(batchId));
+
+        Map<String, Integer> seen = new LinkedHashMap<>();
+        if (request.getAtoms() != null) {
+            for (KnowledgeAtomPayload atom : request.getAtoms()) {
+                if (!isBlank(atom.getId())) {
+                    seen.merge(atom.getId().trim(), 1, Integer::sum);
+                }
+            }
+        }
+        seen.forEach((id, count) -> {
+            if (count > 1) response.getDuplicateAtomIds().add(id);
+        });
+
+        List<String> atomIds = new ArrayList<>(seen.keySet());
+        Set<String> existingIds = new LinkedHashSet<>();
+        if (!atomIds.isEmpty()) {
+            existingIds.addAll(atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
+                            .in("atom_id", atomIds))
+                    .stream()
+                    .map(KnowledgeAtom::getAtomId)
+                    .collect(Collectors.toCollection(LinkedHashSet::new)));
+        }
+        for (String atomId : atomIds) {
+            if (existingIds.contains(atomId)) {
+                response.getUpdateAtomIds().add(atomId);
+            } else {
+                response.getNewAtomIds().add(atomId);
+            }
+        }
+        response.setNewCount(response.getNewAtomIds().size());
+        response.setUpdateCount(response.getUpdateAtomIds().size());
+        return response;
+    }
+
+    public QuestionBankPageResponse<QuestionBankAtomListItem> listAtoms(QuestionBankAtomQueryRequest request) {
+        int page = Math.max(1, request.getPage());
+        int size = Math.min(Math.max(1, request.getSize()), 100);
+        List<String> batchAtomIds = !isBlank(request.getBatchId())
+                ? batchAtomIds(request.getBatchId(), false)
+                : List.of();
+
+        QueryWrapper<KnowledgeAtom> countWrapper = buildAtomQuery(request, batchAtomIds);
+        long total = safeLong(atomMapper.selectCount(countWrapper));
+        if (total == 0) {
+            return QuestionBankPageResponse.of(0, page, size, List.of());
+        }
+
+        int offset = (page - 1) * size;
+        QueryWrapper<KnowledgeAtom> listWrapper = buildAtomQuery(request, batchAtomIds)
+                .orderByDesc("update_time")
+                .last("LIMIT " + offset + ", " + size);
+        List<QuestionBankAtomListItem> items = atomMapper.selectList(listWrapper).stream()
+                .map(this::toListItem)
+                .collect(Collectors.toList());
+        return QuestionBankPageResponse.of(total, page, size, items);
+    }
+
+    public QuestionBankPageResponse<QuestionBankBatchListItem> listBatches(int pageValue, int sizeValue) {
+        int page = Math.max(1, pageValue);
+        int size = Math.min(Math.max(1, sizeValue), 100);
+        long total = safeLong(batchMapper.selectCount(new QueryWrapper<>()));
+        if (total == 0) {
+            return QuestionBankPageResponse.of(0, page, size, List.of());
+        }
+        int offset = (page - 1) * size;
+        List<QuestionBankBatchListItem> items = batchMapper.selectList(new QueryWrapper<KnowledgeAtomImportBatch>()
+                        .orderByDesc("create_time")
+                        .last("LIMIT " + offset + ", " + size))
+                .stream()
+                .map(this::toBatchListItem)
+                .collect(Collectors.toList());
+        return QuestionBankPageResponse.of(total, page, size, items);
+    }
+
+    public QuestionBankBatchDetailResponse getBatchDetail(String batchId) {
+        QuestionBankBatchDetailResponse response = new QuestionBankBatchDetailResponse();
+        response.setBatch(batchMapper.selectOne(new QueryWrapper<KnowledgeAtomImportBatch>()
+                .eq("batch_id", batchId)
+                .last("LIMIT 1")));
+
+        List<String> atomIds = batchAtomIds(batchId, false);
+        List<String> latestLinkedIds = batchAtomIds(batchId, true);
+        response.setAtomCount(atomIds.size());
+        response.setLatestLinkedCount(latestLinkedIds.size());
+        if (atomIds.isEmpty()) {
+            return response;
+        }
+        Map<String, KnowledgeAtom> byId = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
+                        .in("atom_id", atomIds))
+                .stream()
+                .collect(Collectors.toMap(KnowledgeAtom::getAtomId, atom -> atom));
+        response.setAtoms(atomIds.stream()
+                .map(byId::get)
+                .filter(atom -> atom != null)
+                .map(this::toListItem)
+                .collect(Collectors.toList()));
+        return response;
+    }
+
+    @Transactional
+    public Map<String, Integer> archiveAtoms(List<String> atomIds) {
+        List<String> ids = cleanAtomIds(atomIds);
+        if (ids.isEmpty()) return resultMap("matched", 0, "archived", 0, "deleted", 0, "skipped", 0);
+
+        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids));
+        int archived = 0;
+        int deleted = 0;
+        int skipped = 0;
+        for (KnowledgeAtom atom : atoms) {
+            if (STATUS_ARCHIVED.equalsIgnoreCase(atom.getStatus())) {
+                skipped++;
+                continue;
+            }
+            atom.setStatus(STATUS_ARCHIVED);
+            atom.setVectorStatus("SKIPPED");
+            atomMapper.updateById(atom);
+            recordVersion(atom, "archive:admin");
+            if (qdrantVectorService.delete(atom.getAtomId())) deleted++;
+            archived++;
+        }
+        return resultMap("matched", atoms.size(), "archived", archived, "deleted", deleted, "skipped", skipped);
+    }
+
+    @Transactional
+    public Map<String, Integer> publishAtoms(List<String> atomIds) {
+        List<String> ids = cleanAtomIds(atomIds);
+        if (ids.isEmpty()) return resultMap("matched", 0, "published", 0, "synced", 0, "failed", 0);
+
+        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids));
+        int published = 0;
+        int synced = 0;
+        int failed = 0;
+        for (KnowledgeAtom atom : atoms) {
+            atom.setStatus(STATUS_PUBLISHED);
+            atom.setVectorStatus("PENDING");
+            atomMapper.updateById(atom);
+            recordVersion(atom, "publish:admin");
+            published++;
+            if (syncAtom(atom)) {
+                synced++;
+            } else {
+                failed++;
+            }
+        }
+        return resultMap("matched", atoms.size(), "published", published, "synced", synced, "failed", failed);
+    }
+
+    @Transactional
+    public Map<String, Integer> archiveBatch(String batchId) {
+        return archiveAtoms(batchAtomIds(batchId, true));
+    }
+
+    public Map<String, Integer> reindexAtoms(List<String> atomIds) {
+        List<String> ids = cleanAtomIds(atomIds);
+        if (ids.isEmpty()) return resultMap("matched", 0, "synced", 0, "failed", 0, "skipped", 0);
+
+        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids));
+        int synced = 0;
+        int failed = 0;
+        int skipped = 0;
+        for (KnowledgeAtom atom : atoms) {
+            if (!STATUS_PUBLISHED.equalsIgnoreCase(atom.getStatus())) {
+                skipped++;
+                continue;
+            }
+            if (syncAtom(atom)) {
+                synced++;
+            } else {
+                failed++;
+            }
+        }
+        return resultMap("matched", atoms.size(), "synced", synced, "failed", failed, "skipped", skipped);
+    }
+
+    public Map<String, Integer> reindexUnsyncedPublishedAtomResult() {
+        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
+                .eq("status", STATUS_PUBLISHED)
+                .ne("vector_status", "SYNCED"));
+        int synced = 0;
+        int failed = 0;
+        for (KnowledgeAtom atom : atoms) {
+            if (syncAtom(atom)) synced++;
+            else failed++;
+        }
+        return resultMap("matched", atoms.size(), "synced", synced, "failed", failed);
+    }
+
+    public Map<String, Integer> reindexAllPublishedAtomResult() {
+        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
+                .eq("status", STATUS_PUBLISHED));
+        int synced = 0;
+        int failed = 0;
+        for (KnowledgeAtom atom : atoms) {
+            if (syncAtom(atom)) synced++;
+            else failed++;
+        }
+        return resultMap("matched", atoms.size(), "synced", synced, "failed", failed);
+    }
+
     @Transactional
     public QuestionBankImportResult importBatch(QuestionBankImportRequest request) {
         String mode = normalizeMode(request.getMode());
@@ -117,25 +334,14 @@ public class QuestionBankService {
         if (batchId == null || batchId.isBlank()) {
             batchId = "qb-" + UUID.randomUUID();
         }
-        KnowledgeAtomImportBatch batch = new KnowledgeAtomImportBatch();
-        batch.setBatchId(batchId);
-        batch.setSourceRef(request.getSourceRef());
-        batch.setTargetCategory(request.getTargetCategory());
-        batch.setMode(mode);
-        batch.setAtomCount(request.getAtoms() != null ? request.getAtoms().size() : 0);
-        batch.setValidationReport(errors.isEmpty()
-                ? JSON.toJSONString(request.getValidationReport())
-                : JSON.toJSONString(Map.of("errors", errors)));
-        batch.setReviewReport(JSON.toJSONString(request.getReviewReport()));
-        batch.setStatus(errors.isEmpty() ? "CREATED" : "FAILED");
-        batchMapper.insert(batch);
+        int atomCount = request.getAtoms() != null ? request.getAtoms().size() : 0;
 
         if (!errors.isEmpty()) {
             return QuestionBankImportResult.builder()
                     .batchId(batchId)
                     .mode(mode)
-                    .received(batch.getAtomCount())
-                    .failed(batch.getAtomCount())
+                    .received(atomCount)
+                    .failed(atomCount)
                     .errors(errors)
                     .build();
         }
@@ -143,12 +349,24 @@ public class QuestionBankService {
             return QuestionBankImportResult.builder()
                     .batchId(batchId)
                     .mode(mode)
-                    .received(batch.getAtomCount())
+                    .received(atomCount)
                     .imported(0)
                     .published(0)
                     .failed(0)
                     .build();
         }
+
+        batchId = uniqueBatchId(batchId);
+        KnowledgeAtomImportBatch batch = new KnowledgeAtomImportBatch();
+        batch.setBatchId(batchId);
+        batch.setSourceRef(request.getSourceRef());
+        batch.setTargetCategory(request.getTargetCategory());
+        batch.setMode(mode);
+        batch.setAtomCount(atomCount);
+        batch.setValidationReport(JSON.toJSONString(request.getValidationReport()));
+        batch.setReviewReport(JSON.toJSONString(request.getReviewReport()));
+        batch.setStatus("CREATED");
+        batchMapper.insert(batch);
 
         int imported = 0;
         int published = 0;
@@ -209,6 +427,116 @@ public class QuestionBankService {
         return ok;
     }
 
+    private QueryWrapper<KnowledgeAtom> buildAtomQuery(QuestionBankAtomQueryRequest request, List<String> batchAtomIds) {
+        QueryWrapper<KnowledgeAtom> wrapper = new QueryWrapper<>();
+        if (!isBlank(request.getKeyword())) {
+            String keyword = request.getKeyword().trim();
+            wrapper.and(w -> w.like("atom_id", keyword)
+                    .or().like("subject", keyword)
+                    .or().like("principles", keyword)
+                    .or().like("tags_json", keyword));
+        }
+        if (!isBlank(request.getCategory())) wrapper.eq("category", request.getCategory().trim());
+        if (!isBlank(request.getStatus())) wrapper.eq("status", request.getStatus().trim().toUpperCase());
+        if (!isBlank(request.getDifficulty())) wrapper.eq("difficulty", request.getDifficulty().trim());
+        if (!isBlank(request.getVectorStatus())) wrapper.eq("vector_status", request.getVectorStatus().trim().toUpperCase());
+        if (!isBlank(request.getSourceRef())) wrapper.like("source_ref", request.getSourceRef().trim());
+        if (!isBlank(request.getBatchId())) {
+            if (batchAtomIds.isEmpty()) {
+                wrapper.eq("atom_id", "__NO_BATCH_ATOMS__");
+            } else {
+                wrapper.in("atom_id", batchAtomIds);
+            }
+        }
+        return wrapper;
+    }
+
+    private List<String> batchAtomIds(String batchId, boolean latestOnly) {
+        if (isBlank(batchId)) return List.of();
+        String reason = "import:" + batchId.trim();
+        List<String> ids = versionMapper.selectList(new QueryWrapper<KnowledgeAtomVersion>()
+                        .eq("change_reason", reason)
+                        .orderByAsc("id"))
+                .stream()
+                .map(KnowledgeAtomVersion::getAtomId)
+                .filter(id -> !isBlank(id))
+                .collect(Collectors.toCollection(LinkedHashSet::new))
+                .stream()
+                .collect(Collectors.toList());
+        if (!latestOnly || ids.isEmpty()) return ids;
+        return ids.stream()
+                .filter(atomId -> isLatestVersionFromBatch(atomId, reason))
+                .collect(Collectors.toList());
+    }
+
+    private boolean isLatestVersionFromBatch(String atomId, String reason) {
+        KnowledgeAtomVersion latest = versionMapper.selectOne(new QueryWrapper<KnowledgeAtomVersion>()
+                .eq("atom_id", atomId)
+                .orderByDesc("version_no")
+                .last("LIMIT 1"));
+        return latest != null && reason.equals(latest.getChangeReason());
+    }
+
+    private QuestionBankAtomListItem toListItem(KnowledgeAtom atom) {
+        QuestionBankAtomListItem item = new QuestionBankAtomListItem();
+        item.setAtomId(atom.getAtomId());
+        item.setSubject(atom.getSubject());
+        item.setCategory(atom.getCategory());
+        item.setDifficulty(atom.getDifficulty());
+        item.setStatus(atom.getStatus());
+        item.setVectorStatus(atom.getVectorStatus());
+        item.setSourceRef(atom.getSourceRef());
+        item.setLastIndexedAt(atom.getLastIndexedAt());
+        item.setUpdateTime(atom.getUpdateTime());
+        return item;
+    }
+
+    private QuestionBankBatchListItem toBatchListItem(KnowledgeAtomImportBatch batch) {
+        QuestionBankBatchListItem item = new QuestionBankBatchListItem();
+        item.setBatchId(batch.getBatchId());
+        item.setSourceRef(batch.getSourceRef());
+        item.setTargetCategory(batch.getTargetCategory());
+        item.setMode(batch.getMode());
+        item.setStatus(batch.getStatus());
+        item.setAtomCount(batch.getAtomCount());
+        item.setCreateTime(batch.getCreateTime());
+        item.setUpdateTime(batch.getUpdateTime());
+        return item;
+    }
+
+    private List<String> cleanAtomIds(List<String> atomIds) {
+        if (atomIds == null || atomIds.isEmpty()) return List.of();
+        return atomIds.stream()
+                .filter(id -> !isBlank(id))
+                .map(String::trim)
+                .collect(Collectors.toCollection(LinkedHashSet::new))
+                .stream()
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, Integer> resultMap(Object... values) {
+        Map<String, Integer> result = new LinkedHashMap<>();
+        for (int i = 0; i + 1 < values.length; i += 2) {
+            result.put(String.valueOf(values[i]), (Integer) values[i + 1]);
+        }
+        return result;
+    }
+
+    private String uniqueBatchId(String batchId) {
+        if (!batchExists(batchId)) return batchId;
+        return batchId + "-" + System.currentTimeMillis();
+    }
+
+    private boolean batchExists(String batchId) {
+        if (isBlank(batchId)) return false;
+        return safeLong(batchMapper.selectCount(new QueryWrapper<KnowledgeAtomImportBatch>()
+                .eq("batch_id", batchId))) > 0;
+    }
+
+    private long safeLong(Long value) {
+        return value == null ? 0 : value;
+    }
+
     private void upsertAtom(KnowledgeAtom atom, String reason) {
         KnowledgeAtom existing = getByAtomId(atom.getAtomId());
         if (existing != null) {
@@ -226,7 +554,7 @@ public class QuestionBankService {
                 .eq("atom_id", atom.getAtomId()));
         KnowledgeAtomVersion version = new KnowledgeAtomVersion();
         version.setAtomId(atom.getAtomId());
-        version.setVersionNo(count.intValue() + 1);
+        version.setVersionNo((count == null ? 0 : count.intValue()) + 1);
         version.setSnapshotJson(JSON.toJSONString(atom));
         version.setChangeReason(reason);
         versionMapper.insert(version);

@@ -74,8 +74,8 @@ class QuestionBankImportContractTest {
     }
 
     @Test
-    @DisplayName("DRY_RUN 只记录批次，不写 atom 或向量")
-    void shouldOnlyCreateBatchOnDryRun() throws Exception {
+    @DisplayName("DRY_RUN 不写批次、atom 或向量")
+    void shouldNotPersistAnythingOnDryRun() throws Exception {
         QuestionBankImportRequest request = fixtureRequest("valid-draft.json");
         request.setMode("DRY_RUN");
 
@@ -88,11 +88,7 @@ class QuestionBankImportContractTest {
         assertThat(result.getPublished()).isZero();
         assertThat(result.getFailed()).isZero();
 
-        ArgumentCaptor<KnowledgeAtomImportBatch> batchCaptor = ArgumentCaptor.forClass(KnowledgeAtomImportBatch.class);
-        verify(batchMapper).insert(batchCaptor.capture());
-        assertThat(batchCaptor.getValue().getStatus()).isEqualTo("CREATED");
-        assertThat(batchCaptor.getValue().getAtomCount()).isEqualTo(1);
-        verifyNoInteractions(atomMapper, versionMapper, qdrantVectorService);
+        verifyNoInteractions(batchMapper, atomMapper, versionMapper, qdrantVectorService);
     }
 
     @Test

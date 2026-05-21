@@ -122,6 +122,7 @@
             打开统计
           </el-button>
         </div>
+        <QuestionBankAdmin />
       </section>
     </el-main>
   </div>
@@ -141,6 +142,7 @@ import {
 } from '@/api/user'
 import { logout } from '@/utils/auth'
 import McpClientSetup from '@/components/settings/McpClientSetup.vue'
+import QuestionBankAdmin from '@/components/settings/QuestionBankAdmin.vue'
 import { interviewSetupDefaults } from '@/mock/setup'
 
 const router = useRouter()
@@ -337,7 +339,7 @@ const handleLogout = () => {
 
 .operations-head {
   align-items: center;
-  margin-bottom: 0;
+  margin-bottom: 20px;
 }
 
 .settings-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; }
