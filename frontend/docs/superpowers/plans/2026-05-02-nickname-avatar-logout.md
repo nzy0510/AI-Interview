@@ -13,9 +13,9 @@
 ### Task 1: Dashboard 显示昵称替代用户名
 
 **Files:**
-- Modify: `E:\Java-web\interview\frontend\src\components\dashboard\DashboardHome.vue:318,7`
-- Modify: `E:\Java-web\interview\frontend\src\utils\auth.js` (末尾追加)
-- Modify: `E:\Java-web\interview\frontend\src\views\Settings.vue:140-141` (保存资料后同步缓存)
+- Modify: `E:\Develop\interview\frontend\src\components\dashboard\DashboardHome.vue:318,7`
+- Modify: `E:\Develop\interview\frontend\src\utils\auth.js` (末尾追加)
+- Modify: `E:\Develop\interview\frontend\src\views\Settings.vue:140-141` (保存资料后同步缓存)
 
 - [ ] **Step 1: auth.js 新增 getNickname / setNickname 工具函数**
 
@@ -58,7 +58,7 @@ export function logout() {
 
 - [ ] **Step 2: 运行现有测试确认基线**
 
-Run: `cd E:\Java-web\interview\backend && mvn test -pl . -Dtest=UserServiceTest -DfailIfNoTests=false -q`
+Run: `cd E:\Develop\interview\backend && mvn test -pl . -Dtest=UserServiceTest -DfailIfNoTests=false -q`
 Expected: 5 tests PASS
 
 - [ ] **Step 3: DashboardHome.vue 从 API 加载昵称并显示**
@@ -145,8 +145,8 @@ const saveProfile = async () => {
 - [ ] **Step 6: Commit**
 
 ```bash
-git -C /e/Java-web/interview add frontend/src/components/dashboard/DashboardHome.vue frontend/src/utils/auth.js frontend/src/views/Settings.vue
-git -C /e/Java-web/interview commit -m "feat(frontend): Dashboard 显示昵称替代用户名，Settings 保存后同步缓存"
+git -C /e/Develop/interview add frontend/src/components/dashboard/DashboardHome.vue frontend/src/utils/auth.js frontend/src/views/Settings.vue
+git -C /e/Develop/interview commit -m "feat(frontend): Dashboard 显示昵称替代用户名，Settings 保存后同步缓存"
 ```
 
 ---
@@ -154,12 +154,12 @@ git -C /e/Java-web/interview commit -m "feat(frontend): Dashboard 显示昵称�
 ### Task 2: 后端头像上传 API
 
 **Files:**
-- Create: `E:\Java-web\interview\backend\src\main\java\com\interview\controller\UserController.java` (追加方法)
-- Modify: `E:\Java-web\interview\backend\src\main\java\com\interview\service\UserService.java` (追加方法签名)
-- Modify: `E:\Java-web\interview\backend\src\main\java\com\interview\service\impl\UserServiceImpl.java` (追加实现)
-- Modify: `E:\Java-web\interview\backend\src\main\java\com\interview\AiInterviewApplication.java` (追加静态资源配置)
-- Test: `E:\Java-web\interview\backend\src\test\java\com\interview\controller\UserControllerTest.java` (新建)
-- Test: `E:\Java-web\interview\backend\src\test\java\com\interview\service\UserServiceTest.java` (追加测试)
+- Create: `E:\Develop\interview\backend\src\main\java\com\interview\controller\UserController.java` (追加方法)
+- Modify: `E:\Develop\interview\backend\src\main\java\com\interview\service\UserService.java` (追加方法签名)
+- Modify: `E:\Develop\interview\backend\src\main\java\com\interview\service\impl\UserServiceImpl.java` (追加实现)
+- Modify: `E:\Develop\interview\backend\src\main\java\com\interview\AiInterviewApplication.java` (追加静态资源配置)
+- Test: `E:\Develop\interview\backend\src\test\java\com\interview\controller\UserControllerTest.java` (新建)
+- Test: `E:\Develop\interview\backend\src\test\java\com\interview\service\UserServiceTest.java` (追加测试)
 
 - [ ] **Step 1: 写失败测试 — UserServiceTest 追加 updateAvatar 测试**
 
@@ -190,7 +190,7 @@ void shouldThrowWhenUserNotFoundForAvatar() {
 }
 ```
 
-Run: `cd E:\Java-web\interview\backend && mvn test -Dtest=UserServiceTest -DfailIfNoTests=false -q`
+Run: `cd E:\Develop\interview\backend && mvn test -Dtest=UserServiceTest -DfailIfNoTests=false -q`
 Expected: 2 tests FAIL (方法未定义)
 
 - [ ] **Step 2: UserService 接口追加方法签名**
@@ -215,7 +215,7 @@ public void updateAvatar(Long userId, String avatarUrl) {
 }
 ```
 
-Run: `cd E:\Java-web\interview\backend && mvn test -Dtest=UserServiceTest -DfailIfNoTests=false -q`
+Run: `cd E:\Develop\interview\backend && mvn test -Dtest=UserServiceTest -DfailIfNoTests=false -q`
 Expected: 7 tests PASS
 
 - [ ] **Step 4: UserController 追加头像上传端点**
@@ -348,14 +348,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 - [ ] **Step 8: 运行后端全部测试**
 
-Run: `cd E:\Java-web\interview\backend && mvn test -q`
+Run: `cd E:\Develop\interview\backend && mvn test -q`
 Expected: All tests PASS
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git -C /e/Java-web/interview add backend/src/main/java/com/interview/controller/UserController.java backend/src/main/java/com/interview/service/UserService.java backend/src/main/java/com/interview/service/impl/UserServiceImpl.java backend/src/main/java/com/interview/AiInterviewApplication.java backend/src/test/java/com/interview/service/UserServiceTest.java
-git -C /e/Java-web/interview commit -m "feat(backend): 新增头像上传 API 与静态资源映射"
+git -C /e/Develop/interview add backend/src/main/java/com/interview/controller/UserController.java backend/src/main/java/com/interview/service/UserService.java backend/src/main/java/com/interview/service/impl/UserServiceImpl.java backend/src/main/java/com/interview/AiInterviewApplication.java backend/src/test/java/com/interview/service/UserServiceTest.java
+git -C /e/Develop/interview commit -m "feat(backend): 新增头像上传 API 与静态资源映射"
 ```
 
 ---
@@ -363,9 +363,9 @@ git -C /e/Java-web/interview commit -m "feat(backend): 新增头像上传 API �
 ### Task 3: Settings 前端 — 头像上传 + 退出登录
 
 **Files:**
-- Modify: `E:\Java-web\interview\frontend\src\views\Settings.vue`
-- Modify: `E:\Java-web\interview\frontend\src\utils\auth.js` (已完成，Task 1 已追加 logout)
-- Modify: `E:\Java-web\interview\frontend\src\api\user.js` (追加 uploadAvatarAPI)
+- Modify: `E:\Develop\interview\frontend\src\views\Settings.vue`
+- Modify: `E:\Develop\interview\frontend\src\utils\auth.js` (已完成，Task 1 已追加 logout)
+- Modify: `E:\Develop\interview\frontend\src\api\user.js` (追加 uploadAvatarAPI)
 
 - [ ] **Step 1: user.js API 追加 uploadAvatarAPI**
 
@@ -508,8 +508,8 @@ const handleLogout = () => {
 - [ ] **Step 7: Commit**
 
 ```bash
-git -C /e/Java-web/interview add frontend/src/views/Settings.vue frontend/src/api/user.js frontend/src/utils/auth.js
-git -C /e/Java-web/interview commit -m "feat(frontend): Settings 新增头像上传与退出登录功能"
+git -C /e/Develop/interview add frontend/src/views/Settings.vue frontend/src/api/user.js frontend/src/utils/auth.js
+git -C /e/Develop/interview commit -m "feat(frontend): Settings 新增头像上传与退出登录功能"
 ```
 
 ---
@@ -517,7 +517,7 @@ git -C /e/Java-web/interview commit -m "feat(frontend): Settings 新增头像上
 ### Task 4: 集成验证 + 后端测试完善
 
 **Files:**
-- Modify: `E:\Java-web\interview\backend\src\test\java\com\interview\service\UserServiceTest.java`
+- Modify: `E:\Develop\interview\backend\src\test\java\com\interview\service\UserServiceTest.java`
 
 - [ ] **Step 1: 追加 uploadAvatar 文件存储测试**
 
@@ -565,14 +565,14 @@ import static org.mockito.Mockito.never;
 
 - [ ] **Step 2: 运行全部测试确认**
 
-Run: `cd E:\Java-web\interview\backend && mvn test -q`
+Run: `cd E:\Develop\interview\backend && mvn test -q`
 Expected: All tests PASS
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C /e/Java-web/interview add backend/src/test/java/com/interview/service/UserServiceTest.java
-git -C /e/Java-web/interview commit -m "test(backend): 补充头像上传边界条件测试"
+git -C /e/Develop/interview add backend/src/test/java/com/interview/service/UserServiceTest.java
+git -C /e/Develop/interview commit -m "test(backend): 补充头像上传边界条件测试"
 ```
 
 ---

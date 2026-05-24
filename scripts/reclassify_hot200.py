@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from collections import defaultdict
 
-ATOMS_DIR = Path(r"E:\Java-web\interview\backend\src\main\resources\knowledge_base\atoms")
+ATOMS_DIR = Path(r"E:\Develop\interview\backend\src\main\resources\knowledge_base\atoms")
 
 # ─── Classification rules ───────────────────────────────────────────────
 # Pattern: (prefix_pattern, target_subdir)

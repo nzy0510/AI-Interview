@@ -1,6 +1,6 @@
 ---
 name: interview-question-bank
-description: Maintain the AI Interview project question bank from Codex. Use when the user asks to add, generate, review, import, publish, reindex, or inspect interview knowledge atoms; convert PDF, DOCX, TXT, MD, or JSON materials into question-bank import packages; call the project question-bank API or MCP tools; or update categories for new roles in E:\Java-web\interview.
+description: Maintain the AI Interview project question bank from Codex. Use when the user asks to add, generate, review, import, publish, reindex, or inspect interview knowledge atoms; convert PDF, DOCX, TXT, MD, or JSON materials into question-bank import packages; call the project question-bank API or MCP tools; or update categories for new roles in E:\Develop\interview.
 ---
 
 # Interview Question Bank
