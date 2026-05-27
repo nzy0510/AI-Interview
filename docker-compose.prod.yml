@@ -72,7 +72,6 @@ services:
       QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-interview_atoms}
       QDRANT_VECTOR_SIZE: ${QDRANT_VECTOR_SIZE:-384}
-      QUESTION_BANK_ADMIN_TOKEN: ${QUESTION_BANK_ADMIN_TOKEN}
       QUESTION_BANK_SEED_FROM_JSON: ${QUESTION_BANK_SEED_FROM_JSON:-true}
       QUESTION_BANK_REINDEX_ON_STARTUP: ${QUESTION_BANK_REINDEX_ON_STARTUP:-true}
       QUESTION_BANK_LEGACY_LOADER_ENABLED: ${QUESTION_BANK_LEGACY_LOADER_ENABLED:-false}
@@ -93,43 +92,8 @@ services:
       APP_DEVELOPER_EXEMPT_USER_IDS: ${APP_DEVELOPER_EXEMPT_USER_IDS:-}
       APP_DEVELOPER_EXEMPT_USERNAMES: ${APP_DEVELOPER_EXEMPT_USERNAMES:-}
       APP_DEVELOPER_EXEMPT_EMAILS: ${APP_DEVELOPER_EXEMPT_EMAILS:-}
-      APP_MCP_PUBLIC_URL: ${APP_MCP_PUBLIC_URL:-}
     volumes:
       - ./uploads:/app/uploads
-    networks:
-      - interview-network
-
-  mcp-skill:
-    build:
-      context: ./services/mcp-skill
-    container_name: interview-mcp-skill
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:8765:8765"
-    depends_on:
-      db:
-        condition: service_healthy
-      qdrant:
-        condition: service_started
-    environment:
-      MCP_HOST: 0.0.0.0
-      MCP_PORT: 8765
-      QUESTION_BANK_ADMIN_TOKEN: ${QUESTION_BANK_ADMIN_TOKEN}
-      MCP_ALLOWED_ORIGINS: ${MCP_ALLOWED_ORIGINS}
-      MCP_HASH_SALT: ${APP_ANALYTICS_HASH_SALT}
-      MCP_PUBLIC_MAX_LIMIT: ${MCP_PUBLIC_MAX_LIMIT:-5}
-      MCP_MAX_QUERY_LENGTH: ${MCP_MAX_QUERY_LENGTH:-1000}
-      MYSQL_HOST: db
-      MYSQL_PORT: 3306
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
-      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
-      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-interview_atoms}
-      QDRANT_VECTOR_SIZE: ${QDRANT_VECTOR_SIZE:-384}
-      EMBEDDING_PROVIDER: local
-      EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
     networks:
       - interview-network
 
@@ -140,7 +104,6 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-      - mcp-skill
     ports:
       - "${FRONTEND_HTTP_BIND:-80}:80"
     networks:
@@ -154,7 +117,6 @@ services:
       - https
     depends_on:
       - frontend
-      - mcp-skill
     environment:
       DOMAIN_NAME: ${DOMAIN_NAME}
     ports:

@@ -3,13 +3,6 @@
 }
 
 :80 {
-    @mcp path /mcp /mcp/
-    handle @mcp {
-        reverse_proxy mcp-skill:8765 {
-            flush_interval -1
-        }
-    }
-
     handle {
         reverse_proxy frontend:80 {
             flush_interval -1
@@ -19,13 +12,6 @@
 
 https://{$DOMAIN_NAME} {
     encode zstd gzip
-
-    @mcp path /mcp /mcp/
-    handle @mcp {
-        reverse_proxy mcp-skill:8765 {
-            flush_interval -1
-        }
-    }
 
     handle {
         reverse_proxy frontend:80 {
