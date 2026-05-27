@@ -1,6 +1,6 @@
 # Question Bank Import Lifecycle Contract
 
-This contract keeps the Java main app and the standalone MCP-Skill service aligned around the same question-bank import lifecycle.
+This contract keeps local package generation and the Java main app aligned around the same question-bank import lifecycle.
 
 ## Module
 
@@ -13,7 +13,7 @@ The Module is **Question Bank Import Lifecycle**:
 
 ## Interface
 
-Both Implementations read the same JSON package shape:
+The generator and Java implementation read the same JSON package shape:
 
 - `batchId`: optional stable import batch id.
 - `sourceRef`: source material reference.
@@ -33,10 +33,10 @@ Canonical fixtures live in `question_bank_imports/fixtures/import-lifecycle/`.
 
 ## Implementations
 
-- Java Adapter: `QuestionBankService` in the Spring Boot main app. It is used by internal REST APIs and the interview runtime.
-- Python Adapter: `services/mcp-skill/mcp_server/question_bank.py` in the standalone MCP service. It is used by public `/mcp` and admin `/mcp-admin` tools.
+- Java Adapter: `QuestionBankService` in the Spring Boot main app. It is used by the developer-only Question Bank Admin panel and the interview runtime.
+- Package Generator: `scripts/question_bank_import.py` and `skills/interview-question-bank/` prepare JSON packages for human review and upload; they do not submit or publish content.
 
-The two Adapters are allowed to use different storage code, but they must preserve the same validation errors, normalized atom fields, import result counts, and published-atom reindex semantics.
+The generator must preserve the package schema expected by the Java adapter. The Java adapter owns persisted atom state, import result counts, and published-atom reindex semantics.
 
 ## Golden Behavior
 

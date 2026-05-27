@@ -1,17 +1,16 @@
 # InterWise AI 模拟面试系统
 
-InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目采用 `Spring Boot 3 + MyBatis-Plus + LangChain4j + DeepSeek + Redis + MySQL 8 + Qdrant` 构建后端，前端使用 `Vue 3 + Vite + Element Plus`。系统支持文字面试、视频面试、简历画像、RAG 追问、面试复盘、AI Mentor、数据库题库维护，以及可供外部 AI 客户端调用的 MCP 题库服务。
+InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目采用 `Spring Boot 3 + MyBatis-Plus + LangChain4j + DeepSeek + Redis + MySQL 8 + Qdrant` 构建后端，前端使用 `Vue 3 + Vite + Element Plus`。系统支持文字面试、视频面试、简历画像、RAG 追问、面试复盘、AI Mentor 与数据库题库维护。
 
-当前版本已经移除默认 `admin / 123456` 登录方式。用户需要正常注册登录；题库维护通过开发者 token、Skill 或 MCP 管理入口完成。
+当前版本已经移除默认 `admin / 123456` 登录方式。用户需要正常注册登录；题库维护由 Skill 生成 JSON 导入包，再由开发者通过网页管理面板审核发布。
 
 ## 核心能力
 
 - 文字 / 视频双模式面试：支持 SSE 流式回答、语音识别、语音播报、摄像头情绪分析。
 - 多角色面试流程：基于 `InterviewPhase` 状态机在开场、技术、HR、收尾和结束阶段流转，完整面试会进入独立 HR 软技能专项阶段。
 - 岗位化追问：技术阶段结合岗位、难度、重点能力、简历画像和题库检索生成追问；HR 阶段独立使用 `HR软技能` 题库分类。
-- 数据库题库：知识原子落入 MySQL，发布后的题目同步到 Qdrant，供 RAG 和 MCP 检索。
-- MCP 外部服务：通过独立 `services/mcp-skill` 容器公开 `/mcp` 只读题库服务，用户在 Settings 生成个人 token。
-- 题库维护 Skill：`skills/interview-question-bank` 支持从 PDF、DOCX、TXT、MD、JSON 生成导入包，并调用项目 API 发布。
+- 数据库题库：知识原子落入 MySQL，发布后的题目同步到 Qdrant，供面试 RAG 检索。
+- 题库维护 Skill：`skills/interview-question-bank` 支持从 PDF、DOCX、TXT、MD、JSON 生成导入包，由开发者管理面板校验和发布。
 - 简历画像：PDF 简历解析后写入 `resume_profile`，前端以服务端状态为准，避免旧浏览器缓存误用。
 - AI Mentor：聚合面试历史、知识覆盖、风险提醒和行动建议，Redis 缓存 24 小时并支持刷新。
 - 访问统计与成本保护：记录页面访问、关键行为、反馈、异常和限流命中；使用 Redis + MySQL 快照限制每日 AI 面试、对话、简历解析和 Mentor 生成额度。
@@ -55,10 +54,9 @@ graph LR
     Backend --> MySQL[("MySQL 8")]
     Backend --> Redis[("Redis")]
     Backend --> Qdrant[("Qdrant")]
-    External["外部 AI 客户端"] --> MCP["Standalone MCP /mcp"]
-    MCP --> MySQL
-    MCP --> Qdrant
-    Skill["interview-question-bank Skill"] --> MCP
+    Skill["interview-question-bank Skill"] --> Package["JSON 导入包"]
+    Package --> Admin["Question Bank Admin"]
+    Admin --> Backend
 ```
 
 配套架构图可直接在 GitHub 中预览：
@@ -69,9 +67,8 @@ graph LR
 架构语言与关键决策：
 
 - [领域上下文与术语](CONTEXT.md)
-- [ADR 0001：独立题库 MCP 边界](docs/adr/0001-standalone-question-bank-mcp.md)
 - [ADR 0002：题库导入生命周期](docs/adr/0002-question-bank-import-lifecycle.md)
-- [ADR 0003：MCP 使用记录隐私边界](docs/adr/0003-privacy-preserving-mcp-usage-records.md)
+- [ADR 0004：移除 MCP 功能](docs/adr/0004-remove-mcp-feature.md)
 
 ## 主要目录
 
@@ -81,16 +78,15 @@ graph LR
 ├── backend/
 │   ├── src/main/java/com/interview/
 │   │   ├── config/                 # LLM、Redis、Prompt、岗位分类、JWT 配置
-│   │   ├── controller/             # REST API、MCP、题库维护接口
+│   │   ├── controller/             # REST API 与题库维护接口
 │   │   ├── dto/                    # 请求 / 响应 DTO
 │   │   ├── entity/                 # MySQL 实体与 InterviewPhase
 │   │   ├── mapper/                 # MyBatis-Plus Mapper
 │   │   ├── service/                # 面试、简历、Mentor、RAG、题库服务
 │   │   └── utils/                  # JwtUtils 等工具
 │   └── src/main/resources/
-│       ├── db/migration/           # Flyway 迁移，V1 - V8
+│       ├── db/migration/           # Flyway 迁移
 │       └── knowledge_base/atoms/   # 旧 JSON 题库种子，启动时可导入数据库
-├── services/mcp-skill/             # 独立题库 MCP 服务 submodule
 ├── frontend/
 │   └── src/
 │       ├── views/                  # 首页、面试、视频面试、简历、历史、Mentor、设置
@@ -132,15 +128,13 @@ Copy-Item docker-compose.example.yml docker-compose.yml
 DB_PASSWORD=your_mysql_password
 DEEPSEEK_API_KEY=your_deepseek_api_key
 JWT_SIGN_KEY=your_jwt_signing_key_at_least_32_characters
-QUESTION_BANK_ADMIN_TOKEN=your_strong_admin_token
 APP_ADMIN_TOKEN=your_strong_ops_admin_token
 APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
 MAIL_USERNAME=your_email@qq.com
 MAIL_PASSWORD=your_smtp_authorization_code
 ```
 
-`QUESTION_BANK_ADMIN_TOKEN` 用于开发者维护题库；普通用户 MCP token 在登录后的 Settings 页面生成，明文只展示一次。
-`APP_ADMIN_TOKEN` 用于前端 Operations 统计页和管理反馈接口；不要把真实值写入代码或提交到 Git。
+`APP_ADMIN_TOKEN` 用于前端 Operations 统计页、管理反馈接口与题库管理面板；不要把真实值写入代码或提交到 Git。
 
 ### 3. 启动
 
@@ -155,7 +149,6 @@ docker compose up -d --build
 - MySQL：`localhost:13307`
 - Redis：`localhost:6379`
 - Qdrant：`http://localhost:6333`
-- MCP：`http://localhost/mcp`
 
 如果 Windows 提示端口不可用，优先检查 Docker Desktop 是否已启动，以及本机端口是否被占用或被系统排除。
 
@@ -171,7 +164,7 @@ docker compose up -d --build
 
 当前题库导入逻辑会跳过旧 JSON 中重复的 `atom_id`，唯一题目发布后会同步到 Qdrant。
 
-## 题库、Qdrant 与 MCP
+## 题库与 Qdrant
 
 ### 题库数据流
 
@@ -179,52 +172,16 @@ docker compose up -d --build
 graph TD
     Source["PDF / DOCX / TXT / MD / JSON"] --> Script["scripts/question_bank_import.py"]
     Script --> Package["导入包"]
-    Package --> API["/internal/question-bank/import"]
+    Package --> Admin["Settings / Question Bank Admin"]
+    Admin --> API["/api/admin/question-bank"]
     API --> MySQL[("knowledge_atom")]
     MySQL --> Qdrant[("interview_atoms collection")]
     Qdrant --> Interview["面试 RAG 追问"]
-    Qdrant --> MCP["standalone /mcp 外部检索"]
 ```
 
-### 内部维护 API
+### 维护入口
 
-所有内部题库 API 需要 `X-Question-Bank-Token`：
-
-- `POST /internal/question-bank/search`
-- `GET /internal/question-bank/atoms/{atomId}`
-- `GET /internal/question-bank/categories`
-- `POST /internal/question-bank/import`
-- `POST /internal/question-bank/reindex`
-
-### 独立 MCP 工具
-
-MCP 使用 JSON-RPC。普通用户访问 `POST /mcp`，使用 Settings 页面生成的个人 token；管理工具访问独立服务的 `/mcp-admin`，只建议通过服务器内网或 SSH 隧道使用 `QUESTION_BANK_ADMIN_TOKEN`。
-
-普通用户工具：
-
-- `search_interview_atoms`
-- `get_interview_atom_summary`
-- `list_interview_categories`
-- `generate_interview_context`
-- `get_mcp_usage_status`
-
-管理工具：
-
-- `search_interview_atoms`
-- `get_interview_atom`
-- `list_interview_categories`
-- `generate_interview_context`
-- `validate_atom_import_package`
-- `submit_atom_import_package`
-- `reindex_question_bank`
-
-初始化示例：
-
-```powershell
-$token = '<Settings 中生成的 MCP token>'
-$body = @{ jsonrpc='2.0'; id=1; method='tools/list'; params=@{} } | ConvertTo-Json -Depth 8 -Compress
-Invoke-WebRequest -Uri 'http://localhost/mcp' -Method POST -ContentType 'application/json' -Headers @{ Authorization="Bearer $token" } -Body $body
-```
+题库写入只通过开发者可见的 `Settings -> Question Bank Admin` 面板进行。开发者输入 `APP_ADMIN_TOKEN` 后，可上传生成的 JSON 导入包、校验、试运行、正式发布、查询与维护索引；脚本和 Skill 不直接写入数据库或调用发布接口。
 
 ## 题库维护 Skill
 
@@ -239,10 +196,10 @@ skills/interview-question-bank/
 1. 准备 PDF、DOCX、TXT、MD 或 JSON 资料。
 2. 使用 `scripts/question_bank_import.py` 生成导入包。
 3. 按需评审导入包。
-4. 使用 `DRAFT` 暂存，或使用 `AUTO_PUBLISH` 直接发布并同步 Qdrant。
-5. 通过内部 API 或 MCP 搜索验证。
+4. 登录开发者账号，打开 `Settings -> Question Bank Admin` 并输入 `APP_ADMIN_TOKEN`。
+5. 上传导入包，先校验与试运行，再明确发布并在面板中验证索引和检索结果。
 
-HR 软技能题库应使用 `HR软技能` 分类，先生成 `DRAFT` 导入包并通过 `validate_atom_import_package` 校验；人工确认后再提交、发布和重建索引。
+HR 软技能题库应使用 `HR软技能` 分类，先生成 `DRAFT` 导入包并在管理面板校验；人工确认后再发布并按需重建索引。
 
 示例：
 
@@ -250,16 +207,7 @@ HR 软技能题库应使用 `HR软技能` 分类，先生成 `DRAFT` 导入包�
 python scripts/question_bank_import.py --input .\materials\redis.pdf --category redis --mode DRAFT
 ```
 
-直接发布：
-
-```powershell
-$env:QUESTION_BANK_ADMIN_TOKEN="your-token"
-python scripts/question_bank_import.py --input .\materials\java --category java --mode AUTO_PUBLISH --submit
-```
-
-## 外部维护说明
-
-MCP 服务由独立 `MCP-Skill` 仓库提供，主项目通过 submodule 固定到可部署版本。题库维护 Skill 可以连接 `/mcp-admin` 做导入、校验和重建索引；普通用户只能使用 `/mcp` 的只读摘要检索。
+生成后，使用网页管理面板完成导入与发布，不再存在脚本直提或外部 MCP 入口。
 
 ## 本地开发
 
@@ -318,7 +266,7 @@ npm exec vitest -- --run
 
 生产默认开启接口限流和每日 AI 成本额度：
 
-- 登录、注册、验证码、重置密码、开始面试、AI 对话、报告生成、简历解析、Mentor 刷新、反馈提交和 MCP 请求都会按 IP 或用户维度限流。
+- 登录、注册、验证码、重置密码、开始面试、AI 对话、报告生成、简历解析、Mentor 刷新和反馈提交都会按 IP 或用户维度限流。
 - 每个登录用户默认每日额度：开始面试 5 次、AI 对话 80 轮、简历解析 3 次、AI Mentor 生成 3 次。
 - 超限统一返回 `429` 和友好提示，例如“今日 AI 对话额度已用完，请明天再试”。
 - 页面访问、登录注册、面试开始/结束、报告查看、反馈、异常和限流命中会写入 `app_event_log`。

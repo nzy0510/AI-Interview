@@ -199,7 +199,6 @@ docker compose --env-file .env -f docker-compose.prod.yml ps
 
 ```env
 APP_CORS_ALLOWED_ORIGINS=https://interwise.japaneast.cloudapp.azure.com
-MCP_ALLOWED_ORIGINS=https://interwise.japaneast.cloudapp.azure.com
 ```
 
 然后重启后端或重新启动 Compose：
@@ -306,9 +305,7 @@ tar -czf backups/qdrant_data_$(date +%F_%H%M).tar.gz qdrant_data
 - DeepSeek API Key
 - 邮箱 SMTP 授权码
 - `JWT_SIGN_KEY`
-- `QUESTION_BANK_ADMIN_TOKEN`
 - `APP_ADMIN_TOKEN` 与 `APP_ANALYTICS_HASH_SALT`
-- 已经发给 MCP 客户端的用户 token，需要在 Settings 中撤销后重新生成
 - 数据库密码，若已经有真实用户数据，改数据库密码前要谨慎规划
 
 端口暴露原则：
@@ -354,7 +351,6 @@ chmod 600 .env
 
 ```env
 APP_CORS_ALLOWED_ORIGINS=https://你的域名
-MCP_ALLOWED_ORIGINS=https://你的域名
 DOMAIN_NAME=你的域名
 FRONTEND_HTTP_BIND=127.0.0.1:8080
 ```
@@ -373,7 +369,7 @@ docker compose --env-file .env -f docker-compose.prod.yml --profile https logs -
 
 当前生产配置默认开启：
 
-- API 限流：登录、注册、验证码、重置密码、开始面试、AI 对话、报告生成、简历解析、Mentor 刷新、反馈提交和 MCP。
+- API 限流：登录、注册、验证码、重置密码、开始面试、AI 对话、报告生成、简历解析、Mentor 刷新和反馈提交。
 - 每日额度：默认每用户每天可开始面试 5 次、AI 对话 80 轮、简历解析 3 次、AI Mentor 生成 3 次。
 - 行为记录：访问、登录注册、面试开始/结束、报告查看、异常、限流命中和反馈会写入 MySQL。
 
