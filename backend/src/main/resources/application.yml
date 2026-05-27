@@ -145,8 +145,6 @@ interview:
 
 # 题库 / Qdrant 配置
 question-bank:
-  # 开发者维护题库用 token；为空时不校验，生产建议必须配置
-  admin-token: ${QUESTION_BANK_ADMIN_TOKEN:}
   qdrant:
     enabled: ${QDRANT_ENABLED:true}
     url: ${QDRANT_URL:http://localhost:6333}
@@ -185,10 +183,6 @@ app:
     exempt-user-ids: ${APP_DEVELOPER_EXEMPT_USER_IDS:}
     exempt-usernames: ${APP_DEVELOPER_EXEMPT_USERNAMES:}
     exempt-emails: ${APP_DEVELOPER_EXEMPT_EMAILS:}
-  mcp:
-    # 留空时后端会根据当前访问域名生成 https://domain/mcp
-    public-url: ${APP_MCP_PUBLIC_URL:}
-    # 每日调用额度以 mcp_quota_policy 表为准，mcp_daily_usage 只保存当天使用快照。
 
 # DeepSeek AI 配置 (LangChain4j OpenAI 兼容格式)
 langchain4j:
