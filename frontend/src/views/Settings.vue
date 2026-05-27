@@ -108,8 +108,6 @@
         </div>
       </section>
 
-      <McpClientSetup />
-
       <!-- Operations -->
       <section v-if="isDeveloper" class="surface-card section-shell">
         <div class="section-head operations-head">
@@ -141,7 +139,6 @@ import {
   updatePreferenceAPI
 } from '@/api/user'
 import { logout, withAuthHeaders } from '@/utils/auth'
-import McpClientSetup from '@/components/settings/McpClientSetup.vue'
 import QuestionBankAdmin from '@/components/settings/QuestionBankAdmin.vue'
 import { interviewSetupDefaults } from '@/mock/setup'
 
