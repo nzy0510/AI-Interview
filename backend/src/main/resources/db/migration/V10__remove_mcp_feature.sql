@@ -1,6 +1,7 @@
--- V10: Remove MCP feature persistence after the external MCP surface was retired.
+-- V10: Retire MCP feature persistence without discarding historical records.
 
-DROP TABLE IF EXISTS mcp_call_log;
-DROP TABLE IF EXISTS mcp_daily_usage;
-DROP TABLE IF EXISTS mcp_access_token;
-DROP TABLE IF EXISTS mcp_quota_policy;
+RENAME TABLE
+  mcp_call_log TO retired_mcp_call_log,
+  mcp_daily_usage TO retired_mcp_daily_usage,
+  mcp_access_token TO retired_mcp_access_token,
+  mcp_quota_policy TO retired_mcp_quota_policy;

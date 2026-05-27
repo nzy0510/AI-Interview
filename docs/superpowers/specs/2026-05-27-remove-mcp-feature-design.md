@@ -112,7 +112,7 @@ The following data belongs to the product and remains in use:
 
 ### Removed Data
 
-These tables exist only to support MCP external access and will be removed:
+These tables exist only to support MCP external access and will be retired from active use:
 
 - `mcp_call_log`
 - `mcp_daily_usage`
@@ -127,18 +127,20 @@ delete:
 - `V8__add_mcp_user_tokens.sql`
 - `V9__add_mcp_quota_policy.sql`
 
-Add a new forward migration after the current latest version. It will drop
-MCP-only tables in foreign-key-safe order:
+Add a new forward migration after the current latest version. It renames
+MCP-only tables to an archival namespace without losing historical rows:
 
 ```sql
-DROP TABLE IF EXISTS mcp_call_log;
-DROP TABLE IF EXISTS mcp_daily_usage;
-DROP TABLE IF EXISTS mcp_access_token;
-DROP TABLE IF EXISTS mcp_quota_policy;
+RENAME TABLE
+  mcp_call_log TO retired_mcp_call_log,
+  mcp_daily_usage TO retired_mcp_daily_usage,
+  mcp_access_token TO retired_mcp_access_token,
+  mcp_quota_policy TO retired_mcp_quota_policy;
 ```
 
-Production operators must back up the database before applying this migration,
-because existing MCP token and usage-history data will be destroyed.
+Production operators must back up the database before applying this migration.
+Archived MCP token and usage-history data is retained for audit or export, but
+is no longer used by runtime features.
 
 ## Security Boundary
 

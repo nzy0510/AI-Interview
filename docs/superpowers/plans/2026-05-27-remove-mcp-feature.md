@@ -4,7 +4,7 @@
 
 **Goal:** Remove all MCP and direct-script publishing capabilities from InterWise while retaining browser-admin question-bank publication and interview RAG.
 
-**Architecture:** The Spring Boot application remains the sole question-bank runtime and the Vue developer console remains the sole publishing surface. MCP runtime code, submodule deployment, token/quota persistence, and internal script submission are removed; an additive Flyway migration cleans up already-created MCP tables without rewriting migration history.
+**Architecture:** The Spring Boot application remains the sole question-bank runtime and the Vue developer console remains the sole publishing surface. MCP runtime code, submodule deployment, token/quota persistence, and internal script submission are removed; an additive Flyway migration archives already-created MCP tables without rewriting migration history or discarding historical records.
 
 **Tech Stack:** Spring Boot 3 / Java 17 / MyBatis-Plus / Flyway / Vue 3 / Vite / Docker Compose / Nginx / Caddy / Python
 
@@ -21,7 +21,7 @@
 
 **Files to create**
 
-- `backend/src/main/resources/db/migration/V10__remove_mcp_feature.sql`: forward-only removal of MCP tables.
+- `backend/src/main/resources/db/migration/V10__remove_mcp_feature.sql`: forward-only retirement of MCP tables into archival names.
 - `docs/adr/0004-remove-mcp-feature.md`: superseding architecture decision.
 - `docs/superpowers/plans/2026-05-27-remove-mcp-feature.md`: this implementation plan.
 
@@ -208,15 +208,16 @@ git commit -m "refactor: remove MCP backend surfaces"
 Add exactly:
 
 ```sql
--- V10: Remove MCP feature persistence after the external MCP surface was retired.
+-- V10: Retire MCP feature persistence without discarding historical records.
 
-DROP TABLE IF EXISTS mcp_call_log;
-DROP TABLE IF EXISTS mcp_daily_usage;
-DROP TABLE IF EXISTS mcp_access_token;
-DROP TABLE IF EXISTS mcp_quota_policy;
+RENAME TABLE
+  mcp_call_log TO retired_mcp_call_log,
+  mcp_daily_usage TO retired_mcp_daily_usage,
+  mcp_access_token TO retired_mcp_access_token,
+  mcp_quota_policy TO retired_mcp_quota_policy;
 ```
 
-The order removes the table with `fk_mcp_call_token` before its referenced token table.
+Renaming the related tables in one statement retains the existing rows while taking the MCP schema out of active use.
 
 - [ ] **Step 2: Verify migration history was not rewritten**
 
@@ -227,7 +228,7 @@ git diff --exit-code -- backend/src/main/resources/db/migration/V8__add_mcp_user
 Get-Content backend/src/main/resources/db/migration/V10__remove_mcp_feature.sql
 ```
 
-Expected: the diff command exits `0`; `V10` shows four `DROP TABLE IF EXISTS` statements in dependency-safe order.
+Expected: the diff command exits `0`; `V10` renames four MCP tables to `retired_mcp_*` so historical records are retained without active runtime use.
 
 - [ ] **Step 3: Run the backend test suite**
 

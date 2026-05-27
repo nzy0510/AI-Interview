@@ -70,7 +70,7 @@ The interview phase that evaluates behavioral, communication, motivation, pressu
 - Question-bank publishing, reindexing, archival, and protected search are performed through the **Developer Admin Console**.
 - Secrets such as `APP_ADMIN_TOKEN`, JWT signing keys, SMTP credentials, and model API keys must stay in environment configuration and logs must not expose them.
 - Publication must validate the package before writing live atoms; only published atoms may be synchronized into interview retrieval.
-- External MCP endpoints, MCP user tokens, MCP quota records, and an MCP deployment service are not part of the current InterWise product boundary.
+- External MCP endpoints, MCP user tokens, MCP quota processing, and an MCP deployment service are not part of the current InterWise product boundary. Retired MCP tables may remain as read-only historical records.
 
 ## Decision Records
 
