@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Build and optionally submit question-bank import packages.
+Build question-bank import packages for review in the developer admin console.
 
 Supported inputs:
   - PDF, DOCX, TXT, MD documents: parsed, chunked, and converted into atoms by
@@ -9,7 +9,7 @@ Supported inputs:
 
 Examples:
   python scripts/question_bank_import.py --input notes/java.pdf --category java --mode DRAFT
-  python scripts/question_bank_import.py --input notes/redis --category redis --mode AUTO_PUBLISH --submit
+  python scripts/question_bank_import.py --input notes/redis --category redis --mode AUTO_PUBLISH
 """
 
 from __future__ import annotations
@@ -273,24 +273,6 @@ def build_package(args: argparse.Namespace, atoms: list[dict[str, Any]], source_
     }
 
 
-def submit_package(package: dict[str, Any], api_url: str, token: str | None) -> dict[str, Any]:
-    headers = {"Content-Type": "application/json"}
-    if token:
-        headers["X-Question-Bank-Token"] = token
-    request = urllib.request.Request(
-        api_url,
-        data=json.dumps(package, ensure_ascii=False).encode("utf-8"),
-        headers=headers,
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="ignore")
-        raise RuntimeError(f"Import API failed: HTTP {exc.code} {body}") from exc
-
-
 def generate_atoms(args: argparse.Namespace, files: list[Path]) -> list[dict[str, Any]]:
     atoms: list[dict[str, Any]] = []
     json_files = [path for path in files if path.suffix.lower() in JSON_EXTS]
@@ -332,19 +314,13 @@ def default_output_path(batch_id: str) -> Path:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build and submit question-bank import packages.")
+    parser = argparse.ArgumentParser(description="Build question-bank import packages for admin review.")
     parser.add_argument("--input", action="append", required=True, help="Input file or directory. Repeatable.")
     parser.add_argument("--category", help="Default target category, for example java, mysql, redis, frontend.")
     parser.add_argument("--mode", default="DRAFT", choices=["DRY_RUN", "DRAFT", "AUTO_PUBLISH"])
     parser.add_argument("--batch-id")
     parser.add_argument("--source-ref")
     parser.add_argument("--output", help="Output package path. Defaults to question_bank_imports/<batchId>.json")
-    parser.add_argument("--submit", action="store_true", help="Submit package to the backend import API.")
-    parser.add_argument(
-        "--api-url",
-        default=os.getenv("QUESTION_BANK_IMPORT_URL", "http://localhost:8080/internal/question-bank/import"),
-    )
-    parser.add_argument("--token", default=os.getenv("QUESTION_BANK_ADMIN_TOKEN"))
     parser.add_argument("--base-url", default=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"))
     parser.add_argument("--api-key", default=os.getenv("DEEPSEEK_API_KEY"))
     parser.add_argument("--model", default=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"))
@@ -375,13 +351,6 @@ def main() -> int:
         for error in package["validationReport"]["errors"]:
             print(f"  - {error}")
 
-    if args.submit and package["validationReport"]["errors"]:
-        print("submit skipped because validation errors are present", file=sys.stderr)
-        return 2
-
-    if args.submit:
-        response = submit_package(package, args.api_url, args.token)
-        print(json.dumps(response, ensure_ascii=False, indent=2))
     return 0 if not package["validationReport"]["errors"] else 2
 
 
