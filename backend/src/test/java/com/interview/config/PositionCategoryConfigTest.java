@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,10 +19,12 @@ class PositionCategoryConfigTest {
     @BeforeEach
     void setUp() {
         config = new PositionCategoryConfig();
-        config.setPositionCategories(Map.of(
-                "java", List.of("hot200", "mysql", "redis", "spring", "springboot", "并发", "操作系统"),
-                "前端", List.of("hot200", "Vue")
-        ));
+        Map<String, List<String>> categories = new LinkedHashMap<>();
+        categories.put("java", List.of("hot200", "mysql", "redis", "spring", "springboot", "并发", "操作系统"));
+        categories.put("前端", List.of("hot200", "Vue"));
+        categories.put("AI大模型", List.of("AI大模型"));
+        categories.put("大模型", List.of("AI大模型"));
+        config.setPositionCategories(categories);
     }
 
     @Test
@@ -65,5 +68,14 @@ class PositionCategoryConfigTest {
     void shouldMatchCaseInsensitive() {
         List<String> categories = config.getCategoriesFor("JAVA 开发工程师");
         assertThat(categories).hasSize(7);
+    }
+
+    @Test
+    @DisplayName("AI 大模型岗位匹配大模型题库分类")
+    void shouldReturnAiModelCategoryForAiModelPosition() {
+        List<String> categories = config.getCategoriesFor("AI 大模型工程师");
+
+        assertThat(categories)
+                .containsExactly("AI大模型");
     }
 }

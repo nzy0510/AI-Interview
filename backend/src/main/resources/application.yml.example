@@ -55,6 +55,8 @@ interview:
   position-categories:
     java: [hot200, mysql, redis, spring, springboot, 并发, 操作系统, 后端场景题]
     前端: [hot200, React, Vue, Flutter, HTML]
+    AI大模型: [AI大模型]
+    大模型: [AI大模型]
 
   # AI 提示词模板（集中管理，无需重新编译即可调整）
   prompts:

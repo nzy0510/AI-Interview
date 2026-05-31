@@ -55,6 +55,8 @@ interview:
   position-categories:
     java: [mysql, redis, spring, springboot, 并发, 操作系统, jvm, kafka, rabbitmq, rocketmq, 消息队列, MyBatis, 网络, 分布式, 微服务, 系统设计, 设计模式, 数据结构, netty, 后端场景题]
     前端: [React, Vue, Flutter, HTML, CSS, JavaScript, NodeJS, Webpack, 浏览器, 前端工程化, 网络, 设计模式, 系统设计, TypeScript, 性能优化]
+    AI大模型: [AI大模型]
+    大模型: [AI大模型]
 
   # AI 提示词模板（集中管理，无需重新编译即可调整）
   prompts:
