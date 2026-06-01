@@ -209,6 +209,8 @@ AI 大模型岗位使用 `AI大模型` 题库分类；导入包发布后，`AI�
 python scripts/question_bank_import.py --input .\materials\redis.pdf --category redis --mode DRAFT
 ```
 
+默认导入包文件名为 `question_bank_imports/qb-<category>-<mode>-<YYYYMMDD-HHMMSS>-<shortid>.json`，例如 `qb-redis-draft-20260601-205707-e7d1a9.json`；需要指定文件名时使用 `--output`。
+
 生成后，使用网页管理面板完成导入与发布，不再存在脚本直提或外部 MCP 入口。
 
 ## 本地开发

@@ -252,7 +252,7 @@ def build_package(args: argparse.Namespace, atoms: list[dict[str, Any]], source_
             atom["category"] = args.category
     atoms = dedupe_atoms(atoms)
     errors, warnings = validate_atoms(atoms, args.category)
-    batch_id = args.batch_id or f"qb-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6]}"
+    batch_id = args.batch_id or default_batch_id(args.category, args.mode)
     return {
         "batchId": batch_id,
         "sourceRef": args.source_ref or ", ".join(str(path) for path in source_files),
@@ -309,6 +309,28 @@ def generate_atoms(args: argparse.Namespace, files: list[Path]) -> list[dict[str
     return atoms
 
 
+def slugify_filename_part(value: str | None, fallback: str) -> str:
+    text = (value or fallback).strip().lower()
+    text = re.sub(r"[_\W]+", "-", text, flags=re.UNICODE).strip("-")
+    return text or fallback
+
+
+def default_batch_id(
+    category: str | None,
+    mode: str,
+    generated_at: dt.datetime | None = None,
+    suffix: str | None = None,
+) -> str:
+    timestamp_source = generated_at or dt.datetime.now(dt.timezone.utc)
+    if timestamp_source.tzinfo is None:
+        timestamp_source = timestamp_source.replace(tzinfo=dt.timezone.utc)
+    timestamp = timestamp_source.astimezone(dt.timezone.utc).strftime("%Y%m%d-%H%M%S")
+    short_suffix = suffix or uuid.uuid4().hex[:6]
+    category_part = slugify_filename_part(category, "uncategorized")
+    mode_part = slugify_filename_part(mode, "draft")
+    return f"qb-{category_part}-{mode_part}-{timestamp}-{short_suffix}"
+
+
 def default_output_path(batch_id: str) -> Path:
     return Path("question_bank_imports") / f"{batch_id}.json"
 
@@ -320,7 +342,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mode", default="DRAFT", choices=["DRY_RUN", "DRAFT", "AUTO_PUBLISH"])
     parser.add_argument("--batch-id")
     parser.add_argument("--source-ref")
-    parser.add_argument("--output", help="Output package path. Defaults to question_bank_imports/<batchId>.json")
+    parser.add_argument(
+        "--output",
+        help="Output package path. Defaults to question_bank_imports/qb-<category>-<mode>-<YYYYMMDD-HHMMSS>-<shortid>.json",
+    )
     parser.add_argument("--base-url", default=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"))
     parser.add_argument("--api-key", default=os.getenv("DEEPSEEK_API_KEY"))
     parser.add_argument("--model", default=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"))

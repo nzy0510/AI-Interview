@@ -30,6 +30,8 @@ Normalize existing JSON atoms:
 python scripts/question_bank_import.py --input .\atoms.json --category mysql --mode DRAFT
 ```
 
+Default package filenames use `question_bank_imports/qb-<category>-<mode>-<YYYYMMDD-HHMMSS>-<shortid>.json`. Use `--output` only when the maintainer needs an explicit filename.
+
 ## Mode Choice
 
 - `DRY_RUN`: prepare a package intended for validation only.
