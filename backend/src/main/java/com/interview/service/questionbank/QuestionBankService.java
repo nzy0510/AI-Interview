@@ -13,6 +13,7 @@ import com.interview.dto.questionbank.QuestionBankImportRequest;
 import com.interview.dto.questionbank.QuestionBankImportResult;
 import com.interview.dto.questionbank.QuestionBankPageResponse;
 import com.interview.dto.questionbank.QuestionBankSearchRequest;
+import com.interview.dto.questionbank.QuestionBankSearchResponse;
 import com.interview.dto.questionbank.QuestionBankSearchResult;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeAtomImportBatch;
@@ -70,9 +71,18 @@ public class QuestionBankService {
     }
 
     public List<QuestionBankSearchResult> search(QuestionBankSearchRequest request) {
+        return searchWithMetadata(request).getResults();
+    }
+
+    public QuestionBankSearchResponse searchWithMetadata(QuestionBankSearchRequest request) {
         int limit = request.getLimit() > 0 ? Math.min(request.getLimit(), 10) : 3;
         String query = request.getQuery() != null ? request.getQuery().trim() : "";
-        if (query.length() <= 2) return List.of();
+        if (query.length() <= 2) {
+            return QuestionBankSearchResponse.builder()
+                    .results(List.of())
+                    .strategy("SKIPPED")
+                    .build();
+        }
 
         List<String> categories = normalizeCategories(request);
         List<String> exclude = request.getExcludeAtomIds() != null ? request.getExcludeAtomIds() : List.of();
@@ -81,9 +91,15 @@ public class QuestionBankService {
                 qdrantVectorService.search(query, categories, exclude, limit);
         List<QuestionBankSearchResult> results = loadHits(hits);
         if (!results.isEmpty()) {
-            return results.stream().limit(limit).collect(Collectors.toList());
+            return QuestionBankSearchResponse.builder()
+                    .results(results.stream().limit(limit).collect(Collectors.toList()))
+                    .strategy("QDRANT_VECTOR")
+                    .build();
         }
-        return fallbackSearch(query, categories, exclude, limit);
+        return QuestionBankSearchResponse.builder()
+                .results(fallbackSearch(query, categories, exclude, limit))
+                .strategy("MYSQL_FALLBACK")
+                .build();
     }
 
     public List<Map<String, Object>> listCategories() {
