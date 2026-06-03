@@ -97,6 +97,48 @@ def paired_bootstrap_ci(
     }
 
 
+def analyze_candidate_set(
+    recall_at_3: list[float],
+    recall_at_20: list[float],
+    hit_at_3: list[float],
+    hit_at_20: list[float],
+    *,
+    seed: int,
+    bootstrap_samples: int = 5000,
+) -> dict[str, Any]:
+    recall_ci = paired_bootstrap_ci(
+        recall_at_3,
+        recall_at_20,
+        seed=seed,
+        samples=bootstrap_samples,
+    )
+    improved_fraction = (
+        sum(candidate > baseline for baseline, candidate in zip(recall_at_3, recall_at_20))
+        / len(recall_at_3)
+        if recall_at_3
+        else 0.0
+    )
+    hit_rate_delta = (
+        statistics.fmean(hit_at_20) - statistics.fmean(hit_at_3)
+        if hit_at_3
+        else 0.0
+    )
+    conditions = {
+        "mean_delta_recall_at_least_0_10": recall_ci["mean_delta"] >= 0.10,
+        "improved_query_fraction_at_least_0_20": improved_fraction >= 0.20,
+        "hit_rate_delta_at_least_0_05": hit_rate_delta >= 0.05,
+        "bootstrap_lower_bound_above_zero": recall_ci["lower_95"] > 0.0,
+    }
+    return {
+        "delta_recall_at_20_vs_3": recall_ci["mean_delta"],
+        "improved_query_fraction": improved_fraction,
+        "hit_rate_delta_at_20_vs_3": hit_rate_delta,
+        "paired_bootstrap_95": recall_ci,
+        "conditions": conditions,
+        "meaningfully_better": all(conditions.values()),
+    }
+
+
 def load_judgments(dataset: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
     return {
         str(query["query_id"]): {
@@ -132,6 +174,7 @@ def calculate(
         "models": {},
         "comparisons": {},
         "examples": {},
+        "candidate_set_analysis": {},
     }
     per_query_by_model: dict[str, dict[str, dict[str, float]]] = {}
 
@@ -149,11 +192,33 @@ def calculate(
             metrics[f"recall_at_{k}"] = statistics.fmean(
                 per_query[query_id][f"recall_at_{k}"] for query_id in query_ids
             )
-            metrics[f"hit_rate_at_{k}"] = hit_rate_at_k(rankings, judgments, k)
+            metrics[f"hit_rate_at_{k}"] = statistics.fmean(
+                1.0
+                if relevant_atoms(judgments.get(query_id, {})).intersection(rankings.get(query_id, [])[:k])
+                else 0.0
+                for query_id in query_ids
+            )
             metrics[f"zero_hit_rate_at_{k}"] = 1.0 - metrics[f"hit_rate_at_{k}"]
         metrics["ndcg_at_3"] = statistics.fmean(per_query[query_id]["ndcg_at_3"] for query_id in query_ids)
         metrics["mrr"] = statistics.fmean(per_query[query_id]["mrr"] for query_id in query_ids)
         output["models"][model] = {"metrics": metrics, "per_query": per_query}
+        output["candidate_set_analysis"][model] = analyze_candidate_set(
+            [per_query[query_id]["recall_at_3"] for query_id in query_ids],
+            [per_query[query_id]["recall_at_20"] for query_id in query_ids],
+            [
+                1.0
+                if relevant_atoms(judgments.get(query_id, {})).intersection(rankings.get(query_id, [])[:3])
+                else 0.0
+                for query_id in query_ids
+            ],
+            [
+                1.0
+                if relevant_atoms(judgments.get(query_id, {})).intersection(rankings.get(query_id, [])[:20])
+                else 0.0
+                for query_id in query_ids
+            ],
+            seed=seed,
+        )
         output["examples"][f"{model}_recall_at_20_gt_recall_at_3"] = [
             query_id
             for query_id in query_ids
@@ -209,6 +274,17 @@ def build_report(metrics: dict[str, Any]) -> str:
                 f"95% CI=[{ci['lower_95']:.4f}, {ci['upper_95']:.4f}]"
             )
         lines.append("")
+    lines.extend(["## Candidate Set Analysis", ""])
+    for model, analysis in metrics["candidate_set_analysis"].items():
+        lines.append(
+            f"- {model}: Recall@20 meaningfully better than Recall@3 = "
+            f"{str(analysis['meaningfully_better']).lower()}; "
+            f"deltaRecall={analysis['delta_recall_at_20_vs_3']:.4f}; "
+            f"improvedQueries={analysis['improved_query_fraction']:.4f}; "
+            f"deltaHitRate={analysis['hit_rate_delta_at_20_vs_3']:.4f}; "
+            f"CI lower={analysis['paired_bootstrap_95']['lower_95']:.4f}"
+        )
+    lines.append("")
     lines.extend(["## Query-Level Examples", ""])
     for name, query_ids in metrics["examples"].items():
         lines.append(f"- {name}: {', '.join(query_ids) if query_ids else 'none'}")
