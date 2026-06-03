@@ -8,6 +8,9 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from scripts.retrieval_eval.common import AI_MODEL_CATEGORY, build_atom_text, read_jsonl
 from scripts.retrieval_eval.generate_synthetic_queries import SCENARIO_QUOTAS, build_query_text
 

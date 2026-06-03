@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Any
+
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.retrieval_eval.common import anonymize_text, dedupe_queries, is_valid_real_query, write_jsonl
 from scripts.retrieval_eval.db import connect
