@@ -71,7 +71,7 @@ def build_atom_text(atom: dict[str, Any]) -> str:
     if isinstance(follow, str):
         follow_text = follow
     else:
-        follow_text = json.dumps(follow or [], ensure_ascii=False)
+        follow_text = json.dumps(follow or [], ensure_ascii=False, separators=(",", ":"))
     return (
         f"考核点: {atom.get('subject', '')}\n"
         f"核心原理与标准答案: {atom.get('principles', '')}\n"

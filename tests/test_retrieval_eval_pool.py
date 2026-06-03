@@ -1,6 +1,7 @@
 import unittest
 
 from scripts.retrieval_eval.build_candidate_pool import merge_candidates, tokenize
+from scripts.retrieval_eval.score_embeddings import MODEL_CONFIGS
 
 
 class RetrievalEvalPoolTest(unittest.TestCase):
@@ -22,6 +23,12 @@ class RetrievalEvalPoolTest(unittest.TestCase):
         self.assertIn("rag", tokens)
         self.assertIn("检索", tokens)
         self.assertIn("增强", tokens)
+
+    def test_multilingual_e5_uses_query_and_passage_prefixes(self):
+        config = MODEL_CONFIGS["multilingual-e5-base"]
+
+        self.assertEqual(config["query_prefix"], "query: ")
+        self.assertEqual(config["passage_prefix"], "passage: ")
 
 
 if __name__ == "__main__":

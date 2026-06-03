@@ -25,7 +25,7 @@ class RetrievalEvalCommonTest(unittest.TestCase):
 
         self.assertIn("考核点: 注意力机制", text)
         self.assertIn("核心原理与标准答案: 核心原理", text)
-        self.assertIn("推荐的深度追问路径", text)
+        self.assertIn('推荐的深度追问路径: ["追问一","追问二"]', text)
 
     def test_dedupe_queries_keeps_first_normalized_query(self):
         rows = [
