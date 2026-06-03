@@ -80,6 +80,20 @@ class QuestionBankServiceSearchTest {
     }
 
     @Test
+    @DisplayName("returns MYSQL_FALLBACK when Qdrant contains a stale atom ID")
+    void shouldFallbackWhenQdrantReturnsStaleAtomId() {
+        QuestionBankSearchRequest request = request("HashMap collision handling");
+        when(qdrantVectorService.search(any(), any(), any(), any(Integer.class)))
+                .thenReturn(List.of(new QdrantVectorService.VectorHit("stale-atom", 0.91)));
+        when(atomMapper.selectList(any())).thenReturn(List.of());
+
+        QuestionBankSearchResponse response = service.searchWithMetadata(request);
+
+        assertThat(response.getStrategy()).isEqualTo("MYSQL_FALLBACK");
+        assertThat(response.getResults()).isEmpty();
+    }
+
+    @Test
     @DisplayName("returns SKIPPED for a short query")
     void shouldSkipShortQuery() {
         QuestionBankSearchResponse response = service.searchWithMetadata(request("ab"));
