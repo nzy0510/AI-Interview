@@ -60,6 +60,9 @@ class InterviewServiceImplTest {
     private RagRetrievalRequestLogMapper ragRetrievalRequestLogMapper;
 
     @Mock
+    private AppEventService appEventService;
+
+    @Mock
     private InterviewTurnPlanner interviewTurnPlanner;
 
     @InjectMocks
@@ -162,6 +165,14 @@ class InterviewServiceImplTest {
         assertThat(requestLog.getRetrievalStrategy()).isEqualTo("FAILED");
         assertThat(requestLog.getStatus()).isEqualTo("FAILED");
         assertThat(requestLog.getErrorMessage())
+                .doesNotContain("raw-key", "raw-token", "https://example.com/search")
+                .contains("[REDACTED]", "[URL]");
+
+        ArgumentCaptor<String> appEventErrorCaptor = ArgumentCaptor.forClass(String.class);
+        verify(appEventService).recordSystemEvent(
+                any(), any(), any(), any(), any(Boolean.class), appEventErrorCaptor.capture());
+        assertThat(appEventErrorCaptor.getValue())
+                .isEqualTo(requestLog.getErrorMessage())
                 .doesNotContain("raw-key", "raw-token", "https://example.com/search")
                 .contains("[REDACTED]", "[URL]");
     }

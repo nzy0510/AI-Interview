@@ -193,15 +193,16 @@ public class InterviewServiceImpl implements InterviewService {
                         queryText, requestedLimit, retrievedResults.size(), searchResponse.getStrategy(),
                         latencyMs, "SUCCESS", null);
             } catch (Exception e) {
+                String sanitizedError = sanitizeErrorMessage(e.getMessage());
                 log.warn("RAG 检索失败，跳过题库上下文: recordId={}, position={}, error={}",
-                        recordId, position, e.getMessage());
+                        recordId, position, sanitizedError);
                 recordSystemEvent(userId, "RAG_RETRIEVAL_FAILED", "system",
-                        Map.of("recordId", recordId, "position", position), false, e.getMessage());
+                        Map.of("recordId", recordId, "position", position), false, sanitizedError);
                 retrievedResults = List.of();
                 long latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - searchStartedAt);
                 insertRetrievalRequestLog(requestId, userId, recordId, turnIdx, position, nextPhase,
                         queryText, requestedLimit, 0, "FAILED", latencyMs, "FAILED",
-                        sanitizeErrorMessage(e.getMessage()));
+                        sanitizedError);
             }
         }
 
