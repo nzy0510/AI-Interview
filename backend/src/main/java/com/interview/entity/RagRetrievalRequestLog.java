@@ -8,30 +8,36 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("rag_retrieval_log")
-public class RagRetrievalLog {
+@TableName("rag_retrieval_request_log")
+public class RagRetrievalRequestLog {
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    private String requestId;
 
     private Long userId;
 
     private Long recordId;
 
-    private String requestId;
-
     private Integer turnIndex;
-
-    private String queryText;
 
     private String position;
 
-    private String retrievedAtomId;
+    private String phase;
 
-    private String retrievedCategory;
+    private String queryText;
 
-    private Double similarityScore;
+    private Integer requestedLimit;
 
-    private Integer rankIndex;
+    private Integer candidateCount;
+
+    private String retrievalStrategy;
+
+    private Long latencyMs;
+
+    private String status;
+
+    private String errorMessage;
 
     private LocalDateTime createTime;
 }
