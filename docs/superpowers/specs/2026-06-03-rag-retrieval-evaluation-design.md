@@ -162,9 +162,12 @@ Store the fixed evaluation set under:
 
 ```text
 backend/src/test/resources/retrieval-eval/
+  ai-model-v1-atoms.jsonl
   ai-model-v1.jsonl
   ai-model-v1-metadata.json
 ```
+
+`ai-model-v1-atoms.jsonl` is the reviewed, immutable snapshot of the published AI-model atom corpus used to build and score v1. The fixed atom snapshot prevents later question-bank edits from changing historical evaluation results.
 
 Each JSONL row represents one query:
 
@@ -264,7 +267,7 @@ query: <query text>
 passage: <atom text>
 ```
 
-Each model embeds the same query set and the same published AI-model atom corpus. Similarity is calculated consistently for that model, and ranked Top-K lists are written as evaluation artifacts.
+Each model embeds the same query set and the same fixed published AI-model atom snapshot. Similarity is calculated consistently for that model, and ranked Top-K lists are written as evaluation artifacts.
 
 ## 10. Candidate-Set Experiment
 
@@ -386,6 +389,7 @@ Logs must not contain secrets, tokens, passwords, or complete unrelated intervie
 
 ```text
 backend/src/test/resources/retrieval-eval/
+  ai-model-v1-atoms.jsonl
   ai-model-v1.jsonl
   ai-model-v1-metadata.json
 
@@ -394,6 +398,7 @@ scripts/retrieval_eval/
   generate_synthetic_queries.py
   build_candidate_pool.py
   score_embeddings.py
+  prelabel_candidates.py
   calculate_metrics.py
 ```
 
@@ -428,7 +433,8 @@ output/retrieval-eval/
 ### Dataset Validation
 
 - Exactly 100 unique query IDs exist.
-- Every judgment references an existing published AI-model atom.
+- The committed atom snapshot contains only unique published AI-model atoms and is immutable for v1.
+- Every judgment references an atom in the committed v1 atom snapshot.
 - Every relevance score is an integer from 0 to 3.
 - No committed row contains forbidden identifiers or obvious personal data.
 - Scenario and source distributions match metadata.
