@@ -192,6 +192,97 @@ graph TD
 
 `query_text` 可能包含候选人回答内容，只允许受限访问；导出检索评测集前必须脱敏，不能把用户 ID、记录 ID、完整原始面试记录或其他个人信息提交到 Git。
 
+### RAG 离线检索评测
+
+`scripts/retrieval_eval` 提供 AI 大模型岗位的离线检索评测工具链，用于比较候选集大小、中文或多语言 Embedding 模型，以及后续 rerank 的潜在价值。该流程只读 MySQL，并在本地加载模型计算相似度，不会修改生产 Qdrant collection。
+
+固定评测数据提交到：
+
+```text
+backend/src/test/resources/retrieval-eval/
+  ai-model-v1-atoms.jsonl
+  ai-model-v1.jsonl
+  ai-model-v1-metadata.json
+```
+
+v1 Atom 快照和 100 条 query 数据集一旦审核提交即保持不可变。原始导出、未审核 query、候选池、模型建议和报告写入 `output/retrieval-eval/`，默认不提交到 Git。
+
+安装可选依赖：
+
+```powershell
+python -m pip install -r scripts/retrieval_eval/requirements.txt
+```
+
+配置只读数据库账号：
+
+```env
+RETRIEVAL_EVAL_DB_HOST=localhost
+RETRIEVAL_EVAL_DB_PORT=3306
+RETRIEVAL_EVAL_DB_USER=readonly_user
+RETRIEVAL_EVAL_DB_PASSWORD=replace_me
+RETRIEVAL_EVAL_DB_NAME=interview_db
+```
+
+典型流程：
+
+```powershell
+python scripts/retrieval_eval/export_atoms.py --output output/retrieval-eval/ai-model-atoms.jsonl
+python scripts/retrieval_eval/extract_real_queries.py --limit 40 --output output/retrieval-eval/real-queries.jsonl
+```
+
+人工检查真实 query 的脱敏结果并填写 `scenario` 后，再生成补齐 query：
+
+```powershell
+python scripts/retrieval_eval/generate_synthetic_queries.py `
+  --real-queries output/retrieval-eval/real-queries.jsonl `
+  --atoms output/retrieval-eval/ai-model-atoms.jsonl `
+  --output output/retrieval-eval/ai-model-v1-unjudged.jsonl
+```
+
+评分、候选池和模型预标注：
+
+```powershell
+python scripts/retrieval_eval/score_embeddings.py `
+  --queries output/retrieval-eval/ai-model-v1-unjudged.jsonl `
+  --atoms output/retrieval-eval/ai-model-atoms.jsonl `
+  --output output/retrieval-eval/embedding-rankings.jsonl `
+  --top-k 30
+
+python scripts/retrieval_eval/build_candidate_pool.py `
+  --queries output/retrieval-eval/ai-model-v1-unjudged.jsonl `
+  --atoms output/retrieval-eval/ai-model-atoms.jsonl `
+  --rankings output/retrieval-eval/embedding-rankings.jsonl `
+  --output output/retrieval-eval/candidate-pool.jsonl
+
+python scripts/retrieval_eval/prelabel_candidates.py `
+  --queries output/retrieval-eval/ai-model-v1-unjudged.jsonl `
+  --atoms output/retrieval-eval/ai-model-atoms.jsonl `
+  --pool output/retrieval-eval/candidate-pool.jsonl `
+  --output output/retrieval-eval/candidate-pool-prelabeled.jsonl
+```
+
+模型建议不是评测真值。人工审核 Atom 快照、query 和 `0-3` relevance judgment 后，才能写入固定 v1 数据集。验证和生成报告：
+
+```powershell
+python scripts/retrieval_eval/validate_dataset.py `
+  --dataset backend/src/test/resources/retrieval-eval/ai-model-v1.jsonl `
+  --metadata backend/src/test/resources/retrieval-eval/ai-model-v1-metadata.json `
+  --atoms backend/src/test/resources/retrieval-eval/ai-model-v1-atoms.jsonl
+
+python scripts/retrieval_eval/score_embeddings.py `
+  --queries backend/src/test/resources/retrieval-eval/ai-model-v1.jsonl `
+  --atoms backend/src/test/resources/retrieval-eval/ai-model-v1-atoms.jsonl `
+  --output output/retrieval-eval/embedding-rankings.jsonl `
+  --top-k 30
+
+python scripts/retrieval_eval/calculate_metrics.py `
+  --dataset backend/src/test/resources/retrieval-eval/ai-model-v1.jsonl `
+  --rankings output/retrieval-eval/embedding-rankings.jsonl `
+  --metrics-output output/retrieval-eval/ai-model-v1-metrics.json `
+  --report-output output/retrieval-eval/ai-model-v1-report.md `
+  --seed 20260603
+```
+
 ## 题库维护 Skill
 
 仓库内置 Skill：
