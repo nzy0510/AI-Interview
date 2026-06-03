@@ -283,6 +283,23 @@ class InterviewServiceImplTest {
         verifyNoInteractions(questionBankService, ragRetrievalLogMapper);
     }
 
+    @Test
+    @DisplayName("请求日志写入失败时仍继续请求 AI 输出")
+    void shouldContinueStreamingWhenRetrievalRequestLogInsertFails() {
+        stubChatStream(25L, InterviewPhase.TECHNICAL);
+        when(questionBankService.searchWithMetadata(any())).thenReturn(QuestionBankSearchResponse.builder()
+                .results(List.of())
+                .strategy("MYSQL_FALLBACK")
+                .build());
+        when(ragRetrievalRequestLogMapper.insert(any()))
+                .thenThrow(new IllegalStateException("api_key=raw-key"));
+
+        SseEmitter emitter = interviewService.chatStream(1L, 25L, "请继续");
+
+        assertThat(emitter).isNotNull();
+        verify(streamingChatModel).generate(anyList(), any());
+    }
+
     private void stubChatStream(Long recordId, InterviewPhase nextPhase) {
         InterviewRecord record = new InterviewRecord();
         record.setId(recordId);

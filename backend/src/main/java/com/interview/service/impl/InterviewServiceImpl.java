@@ -347,7 +347,7 @@ public class InterviewServiceImpl implements InterviewService {
         try {
             ragRetrievalRequestLogMapper.insert(logEntry);
         } catch (Exception e) {
-            log.warn("RAG 请求日志写入失败: {}", e.getMessage());
+            log.warn("RAG 请求日志写入失败: {}", sanitizeErrorMessage(e.getMessage()));
         }
     }
 
