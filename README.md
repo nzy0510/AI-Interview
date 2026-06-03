@@ -183,6 +183,15 @@ graph TD
 
 题库写入只通过开发者可见的 `Settings -> Question Bank Admin` 面板进行。开发者输入 `APP_ADMIN_TOKEN` 后，可上传生成的 JSON 导入包、校验、试运行、正式发布、查询与维护索引；脚本和 Skill 不直接写入数据库或调用发布接口。
 
+### RAG 检索日志
+
+面试题库检索会记录两层日志：
+
+- `rag_retrieval_request_log`：每次检索请求一行，包含零命中、跳过和失败请求，用于分析召回覆盖、检索策略与延迟。
+- `rag_retrieval_log`：每个命中的知识原子一行，通过 `request_id` 关联请求级日志，用于分析相似度与召回排名。
+
+`query_text` 可能包含候选人回答内容，只允许受限访问；导出检索评测集前必须脱敏，不能把用户 ID、记录 ID、完整原始面试记录或其他个人信息提交到 Git。
+
 ## 题库维护 Skill
 
 仓库内置 Skill：
