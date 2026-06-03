@@ -5,10 +5,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewRecord;
 import com.interview.entity.RagRetrievalLog;
+import com.interview.entity.RagRetrievalRequestLog;
 import com.interview.dto.questionbank.QuestionBankSearchRequest;
+import com.interview.dto.questionbank.QuestionBankSearchResponse;
 import com.interview.dto.questionbank.QuestionBankSearchResult;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
+import com.interview.mapper.RagRetrievalRequestLogMapper;
 import com.interview.service.InterviewService;
 import com.interview.service.InterviewTurnPlanner;
 import com.interview.service.UsageQuotaService;
@@ -31,12 +34,18 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class InterviewServiceImpl implements InterviewService {
 
     private static final List<String> HR_SOFT_SKILL_CATEGORIES = List.of("HR软技能");
+    private static final Pattern SENSITIVE_KEY_VALUE_PATTERN = Pattern.compile(
+            "(?i)\\b(api[_-]?key|token|password|secret)\\s*([=:])\\s*([^\\s,;]+)");
+    private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+", Pattern.CASE_INSENSITIVE);
 
     @Autowired
     private InterviewRecordMapper interviewRecordMapper;
@@ -55,6 +64,9 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Autowired
     private RagRetrievalLogMapper ragRetrievalLogMapper;
+
+    @Autowired
+    private RagRetrievalRequestLogMapper ragRetrievalRequestLogMapper;
 
     @Autowired
     private com.interview.service.MentorService mentorService;
@@ -162,15 +174,35 @@ public class InterviewServiceImpl implements InterviewService {
         // RAG 检索（通过数据库题库 + Qdrant 向量检索封装岗位分类过滤和已用原子黑名单）
         List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
         QuestionBankSearchRequest searchRequest = buildSearchRequest(position, ragQuery, usedAtomIds, nextPhase);
+        String requestId = UUID.randomUUID().toString();
+        int turnIdx = chatHistory.size() / 2 + 1;
+        String queryText = truncate(ragQuery, 500);
+        int requestedLimit = searchRequest != null ? searchRequest.getLimit() : 0;
         List<QuestionBankSearchResult> retrievedResults;
-        try {
-            retrievedResults = searchRequest != null ? questionBankService.search(searchRequest) : List.of();
-        } catch (Exception e) {
-            log.warn("RAG 检索失败，跳过题库上下文: recordId={}, position={}, error={}",
-                    recordId, position, e.getMessage());
-            recordSystemEvent(userId, "RAG_RETRIEVAL_FAILED", "system",
-                    Map.of("recordId", recordId, "position", position), false, e.getMessage());
+        long searchStartedAt = System.nanoTime();
+        if (searchRequest == null) {
             retrievedResults = List.of();
+            insertRetrievalRequestLog(requestId, userId, recordId, turnIdx, position, nextPhase,
+                    queryText, requestedLimit, 0, "SKIPPED", 0L, "SUCCESS", null);
+        } else {
+            try {
+                QuestionBankSearchResponse searchResponse = questionBankService.searchWithMetadata(searchRequest);
+                retrievedResults = searchResponse.getResults();
+                long latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - searchStartedAt);
+                insertRetrievalRequestLog(requestId, userId, recordId, turnIdx, position, nextPhase,
+                        queryText, requestedLimit, retrievedResults.size(), searchResponse.getStrategy(),
+                        latencyMs, "SUCCESS", null);
+            } catch (Exception e) {
+                log.warn("RAG 检索失败，跳过题库上下文: recordId={}, position={}, error={}",
+                        recordId, position, e.getMessage());
+                recordSystemEvent(userId, "RAG_RETRIEVAL_FAILED", "system",
+                        Map.of("recordId", recordId, "position", position), false, e.getMessage());
+                retrievedResults = List.of();
+                long latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - searchStartedAt);
+                insertRetrievalRequestLog(requestId, userId, recordId, turnIdx, position, nextPhase,
+                        queryText, requestedLimit, 0, "FAILED", latencyMs, "FAILED",
+                        sanitizeErrorMessage(e.getMessage()));
+            }
         }
 
         // 原子追加新命中原子 ID，避免并发覆盖
@@ -181,7 +213,6 @@ public class InterviewServiceImpl implements InterviewService {
         sessionStore.addUsedAtoms(recordId, newAtomIds);
 
         // 持久化 RAG 检索日志
-        int turnIdx = chatHistory.size() / 2 + 1;
         int rank = 0;
         for (QuestionBankSearchResult result : retrievedResults) {
             rank++;
@@ -190,8 +221,9 @@ public class InterviewServiceImpl implements InterviewService {
             RagRetrievalLog logEntry = new RagRetrievalLog();
             logEntry.setUserId(userId);
             logEntry.setRecordId(recordId);
+            logEntry.setRequestId(requestId);
             logEntry.setTurnIndex(turnIdx);
-            logEntry.setQueryText(ragQuery.length() > 500 ? ragQuery.substring(0, 500) : ragQuery);
+            logEntry.setQueryText(queryText);
             logEntry.setPosition(position);
             logEntry.setRetrievedAtomId(atomId);
             logEntry.setRetrievedCategory(result.getCategory());
@@ -291,6 +323,47 @@ public class InterviewServiceImpl implements InterviewService {
             searchRequest.setCategories(HR_SOFT_SKILL_CATEGORIES);
         }
         return searchRequest;
+    }
+
+    private void insertRetrievalRequestLog(String requestId, Long userId, Long recordId, int turnIndex,
+                                           String position, InterviewPhase phase, String queryText,
+                                           int requestedLimit, int candidateCount, String strategy,
+                                           long latencyMs, String status, String errorMessage) {
+        RagRetrievalRequestLog logEntry = new RagRetrievalRequestLog();
+        logEntry.setRequestId(requestId);
+        logEntry.setUserId(userId);
+        logEntry.setRecordId(recordId);
+        logEntry.setTurnIndex(turnIndex);
+        logEntry.setPosition(position);
+        logEntry.setPhase(phase != null ? phase.name() : null);
+        logEntry.setQueryText(queryText);
+        logEntry.setRequestedLimit(requestedLimit);
+        logEntry.setCandidateCount(candidateCount);
+        logEntry.setRetrievalStrategy(strategy);
+        logEntry.setLatencyMs(latencyMs);
+        logEntry.setStatus(status);
+        logEntry.setErrorMessage(errorMessage);
+        try {
+            ragRetrievalRequestLogMapper.insert(logEntry);
+        } catch (Exception e) {
+            log.warn("RAG 请求日志写入失败: {}", e.getMessage());
+        }
+    }
+
+    private String sanitizeErrorMessage(String errorMessage) {
+        if (errorMessage == null) {
+            return null;
+        }
+        String sanitized = URL_PATTERN.matcher(errorMessage).replaceAll("[URL]");
+        sanitized = SENSITIVE_KEY_VALUE_PATTERN.matcher(sanitized).replaceAll("$1$2[REDACTED]");
+        return truncate(sanitized, 500);
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 
     @Override
