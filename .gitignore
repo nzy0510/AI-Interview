@@ -140,3 +140,8 @@ backend/uploads/
 backend/mvn_result.txt
 .superpowers/
 .superpower/
+
+# Retrieval evaluation raw and generated artifacts
+/output/retrieval-eval/
+/.cache/retrieval-eval/
+/scripts/retrieval_eval/.env
