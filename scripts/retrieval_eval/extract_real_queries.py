@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -17,12 +16,6 @@ ORDER BY create_time DESC
 """.strip()
 
 
-def serialize_time(value: Any) -> Any:
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
-    return value
-
-
 def prepare_real_queries(rows: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
     prepared: list[dict[str, Any]] = []
     for row in rows:
@@ -32,9 +25,6 @@ def prepare_real_queries(rows: list[dict[str, Any]], limit: int) -> list[dict[st
             "source": "real_anonymized",
             "scenario": None,
             "query_text": anonymize_text(str(row.get("query_text") or "")),
-            "candidate_count": row.get("candidate_count"),
-            "retrieval_strategy": row.get("retrieval_strategy"),
-            "create_time": serialize_time(row.get("create_time")),
         }
         if is_valid_real_query(query):
             prepared.append(query)

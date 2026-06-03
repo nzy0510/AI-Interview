@@ -52,6 +52,9 @@ class RetrievalEvalExportsTest(unittest.TestCase):
 
         self.assertEqual(len(queries), 1)
         self.assertNotIn("request_id", queries[0])
+        self.assertNotIn("create_time", queries[0])
+        self.assertNotIn("candidate_count", queries[0])
+        self.assertNotIn("retrieval_strategy", queries[0])
         self.assertNotIn("张三", queries[0]["query_text"])
         self.assertEqual(queries[0]["source"], "real_anonymized")
         self.assertIsNone(queries[0]["scenario"])
