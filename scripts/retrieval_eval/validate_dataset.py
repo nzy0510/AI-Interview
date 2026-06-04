@@ -11,12 +11,18 @@ from typing import Any
 if __package__ is None or __package__ == "":
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from scripts.retrieval_eval.common import AI_MODEL_CATEGORY, build_atom_text, read_jsonl
+from scripts.retrieval_eval.common import AI_MODEL_CATEGORY, RELEVANT_THRESHOLD, build_atom_text, read_jsonl
 from scripts.retrieval_eval.generate_synthetic_queries import SCENARIO_QUOTAS, build_query_text
 
 
 ALLOWED_SOURCES = {"real_anonymized", "synthetic_reviewed"}
 FORBIDDEN_FIELDS = {"user_id", "record_id", "request_id", "email", "phone"}
+NEXT_ACTION_BY_MAX_RELEVANCE = {
+    3: "direct_follow_up",
+    2: "bridged_follow_up",
+    1: "clarify_or_narrow",
+    0: "reset_or_redirect",
+}
 EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_RE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
 SECRET_RE = re.compile(r"(?i)\b(api[_-]?key|token|password|secret)\s*[=:]\s*\S+")
@@ -133,6 +139,22 @@ def validate_dataset_rows(
             relevance = judgment.get("relevance")
             if not isinstance(relevance, int) or isinstance(relevance, bool) or relevance not in {0, 1, 2, 3}:
                 errors.append(f"{judgment_path}: relevance must be an integer from 0 to 3")
+        max_relevance = max(
+            (int(judgment["relevance"]) for judgment in judgments if isinstance(judgment.get("relevance"), int)),
+            default=0,
+        )
+        if row.get("max_relevance") != max_relevance:
+            errors.append(f"{path}: max_relevance must match max judgment relevance")
+        if row.get("next_action") != NEXT_ACTION_BY_MAX_RELEVANCE[max_relevance]:
+            errors.append(f"{path}: next_action does not match max_relevance")
+        if row.get("positive_judgment_count") != sum(
+            1 for judgment in judgments if isinstance(judgment.get("relevance"), int) and judgment["relevance"] >= RELEVANT_THRESHOLD
+        ):
+            errors.append(f"{path}: positive_judgment_count does not match judgments")
+        if row.get("strong_judgment_count") != sum(
+            1 for judgment in judgments if isinstance(judgment.get("relevance"), int) and judgment["relevance"] == 3
+        ):
+            errors.append(f"{path}: strong_judgment_count does not match judgments")
         errors.extend(find_forbidden_fields(row, path))
         errors.extend(find_sensitive_text(row, path))
     if len(rows) != expected_count:
@@ -158,6 +180,12 @@ def validate_metadata(metadata: dict[str, Any], rows: list[dict[str, Any]]) -> l
         errors.append("metadata: sources distribution does not match dataset")
     if metadata.get("scenario_counts") != scenario_counts:
         errors.append("metadata: scenario_counts distribution does not match dataset")
+    next_action_counts = dict(Counter(str(row.get("next_action")) for row in rows))
+    max_relevance_counts = dict(Counter(str(row.get("max_relevance")) for row in rows))
+    if metadata.get("next_action_counts") != next_action_counts:
+        errors.append("metadata: next_action_counts distribution does not match dataset")
+    if metadata.get("max_relevance_counts") != max_relevance_counts:
+        errors.append("metadata: max_relevance_counts distribution does not match dataset")
     return errors
 
 

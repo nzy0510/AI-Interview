@@ -213,6 +213,21 @@ This is different from asking whether the query and atom are textually similar.
 | 1 | Topically related, but unsuitable for the current follow-up context |
 | 0 | Irrelevant, misleading, or likely to cause an abrupt topic jump |
 
+The v1 dataset also derives an interviewer action from the highest relevance score
+available for a query:
+
+| Max Relevance | `next_action` | Interviewer behavior |
+| ---: | --- | --- |
+| 3 | `direct_follow_up` | Directly ask a knowledge follow-up grounded in the atom |
+| 2 | `bridged_follow_up` | Ask the atom-based follow-up after a short natural bridge |
+| 1 | `clarify_or_narrow` | First narrow, clarify, or ask the candidate to make the answer concrete |
+| 0 | `reset_or_redirect` | Ignore the retrieved atoms and redirect to the role mainline or previous question |
+
+A relevance `1` or `0` does not mean the atom is low quality in general. It means
+the atom is not suitable as the direct next question in the current dialogue
+state. When all retrieved candidates are `0` or `1`, the interviewer should not
+force a knowledge-atom follow-up.
+
 Knowledge atom quality and query-atom relevance are separate:
 
 - Question-bank review ensures that an atom is correct and useful in general.

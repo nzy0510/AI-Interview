@@ -1,0 +1,61 @@
+{
+  "dataset_id": "retrieval-eval-ai-model-v1",
+  "category": "AI大模型",
+  "version": "v1",
+  "immutable": true,
+  "review_status": "user_approved_agent_transition_review_v1",
+  "review_basis": "Agent-reviewed labels using the user-approved transition-aware interviewer rubric; user spot-checked and approved freezing this draft as v1.",
+  "query_count": 100,
+  "atom_count": 120,
+  "judgment_count": 2580,
+  "relevant_threshold": 2,
+  "sources": {
+    "synthetic_reviewed": 60,
+    "real_anonymized": 40
+  },
+  "scenario_counts": {
+    "correct_but_incomplete": 25,
+    "concept_confusion": 20,
+    "easier_follow_up": 15,
+    "mixed_topics": 15,
+    "colloquial_or_typos": 10,
+    "short_clear_topic": 10,
+    "off_topic_noise": 5
+  },
+  "relevance_counts": {
+    "3": 287,
+    "0": 1225,
+    "2": 456,
+    "1": 612
+  },
+  "max_relevance_counts": {
+    "3": 87,
+    "1": 2,
+    "0": 5,
+    "2": 6
+  },
+  "next_action_counts": {
+    "direct_follow_up": 87,
+    "clarify_or_narrow": 2,
+    "reset_or_redirect": 5,
+    "bridged_follow_up": 6
+  },
+  "action_derivation": "next_action is derived from max relevance per query: 3=direct_follow_up, 2=bridged_follow_up, 1=clarify_or_narrow, 0=reset_or_redirect.",
+  "rubric": {
+    "3": "Very suitable as a natural next question. Can be a direct deep dive or a high-value horizontal expansion grounded in the candidate stated module, responsibility, goal, or problem.",
+    "2": "Relevant and usable with an explainable transition, but not the best direct next question or needs a short bridge from the interviewer.",
+    "1": "Topically related but the current answer lacks enough anchor. The interviewer should clarify, narrow, or request a concrete module/process before asking this atom.",
+    "0": "Irrelevant, obvious topic jump, or only based on generic AI-project association. The interviewer should ignore this atom and redirect/reset."
+  },
+  "next_action_definitions": {
+    "direct_follow_up": "Top candidates include a score-3 atom; interviewer can directly ask a knowledge follow-up based on the atom.",
+    "bridged_follow_up": "Best candidates are score-2; interviewer can use the atom after a short natural bridge.",
+    "clarify_or_narrow": "Only score-1 candidates exist; interviewer should first narrow, clarify, or ask the candidate to make the answer concrete instead of directly using an atom.",
+    "reset_or_redirect": "All candidates are score-0; interviewer should ignore these atoms and redirect to the role mainline or recover the previous question."
+  },
+  "notes": [
+    "A score of 1 or 0 does not mean the atom itself is poor; it means the atom is not suitable as the direct next question in the current dialogue state.",
+    "When all retrieved candidates are 0 or 1, the interviewer should not force a knowledge-atom follow-up. It should clarify, narrow, reset, or redirect first.",
+    "The committed atom snapshot freezes the published AI-model atom corpus used for v1 scoring."
+  ]
+}

@@ -56,6 +56,27 @@ class RetrievalEvalDatasetTest(unittest.TestCase):
         self.assertTrue(any("source" in error for error in errors))
         self.assertTrue(any("unknown atom" in error for error in errors))
 
+    def test_dataset_rows_require_next_action_to_match_max_relevance(self):
+        rows = [
+            {
+                "query_id": "q1",
+                "position": "AI大模型",
+                "phase": "TECHNICAL",
+                "source": "synthetic_reviewed",
+                "scenario": "short_clear_topic",
+                "query_text": "请解释 RAG。 我只知道它会检索知识库。",
+                "max_relevance": 2,
+                "next_action": "direct_follow_up",
+                "positive_judgment_count": 1,
+                "strong_judgment_count": 0,
+                "judgments": [{"atom_id": "rag", "relevance": 2, "reason": "可以铺垫追问"}],
+            }
+        ]
+
+        errors = validate_dataset_rows(rows, {"rag"}, expected_count=1)
+
+        self.assertTrue(any("next_action" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()
