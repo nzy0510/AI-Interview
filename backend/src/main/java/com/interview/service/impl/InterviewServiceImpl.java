@@ -26,6 +26,7 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -80,6 +81,12 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Autowired(required = false)
     private com.interview.service.AppEventService appEventService;
+
+    @Value("${app.rag.retrieval-limit:20}")
+    private int ragRetrievalLimit = 20;
+
+    @Value("${app.rag.context-limit:10}")
+    private int ragContextLimit = 10;
 
     // ========== 业务方法 ==========
 
@@ -243,7 +250,8 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         StringBuilder contextBuilder = new StringBuilder();
-        for (int i = 0; i < retrievedResults.size(); i++) {
+        int contextCount = Math.min(retrievedResults.size(), normalizedRagContextLimit());
+        for (int i = 0; i < contextCount; i++) {
             QuestionBankSearchResult result = retrievedResults.get(i);
             contextBuilder.append(i + 1).append(". [atom_id: ")
                     .append(result.getAtomId() != null ? result.getAtomId() : "unknown")
@@ -325,11 +333,19 @@ public class InterviewServiceImpl implements InterviewService {
         searchRequest.setPosition(position);
         searchRequest.setQuery(ragQuery);
         searchRequest.setExcludeAtomIds(usedAtomIds);
-        searchRequest.setLimit(3);
+        searchRequest.setLimit(normalizedRagRetrievalLimit());
         if (nextPhase == InterviewPhase.HR) {
             searchRequest.setCategories(HR_SOFT_SKILL_CATEGORIES);
         }
         return searchRequest;
+    }
+
+    private int normalizedRagRetrievalLimit() {
+        return Math.max(1, Math.min(ragRetrievalLimit, 20));
+    }
+
+    private int normalizedRagContextLimit() {
+        return Math.max(1, Math.min(ragContextLimit, normalizedRagRetrievalLimit()));
     }
 
     private void insertRetrievalRequestLog(String requestId, Long userId, Long recordId, int turnIndex,

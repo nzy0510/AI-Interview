@@ -26,7 +26,7 @@ import java.util.UUID;
 @Service
 public class QdrantVectorService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final EmbeddingModel embeddingModel;
 
     @Value("${question-bank.qdrant.enabled:true}")
@@ -41,8 +41,19 @@ public class QdrantVectorService {
     @Value("${question-bank.qdrant.vector-size:384}")
     private int vectorSize;
 
+    @Value("${app.embedding.query-prefix:}")
+    private String queryPrefix;
+
+    @Value("${app.embedding.passage-prefix:}")
+    private String passagePrefix;
+
     public QdrantVectorService(EmbeddingModel embeddingModel) {
+        this(embeddingModel, new RestTemplate());
+    }
+
+    QdrantVectorService(EmbeddingModel embeddingModel, RestTemplate restTemplate) {
         this.embeddingModel = embeddingModel;
+        this.restTemplate = restTemplate;
     }
 
     public boolean ensureCollection() {
@@ -74,7 +85,7 @@ public class QdrantVectorService {
         }
         if (!ensureCollection()) return false;
         try {
-            List<Float> vector = embed(buildSearchText(atom));
+            List<Float> vector = embed(withPrefix(passagePrefix, buildSearchText(atom)));
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("atom_id", atom.getAtomId());
             payload.put("subject", atom.getSubject());
@@ -116,7 +127,7 @@ public class QdrantVectorService {
         if (!ensureCollection()) return List.of();
         try {
             Map<String, Object> body = new LinkedHashMap<>();
-            body.put("vector", embed(query));
+            body.put("vector", embed(withPrefix(queryPrefix, query)));
             body.put("limit", Math.max(1, limit));
             body.put("with_payload", true);
             Map<String, Object> filter = buildFilter(categories, excludeAtomIds);
@@ -167,6 +178,12 @@ public class QdrantVectorService {
     private List<Float> embed(String text) {
         Embedding embedding = embeddingModel.embed(text).content();
         return embedding.vectorAsList();
+    }
+
+    private String withPrefix(String prefix, String text) {
+        if (prefix == null || prefix.isBlank()) return text;
+        if (Character.isWhitespace(prefix.charAt(prefix.length() - 1))) return prefix + text;
+        return prefix + " " + text;
     }
 
     private String buildSearchText(KnowledgeAtom atom) {

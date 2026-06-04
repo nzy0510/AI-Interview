@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -77,6 +78,21 @@ class QuestionBankServiceSearchTest {
         assertThat(response.getStrategy()).isEqualTo("MYSQL_FALLBACK");
         assertThat(response.getResults()).isEmpty();
         verify(atomMapper).selectList(any());
+    }
+
+    @Test
+    @DisplayName("caps vector search limit at twenty candidates")
+    void shouldCapVectorSearchLimitAtTwenty() {
+        QuestionBankSearchRequest request = request("HashMap collision handling");
+        request.setLimit(30);
+        when(qdrantVectorService.search(any(), any(), any(), any(Integer.class))).thenReturn(List.of());
+        when(atomMapper.selectList(any())).thenReturn(List.of());
+
+        service.searchWithMetadata(request);
+
+        ArgumentCaptor<Integer> limitCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(qdrantVectorService).search(any(), any(), any(), limitCaptor.capture());
+        assertThat(limitCaptor.getValue()).isEqualTo(20);
     }
 
     @Test

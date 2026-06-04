@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 
@@ -34,6 +35,12 @@ public class ChatConfig {
 
     @Value("${langchain4j.open-ai.chat-model.temperature}")
     private Double temperature;
+
+    @Value("${app.embedding.provider:all-minilm}")
+    private String embeddingProvider = "all-minilm";
+
+    @Value("${app.embedding.endpoint:}")
+    private String embeddingEndpoint = "";
 
     @Bean
     public OpenAiStreamingChatModel streamingChatLanguageModel() {
@@ -60,6 +67,12 @@ public class ChatConfig {
 
     @Bean
     public EmbeddingModel embeddingModel() {
+        if ("http".equalsIgnoreCase(embeddingProvider)) {
+            if (embeddingEndpoint == null || embeddingEndpoint.isBlank()) {
+                throw new IllegalStateException("app.embedding.endpoint is required when app.embedding.provider=http");
+            }
+            return new HttpEmbeddingModel(embeddingEndpoint, new RestTemplate());
+        }
         return new AllMiniLmL6V2EmbeddingModel();
     }
 

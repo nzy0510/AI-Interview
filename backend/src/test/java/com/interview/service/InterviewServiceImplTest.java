@@ -215,6 +215,7 @@ class InterviewServiceImplTest {
         assertThat(request.getPosition()).isEqualTo("Java 后端开发");
         assertThat(request.getCategories()).containsExactly("HR软技能");
         assertThat(request.getExcludeAtomIds()).containsExactly("used-atom");
+        assertThat(request.getLimit()).isEqualTo(20);
     }
 
     @Test
@@ -233,7 +234,7 @@ class InterviewServiceImplTest {
         RagRetrievalRequestLog requestLog = captor.getValue();
         assertThat(requestLog.getRequestId()).isNotBlank();
         assertThat(requestLog.getTurnIndex()).isEqualTo(1);
-        assertThat(requestLog.getRequestedLimit()).isEqualTo(3);
+        assertThat(requestLog.getRequestedLimit()).isEqualTo(20);
         assertThat(requestLog.getCandidateCount()).isZero();
         assertThat(requestLog.getRetrievalStrategy()).isEqualTo("MYSQL_FALLBACK");
         assertThat(requestLog.getStatus()).isEqualTo("SUCCESS");

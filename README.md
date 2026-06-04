@@ -192,6 +192,25 @@ graph TD
 
 `query_text` 可能包含候选人回答内容，只允许受限访问；导出检索评测集前必须脱敏，不能把用户 ID、记录 ID、完整原始面试记录或其他个人信息提交到 Git。
 
+### RAG Embedding 与候选集
+
+Docker 部署默认使用 `embedding-service` 加载 `intfloat/multilingual-e5-base`，后端通过 HTTP 调用该服务生成向量。普通本地 Java 运行仍默认使用内置 `all-minilm`，便于不启动 Python 模型服务时调试。
+
+关键配置：
+
+```env
+APP_EMBEDDING_PROVIDER=http
+APP_EMBEDDING_ENDPOINT=http://embedding-service:8000/embed
+APP_EMBEDDING_QUERY_PREFIX=query:
+APP_EMBEDDING_PASSAGE_PREFIX=passage:
+QDRANT_COLLECTION=interview_atoms_e5_base
+QDRANT_VECTOR_SIZE=768
+APP_RAG_RETRIEVAL_LIMIT=20
+APP_RAG_CONTEXT_LIMIT=10
+```
+
+`multilingual-e5-base` 使用 768 维向量，不能写入旧的 384 维 `interview_atoms` collection。切换模型时使用新的 Qdrant collection 名称，并在服务启动后执行一次题库全量 reindex。否则 MySQL 中旧的 `vector_status=SYNCED` 只表示旧 collection 已同步，不代表新 collection 已有向量。
+
 ### RAG 离线检索评测
 
 `scripts/retrieval_eval` 提供 AI 大模型岗位的离线检索评测工具链，用于比较候选集大小、中文或多语言 Embedding 模型，以及后续 rerank 的潜在价值。该流程只读 MySQL，并在本地加载模型计算相似度，不会修改生产 Qdrant collection。

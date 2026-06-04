@@ -46,6 +46,8 @@ public class QuestionBankService {
     public static final String STATUS_DRAFT = "DRAFT";
     public static final String STATUS_PUBLISHED = "PUBLISHED";
     public static final String STATUS_ARCHIVED = "ARCHIVED";
+    private static final int DEFAULT_SEARCH_LIMIT = 3;
+    private static final int MAX_SEARCH_LIMIT = 20;
 
     private final KnowledgeAtomMapper atomMapper;
     private final KnowledgeAtomVersionMapper versionMapper;
@@ -75,7 +77,7 @@ public class QuestionBankService {
     }
 
     public QuestionBankSearchResponse searchWithMetadata(QuestionBankSearchRequest request) {
-        int limit = request.getLimit() > 0 ? Math.min(request.getLimit(), 10) : 3;
+        int limit = request.getLimit() > 0 ? Math.min(request.getLimit(), MAX_SEARCH_LIMIT) : DEFAULT_SEARCH_LIMIT;
         String query = request.getQuery() != null ? request.getQuery().trim() : "";
         if (query.length() <= 2) {
             return QuestionBankSearchResponse.builder()

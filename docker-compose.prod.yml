@@ -47,6 +47,27 @@ services:
     networks:
       - interview-network
 
+  embedding-service:
+    build:
+      context: ./embedding-service
+    container_name: interview-embedding-service
+    restart: unless-stopped
+    environment:
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-intfloat/multilingual-e5-base}
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-32}
+      EMBEDDING_NORMALIZE: ${EMBEDDING_NORMALIZE:-true}
+      HF_HOME: /models/huggingface
+    volumes:
+      - ./embedding_model_cache:/models/huggingface
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()\""]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+    networks:
+      - interview-network
+
   backend:
     build:
       context: ./backend
@@ -59,6 +80,8 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
+      embedding-service:
+        condition: service_healthy
     environment:
       DB_URL: jdbc:mysql://db:3306/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
       DB_USERNAME: ${DB_USERNAME}
@@ -70,11 +93,17 @@ services:
       REDIS_PORT: 6379
       QDRANT_ENABLED: ${QDRANT_ENABLED:-true}
       QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
-      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-interview_atoms}
-      QDRANT_VECTOR_SIZE: ${QDRANT_VECTOR_SIZE:-384}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-interview_atoms_e5_base}
+      QDRANT_VECTOR_SIZE: ${QDRANT_VECTOR_SIZE:-768}
       QUESTION_BANK_SEED_FROM_JSON: ${QUESTION_BANK_SEED_FROM_JSON:-true}
       QUESTION_BANK_REINDEX_ON_STARTUP: ${QUESTION_BANK_REINDEX_ON_STARTUP:-true}
       QUESTION_BANK_LEGACY_LOADER_ENABLED: ${QUESTION_BANK_LEGACY_LOADER_ENABLED:-false}
+      APP_RAG_RETRIEVAL_LIMIT: ${APP_RAG_RETRIEVAL_LIMIT:-20}
+      APP_RAG_CONTEXT_LIMIT: ${APP_RAG_CONTEXT_LIMIT:-10}
+      APP_EMBEDDING_PROVIDER: ${APP_EMBEDDING_PROVIDER:-http}
+      APP_EMBEDDING_ENDPOINT: ${APP_EMBEDDING_ENDPOINT:-http://embedding-service:8000/embed}
+      APP_EMBEDDING_QUERY_PREFIX: "${APP_EMBEDDING_QUERY_PREFIX:-query:}"
+      APP_EMBEDDING_PASSAGE_PREFIX: "${APP_EMBEDDING_PASSAGE_PREFIX:-passage:}"
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_USERNAME: ${MAIL_USERNAME}

@@ -90,6 +90,7 @@ application-prod.yml
 /mysql_data_backup_57_*/
 /redis_data/
 /qdrant_data/
+/embedding_model_cache/
 /document/
 /backups/
 
