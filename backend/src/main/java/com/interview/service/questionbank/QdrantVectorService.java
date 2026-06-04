@@ -6,6 +6,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -47,6 +48,7 @@ public class QdrantVectorService {
     @Value("${app.embedding.passage-prefix:}")
     private String passagePrefix;
 
+    @Autowired
     public QdrantVectorService(EmbeddingModel embeddingModel) {
         this(embeddingModel, new RestTemplate());
     }
