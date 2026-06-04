@@ -110,7 +110,7 @@ import { ref, reactive, computed, onMounted, nextTick, onBeforeUnmount } from 'v
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Microphone, ArrowLeft, UserFilled } from '@element-plus/icons-vue'
-import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
+import { startInterviewAPI, finishInterviewAPI, getHistoryDetailAPI } from '@/api/interview'
 import { getPreferenceAPI } from '@/api/user'
 import * as echarts from 'echarts'
 import { marked } from 'marked'
@@ -145,6 +145,8 @@ const showReport = ref(false)
 const autoSend = ref(true) // auto-send on silence toggle
 const displayScore = ref(0)
 let radarChartInstance = null
+const ACTIVE_INTERVIEW_TTL_MS = 8 * 60 * 60 * 1000
+const activeInterviewKey = computed(() => userKey('active_text_interview'))
 
 const scoreColor = computed(() => {
   if (displayScore.value >= 90) return '#10b981'
@@ -225,21 +227,14 @@ onMounted(async () => {
     if (preferenceFallback.focusAreas.length) effectiveFocusAreas.value = preferenceFallback.focusAreas
   }
 
-  try {
-    const id = await startInterviewAPI({
-      position: position.value,
-      mode: 'text',
-      difficultyLevel: difficultyLevel.value,
-      focusAreas: effectiveFocusAreas.value.length ? effectiveFocusAreas.value : focusAreas.value,
-      resumeQuestions
-    })
-    recordId.value = id
-    trackEvent('INTERVIEW_START_CLIENT', { mode: 'text', position: position.value })
-    triggerAiStart()
-  } catch {
-    ElMessage.error('连接失败，请确认后端已启动')
-    router.back()
+  const restored = await restoreActiveInterview()
+  if (restored) {
+    ElMessage.info('已恢复未完成面试')
+    if (messageList.value.length === 0) triggerAiStart()
+    return
   }
+
+  await startNewInterview(resumeQuestions)
 })
 
 onBeforeUnmount(() => {
@@ -439,6 +434,105 @@ let pendingEndType = null
 
 const triggerAiStart = () => streamAiResponse('你好，我已准备好，请开始面试。')
 
+const startNewInterview = async (resumeQuestions) => {
+  try {
+    const id = await startInterviewAPI({
+      position: position.value,
+      mode: 'text',
+      difficultyLevel: difficultyLevel.value,
+      focusAreas: effectiveFocusAreas.value.length ? effectiveFocusAreas.value : focusAreas.value,
+      resumeQuestions
+    })
+    recordId.value = id
+    saveActiveInterview()
+    trackEvent('INTERVIEW_START_CLIENT', { mode: 'text', position: position.value })
+    triggerAiStart()
+  } catch {
+    ElMessage.error('连接失败，请确认后端已启动')
+    router.back()
+  }
+}
+
+const readActiveInterview = () => {
+  try {
+    const raw = localStorage.getItem(activeInterviewKey.value)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed?.recordId || parsed.mode !== 'text') return null
+    if (Date.now() - Number(parsed.updatedAt || parsed.createdAt || 0) > ACTIVE_INTERVIEW_TTL_MS) {
+      localStorage.removeItem(activeInterviewKey.value)
+      return null
+    }
+    return parsed
+  } catch {
+    localStorage.removeItem(activeInterviewKey.value)
+    return null
+  }
+}
+
+const saveActiveInterview = () => {
+  if (!recordId.value) return
+  const now = Date.now()
+  const previous = readActiveInterview()
+  localStorage.setItem(activeInterviewKey.value, JSON.stringify({
+    recordId: recordId.value,
+    position: position.value,
+    mode: 'text',
+    difficultyLevel: difficultyLevel.value,
+    focusAreas: effectiveFocusAreas.value.length ? effectiveFocusAreas.value : focusAreas.value,
+    createdAt: previous?.recordId === recordId.value ? previous.createdAt : now,
+    updatedAt: now
+  }))
+}
+
+const clearActiveInterview = () => {
+  localStorage.removeItem(activeInterviewKey.value)
+}
+
+const restoreActiveInterview = async () => {
+  const parsedRecordId = route.query.recordId ? Number(route.query.recordId) : null
+  const queryRecordId = Number.isFinite(parsedRecordId) ? parsedRecordId : null
+  const active = readActiveInterview()
+  const targetRecordId = queryRecordId || active?.recordId
+  if (!targetRecordId) return false
+
+  try {
+    const record = await getHistoryDetailAPI(targetRecordId)
+    if (!record || record.interviewMode === 'video' || record.score != null || record.endTime) {
+      clearActiveInterview()
+      return false
+    }
+    recordId.value = record.id
+    position.value = record.position || position.value
+    difficultyLevel.value = record.difficultyLevel || difficultyLevel.value
+    currentPhase.value = record.phase || currentPhase.value
+    messageList.value = parsePersistedMessages(record.chatHistory)
+    saveActiveInterview()
+    return true
+  } catch {
+    clearActiveInterview()
+    return false
+  }
+}
+
+const parsePersistedMessages = (raw) => {
+  if (!raw || raw === '[]') return []
+  try {
+    const rows = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!Array.isArray(rows)) return []
+    return rows.map((row) => {
+      const type = row.type
+      const text = row.text || row.contents?.[0]?.text || ''
+      if (!text) return null
+      if (type === 'USER') return { role: 'user', content: text, streaming: false }
+      if (type === 'AI') return { role: 'ai', content: text, streaming: false }
+      return null
+    }).filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 const sendMessage = () => {
   const text = inputMsg.value.trim()
   if (!text || isStreaming.value) return
@@ -446,6 +540,7 @@ const sendMessage = () => {
 
   messageList.value.push({ role: 'user', content: text, streaming: false })
   inputMsg.value = ''
+  saveActiveInterview()
   scrollToBottom()
   streamAiResponse(text)
 }
@@ -492,6 +587,7 @@ const streamAiResponse = (msg) => {
       aiMsg.streaming = false
       isStreaming.value = false
       eventSource.close()
+      saveActiveInterview()
       if (pendingEndType) {
         const endType = pendingEndType
         pendingEndType = null
@@ -561,6 +657,7 @@ const performEndInterview = async (endType = 'manual') => {
     loadingMsg.close()
 
     if (res) {
+      clearActiveInterview()
       const parsedPayload = parseInterviewFinishPayload(res)
       reportData.score = res.score || 0
       reportData.feedback = res.feedback || ''

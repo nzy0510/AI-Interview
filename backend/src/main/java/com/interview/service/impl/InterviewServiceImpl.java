@@ -32,6 +32,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -144,12 +145,16 @@ public class InterviewServiceImpl implements InterviewService {
         List<ChatMessage> chatHistory = sessionStore.load(recordId);
 
         if (chatHistory == null) {
-            try {
-                emitter.send(JSON.toJSONString(Map.of("error", "session_expired")));
-                emitter.complete();
-            } catch (IOException e) {
+            chatHistory = parsePersistedChatHistory(record.getChatHistory());
+            if (chatHistory.isEmpty()) {
+                try {
+                    emitter.send(JSON.toJSONString(Map.of("error", "session_expired")));
+                    emitter.complete();
+                } catch (IOException e) {
+                }
+                return emitter;
             }
-            return emitter;
+            sessionStore.save(recordId, chatHistory);
         }
 
         // 1. RAG 检索（含已用原子黑名单，避免重复提问同一知识点）
@@ -284,6 +289,7 @@ public class InterviewServiceImpl implements InterviewService {
                     currentHistory.add(new UserMessage(message));
                     currentHistory.add(new AiMessage(aiResponseBuilder.toString()));
                     sessionStore.save(recordId, currentHistory);
+                    persistChatHistory(recordId, currentHistory);
 
                     emitter.send(JSON.toJSONString(Map.of("done", "true")));
                     emitter.complete();
@@ -419,36 +425,12 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         if (!historyMessages.isEmpty()) {
-            record.setChatHistory(JSON.toJSONString(historyMessages));
+            record.setChatHistory(serializeChatHistory(historyMessages));
         } else {
             log.warn("缓存中无会话 (recordId={})，尝试从数据库恢复", recordId);
-            String savedHistory = record.getChatHistory();
-            if (savedHistory != null && !savedHistory.equals("[]")) {
-                try {
-                    com.alibaba.fastjson2.JSONArray arr = JSON.parseArray(savedHistory);
-                    for (int i = 0; i < arr.size(); i++) {
-                        com.alibaba.fastjson2.JSONObject msgObj = arr.getJSONObject(i);
-                        String type = msgObj.getString("type");
-                        String text = msgObj.getString("text");
-                        if (text == null) {
-                            com.alibaba.fastjson2.JSONArray contents = msgObj.getJSONArray("contents");
-                            if (contents != null && !contents.isEmpty()) {
-                                text = contents.getJSONObject(0).getString("text");
-                            }
-                        }
-                        if (text != null) {
-                            if ("AI".equals(type))
-                                historyMessages.add(new AiMessage(text));
-                            else if ("USER".equals(type))
-                                historyMessages.add(new UserMessage(text));
-                            else if ("SYSTEM".equals(type))
-                                historyMessages.add(new SystemMessage(text));
-                        }
-                    }
-                    log.info("从数据库恢复了 {} 条对话消息", historyMessages.size());
-                } catch (Exception e) {
-                    log.error("解析数据库对话历史失败", e);
-                }
+            historyMessages = parsePersistedChatHistory(record.getChatHistory());
+            if (!historyMessages.isEmpty()) {
+                log.info("从数据库恢复了 {} 条对话消息", historyMessages.size());
             }
         }
 
@@ -507,6 +489,72 @@ public class InterviewServiceImpl implements InterviewService {
             throw new RuntimeException("面试记录不存在或无权访问");
         }
         return record;
+    }
+
+    private void persistChatHistory(Long recordId, List<ChatMessage> messages) {
+        InterviewRecord update = new InterviewRecord();
+        update.setId(recordId);
+        update.setChatHistory(serializeChatHistory(messages));
+        try {
+            interviewRecordMapper.updateById(update);
+        } catch (Exception e) {
+            log.warn("对话历史增量持久化失败: recordId={}, error={}", recordId, sanitizeErrorMessage(e.getMessage()));
+        }
+    }
+
+    private String serializeChatHistory(List<ChatMessage> messages) {
+        List<Map<String, String>> serialized = new ArrayList<>();
+        for (ChatMessage msg : messages) {
+            Map<String, String> row = new HashMap<>();
+            if (msg instanceof UserMessage userMessage) {
+                row.put("type", "USER");
+                row.put("text", userMessage.singleText());
+            } else if (msg instanceof AiMessage aiMessage) {
+                row.put("type", "AI");
+                row.put("text", aiMessage.text());
+            } else if (msg instanceof SystemMessage systemMessage) {
+                row.put("type", "SYSTEM");
+                row.put("text", systemMessage.text());
+            } else {
+                continue;
+            }
+            serialized.add(row);
+        }
+        return JSON.toJSONString(serialized);
+    }
+
+    private List<ChatMessage> parsePersistedChatHistory(String savedHistory) {
+        List<ChatMessage> messages = new ArrayList<>();
+        if (savedHistory == null || savedHistory.isBlank() || "[]".equals(savedHistory)) {
+            return messages;
+        }
+        try {
+            com.alibaba.fastjson2.JSONArray arr = JSON.parseArray(savedHistory);
+            for (int i = 0; i < arr.size(); i++) {
+                com.alibaba.fastjson2.JSONObject msgObj = arr.getJSONObject(i);
+                String type = msgObj.getString("type");
+                String text = msgObj.getString("text");
+                if (text == null) {
+                    com.alibaba.fastjson2.JSONArray contents = msgObj.getJSONArray("contents");
+                    if (contents != null && !contents.isEmpty()) {
+                        text = contents.getJSONObject(0).getString("text");
+                    }
+                }
+                if (text == null) {
+                    continue;
+                }
+                if ("AI".equals(type)) {
+                    messages.add(new AiMessage(text));
+                } else if ("USER".equals(type)) {
+                    messages.add(new UserMessage(text));
+                } else if ("SYSTEM".equals(type)) {
+                    messages.add(new SystemMessage(text));
+                }
+            }
+        } catch (Exception e) {
+            log.error("解析数据库对话历史失败", e);
+        }
+        return messages;
     }
 
     private String normalizeMode(String mode) {

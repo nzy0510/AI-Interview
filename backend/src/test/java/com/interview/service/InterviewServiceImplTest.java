@@ -13,6 +13,7 @@ import com.interview.mapper.RagRetrievalRequestLogMapper;
 import com.interview.service.impl.InterviewServiceImpl;
 import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -297,6 +299,68 @@ class InterviewServiceImplTest {
         SseEmitter emitter = interviewService.chatStream(1L, 25L, "请继续");
 
         assertThat(emitter).isNotNull();
+        verify(streamingChatModel).generate(anyList(), any());
+    }
+
+    @Test
+    @DisplayName("每轮 AI 回复完成后增量持久化对话历史")
+    void shouldPersistChatHistoryAfterEachCompletedTurn() {
+        stubChatStream(26L, InterviewPhase.OPENING);
+
+        interviewService.chatStream(1L, 26L, "请开始");
+
+        ArgumentCaptor<InterviewRecord> captor = ArgumentCaptor.forClass(InterviewRecord.class);
+        verify(interviewRecordMapper, atLeast(2)).updateById(captor.capture());
+        assertThat(captor.getAllValues())
+                .anySatisfy(update -> assertThat(update.getChatHistory())
+                        .contains("\"type\":\"USER\"", "\"text\":\"请开始\"",
+                                "\"type\":\"AI\"", "\"text\":\"下一题\""));
+    }
+
+    @Test
+    @DisplayName("Redis 会话丢失时从数据库对话历史恢复并继续面试")
+    void shouldRestoreChatHistoryFromDatabaseWhenSessionMissing() {
+        InterviewRecord record = new InterviewRecord();
+        record.setId(27L);
+        record.setUserId(1L);
+        record.setPosition("AI 大模型工程师");
+        record.setPhase(InterviewPhase.TECHNICAL.name());
+        record.setChatHistory("""
+                [
+                  {"type":"USER","text":"你好"},
+                  {"type":"AI","text":"请解释 RAG 的基本流程"}
+                ]
+                """);
+
+        when(interviewRecordMapper.selectOne(any())).thenReturn(record);
+        when(sessionStore.load(27L)).thenReturn(null);
+        when(sessionStore.loadUsedAtoms(27L)).thenReturn(List.of());
+        when(sessionStore.loadTailoredQuestions(27L)).thenReturn(List.of());
+        when(interviewTurnPlanner.determineNextPhase(any(), anyList()))
+                .thenReturn(InterviewPhase.TECHNICAL);
+        when(questionBankService.searchWithMetadata(any())).thenReturn(QuestionBankSearchResponse.builder()
+                .results(List.of())
+                .strategy("MYSQL_FALLBACK")
+                .build());
+        when(interviewTurnPlanner.plan(any(), anyList(), any(), any()))
+                .thenReturn(new InterviewTurnPlanner.InterviewTurnPlan(InterviewPhase.TECHNICAL, "coordinator"));
+        doAnswer(invocation -> {
+            StreamingResponseHandler<AiMessage> handler = invocation.getArgument(1);
+            handler.onNext("继续追问");
+            handler.onComplete(Response.from(new AiMessage("继续追问")));
+            return null;
+        }).when(streamingChatModel).generate(anyList(), any());
+
+        interviewService.chatStream(1L, 27L, "向量数据库负责相似度检索");
+
+        ArgumentCaptor<List<dev.langchain4j.data.message.ChatMessage>> historyCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(sessionStore, atLeast(1)).save(any(), historyCaptor.capture());
+        assertThat(historyCaptor.getAllValues())
+                .anySatisfy(history -> assertThat(history)
+                        .hasSize(4)
+                        .anySatisfy(message -> assertThat(message).isInstanceOf(UserMessage.class))
+                        .anySatisfy(message -> assertThat(message).isInstanceOf(AiMessage.class)));
         verify(streamingChatModel).generate(anyList(), any());
     }
 
