@@ -335,6 +335,20 @@ Zero-hit rate measures the percentage of queries with no relevance `>= 2` atom i
 
 Diversity@3 identifies whether the final Top-3 is dominated by near-duplicate or same-concept atoms. The first version may use atom subject/category review rather than automated semantic clustering.
 
+### 11.7 Next Action Analysis
+
+The v1 dataset includes `next_action` so retrieval can be evaluated as an
+interview-control signal, not only as atom recall. For each Top-K list, derive a
+predicted action from the highest judged relevance in Top-K, then compare it
+with the dataset action.
+
+Report:
+
+- exact action rate
+- follow-up support rate for `direct_follow_up` and `bridged_follow_up`
+- direct follow-up support rate for `direct_follow_up`
+- non-follow-up safety rate for `clarify_or_narrow` and `reset_or_redirect`
+
 ## 12. Deciding Whether Top-20 Is Meaningfully Better Than Top-3
 
 Define:

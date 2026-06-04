@@ -1,6 +1,7 @@
 import unittest
 
 from scripts.retrieval_eval.calculate_metrics import (
+    action_metrics_at_k,
     analyze_candidate_set,
     calculate,
     hit_rate_at_k,
@@ -72,6 +73,55 @@ class RetrievalEvalMetricsTest(unittest.TestCase):
         )
 
         self.assertTrue(analysis["meaningfully_better"])
+
+    def test_action_metrics_compare_topk_supported_action_with_expected_action(self):
+        dataset = [
+            {
+                "query_id": "q1",
+                "next_action": "direct_follow_up",
+                "judgments": [{"atom_id": "a", "relevance": 3}],
+            },
+            {
+                "query_id": "q2",
+                "next_action": "clarify_or_narrow",
+                "judgments": [{"atom_id": "b", "relevance": 1}],
+            },
+        ]
+        judgments = {
+            "q1": {"a": 3},
+            "q2": {"b": 1},
+        }
+        rankings = {"q1": ["a"], "q2": ["b"]}
+
+        metrics = action_metrics_at_k(rankings, dataset, judgments, 1)
+
+        self.assertEqual(metrics["exact_action_rate"], 1.0)
+        self.assertEqual(metrics["follow_up_support_rate"], 1.0)
+        self.assertEqual(metrics["direct_follow_up_support_rate"], 1.0)
+        self.assertEqual(metrics["non_follow_up_safety_rate"], 1.0)
+
+    def test_calculate_includes_next_action_analysis(self):
+        dataset = [
+            {
+                "query_id": "q1",
+                "next_action": "bridged_follow_up",
+                "judgments": [{"atom_id": "a", "relevance": 2}],
+            }
+        ]
+        rankings = [
+            {
+                "query_id": "q1",
+                "model": "all-minilm",
+                "results": [{"atom_id": "a", "rank": 1, "score": 1.0}],
+            }
+        ]
+
+        metrics = calculate(dataset, rankings, seed=7)
+
+        self.assertEqual(
+            metrics["next_action_analysis"]["all-minilm"]["top_3"]["exact_action_rate"],
+            1.0,
+        )
 
 
 if __name__ == "__main__":

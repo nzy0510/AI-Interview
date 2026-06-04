@@ -6,6 +6,7 @@ import math
 import random
 import statistics
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,14 @@ from scripts.retrieval_eval.common import RELEVANT_THRESHOLD, read_jsonl
 
 K_VALUES = (3, 10, 20, 30)
 BASELINE_MODEL = "all-minilm"
+NEXT_ACTION_BY_SCORE = {
+    3: "direct_follow_up",
+    2: "bridged_follow_up",
+    1: "clarify_or_narrow",
+    0: "reset_or_redirect",
+}
+FOLLOW_UP_ACTIONS = {"direct_follow_up", "bridged_follow_up"}
+NON_FOLLOW_UP_ACTIONS = {"clarify_or_narrow", "reset_or_redirect"}
 
 
 def relevant_atoms(judgments: dict[str, int], threshold: int = RELEVANT_THRESHOLD) -> set[str]:
@@ -67,6 +76,83 @@ def mrr(ranking: list[str], judgments: dict[str, int]) -> float:
         if judgments.get(atom_id, 0) >= target:
             return 1.0 / index
     return 0.0
+
+
+def next_action_for_score(score: int) -> str:
+    return NEXT_ACTION_BY_SCORE[max(0, min(3, score))]
+
+
+def expected_next_action(query: dict[str, Any]) -> str:
+    action = query.get("next_action")
+    if isinstance(action, str) and action in set(NEXT_ACTION_BY_SCORE.values()):
+        return action
+    judgments = {str(judgment["atom_id"]): int(judgment["relevance"]) for judgment in query.get("judgments", [])}
+    return next_action_for_score(max(judgments.values(), default=0))
+
+
+def top_relevance(ranking: list[str], judgments: dict[str, int], k: int) -> int:
+    return max((judgments.get(atom_id, 0) for atom_id in ranking[:k]), default=0)
+
+
+def action_metrics_at_k(
+    rankings: dict[str, list[str]],
+    dataset: list[dict[str, Any]],
+    judgments_by_query: dict[str, dict[str, int]],
+    k: int,
+) -> dict[str, Any]:
+    if not dataset:
+        return {}
+    exact_matches = 0
+    follow_up_expected = 0
+    follow_up_supported = 0
+    direct_expected = 0
+    direct_supported = 0
+    non_follow_up_expected = 0
+    non_follow_up_safe = 0
+    predicted_counts: Counter[str] = Counter()
+    expected_counts: Counter[str] = Counter()
+    mismatches: list[dict[str, Any]] = []
+
+    for query in dataset:
+        query_id = str(query["query_id"])
+        expected = expected_next_action(query)
+        top_score = top_relevance(rankings.get(query_id, []), judgments_by_query.get(query_id, {}), k)
+        predicted = next_action_for_score(top_score)
+        expected_counts[expected] += 1
+        predicted_counts[predicted] += 1
+        if predicted == expected:
+            exact_matches += 1
+        elif len(mismatches) < 20:
+            mismatches.append(
+                {
+                    "query_id": query_id,
+                    "expected": expected,
+                    "predicted": predicted,
+                    "top_relevance": top_score,
+                }
+            )
+        if expected in FOLLOW_UP_ACTIONS:
+            follow_up_expected += 1
+            if top_score >= RELEVANT_THRESHOLD:
+                follow_up_supported += 1
+        if expected == "direct_follow_up":
+            direct_expected += 1
+            if top_score == 3:
+                direct_supported += 1
+        if expected in NON_FOLLOW_UP_ACTIONS:
+            non_follow_up_expected += 1
+            if predicted in NON_FOLLOW_UP_ACTIONS:
+                non_follow_up_safe += 1
+
+    return {
+        "exact_action_rate": exact_matches / len(dataset),
+        "follow_up_support_rate": follow_up_supported / follow_up_expected if follow_up_expected else 0.0,
+        "direct_follow_up_support_rate": direct_supported / direct_expected if direct_expected else 0.0,
+        "non_follow_up_safety_rate": non_follow_up_safe / non_follow_up_expected if non_follow_up_expected else 0.0,
+        "expected_counts": dict(expected_counts),
+        "predicted_counts": dict(predicted_counts),
+        "mismatches": mismatches,
+    }
 
 
 def percentile(values: list[float], fraction: float) -> float:
@@ -179,6 +265,7 @@ def calculate(
         "comparisons": {},
         "examples": {},
         "candidate_set_analysis": {},
+        "next_action_analysis": {},
     }
     per_query_by_model: dict[str, dict[str, dict[str, float]]] = {}
 
@@ -228,6 +315,9 @@ def calculate(
             for query_id in query_ids
             if per_query[query_id]["recall_at_20"] > per_query[query_id]["recall_at_3"]
         ][:20]
+        output["next_action_analysis"][model] = {
+            f"top_{k}": action_metrics_at_k(rankings, dataset, judgments, k) for k in K_VALUES
+        }
 
     if BASELINE_MODEL in per_query_by_model:
         baseline = per_query_by_model[BASELINE_MODEL]
@@ -288,6 +378,19 @@ def build_report(metrics: dict[str, Any]) -> str:
             f"deltaHitRate={analysis['hit_rate_delta_at_20_vs_3']:.4f}; "
             f"CI lower={analysis['paired_bootstrap_95']['lower_95']:.4f}"
         )
+    lines.append("")
+    lines.extend(["## Next Action Analysis", ""])
+    lines.append("| Model | TopK | Exact Action | Follow-Up Support | Direct Support | Non-Follow-Up Safety |")
+    lines.append("| --- | ---: | ---: | ---: | ---: | ---: |")
+    for model, model_analysis in metrics.get("next_action_analysis", {}).items():
+        for key, analysis in model_analysis.items():
+            lines.append(
+                f"| {model} | {key.removeprefix('top_')} | "
+                f"{analysis['exact_action_rate']:.4f} | "
+                f"{analysis['follow_up_support_rate']:.4f} | "
+                f"{analysis['direct_follow_up_support_rate']:.4f} | "
+                f"{analysis['non_follow_up_safety_rate']:.4f} |"
+            )
     lines.append("")
     lines.extend(["## Query-Level Examples", ""])
     for name, query_ids in metrics["examples"].items():
