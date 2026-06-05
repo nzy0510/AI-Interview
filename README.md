@@ -2,7 +2,6 @@
 
 InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目采用 `Spring Boot 3 + MyBatis-Plus + LangChain4j + DeepSeek + Redis + MySQL 8 + Qdrant` 构建后端，前端使用 `Vue 3 + Vite + Element Plus`。系统支持文字面试、视频面试、简历画像、RAG 追问、面试复盘、AI Mentor 与数据库题库维护。
 
-当前版本已经移除默认 `admin / 123456` 登录方式。用户需要正常注册登录；题库维护由 Skill 生成 JSON 导入包，再由开发者通过网页管理面板审核发布。
 
 ## 核心能力
 
@@ -14,7 +13,7 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目采
 - 简历画像：PDF 简历解析后写入 `resume_profile`，前端以服务端状态为准，避免旧浏览器缓存误用。
 - AI Mentor：聚合面试历史、知识覆盖、风险提醒和行动建议，Redis 缓存 24 小时并支持刷新。
 - 访问统计与成本保护：记录页面访问、关键行为、反馈、异常和限流命中；使用 Redis + MySQL 快照限制每日 AI 面试、对话、简历解析和 Mentor 生成额度。
-- Docker 本地启动：`frontend + backend + mysql + redis + qdrant` 一键编排。
+- Docker 本地启动：`frontend + backend + embedding-service + mysql + redis + qdrant` 一键编排。
 
 ## 技术栈
 
@@ -25,7 +24,8 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目采
 - MyBatis-Plus 3.5.5
 - LangChain4j 0.29.1
 - DeepSeek API
-- AllMiniLmL6V2 Embedding Model
+- AllMiniLmL6V2 Embedding Model（本地 Java 默认）
+- multilingual-e5-base Embedding Service（Docker 默认）
 - MySQL 8.0
 - Redis 7
 - Qdrant
@@ -51,6 +51,7 @@ graph LR
     User["用户"] --> Frontend["Vue 3 前端"]
     Frontend -->|"HTTP / SSE"| Backend["Spring Boot 后端"]
     Backend --> LLM["DeepSeek"]
+    Backend --> Embedding["Embedding Service"]
     Backend --> MySQL[("MySQL 8")]
     Backend --> Redis[("Redis")]
     Backend --> Qdrant[("Qdrant")]
@@ -98,6 +99,7 @@ graph LR
 │   ├── question_bank_import.py     # PDF/DOCX/TXT/MD/JSON -> 题库导入包
 │   ├── atomizer.py                 # 旧知识原子生成脚本
 │   └── reclassify_hot200.py        # 旧题库分类整理脚本
+├── embedding-service/              # Docker 默认使用的 multilingual-e5-base HTTP 向量服务
 ├── skills/interview-question-bank/ # Codex 题库维护 Skill
 ├── docs/adr/                       # 架构决策记录
 ├── image/架构图/                   # 系统架构图与 RAG 流程图 PNG
@@ -175,7 +177,7 @@ graph TD
     Package --> Admin["Settings / Question Bank Admin"]
     Admin --> API["/api/admin/question-bank"]
     API --> MySQL[("knowledge_atom")]
-    MySQL --> Qdrant[("interview_atoms collection")]
+    MySQL --> Qdrant[("interview_atoms_e5_base collection")]
     Qdrant --> Interview["面试 RAG 追问"]
 ```
 
@@ -210,6 +212,13 @@ APP_RAG_CONTEXT_LIMIT=10
 ```
 
 `multilingual-e5-base` 使用 768 维向量，不能写入旧的 384 维 `interview_atoms` collection。切换模型时使用新的 Qdrant collection 名称，并在服务启动后执行一次题库全量 reindex。否则 MySQL 中旧的 `vector_status=SYNCED` 只表示旧 collection 已同步，不代表新 collection 已有向量。
+
+生产环境当前默认约定：
+
+- `QDRANT_COLLECTION=interview_atoms_e5_base`
+- `QDRANT_VECTOR_SIZE=768`
+- Qdrant points 数量应与已发布题库原子数量一致。
+- 切换 `APP_EMBEDDING_PROVIDER`、`QDRANT_COLLECTION` 或 `QDRANT_VECTOR_SIZE` 后，需要通过开发者题库管理面板执行全量 reindex，并确认失败数为 0。
 
 ### RAG 离线检索评测
 

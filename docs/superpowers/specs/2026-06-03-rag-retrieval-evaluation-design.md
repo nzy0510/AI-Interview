@@ -490,3 +490,15 @@ This phase is complete when:
 - The three embedding models have been compared offline.
 - Candidate-set metrics and confidence intervals are reproducible.
 - The report provides evidence for or against embedding migration and future reranking.
+
+## 18. Production Follow-up
+
+On 2026-06-04, the offline evaluation led to a production retrieval migration:
+
+- Docker deployments now use `embedding-service` with `intfloat/multilingual-e5-base`.
+- Production Qdrant uses the 768-dimensional `interview_atoms_e5_base` collection.
+- Runtime retrieval requests use Top-20 candidates by default.
+- Prompt context injection remains capped at Top-10 by default.
+- The Azure deployment was reindexed after migration; the reindex result was `matched=1144`, `synced=1144`, `failed=0`.
+
+Reranking was not added in this follow-up. Future reranking work should still use the evaluation dataset and request-level retrieval logs to compare against the multilingual-e5 baseline.

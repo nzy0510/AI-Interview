@@ -2,7 +2,7 @@
 
 本指南用于单台 Azure Ubuntu 虚拟机的内测部署。内测阶段可以先使用公网 IP 访问文字面试；视频面试、麦克风和摄像头能力必须等域名和 HTTPS 完成后再开放给用户。
 
-当前项目包含 Spring Boot、MySQL、Redis、Qdrant、Vue 前端和后端使用的本地 embedding。内测推荐使用 2 vCPU / 8 GiB 内存级别的 VM，例如 `Standard_B2ms` 或 `Standard_D2s_v3`。如果使用 2 vCPU / 4 GiB 内存，建议额外配置 4 GiB swap。
+当前项目包含 Spring Boot、MySQL、Redis、Qdrant、Vue 前端和独立 `embedding-service`。Docker 部署默认使用 `intfloat/multilingual-e5-base`，首次构建会下载 Python 依赖、模型和缓存，内测推荐使用 2 vCPU / 8 GiB 内存级别的 VM，例如 `Standard_B2ms` 或 `Standard_D2s_v3`。如果使用 2 vCPU / 4 GiB 内存，建议额外配置 4 GiB swap。
 
 参考：Azure Linux VM 文档 <https://learn.microsoft.com/azure/virtual-machines/linux/>，Docker Ubuntu 安装文档 <https://docs.docker.com/installation/ubuntulinux/>。
 
@@ -133,7 +133,13 @@ docker compose --env-file .env -f docker-compose.prod.yml ps
 docker compose --env-file .env -f docker-compose.prod.yml logs --tail=100 backend
 ```
 
-首次启动会初始化 MySQL、导入 JSON 题库并同步 Qdrant 向量，可能需要几分钟。只要 `backend` 日志没有持续报错，等待初始化完成即可。
+首次启动会初始化 MySQL、启动 `embedding-service`、导入 JSON 题库并同步 Qdrant 向量，可能需要几分钟。第一次构建 multilingual-e5 镜像会明显更慢，并占用额外磁盘空间；启动前建议确认根分区至少保留 20 GiB 可用空间。
+
+当前 Docker 默认使用 768 维 `interview_atoms_e5_base` collection。若从旧的 384 维 `interview_atoms` 切换过来，或修改了 `QDRANT_COLLECTION`、`QDRANT_VECTOR_SIZE`、`APP_EMBEDDING_PROVIDER`，需要在服务启动后通过开发者题库管理面板执行一次全量 reindex。验收标准是：
+
+- 全量 reindex 返回 `failed=0`
+- Qdrant collection 的向量维度为 768
+- Qdrant points 数量与已发布题库原子数量一致
 
 启动后访问：
 
@@ -154,6 +160,7 @@ http://Azure公网IP
 - 历史记录、AI Mentor 页面
 - 头像上传和刷新后仍可访问
 - 开发者账号进入 Settings 的 Question Bank Admin，输入 `APP_ADMIN_TOKEN` 后可校验 JSON 导入包并执行试运行
+- 切换 Embedding 或 Qdrant collection 后，开发者账号可执行全量 reindex，且失败数为 0
 - `docker compose --env-file .env -f docker-compose.prod.yml restart` 后数据和上传文件不丢失
 
 公网 IP + HTTP 阶段不验收视频面试。浏览器摄像头和麦克风要求 HTTPS 或 localhost，等域名和 HTTPS 完成后再开放。

@@ -61,6 +61,7 @@ docker compose --env-file .env -f docker-compose.prod.yml ps
 
 - `interview-frontend`
 - `interview-backend`
+- `interview-embedding-service`
 - `interview-db`
 - `interview-redis`
 - `interview-qdrant`
@@ -76,7 +77,8 @@ docker compose --env-file .env -f docker-compose.prod.yml --profile https up -d 
 
 - `up`：创建并启动服务
 - `-d`：后台运行，SSH 断开后服务仍继续运行
-- `--build`：重新构建前端和后端镜像
+- `--build`：重新构建发生变化的项目镜像
+- 当前 Docker 默认还会构建 `embedding-service`，首次构建 multilingual-e5 相关依赖和模型缓存会更慢，占用磁盘更多。
 
 适用场景：
 
@@ -174,6 +176,24 @@ docker compose --env-file .env -f docker-compose.prod.yml ps
 1. 拉取 GitHub 最新代码
 2. 重新构建并启动容器
 3. 确认服务状态
+
+涉及 Embedding、Qdrant collection 或向量维度的更新，不能只看容器 `Up`。还需要执行题库全量 reindex，并确认 Qdrant 新 collection 的 points 数量与已发布题库原子数量一致。
+
+快速确认当前 Qdrant collection 状态：
+
+```bash
+docker compose --env-file .env -f docker-compose.prod.yml exec -T embedding-service python - <<'PY'
+import requests
+
+collection = "interview_atoms_e5_base"
+info = requests.get(f"http://qdrant:6333/collections/{collection}").json()["result"]
+count = requests.post(f"http://qdrant:6333/collections/{collection}/points/count", json={}).json()["result"]["count"]
+print("vector_size=", info["config"]["params"]["vectors"]["size"])
+print("points_count=", count)
+PY
+```
+
+如果 `vector_size` 不是 768，或 `points_count` 明显少于已发布题库原子数量，需要重新检查 `.env` 中的 `QDRANT_COLLECTION`、`QDRANT_VECTOR_SIZE` 和 Embedding 配置，再执行全量 reindex。
 
 ## 3. VM 停止、启动和自动关闭
 
