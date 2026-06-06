@@ -3,6 +3,7 @@
 ## 未发布
 
 ### 新增
+- 新增 RAG 离线 rerank 评测脚本，可在固定 AI 大模型评测集上比较二阶段重排与 `multilingual-e5-base` 基线，并记录当前暂不启用生产 rerank 的评测结论。
 - 新增独立 `embedding-service`，Docker 部署默认使用 `intfloat/multilingual-e5-base` 生成中文/多语言向量。
 - 新增 AI 大模型岗位 RAG 离线检索评测工具链，用于导出脱敏 query、构建候选池、比较 Embedding 模型、生成预标注并计算可复现指标。
 - 新增请求级 RAG 检索日志，记录零命中、失败、检索策略、候选数量与延迟，并通过 `request_id` 关联命中原子日志。

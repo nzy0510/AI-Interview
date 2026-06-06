@@ -255,6 +255,7 @@ def calculate(
     ranking_rows: list[dict[str, Any]],
     *,
     seed: int,
+    baseline_model: str = BASELINE_MODEL,
 ) -> dict[str, Any]:
     judgments = load_judgments(dataset)
     rankings_by_model = load_rankings(ranking_rows)
@@ -319,10 +320,10 @@ def calculate(
             f"top_{k}": action_metrics_at_k(rankings, dataset, judgments, k) for k in K_VALUES
         }
 
-    if BASELINE_MODEL in per_query_by_model:
-        baseline = per_query_by_model[BASELINE_MODEL]
+    if baseline_model in per_query_by_model:
+        baseline = per_query_by_model[baseline_model]
         for model, per_query in per_query_by_model.items():
-            if model == BASELINE_MODEL:
+            if model == baseline_model:
                 continue
             comparison: dict[str, Any] = {}
             for metric in ("recall_at_3", "recall_at_20", "ndcg_at_3", "mrr"):
@@ -331,8 +332,8 @@ def calculate(
                     [per_query[query_id][metric] for query_id in query_ids],
                     seed=seed,
                 )
-            output["comparisons"][f"{model}_vs_{BASELINE_MODEL}"] = comparison
-            output["examples"][f"{model}_outperforms_{BASELINE_MODEL}_at_3"] = [
+            output["comparisons"][f"{model}_vs_{baseline_model}"] = comparison
+            output["examples"][f"{model}_outperforms_{baseline_model}_at_3"] = [
                 query_id
                 for query_id in query_ids
                 if per_query[query_id]["recall_at_3"] > baseline[query_id]["recall_at_3"]
@@ -414,12 +415,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--metrics-output", type=Path, required=True)
     parser.add_argument("--report-output", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=20260603)
+    parser.add_argument("--baseline-model", default=BASELINE_MODEL)
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    metrics = calculate(read_jsonl(args.dataset), read_jsonl(args.rankings), seed=args.seed)
+    metrics = calculate(
+        read_jsonl(args.dataset),
+        read_jsonl(args.rankings),
+        seed=args.seed,
+        baseline_model=args.baseline_model,
+    )
     args.metrics_output.parent.mkdir(parents=True, exist_ok=True)
     args.metrics_output.write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
     args.report_output.parent.mkdir(parents=True, exist_ok=True)

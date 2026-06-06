@@ -324,6 +324,34 @@ python scripts/retrieval_eval/calculate_metrics.py `
   --seed 20260603
 ```
 
+评估 rerank 时，先基于当前推荐的 `multilingual-e5-base` Top-20 候选生成二阶段排序，再与原始 e5 排序合并计算指标：
+
+```powershell
+python scripts/retrieval_eval/rerank_candidates.py `
+  --queries backend/src/test/resources/retrieval-eval/ai-model-v1.jsonl `
+  --atoms backend/src/test/resources/retrieval-eval/ai-model-v1-atoms.jsonl `
+  --rankings output/retrieval-eval/ai-model-v1-rankings-multilingual-e5-base.jsonl `
+  --output output/retrieval-eval/ai-model-v1-rankings-e5-bge-reranker-base.jsonl `
+  --source-model multilingual-e5-base `
+  --candidate-top-k 20 `
+  --reranker bge-reranker-base
+
+Get-Content `
+  output/retrieval-eval/ai-model-v1-rankings-multilingual-e5-base.jsonl, `
+  output/retrieval-eval/ai-model-v1-rankings-e5-bge-reranker-base.jsonl `
+  | Set-Content output/retrieval-eval/ai-model-v1-rankings-e5-vs-rerank.jsonl
+
+python scripts/retrieval_eval/calculate_metrics.py `
+  --dataset backend/src/test/resources/retrieval-eval/ai-model-v1.jsonl `
+  --rankings output/retrieval-eval/ai-model-v1-rankings-e5-vs-rerank.jsonl `
+  --metrics-output output/retrieval-eval/ai-model-v1-metrics-e5-vs-rerank.json `
+  --report-output output/retrieval-eval/ai-model-v1-report-e5-vs-rerank.md `
+  --baseline-model multilingual-e5-base `
+  --seed 20260603
+```
+
+生产链路当前不启用二阶段 rerank。本评测集上，`bge-reranker-base` 和 `bge-reranker-v2-m3` 纯重排均拉低 Top-3 排序指标；融合分数只有小幅、置信度不足的提升，且会降低部分 HitRate 指标。后续只有在新数据集或新 reranker 明确提升 Recall@3、NDCG@3、MRR 且不损害 HitRate 后，才进入生产实现。
+
 ## 题库维护 Skill
 
 仓库内置 Skill：

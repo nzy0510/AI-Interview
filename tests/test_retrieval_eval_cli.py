@@ -16,6 +16,7 @@ class RetrievalEvalCliTest(unittest.TestCase):
             "prelabel_candidates.py",
             "calculate_metrics.py",
             "validate_dataset.py",
+            "rerank_candidates.py",
         ]
 
         for script in scripts:

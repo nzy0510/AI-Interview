@@ -502,3 +502,47 @@ On 2026-06-04, the offline evaluation led to a production retrieval migration:
 - The Azure deployment was reindexed after migration; the reindex result was `matched=1144`, `synced=1144`, `failed=0`.
 
 Reranking was not added in this follow-up. Future reranking work should still use the evaluation dataset and request-level retrieval logs to compare against the multilingual-e5 baseline.
+
+## 19. Rerank Offline Follow-up
+
+On 2026-06-06, `retrieval-eval-ai-model-v1` was used to test second-stage
+reranking over the `multilingual-e5-base` Top-20 candidate set.
+
+Baseline `multilingual-e5-base`:
+
+| Metric | Value |
+| --- | ---: |
+| Recall@3 | 0.3512 |
+| Recall@10 | 0.6130 |
+| Recall@20 | 0.7633 |
+| HitRate@3 | 0.8700 |
+| HitRate@10 | 0.9200 |
+| NDCG@3 | 0.7178 |
+| MRR | 0.8064 |
+
+Pure reranking did not improve the production-relevant Top-3 ordering:
+
+| Candidate | Recall@3 | HitRate@3 | NDCG@3 | MRR | NDCG@3 Delta |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `bge-reranker-base` | 0.3336 | 0.8500 | 0.6838 | 0.7532 | -0.0340 |
+| `bge-reranker-v2-m3` | 0.3351 | 0.8700 | 0.6862 | 0.7726 | -0.0316 |
+
+Score fusion between vector similarity and `bge-reranker-base` was also tested
+with reranker weights from `0.1` to `0.9`. The best NDCG@3 configuration was
+weight `0.6`:
+
+| Candidate | Recall@3 | HitRate@3 | HitRate@10 | NDCG@3 | MRR | NDCG@3 95% CI |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `bge-reranker-base` fusion `0.6` | 0.3554 | 0.8600 | 0.9100 | 0.7348 | 0.8218 | [-0.0096, 0.0475] |
+
+The fused result is not strong enough to justify production reranking because
+the confidence interval still crosses zero and HitRate@3/HitRate@10 both drop by
+0.01. `bge-reranker-v2-m3` also took roughly 18 minutes for 100 queries x Top-20
+pairs on the local CPU-only evaluation environment, which is not suitable for
+the current synchronous interview path without a dedicated model-serving design.
+
+Decision: keep the production retrieval path as `multilingual-e5-base` Top-20
+retrieval with Top-10 prompt context and the lightweight answer/retrieval quality
+guardrail. Do not implement production reranking from this evidence. Revisit
+reranking only with a new reranker, a larger real-query evaluation set, or an
+async/dedicated serving design that can meet interview latency requirements.

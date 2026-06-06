@@ -123,6 +123,27 @@ class RetrievalEvalMetricsTest(unittest.TestCase):
             1.0,
         )
 
+    def test_calculate_accepts_custom_comparison_baseline(self):
+        dataset = [
+            {"query_id": "q1", "judgments": [{"atom_id": "a", "relevance": 3}]},
+        ]
+        rankings = [
+            {
+                "query_id": "q1",
+                "model": "baseline",
+                "results": [{"atom_id": "x", "rank": 1, "score": 1.0}],
+            },
+            {
+                "query_id": "q1",
+                "model": "candidate",
+                "results": [{"atom_id": "a", "rank": 1, "score": 1.0}],
+            },
+        ]
+
+        metrics = calculate(dataset, rankings, seed=7, baseline_model="baseline")
+
+        self.assertIn("candidate_vs_baseline", metrics["comparisons"])
+
 
 if __name__ == "__main__":
     unittest.main()
