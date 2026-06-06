@@ -34,15 +34,6 @@ public class InterviewRetrievalService {
     private static final Pattern SENSITIVE_KEY_VALUE_PATTERN = Pattern.compile(
             "(?i)\\b(api[_-]?key|token|password|secret)\\s*([=:])\\s*([^\\s,;]+)");
     private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+", Pattern.CASE_INSENSITIVE);
-    private static final List<String> LOW_INFORMATION_PHRASES = List.of(
-            "不会", "不知道", "不清楚", "不了解", "没做过", "没有做过", "不太会",
-            "不太清楚", "不熟", "不是很了解", "忘了", "说不上来", "没接触",
-            "没用过", "不懂");
-    private static final List<String> TECHNICAL_TERMS = List.of(
-            "rag", "lora", "agent", "mcp", "a2a", "llm", "prompt", "embedding", "向量",
-            "检索", "召回", "微调", "注意力", "transformer", "token", "上下文", "幻觉",
-            "推理", "工具调用", "function calling", "langchain", "langgraph", "qdrant",
-            "rerank", "重排", "多模态", "量化", "蒸馏", "对齐", "rlhf", "sft", "低秩");
     private static final String REMEDIAL_DIRECTIVE = """
             【本轮检索决策：补救追问】
             候选人当前回答信息不足，但题库召回上下文较可靠。请围绕最相关的 1 个知识点做一次低难度补救追问，帮助候选人说明基本概念、流程或经验；不要直接给出标准答案。
@@ -60,6 +51,7 @@ public class InterviewRetrievalService {
     private final RagRetrievalLogMapper hitLogMapper;
     private final RagRetrievalRequestLogMapper requestLogMapper;
     private final AppEventService appEventService;
+    private final RetrievalAnswerSignals answerSignals = new RetrievalAnswerSignals();
 
     @Value("${app.rag.retrieval-limit:20}")
     private int retrievalLimit = 20;
@@ -160,7 +152,7 @@ public class InterviewRetrievalService {
         request.setPosition(position);
         request.setQuery(query);
         request.setExcludeAtomIds(usedAtomIds != null ? usedAtomIds : List.of());
-        request.setLimit(dynamicRetrievalLimit(message));
+        request.setLimit(answerSignals.effectiveRetrievalLimit(message, retrievalLimit, maxRetrievalLimit));
         if (nextPhase == InterviewPhase.HR) request.setCategories(HR_SOFT_SKILL_CATEGORIES);
         return request;
     }
@@ -224,7 +216,7 @@ public class InterviewRetrievalService {
 
     private RetrievalDecision decide(String message, List<ChatMessage> chatHistory,
                                      List<QuestionBankSearchResult> candidates) {
-        boolean lowInfoAnswer = isLowInformationAnswer(message);
+        boolean lowInfoAnswer = answerSignals.isLowInformationAnswer(message);
         boolean consecutiveLowInfo = lowInfoAnswer && previousUserAnswerWasLowInformation(chatHistory);
         double topScore = candidates.stream()
                 .mapToDouble(QuestionBankSearchResult::getScore)
@@ -251,19 +243,9 @@ public class InterviewRetrievalService {
         if (chatHistory == null || chatHistory.isEmpty()) return false;
         for (int i = chatHistory.size() - 1; i >= 0; i--) {
             if (chatHistory.get(i) instanceof UserMessage userMessage) {
-                return isLowInformationAnswer(userMessage.singleText());
+                return answerSignals.isLowInformationAnswer(userMessage.singleText());
             }
         }
-        return false;
-    }
-
-    private boolean isLowInformationAnswer(String message) {
-        if (message == null) return true;
-        String normalized = message.replaceAll("\\s+", "").toLowerCase();
-        for (String phrase : LOW_INFORMATION_PHRASES) {
-            if (normalized.contains(phrase)) return true;
-        }
-        if (normalized.length() <= 4 && technicalSignalCount(normalized) == 0) return true;
         return false;
     }
 
@@ -293,42 +275,15 @@ public class InterviewRetrievalService {
     }
 
     private int normalizedRetrievalLimit() {
-        return Math.max(1, Math.min(retrievalLimit, normalizedMaxRetrievalLimit()));
+        return answerSignals.normalizeLimit(retrievalLimit, maxRetrievalLimit);
     }
 
     private int normalizedMaxRetrievalLimit() {
-        return Math.max(1, maxRetrievalLimit);
-    }
-
-    private int dynamicRetrievalLimit(String message) {
-        int baseLimit = normalizedRetrievalLimit();
-        int maxLimit = normalizedMaxRetrievalLimit();
-        String normalized = normalizeForSignal(message);
-        if (isLowInformationAnswer(normalized) || maxLimit <= baseLimit) {
-            return baseLimit;
-        }
-        int length = normalized.length();
-        int technicalSignals = technicalSignalCount(normalized);
-        if ((length <= 20 && technicalSignals >= 1) || technicalSignals >= 3) {
-            return maxLimit;
-        }
-        return baseLimit;
+        return answerSignals.normalizeMaxRetrievalLimit(maxRetrievalLimit);
     }
 
     private int normalizedContextLimit() {
         return Math.max(1, Math.min(contextLimit, normalizedMaxRetrievalLimit()));
-    }
-
-    private int technicalSignalCount(String normalizedText) {
-        int count = 0;
-        for (String term : TECHNICAL_TERMS) {
-            if (normalizedText.contains(term.toLowerCase())) count++;
-        }
-        return count;
-    }
-
-    private String normalizeForSignal(String value) {
-        return value == null ? "" : value.replaceAll("\\s+", "").toLowerCase();
     }
 
     private String sanitizeErrorMessage(String errorMessage) {

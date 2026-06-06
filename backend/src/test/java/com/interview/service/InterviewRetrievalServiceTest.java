@@ -18,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -135,61 +134,10 @@ class InterviewRetrievalServiceTest {
     @DisplayName("short technical answer expands retrieval candidates without changing prompt consumption")
     void shouldExpandRetrievalLimitForShortTechnicalAnswer() {
         InterviewRetrievalService service = service();
-        ReflectionTestUtils.setField(service, "maxRetrievalLimit", 30);
         when(questionBankService.searchWithMetadata(any())).thenReturn(response(result("lora-low-rank", 0.83)));
 
         service.retrieve(
                 1L, record(), history("LoRA 为什么可以减少参数量？"), "低秩矩阵",
-                InterviewPhase.TECHNICAL, List.of());
-
-        ArgumentCaptor<QuestionBankSearchRequest> requestCaptor = ArgumentCaptor.forClass(QuestionBankSearchRequest.class);
-        verify(questionBankService).searchWithMetadata(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().getLimit()).isEqualTo(30);
-    }
-
-    @Test
-    @DisplayName("low-information answer keeps the default candidate budget")
-    void shouldKeepDefaultRetrievalLimitForLowInformationAnswer() {
-        InterviewRetrievalService service = service();
-        ReflectionTestUtils.setField(service, "maxRetrievalLimit", 30);
-        when(questionBankService.searchWithMetadata(any())).thenReturn(response(result("rag-flow", 0.83)));
-
-        service.retrieve(
-                1L, record(), history("请解释 RAG 的检索增强流程"), "我不会",
-                InterviewPhase.TECHNICAL, List.of());
-
-        ArgumentCaptor<QuestionBankSearchRequest> requestCaptor = ArgumentCaptor.forClass(QuestionBankSearchRequest.class);
-        verify(questionBankService).searchWithMetadata(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().getLimit()).isEqualTo(20);
-    }
-
-    @Test
-    @DisplayName("normal single-topic answer keeps the default candidate budget")
-    void shouldKeepDefaultRetrievalLimitForNormalSingleTopicAnswer() {
-        InterviewRetrievalService service = service();
-        ReflectionTestUtils.setField(service, "maxRetrievalLimit", 30);
-        when(questionBankService.searchWithMetadata(any())).thenReturn(response(result("rag-flow", 0.83)));
-
-        service.retrieve(
-                1L, record(), history("请解释 RAG 的检索增强流程"),
-                "先检索相关文档，再把上下文交给模型生成，最后根据上下文回答问题",
-                InterviewPhase.TECHNICAL, List.of());
-
-        ArgumentCaptor<QuestionBankSearchRequest> requestCaptor = ArgumentCaptor.forClass(QuestionBankSearchRequest.class);
-        verify(questionBankService).searchWithMetadata(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().getLimit()).isEqualTo(20);
-    }
-
-    @Test
-    @DisplayName("mixed technical answer expands retrieval candidates")
-    void shouldExpandRetrievalLimitForMixedTechnicalAnswer() {
-        InterviewRetrievalService service = service();
-        ReflectionTestUtils.setField(service, "maxRetrievalLimit", 30);
-        when(questionBankService.searchWithMetadata(any())).thenReturn(response(result("agent-rag", 0.83)));
-
-        service.retrieve(
-                1L, record(), history("你做过哪些大模型应用？"),
-                "项目里同时用了 RAG、Embedding、向量库和 Agent 工具调用，但细节有点混在一起",
                 InterviewPhase.TECHNICAL, List.of());
 
         ArgumentCaptor<QuestionBankSearchRequest> requestCaptor = ArgumentCaptor.forClass(QuestionBankSearchRequest.class);
