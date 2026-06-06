@@ -33,5 +33,7 @@ public class RagRetrievalLog {
 
     private Integer rankIndex;
 
+    private Boolean contextSelected;
+
     private LocalDateTime createTime;
 }

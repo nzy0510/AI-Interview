@@ -4,18 +4,11 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewRecord;
-import com.interview.entity.RagRetrievalLog;
-import com.interview.entity.RagRetrievalRequestLog;
-import com.interview.dto.questionbank.QuestionBankSearchRequest;
-import com.interview.dto.questionbank.QuestionBankSearchResponse;
-import com.interview.dto.questionbank.QuestionBankSearchResult;
 import com.interview.mapper.InterviewRecordMapper;
-import com.interview.mapper.RagRetrievalLogMapper;
-import com.interview.mapper.RagRetrievalRequestLogMapper;
+import com.interview.service.InterviewRetrievalService;
 import com.interview.service.InterviewService;
 import com.interview.service.InterviewTurnPlanner;
 import com.interview.service.UsageQuotaService;
-import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -26,7 +19,8 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -36,18 +30,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class InterviewServiceImpl implements InterviewService {
 
-    private static final List<String> HR_SOFT_SKILL_CATEGORIES = List.of("HR软技能");
     private static final Pattern SENSITIVE_KEY_VALUE_PATTERN = Pattern.compile(
             "(?i)\\b(api[_-]?key|token|password|secret)\\s*([=:])\\s*([^\\s,;]+)");
     private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+", Pattern.CASE_INSENSITIVE);
+    private final Set<Long> activeInterviewTurns = ConcurrentHashMap.newKeySet();
 
     @Autowired
     private InterviewRecordMapper interviewRecordMapper;
@@ -59,19 +53,17 @@ public class InterviewServiceImpl implements InterviewService {
     private com.interview.service.SessionStore sessionStore;
 
     @Autowired
-    private QuestionBankService questionBankService;
-
-    @Autowired
     private com.interview.service.EvaluationGenerator evaluationGenerator;
 
     @Autowired
-    private RagRetrievalLogMapper ragRetrievalLogMapper;
-
-    @Autowired
-    private RagRetrievalRequestLogMapper ragRetrievalRequestLogMapper;
+    private InterviewRetrievalService interviewRetrievalService;
 
     @Autowired
     private com.interview.service.MentorService mentorService;
+
+    @Autowired
+    @Qualifier("mentorTaskExecutor")
+    private TaskExecutor mentorTaskExecutor;
 
     @Autowired
     private InterviewTurnPlanner interviewTurnPlanner;
@@ -81,12 +73,6 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Autowired(required = false)
     private com.interview.service.AppEventService appEventService;
-
-    @Value("${app.rag.retrieval-limit:20}")
-    private int ragRetrievalLimit = 20;
-
-    @Value("${app.rag.context-limit:10}")
-    private int ragContextLimit = 10;
 
     // ========== 业务方法 ==========
 
@@ -164,213 +150,91 @@ public class InterviewServiceImpl implements InterviewService {
             sessionStore.save(recordId, chatHistory);
         }
 
-        // 1. RAG 检索（含已用原子黑名单，避免重复提问同一知识点）
-        String position = record.getPosition() != null ? record.getPosition() : "common";
-
-        // 构造增强检索 query：上一轮 AI 问题 + 用户当前回答
-        String ragQuery = message;
-        for (int i = chatHistory.size() - 1; i >= 0; i--) {
-            if (chatHistory.get(i) instanceof AiMessage) {
-                String lastAiText = ((AiMessage) chatHistory.get(i)).text();
-                if (lastAiText != null && !lastAiText.isBlank()) {
-                    ragQuery = lastAiText.length() > 300
-                            ? lastAiText.substring(lastAiText.length() - 300) + " " + message
-                            : lastAiText + " " + message;
-                }
-                break;
-            }
-        }
-
-        InterviewPhase nextPhase = interviewTurnPlanner.determineNextPhase(record, chatHistory);
-
-        // RAG 检索（通过数据库题库 + Qdrant 向量检索封装岗位分类过滤和已用原子黑名单）
-        List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
-        QuestionBankSearchRequest searchRequest = buildSearchRequest(position, ragQuery, usedAtomIds, nextPhase);
-        String requestId = UUID.randomUUID().toString();
-        int turnIdx = chatHistory.size() / 2 + 1;
-        String queryText = truncate(ragQuery, 500);
-        int requestedLimit = searchRequest != null ? searchRequest.getLimit() : 0;
-        List<QuestionBankSearchResult> retrievedResults;
-        long searchStartedAt = System.nanoTime();
-        if (searchRequest == null) {
-            retrievedResults = List.of();
-            insertRetrievalRequestLog(requestId, userId, recordId, turnIdx, position, nextPhase,
-                    queryText, requestedLimit, 0, "SKIPPED", 0L, "SUCCESS", null);
-        } else {
-            try {
-                QuestionBankSearchResponse searchResponse = questionBankService.searchWithMetadata(searchRequest);
-                retrievedResults = searchResponse.getResults();
-                long latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - searchStartedAt);
-                insertRetrievalRequestLog(requestId, userId, recordId, turnIdx, position, nextPhase,
-                        queryText, requestedLimit, retrievedResults.size(), searchResponse.getStrategy(),
-                        latencyMs, "SUCCESS", null);
-            } catch (Exception e) {
-                String sanitizedError = sanitizeErrorMessage(e.getMessage());
-                log.warn("RAG 检索失败，跳过题库上下文: recordId={}, position={}, error={}",
-                        recordId, position, sanitizedError);
-                recordSystemEvent(userId, "RAG_RETRIEVAL_FAILED", "system",
-                        Map.of("recordId", recordId, "position", position), false, sanitizedError);
-                retrievedResults = List.of();
-                long latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - searchStartedAt);
-                insertRetrievalRequestLog(requestId, userId, recordId, turnIdx, position, nextPhase,
-                        queryText, requestedLimit, 0, "FAILED", latencyMs, "FAILED",
-                        sanitizedError);
-            }
-        }
-
-        // 原子追加新命中原子 ID，避免并发覆盖
-        List<String> newAtomIds = new ArrayList<>();
-        for (QuestionBankSearchResult result : retrievedResults) {
-            if (result.getAtomId() != null) newAtomIds.add(result.getAtomId());
-        }
-        sessionStore.addUsedAtoms(recordId, newAtomIds);
-
-        // 持久化 RAG 检索日志
-        int rank = 0;
-        for (QuestionBankSearchResult result : retrievedResults) {
-            rank++;
-            String atomId = result.getAtomId();
-            if (atomId == null) continue;
-            RagRetrievalLog logEntry = new RagRetrievalLog();
-            logEntry.setUserId(userId);
-            logEntry.setRecordId(recordId);
-            logEntry.setRequestId(requestId);
-            logEntry.setTurnIndex(turnIdx);
-            logEntry.setQueryText(queryText);
-            logEntry.setPosition(position);
-            logEntry.setRetrievedAtomId(atomId);
-            logEntry.setRetrievedCategory(result.getCategory());
-            logEntry.setSimilarityScore(result.getScore());
-            logEntry.setRankIndex(rank);
-            try {
-                ragRetrievalLogMapper.insert(logEntry);
-            } catch (Exception e) {
-                log.warn("RAG 检索日志写入失败: {}", e.getMessage());
-            }
-        }
-
-        StringBuilder contextBuilder = new StringBuilder();
-        int contextCount = Math.min(retrievedResults.size(), normalizedRagContextLimit());
-        for (int i = 0; i < contextCount; i++) {
-            QuestionBankSearchResult result = retrievedResults.get(i);
-            contextBuilder.append(i + 1).append(". [atom_id: ")
-                    .append(result.getAtomId() != null ? result.getAtomId() : "unknown")
-                    .append("]\n").append(result.getPromptContext()).append("\n\n");
-        }
-
-        // 2. 根据显式面试阶段选择 Agent 人设（替代隐式 turn 计算）
-        List<String> tailoredQuestions = sessionStore.loadTailoredQuestions(recordId);
-        InterviewTurnPlanner.InterviewTurnPlan turnPlan =
-                interviewTurnPlanner.plan(record, chatHistory, contextBuilder.toString(), tailoredQuestions);
-        record.setPhase(turnPlan.phase().name());
-        interviewRecordMapper.updateById(record);
-        try {
-            emitter.send(JSON.toJSONString(Map.of("phase", turnPlan.phase().name())));
-        } catch (IOException e) {
-            emitter.completeWithError(e);
+        if (!activeInterviewTurns.add(recordId)) {
+            sendSseError(emitter, "当前轮次正在处理中，请勿重复提交");
             return emitter;
         }
 
-        // 3. 构造消息列表
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(new SystemMessage(turnPlan.systemPrompt()));
-        messages.addAll(chatHistory);
-        messages.add(new UserMessage(message));
+        try {
+            InterviewPhase nextPhase = interviewTurnPlanner.determineNextPhase(record, chatHistory);
+            List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
+            InterviewRetrievalService.TurnRetrieval retrieval = interviewRetrievalService.retrieve(
+                    userId, record, chatHistory, message, nextPhase, usedAtomIds);
+            List<String> contextAtomIds = retrieval.contextAtomIds();
 
-        // 4. SSE 流式输出
-        final List<ChatMessage> currentHistory = chatHistory;
-        StringBuilder aiResponseBuilder = new StringBuilder();
-        streamingChatModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
-            @Override
-            public void onNext(String token) {
-                try {
-                    aiResponseBuilder.append(token);
-                    emitter.send(JSON.toJSONString(Map.of("content", token)));
-                } catch (IOException e) {
-                    emitter.completeWithError(e);
-                }
+            // 2. 根据显式面试阶段选择 Agent 人设（替代隐式 turn 计算）
+            List<String> tailoredQuestions = sessionStore.loadTailoredQuestions(recordId);
+            InterviewTurnPlanner.InterviewTurnPlan turnPlan =
+                    interviewTurnPlanner.plan(record, chatHistory, retrieval.promptContext(), tailoredQuestions);
+            record.setPhase(turnPlan.phase().name());
+            interviewRecordMapper.updateById(record);
+            try {
+                emitter.send(JSON.toJSONString(Map.of("phase", turnPlan.phase().name())));
+            } catch (IOException e) {
+                activeInterviewTurns.remove(recordId);
+                emitter.completeWithError(e);
+                return emitter;
             }
 
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                try {
-                    currentHistory.add(new UserMessage(message));
-                    currentHistory.add(new AiMessage(aiResponseBuilder.toString()));
-                    sessionStore.save(recordId, currentHistory);
-                    persistChatHistory(recordId, currentHistory);
+            // 3. 构造消息列表
+            List<ChatMessage> messages = new ArrayList<>();
+            messages.add(new SystemMessage(turnPlan.systemPrompt()));
+            messages.addAll(chatHistory);
+            messages.add(new UserMessage(message));
 
-                    emitter.send(JSON.toJSONString(Map.of("done", "true")));
-                    emitter.complete();
-                } catch (IOException e) {
-                    emitter.completeWithError(e);
+            // 4. SSE 流式输出
+            final List<ChatMessage> currentHistory = chatHistory;
+            StringBuilder aiResponseBuilder = new StringBuilder();
+            streamingChatModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
+                @Override
+                public void onNext(String token) {
+                    try {
+                        aiResponseBuilder.append(token);
+                        emitter.send(JSON.toJSONString(Map.of("content", token)));
+                    } catch (IOException e) {
+                        emitter.completeWithError(e);
+                    }
                 }
-            }
 
-            @Override
-            public void onError(Throwable error) {
-                log.error("AI 响应错误: ", error);
-                recordSystemEvent(userId, "DEEPSEEK_STREAM_FAILED", "system",
-                        Map.of("recordId", recordId), false, error.getMessage());
-                try {
-                    emitter.send(JSON.toJSONString(Map.of("error", error.getMessage())));
-                    emitter.complete();
-                } catch (IOException e) {
+                @Override
+                public void onComplete(Response<AiMessage> response) {
+                    try {
+                        currentHistory.add(new UserMessage(message));
+                        currentHistory.add(new AiMessage(aiResponseBuilder.toString()));
+                        sessionStore.save(recordId, currentHistory);
+                        persistChatHistory(recordId, currentHistory);
+                        sessionStore.addUsedAtoms(recordId, contextAtomIds);
+
+                        emitter.send(JSON.toJSONString(Map.of("done", "true")));
+                        emitter.complete();
+                    } catch (Exception e) {
+                        emitter.completeWithError(e);
+                    } finally {
+                        activeInterviewTurns.remove(recordId);
+                    }
                 }
-            }
-        });
+
+                @Override
+                public void onError(Throwable error) {
+                    log.error("AI 响应错误: ", error);
+                    recordSystemEvent(userId, "DEEPSEEK_STREAM_FAILED", "system",
+                            Map.of("recordId", recordId), false, error.getMessage());
+                    try {
+                        emitter.send(JSON.toJSONString(Map.of("error", error.getMessage())));
+                        emitter.complete();
+                    } catch (IOException e) {
+                    } finally {
+                        activeInterviewTurns.remove(recordId);
+                    }
+                }
+            });
+        } catch (RuntimeException e) {
+            activeInterviewTurns.remove(recordId);
+            log.warn("面试轮次启动失败: recordId={}, error={}", recordId, sanitizeErrorMessage(e.getMessage()));
+            sendSseError(emitter, e.getMessage());
+        }
 
         return emitter;
-    }
-
-    private QuestionBankSearchRequest buildSearchRequest(String position, String ragQuery,
-                                                         List<String> usedAtomIds,
-                                                         InterviewPhase nextPhase) {
-        if (nextPhase != InterviewPhase.TECHNICAL && nextPhase != InterviewPhase.HR) {
-            return null;
-        }
-
-        QuestionBankSearchRequest searchRequest = new QuestionBankSearchRequest();
-        searchRequest.setPosition(position);
-        searchRequest.setQuery(ragQuery);
-        searchRequest.setExcludeAtomIds(usedAtomIds);
-        searchRequest.setLimit(normalizedRagRetrievalLimit());
-        if (nextPhase == InterviewPhase.HR) {
-            searchRequest.setCategories(HR_SOFT_SKILL_CATEGORIES);
-        }
-        return searchRequest;
-    }
-
-    private int normalizedRagRetrievalLimit() {
-        return Math.max(1, Math.min(ragRetrievalLimit, 20));
-    }
-
-    private int normalizedRagContextLimit() {
-        return Math.max(1, Math.min(ragContextLimit, normalizedRagRetrievalLimit()));
-    }
-
-    private void insertRetrievalRequestLog(String requestId, Long userId, Long recordId, int turnIndex,
-                                           String position, InterviewPhase phase, String queryText,
-                                           int requestedLimit, int candidateCount, String strategy,
-                                           long latencyMs, String status, String errorMessage) {
-        RagRetrievalRequestLog logEntry = new RagRetrievalRequestLog();
-        logEntry.setRequestId(requestId);
-        logEntry.setUserId(userId);
-        logEntry.setRecordId(recordId);
-        logEntry.setTurnIndex(turnIndex);
-        logEntry.setPosition(position);
-        logEntry.setPhase(phase != null ? phase.name() : null);
-        logEntry.setQueryText(queryText);
-        logEntry.setRequestedLimit(requestedLimit);
-        logEntry.setCandidateCount(candidateCount);
-        logEntry.setRetrievalStrategy(strategy);
-        logEntry.setLatencyMs(latencyMs);
-        logEntry.setStatus(status);
-        logEntry.setErrorMessage(errorMessage);
-        try {
-            ragRetrievalRequestLogMapper.insert(logEntry);
-        } catch (Exception e) {
-            log.warn("RAG 请求日志写入失败: {}", sanitizeErrorMessage(e.getMessage()));
-        }
     }
 
     private String sanitizeErrorMessage(String errorMessage) {
@@ -465,14 +329,18 @@ public class InterviewServiceImpl implements InterviewService {
 
         // 后台预计算 AI Mentor 缓存，避免 Dashboard 首次访问触发 LLM 阻塞
         final Long uid = record.getUserId();
-        new Thread(() -> {
-            try {
-                mentorService.getInsight(uid);
-                log.info("AI Mentor 缓存已更新 userId={}", uid);
-            } catch (Exception e) {
-                log.warn("AI Mentor 后台缓存更新失败 userId={}: {}", uid, e.getMessage());
-            }
-        }, "mentor-cache-" + uid).start();
+        try {
+            mentorTaskExecutor.execute(() -> {
+                try {
+                    mentorService.getInsight(uid);
+                    log.info("AI Mentor 缓存已更新 userId={}", uid);
+                } catch (Exception e) {
+                    log.warn("AI Mentor 后台缓存更新失败 userId={}: {}", uid, e.getMessage());
+                }
+            });
+        } catch (RuntimeException e) {
+            log.warn("AI Mentor 缓存任务提交失败 userId={}: {}", uid, e.getMessage());
+        }
 
         return record;
     }

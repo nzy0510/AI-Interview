@@ -22,8 +22,8 @@ import com.interview.mapper.KnowledgeAtomImportBatchMapper;
 import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeAtomVersionMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -48,6 +50,8 @@ public class QuestionBankService {
     public static final String STATUS_ARCHIVED = "ARCHIVED";
     private static final int DEFAULT_SEARCH_LIMIT = 3;
     private static final int MAX_SEARCH_LIMIT = 20;
+    private static final Pattern FALLBACK_TERM_PATTERN =
+            Pattern.compile("[\\p{L}\\p{N}_+#.-]{2,}");
 
     private final KnowledgeAtomMapper atomMapper;
     private final KnowledgeAtomVersionMapper versionMapper;
@@ -89,8 +93,15 @@ public class QuestionBankService {
         List<String> categories = normalizeCategories(request);
         List<String> exclude = request.getExcludeAtomIds() != null ? request.getExcludeAtomIds() : List.of();
 
-        List<QdrantVectorService.VectorHit> hits =
-                qdrantVectorService.search(query, categories, exclude, limit);
+        List<QdrantVectorService.VectorHit> hits;
+        boolean degraded = false;
+        try {
+            hits = qdrantVectorService.search(query, categories, exclude, limit);
+        } catch (RuntimeException e) {
+            log.warn("Qdrant unavailable, using MySQL fallback: {}", e.getMessage());
+            hits = List.of();
+            degraded = true;
+        }
         List<QuestionBankSearchResult> results = loadHits(hits);
         if (!results.isEmpty()) {
             return QuestionBankSearchResponse.builder()
@@ -100,7 +111,7 @@ public class QuestionBankService {
         }
         return QuestionBankSearchResponse.builder()
                 .results(fallbackSearch(query, categories, exclude, limit))
-                .strategy("MYSQL_FALLBACK")
+                .strategy(degraded ? "MYSQL_FALLBACK_DEGRADED" : "MYSQL_FALLBACK")
                 .build();
     }
 
@@ -244,7 +255,6 @@ public class QuestionBankService {
         return response;
     }
 
-    @Transactional
     public Map<String, Integer> archiveAtoms(List<String> atomIds) {
         List<String> ids = cleanAtomIds(atomIds);
         if (ids.isEmpty()) return resultMap("matched", 0, "archived", 0, "deleted", 0, "skipped", 0);
@@ -259,16 +269,18 @@ public class QuestionBankService {
                 continue;
             }
             atom.setStatus(STATUS_ARCHIVED);
-            atom.setVectorStatus("SKIPPED");
+            atom.setVectorStatus("PENDING_DELETE");
             atomMapper.updateById(atom);
             recordVersion(atom, "archive:admin");
-            if (qdrantVectorService.delete(atom.getAtomId())) deleted++;
+            boolean vectorDeleted = qdrantVectorService.delete(atom.getAtomId());
+            atom.setVectorStatus(vectorDeleted ? "DELETED" : "DELETE_FAILED");
+            atomMapper.updateById(atom);
+            if (vectorDeleted) deleted++;
             archived++;
         }
         return resultMap("matched", atoms.size(), "archived", archived, "deleted", deleted, "skipped", skipped);
     }
 
-    @Transactional
     public Map<String, Integer> publishAtoms(List<String> atomIds) {
         List<String> ids = cleanAtomIds(atomIds);
         if (ids.isEmpty()) return resultMap("matched", 0, "published", 0, "synced", 0, "failed", 0);
@@ -292,7 +304,6 @@ public class QuestionBankService {
         return resultMap("matched", atoms.size(), "published", published, "synced", synced, "failed", failed);
     }
 
-    @Transactional
     public Map<String, Integer> archiveBatch(String batchId) {
         return archiveAtoms(batchAtomIds(batchId, true));
     }
@@ -320,16 +331,28 @@ public class QuestionBankService {
     }
 
     public Map<String, Integer> reindexUnsyncedPublishedAtomResult() {
-        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
+        List<KnowledgeAtom> publishedAtoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
                 .eq("status", STATUS_PUBLISHED)
                 .ne("vector_status", "SYNCED"));
+        List<KnowledgeAtom> archivedAtoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
+                .eq("status", STATUS_ARCHIVED)
+                .in("vector_status", List.of("PENDING_DELETE", "DELETE_FAILED")));
         int synced = 0;
         int failed = 0;
-        for (KnowledgeAtom atom : atoms) {
+        for (KnowledgeAtom atom : publishedAtoms) {
             if (syncAtom(atom)) synced++;
             else failed++;
         }
-        return resultMap("matched", atoms.size(), "synced", synced, "failed", failed);
+        int deleted = 0;
+        for (KnowledgeAtom atom : archivedAtoms) {
+            boolean ok = qdrantVectorService.delete(atom.getAtomId());
+            atom.setVectorStatus(ok ? "DELETED" : "DELETE_FAILED");
+            atomMapper.updateById(atom);
+            if (ok) deleted++;
+            else failed++;
+        }
+        return resultMap("matched", publishedAtoms.size() + archivedAtoms.size(),
+                "synced", synced, "deleted", deleted, "failed", failed);
     }
 
     public Map<String, Integer> reindexAllPublishedAtomResult() {
@@ -344,7 +367,6 @@ public class QuestionBankService {
         return resultMap("matched", atoms.size(), "synced", synced, "failed", failed);
     }
 
-    @Transactional
     public QuestionBankImportResult importBatch(QuestionBankImportRequest request) {
         String mode = normalizeMode(request.getMode());
         List<String> errors = validateImport(request);
@@ -427,14 +449,8 @@ public class QuestionBankService {
     }
 
     public int reindexUnsyncedPublishedAtoms() {
-        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
-                .eq("status", STATUS_PUBLISHED)
-                .ne("vector_status", "SYNCED"));
-        int synced = 0;
-        for (KnowledgeAtom atom : atoms) {
-            if (syncAtom(atom)) synced++;
-        }
-        return synced;
+        Map<String, Integer> result = reindexUnsyncedPublishedAtomResult();
+        return result.getOrDefault("synced", 0) + result.getOrDefault("deleted", 0);
     }
 
     public boolean syncAtom(KnowledgeAtom atom) {
@@ -568,14 +584,23 @@ public class QuestionBankService {
     }
 
     private void recordVersion(KnowledgeAtom atom, String reason) {
-        Long count = versionMapper.selectCount(new QueryWrapper<KnowledgeAtomVersion>()
-                .eq("atom_id", atom.getAtomId()));
-        KnowledgeAtomVersion version = new KnowledgeAtomVersion();
-        version.setAtomId(atom.getAtomId());
-        version.setVersionNo((count == null ? 0 : count.intValue()) + 1);
-        version.setSnapshotJson(JSON.toJSONString(atom));
-        version.setChangeReason(reason);
-        versionMapper.insert(version);
+        for (int attempt = 0; attempt < 3; attempt++) {
+            Long count = versionMapper.selectCount(new QueryWrapper<KnowledgeAtomVersion>()
+                    .eq("atom_id", atom.getAtomId()));
+            KnowledgeAtomVersion version = new KnowledgeAtomVersion();
+            version.setAtomId(atom.getAtomId());
+            version.setVersionNo((count == null ? 0 : count.intValue()) + 1);
+            version.setSnapshotJson(JSON.toJSONString(atom));
+            version.setChangeReason(reason);
+            try {
+                versionMapper.insert(version);
+                return;
+            } catch (DuplicateKeyException e) {
+                if (attempt == 2) throw e;
+                log.debug("Knowledge atom version raced, retrying: atomId={}, version={}",
+                        atom.getAtomId(), version.getVersionNo());
+            }
+        }
     }
 
     private KnowledgeAtom toAtom(KnowledgeAtomPayload payload, String defaultCategory, String sourceRef, String mode) {
@@ -650,19 +675,36 @@ public class QuestionBankService {
     }
 
     private List<QuestionBankSearchResult> fallbackSearch(String query, List<String> categories, List<String> exclude, int limit) {
+        List<String> terms = fallbackTerms(query);
         QueryWrapper<KnowledgeAtom> wrapper = new QueryWrapper<>();
         wrapper.eq("status", STATUS_PUBLISHED)
                 .in(categories != null && !categories.isEmpty(), "category", categories)
-                .notIn(exclude != null && !exclude.isEmpty(), "atom_id", exclude)
-                .and(w -> w.like("subject", query)
-                        .or().like("principles", query)
-                        .or().like("tags_json", query))
+                .notIn(exclude != null && !exclude.isEmpty(), "atom_id", exclude);
+        wrapper.and(w -> {
+                    for (int i = 0; i < terms.size(); i++) {
+                        if (i > 0) w.or();
+                        String term = terms.get(i);
+                        w.like("subject", term)
+                                .or().like("principles", term)
+                                .or().like("tags_json", term);
+                    }
+                })
                 .orderByDesc("update_time")
                 .last("LIMIT " + Math.max(1, limit));
         return atomMapper.selectList(wrapper).stream()
                 .sorted(Comparator.comparing(KnowledgeAtom::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(atom -> toResult(atom, 0.0))
                 .collect(Collectors.toList());
+    }
+
+    private List<String> fallbackTerms(String query) {
+        LinkedHashSet<String> terms = new LinkedHashSet<>();
+        Matcher matcher = FALLBACK_TERM_PATTERN.matcher(query);
+        while (matcher.find() && terms.size() < 8) {
+            terms.add(matcher.group());
+        }
+        if (terms.isEmpty()) terms.add(query);
+        return new ArrayList<>(terms);
     }
 
     private QuestionBankSearchResult toResult(KnowledgeAtom atom, double score) {

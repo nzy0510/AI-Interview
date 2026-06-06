@@ -18,15 +18,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -163,6 +167,78 @@ class QuestionBankImportContractTest {
         assertThat(updateCaptor.getAllValues())
                 .extracting(KnowledgeAtom::getVectorStatus)
                 .containsExactly("SYNCED", "FAILED");
+    }
+
+    @Test
+    @DisplayName("归档删除失败时保留可重试状态")
+    void shouldKeepRetryableStateWhenArchiveDeleteFails() {
+        KnowledgeAtom atom = publishedAtom("contract-java-hashmap");
+        when(atomMapper.selectList(any())).thenReturn(List.of(atom));
+        when(versionMapper.selectCount(any())).thenReturn(0L);
+        when(qdrantVectorService.delete(atom.getAtomId())).thenReturn(false);
+        List<String> statusesAtUpdate = new ArrayList<>();
+        doAnswer(invocation -> {
+            KnowledgeAtom updated = invocation.getArgument(0);
+            statusesAtUpdate.add(updated.getVectorStatus());
+            return 1;
+        }).when(atomMapper).updateById(any());
+
+        Map<String, Integer> result = service.archiveAtoms(List.of(atom.getAtomId()));
+
+        assertThat(result.get("archived")).isEqualTo(1);
+        assertThat(result.get("deleted")).isZero();
+        assertThat(statusesAtUpdate).containsExactly("PENDING_DELETE", "DELETE_FAILED");
+    }
+
+    @Test
+    @DisplayName("调用 Qdrant 的题库方法不持有声明式数据库事务")
+    void shouldNotWrapQdrantCallsInDatabaseTransactions() throws Exception {
+        assertThat(QuestionBankService.class.getMethod("publishAtoms", List.class)
+                .isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();
+        assertThat(QuestionBankService.class.getMethod("archiveAtoms", List.class)
+                .isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();
+        assertThat(QuestionBankService.class.getMethod("importBatch", QuestionBankImportRequest.class)
+                .isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();
+    }
+
+    @Test
+    @DisplayName("未同步重试同时补偿发布写入和归档删除")
+    void shouldReconcilePendingUpsertsAndDeletes() {
+        KnowledgeAtom published = publishedAtom("contract-java-hashmap");
+        published.setVectorStatus("FAILED");
+        KnowledgeAtom archived = publishedAtom("contract-java-old");
+        archived.setStatus("ARCHIVED");
+        archived.setVectorStatus("DELETE_FAILED");
+        when(atomMapper.selectList(any())).thenReturn(List.of(published), List.of(archived));
+        when(qdrantVectorService.upsert(published)).thenReturn(true);
+        when(qdrantVectorService.delete(archived.getAtomId())).thenReturn(true);
+
+        Map<String, Integer> result = service.reindexUnsyncedPublishedAtomResult();
+
+        assertThat(result)
+                .containsEntry("synced", 1)
+                .containsEntry("deleted", 1)
+                .containsEntry("failed", 0);
+        assertThat(archived.getVectorStatus()).isEqualTo("DELETED");
+    }
+
+    @Test
+    @DisplayName("版本号并发冲突时重新分配版本号")
+    void shouldRetryVersionAllocationAfterDuplicateKey() throws Exception {
+        when(atomMapper.selectOne(any())).thenReturn(null);
+        when(versionMapper.selectCount(any())).thenReturn(0L, 1L);
+        when(versionMapper.insert(any()))
+                .thenThrow(new DuplicateKeyException("duplicate atom version"))
+                .thenReturn(1);
+
+        QuestionBankImportResult result = service.importBatch(fixtureRequest("valid-draft.json"));
+
+        assertThat(result.getFailed()).isZero();
+        ArgumentCaptor<KnowledgeAtomVersion> captor = ArgumentCaptor.forClass(KnowledgeAtomVersion.class);
+        verify(versionMapper, times(2)).insert(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(KnowledgeAtomVersion::getVersionNo)
+                .containsExactly(1, 2);
     }
 
     private void assertGoldenAtom(KnowledgeAtom atom) throws IOException {

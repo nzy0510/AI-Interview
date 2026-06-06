@@ -141,6 +141,19 @@ docker compose --env-file .env -f docker-compose.prod.yml logs --tail=100 backen
 - Qdrant collection 的向量维度为 768
 - Qdrant points 数量与已发布题库原子数量一致
 
+生产环境建议保留示例中的外部服务超时：
+
+```env
+QDRANT_CONNECT_TIMEOUT_MS=3000
+QDRANT_READ_TIMEOUT_MS=5000
+APP_EMBEDDING_CONNECT_TIMEOUT_MS=3000
+APP_EMBEDDING_READ_TIMEOUT_MS=10000
+```
+
+后端会校验已有 Qdrant collection 的向量维度。若配置为 768 维但目标 collection 实际为 384 维，后端会拒绝使用该 collection、记录降级检索，并回退到 MySQL；此时应修正 collection 配置并执行全量 reindex。
+
+`QUESTION_BANK_SEED_FROM_JSON=true` 仅在首次安装且 `knowledge_atom` 为空时自动导入内置种子。该流程是安装期例外，后续题库维护仍通过 Developer Admin Console 完成。
+
 启动后访问：
 
 ```text

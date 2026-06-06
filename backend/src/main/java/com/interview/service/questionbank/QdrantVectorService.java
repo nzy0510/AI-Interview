@@ -1,5 +1,6 @@
 package com.interview.service.questionbank;
 
+import com.interview.config.ExternalHttpClientFactory;
 import com.interview.entity.KnowledgeAtom;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -49,8 +50,15 @@ public class QdrantVectorService {
     private String passagePrefix;
 
     @Autowired
-    public QdrantVectorService(EmbeddingModel embeddingModel) {
-        this(embeddingModel, new RestTemplate());
+    public QdrantVectorService(
+            EmbeddingModel embeddingModel,
+            @Value("${question-bank.qdrant.connect-timeout-ms:3000}") int connectTimeoutMs,
+            @Value("${question-bank.qdrant.read-timeout-ms:5000}") int readTimeoutMs) {
+        this(embeddingModel, ExternalHttpClientFactory.create(connectTimeoutMs, readTimeoutMs));
+    }
+
+    QdrantVectorService(EmbeddingModel embeddingModel) {
+        this(embeddingModel, ExternalHttpClientFactory.create(3000, 5000));
     }
 
     QdrantVectorService(EmbeddingModel embeddingModel, RestTemplate restTemplate) {
@@ -61,8 +69,17 @@ public class QdrantVectorService {
     public boolean ensureCollection() {
         if (!enabled) return false;
         try {
-            restTemplate.getForObject(endpoint("/collections/" + collectionName), Map.class);
+            Map<?, ?> collection = restTemplate.getForObject(
+                    endpoint("/collections/" + collectionName), Map.class);
+            Integer actualVectorSize = extractVectorSize(collection);
+            if (actualVectorSize != null && actualVectorSize != vectorSize) {
+                throw new IllegalStateException("Qdrant collection " + collectionName
+                        + " vector size mismatch: expected " + vectorSize
+                        + ", actual " + actualVectorSize);
+            }
             return true;
+        } catch (IllegalStateException e) {
+            throw e;
         } catch (RestClientException ignored) {
             try {
                 Map<String, Object> body = Map.of(
@@ -81,12 +98,23 @@ public class QdrantVectorService {
         }
     }
 
+    private Integer extractVectorSize(Map<?, ?> collection) {
+        Object current = collection;
+        for (String key : List.of("result", "config", "params", "vectors")) {
+            if (!(current instanceof Map<?, ?> map)) return null;
+            current = map.get(key);
+        }
+        if (!(current instanceof Map<?, ?> vectors)) return null;
+        Object size = vectors.get("size");
+        return size instanceof Number number ? number.intValue() : null;
+    }
+
     public boolean upsert(KnowledgeAtom atom) {
         if (!enabled || atom == null || !"PUBLISHED".equalsIgnoreCase(atom.getStatus())) {
             return false;
         }
-        if (!ensureCollection()) return false;
         try {
+            if (!ensureCollection()) return false;
             List<Float> vector = embed(withPrefix(passagePrefix, buildSearchText(atom)));
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("atom_id", atom.getAtomId());
@@ -126,7 +154,9 @@ public class QdrantVectorService {
     @SuppressWarnings("unchecked")
     public List<VectorHit> search(String query, List<String> categories, List<String> excludeAtomIds, int limit) {
         if (!enabled || query == null || query.isBlank()) return List.of();
-        if (!ensureCollection()) return List.of();
+        if (!ensureCollection()) {
+            throw new IllegalStateException("Qdrant collection is unavailable");
+        }
         try {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("vector", embed(withPrefix(queryPrefix, query)));
@@ -156,8 +186,8 @@ public class QdrantVectorService {
             }
             return hits;
         } catch (Exception e) {
-            log.warn("Qdrant search skipped: {}", e.getMessage());
-            return List.of();
+            log.warn("Qdrant search failed: {}", e.getMessage());
+            throw new IllegalStateException("Qdrant vector search failed", e);
         }
     }
 

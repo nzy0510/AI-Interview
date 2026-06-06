@@ -16,8 +16,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -81,6 +83,21 @@ class QuestionBankServiceSearchTest {
     }
 
     @Test
+    @DisplayName("marks MySQL fallback as degraded when Qdrant is unavailable")
+    void shouldMarkFallbackAsDegradedWhenQdrantFails() {
+        QuestionBankSearchRequest request = request("HashMap collision handling");
+        when(qdrantVectorService.search(any(), any(), any(), any(Integer.class)))
+                .thenThrow(new IllegalStateException("Qdrant unavailable"));
+        when(atomMapper.selectList(any())).thenReturn(List.of());
+        AtomicReference<QuestionBankSearchResponse> response = new AtomicReference<>();
+
+        assertThatCode(() -> response.set(service.searchWithMetadata(request))).doesNotThrowAnyException();
+
+        assertThat(response.get().getStrategy()).isEqualTo("MYSQL_FALLBACK_DEGRADED");
+        assertThat(response.get().getResults()).isEmpty();
+    }
+
+    @Test
     @DisplayName("caps vector search limit at twenty candidates")
     void shouldCapVectorSearchLimitAtTwenty() {
         QuestionBankSearchRequest request = request("HashMap collision handling");
@@ -107,6 +124,25 @@ class QuestionBankServiceSearchTest {
 
         assertThat(response.getStrategy()).isEqualTo("MYSQL_FALLBACK");
         assertThat(response.getResults()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("fallback search uses query terms instead of the complete conversation")
+    void shouldUseTermsForMysqlFallback() {
+        QuestionBankSearchRequest request = request("请解释 RAG 的基本流程，向量数据库负责相似度检索");
+        when(qdrantVectorService.search(any(), any(), any(), any(Integer.class))).thenReturn(List.of());
+        when(atomMapper.selectList(any())).thenReturn(List.of());
+
+        service.searchWithMetadata(request);
+
+        ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<KnowledgeAtom>> captor =
+                ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.query.QueryWrapper.class);
+        verify(atomMapper).selectList(captor.capture());
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<KnowledgeAtom> wrapper = captor.getValue();
+        wrapper.getSqlSegment();
+        assertThat(wrapper.getParamNameValuePairs().values())
+                .contains("%RAG%")
+                .doesNotContain("%" + request.getQuery() + "%");
     }
 
     @Test

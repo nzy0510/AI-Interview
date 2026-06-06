@@ -8,6 +8,7 @@ import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
@@ -59,6 +61,80 @@ class QdrantVectorServicePrefixTest {
         assertThat(embeddingModel.texts).hasSize(1);
         assertThat(embeddingModel.texts.get(0)).startsWith("passage: 考核点: RAG流程");
         server.verify();
+    }
+
+    @Test
+    @DisplayName("rejects an existing collection with a different vector size")
+    void shouldRejectCollectionWithDifferentVectorSize() {
+        CapturingEmbeddingModel embeddingModel = new CapturingEmbeddingModel();
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        QdrantVectorService service = new QdrantVectorService(embeddingModel, restTemplate);
+        configure(service);
+        server.expect(requestTo("http://qdrant/collections/test_atoms"))
+                .andRespond(withSuccess("""
+                        {
+                          "result": {
+                            "config": {
+                              "params": {
+                                "vectors": {
+                                  "size": 384,
+                                  "distance": "Cosine"
+                                }
+                              }
+                            }
+                          }
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(service::ensureCollection)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("expected 768")
+                .hasMessageContaining("actual 384");
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("returns a retryable failure when upsert finds a vector size mismatch")
+    void shouldReturnFalseWhenUpsertFindsDifferentVectorSize() {
+        CapturingEmbeddingModel embeddingModel = new CapturingEmbeddingModel();
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        QdrantVectorService service = new QdrantVectorService(embeddingModel, restTemplate);
+        configure(service);
+        server.expect(requestTo("http://qdrant/collections/test_atoms"))
+                .andRespond(withSuccess("""
+                        {
+                          "result": {
+                            "config": {
+                              "params": {
+                                "vectors": {
+                                  "size": 384,
+                                  "distance": "Cosine"
+                                }
+                              }
+                            }
+                          }
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThat(service.upsert(publishedAtom())).isFalse();
+        assertThat(embeddingModel.texts).isEmpty();
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("default Qdrant client has bounded connect and read timeouts")
+    void shouldConfigureQdrantHttpTimeouts() {
+        QdrantVectorService service = new QdrantVectorService(new CapturingEmbeddingModel());
+
+        RestTemplate restTemplate = (RestTemplate) ReflectionTestUtils.getField(service, "restTemplate");
+        assertThat(restTemplate).isNotNull();
+        assertThat(restTemplate.getRequestFactory()).isInstanceOf(SimpleClientHttpRequestFactory.class);
+        SimpleClientHttpRequestFactory factory =
+                (SimpleClientHttpRequestFactory) restTemplate.getRequestFactory();
+        assertThat((int) ReflectionTestUtils.getField(factory, "connectTimeout")).isPositive();
+        assertThat((int) ReflectionTestUtils.getField(factory, "readTimeout")).isPositive();
     }
 
     private void configure(QdrantVectorService service) {

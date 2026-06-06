@@ -171,6 +171,8 @@ app:
     endpoint: ${APP_EMBEDDING_ENDPOINT:}
     query-prefix: ${APP_EMBEDDING_QUERY_PREFIX:}
     passage-prefix: ${APP_EMBEDDING_PASSAGE_PREFIX:}
+    connect-timeout-ms: ${APP_EMBEDDING_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${APP_EMBEDDING_READ_TIMEOUT_MS:10000}
 
 # 题库 / Qdrant 配置
 question-bank:
@@ -179,15 +181,13 @@ question-bank:
     url: ${QDRANT_URL:http://localhost:6333}
     collection: ${QDRANT_COLLECTION:interview_atoms}
     vector-size: ${QDRANT_VECTOR_SIZE:384}
+    connect-timeout-ms: ${QDRANT_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${QDRANT_READ_TIMEOUT_MS:5000}
   bootstrap:
     # 首次启动时把旧 JSON 题库导入 MySQL，之后以数据库为准
     seed-from-json: ${QUESTION_BANK_SEED_FROM_JSON:true}
     # 启动时补建未同步的 Qdrant 向量
     reindex-unsynced-on-startup: ${QUESTION_BANK_REINDEX_ON_STARTUP:true}
-  legacy-loader:
-    # 旧内存 RAG 加载器默认关闭，避免和数据库题库重复索引
-    enabled: ${QUESTION_BANK_LEGACY_LOADER_ENABLED:false}
-
 # JWT 签名密钥 签名密钥（生产环境必须通过环境变量注入，无默认值）
 jwt:
   sign-key: ${JWT_SIGN_KEY}

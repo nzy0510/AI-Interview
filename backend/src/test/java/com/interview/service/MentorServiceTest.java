@@ -1,27 +1,52 @@
 package com.interview.service;
 
 import com.interview.dto.MentorInsightResponse;
-import org.junit.jupiter.api.BeforeEach;
+import com.interview.mapper.KnowledgeAtomMapper;
+import com.interview.mapper.RagRetrievalLogMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @DisplayName("MentorService — AI 教练分析与知识覆盖")
+@ExtendWith(MockitoExtension.class)
 class MentorServiceTest {
 
-    /**
-     * 快速覆盖查询：不调 LLM，仅查 DB。
-     * 由于无数据库环境，此测试验证 getKnowledgeCoverageOnly 不会抛出 LLM 相关异常，
-     * 且返回的结构完整（knowledgeCoverage 存在，diagnosis 应为空，因为没有 LLM 调用）。
-     */
+    @Mock
+    private RagRetrievalLogMapper ragLogMapper;
+
+    @Mock
+    private KnowledgeAtomMapper atomMapper;
+
     @Test
-    @DisplayName("getKnowledgeCoverageOnly 不依赖 LLM")
-    void shouldReturnCoverageWithoutLLM() {
-        // 该方法的 knowledgeCoverage 部分来自 rag_retrieval_log 表查询，
-        // 不涉及 ChatLanguageModel。此处验证核心逻辑返回结构。
-        // 实际 LLM 调用仅在 getInsight() 中发生。
-        assertThat(true).isTrue(); // placeholder — 实际测试需 mock mapper
+    @DisplayName("知识覆盖率使用已发布 Atom 总量作为分母")
+    void shouldMeasureCoverageAgainstPublishedAtoms() {
+        MentorService service = new MentorService();
+        ReflectionTestUtils.setField(service, "ragLogMapper", ragLogMapper);
+        ReflectionTestUtils.setField(service, "atomMapper", atomMapper);
+        when(atomMapper.selectMaps(any())).thenReturn(List.of(
+                totalRow("AI大模型", 10),
+                totalRow("Java", 5)));
+        when(ragLogMapper.selectMaps(any())).thenReturn(List.of(coveredRow("AI大模型", 4)));
+
+        MentorInsightResponse response = service.getKnowledgeCoverageOnly(1L);
+
+        assertThat(response.getKnowledgeCoverage().getTotalCategories()).isEqualTo(2);
+        assertThat(response.getKnowledgeCoverage().getCoveredCategories()).isEqualTo(1);
+        assertThat(response.getKnowledgeCoverage().getCoveragePercent()).isEqualTo(26.7);
+        assertThat(response.getKnowledgeCoverage().getDetails())
+                .extracting(MentorInsightResponse.KnowledgeCoverage.CategoryDetail::getPercent)
+                .containsExactly(40.0, 0.0);
     }
 
     /**
@@ -68,5 +93,19 @@ class MentorServiceTest {
         assertThat(response.getDiagnosis().getOverview()).contains("暂无面试数据");
         assertThat(response.getRiskAlerts()).isEmpty();
         assertThat(response.getActions()).isEmpty();
+    }
+
+    private Map<String, Object> totalRow(String category, int total) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("category", category);
+        row.put("total", total);
+        return row;
+    }
+
+    private Map<String, Object> coveredRow(String category, int covered) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("retrieved_category", category);
+        row.put("cnt", covered);
+        return row;
     }
 }

@@ -162,9 +162,11 @@ docker compose up -d --build
 2. Flyway 自动执行 `backend/src/main/resources/db/migration` 下的版本迁移。
 3. `V6__add_question_bank.sql` 创建题库相关表。
 4. `V7__add_analytics_rate_limit_tables.sql` 创建访问事件、每日额度和反馈表。
-5. 当 `QUESTION_BANK_SEED_FROM_JSON=true` 且题库为空时，后端会从 `knowledge_base/atoms/**/*.json` 导入题库种子。
+5. `V12__track_rag_context_selection.sql` 标记候选 Atom 是否实际进入面试上下文。
+6. 当 `QUESTION_BANK_SEED_FROM_JSON=true` 且题库为空时，后端会从 `knowledge_base/atoms/**/*.json` 导入题库种子。
 
 当前题库导入逻辑会跳过旧 JSON 中重复的 `atom_id`，唯一题目发布后会同步到 Qdrant。
+该启动种子仅用于首次安装空库初始化，是 Developer Admin Console 发布约束的安装期例外；日常新增、修改、发布和归档仍必须通过管理面板完成。
 
 ## 题库与 Qdrant
 
@@ -190,9 +192,11 @@ graph TD
 面试题库检索会记录两层日志：
 
 - `rag_retrieval_request_log`：每次检索请求一行，包含零命中、跳过和失败请求，用于分析召回覆盖、检索策略与延迟。
-- `rag_retrieval_log`：每个命中的知识原子一行，通过 `request_id` 关联请求级日志，用于分析相似度与召回排名。
+- `rag_retrieval_log`：每个候选知识原子一行，通过 `request_id` 关联请求级日志；`context_selected=true` 表示该 Atom 实际进入 Top-10 提示词上下文。
 
 `query_text` 可能包含候选人回答内容，只允许受限访问；导出检索评测集前必须脱敏，不能把用户 ID、记录 ID、完整原始面试记录或其他个人信息提交到 Git。
+
+`InterviewRetrievalService` 统一负责上一轮问题与当前回答的 query 构造、阶段分类路由、Top-20 候选检索、日志和 Top-10 上下文选择。只有模型成功完成当前轮后，Top-10 Atom 才会记为已使用；失败流不会消耗候选，同一面试记录也不会并发启动两轮。
 
 ### RAG Embedding 与候选集
 
@@ -205,13 +209,17 @@ APP_EMBEDDING_PROVIDER=http
 APP_EMBEDDING_ENDPOINT=http://embedding-service:8000/embed
 APP_EMBEDDING_QUERY_PREFIX=query:
 APP_EMBEDDING_PASSAGE_PREFIX=passage:
+APP_EMBEDDING_CONNECT_TIMEOUT_MS=3000
+APP_EMBEDDING_READ_TIMEOUT_MS=10000
 QDRANT_COLLECTION=interview_atoms_e5_base
 QDRANT_VECTOR_SIZE=768
+QDRANT_CONNECT_TIMEOUT_MS=3000
+QDRANT_READ_TIMEOUT_MS=5000
 APP_RAG_RETRIEVAL_LIMIT=20
 APP_RAG_CONTEXT_LIMIT=10
 ```
 
-`multilingual-e5-base` 使用 768 维向量，不能写入旧的 384 维 `interview_atoms` collection。切换模型时使用新的 Qdrant collection 名称，并在服务启动后执行一次题库全量 reindex。否则 MySQL 中旧的 `vector_status=SYNCED` 只表示旧 collection 已同步，不代表新 collection 已有向量。
+`multilingual-e5-base` 使用 768 维向量，不能写入旧的 384 维 `interview_atoms` collection。后端会校验已有 collection 的维度，不匹配时拒绝使用并记录降级检索。切换模型时使用新的 Qdrant collection 名称，并在服务启动后执行一次题库全量 reindex。
 
 生产环境当前默认约定：
 
@@ -219,6 +227,7 @@ APP_RAG_CONTEXT_LIMIT=10
 - `QDRANT_VECTOR_SIZE=768`
 - Qdrant points 数量应与已发布题库原子数量一致。
 - 切换 `APP_EMBEDDING_PROVIDER`、`QDRANT_COLLECTION` 或 `QDRANT_VECTOR_SIZE` 后，需要通过开发者题库管理面板执行全量 reindex，并确认失败数为 0。
+- 发布失败使用 `FAILED` 状态重试；归档删除失败使用 `DELETE_FAILED` 状态，未同步重建会同时补偿 Qdrant 写入与删除。
 
 ### RAG 离线检索评测
 

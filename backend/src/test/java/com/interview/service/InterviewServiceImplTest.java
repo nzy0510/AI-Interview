@@ -17,6 +17,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,10 +25,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -67,8 +72,24 @@ class InterviewServiceImplTest {
     @Mock
     private InterviewTurnPlanner interviewTurnPlanner;
 
+    @Mock
+    private EvaluationGenerator evaluationGenerator;
+
+    @Mock
+    private MentorService mentorService;
+
+    @Mock
+    private TaskExecutor mentorTaskExecutor;
+
     @InjectMocks
     private InterviewServiceImpl interviewService;
+
+    @BeforeEach
+    void setUpRetrievalModule() {
+        InterviewRetrievalService retrievalService = new InterviewRetrievalService(
+                questionBankService, ragRetrievalLogMapper, ragRetrievalRequestLogMapper, appEventService);
+        ReflectionTestUtils.setField(interviewService, "interviewRetrievalService", retrievalService);
+    }
 
     @Test
     @DisplayName("历史详情只返回当前用户拥有的记录")
@@ -102,6 +123,25 @@ class InterviewServiceImplTest {
         assertThatThrownBy(() -> interviewService.endInterview(1L, 99L, 0, null))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("无权访问");
+    }
+
+    @Test
+    @DisplayName("完成面试后通过受管执行器预热 Mentor 缓存")
+    void shouldWarmMentorCacheWithManagedExecutor() {
+        InterviewRecord record = new InterviewRecord();
+        record.setId(12L);
+        record.setUserId(1L);
+        record.setPosition("AI 大模型工程师");
+        record.setPhase(InterviewPhase.TECHNICAL.name());
+        when(interviewRecordMapper.selectOne(any())).thenReturn(record);
+        when(sessionStore.load(12L)).thenReturn(new ArrayList<>(List.of(
+                new UserMessage("回答"),
+                new AiMessage("问题"))));
+        when(sessionStore.loadUsedAtoms(12L)).thenReturn(List.of("atom-1"));
+
+        interviewService.endInterview(1L, 12L, 0, null);
+
+        verify(mentorTaskExecutor).execute(any(Runnable.class));
     }
 
     @Test
@@ -269,6 +309,108 @@ class InterviewServiceImplTest {
     }
 
     @Test
+    @DisplayName("only marks prompt-context atoms as used after a successful stream")
+    void shouldMarkOnlyContextAtomsUsedAfterSuccessfulStream() {
+        stubChatStream(30L, InterviewPhase.TECHNICAL);
+        List<QuestionBankSearchResult> candidates = new ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            candidates.add(QuestionBankSearchResult.builder()
+                    .atomId("atom-" + i)
+                    .category("AI大模型")
+                    .score(1.0 - i * 0.01)
+                    .promptContext("context-" + i)
+                    .build());
+        }
+        when(questionBankService.searchWithMetadata(any())).thenReturn(QuestionBankSearchResponse.builder()
+                .results(candidates)
+                .strategy("QDRANT_VECTOR")
+                .build());
+
+        interviewService.chatStream(1L, 30L, "请继续");
+
+        ArgumentCaptor<List<String>> usedCaptor = ArgumentCaptor.forClass(List.class);
+        verify(sessionStore).addUsedAtoms(org.mockito.ArgumentMatchers.eq(30L), usedCaptor.capture());
+        assertThat(usedCaptor.getValue())
+                .containsExactly("atom-1", "atom-2", "atom-3", "atom-4", "atom-5",
+                        "atom-6", "atom-7", "atom-8", "atom-9", "atom-10");
+        ArgumentCaptor<RagRetrievalLog> hitCaptor = ArgumentCaptor.forClass(RagRetrievalLog.class);
+        verify(ragRetrievalLogMapper, org.mockito.Mockito.times(12)).insert(hitCaptor.capture());
+        assertThat(hitCaptor.getAllValues().subList(0, 10))
+                .allMatch(log -> Boolean.TRUE.equals(log.getContextSelected()));
+        assertThat(hitCaptor.getAllValues().subList(10, 12))
+                .allMatch(log -> Boolean.FALSE.equals(log.getContextSelected()));
+    }
+
+    @Test
+    @DisplayName("does not consume context atoms when the AI stream fails")
+    void shouldNotMarkAtomsUsedWhenStreamFails() {
+        InterviewRecord record = stubChatStreamWithoutStreaming(31L, InterviewPhase.TECHNICAL);
+        QuestionBankSearchResult result = QuestionBankSearchResult.builder()
+                .atomId("atom-failed")
+                .category("AI大模型")
+                .score(0.9)
+                .promptContext("failed context")
+                .build();
+        when(questionBankService.searchWithMetadata(any())).thenReturn(QuestionBankSearchResponse.builder()
+                .results(List.of(result))
+                .strategy("QDRANT_VECTOR")
+                .build());
+        doAnswer(invocation -> {
+            StreamingResponseHandler<AiMessage> handler = invocation.getArgument(1);
+            handler.onError(new IllegalStateException("stream failed"));
+            return null;
+        }).when(streamingChatModel).generate(anyList(), any());
+
+        interviewService.chatStream(record.getUserId(), record.getId(), "请继续");
+
+        verify(sessionStore, never()).addUsedAtoms(any(), anyList());
+    }
+
+    @Test
+    @DisplayName("rejects a second active turn for the same interview record")
+    void shouldRejectConcurrentTurnForSameRecord() {
+        stubChatStreamWithoutStreaming(33L, InterviewPhase.TECHNICAL);
+        when(questionBankService.searchWithMetadata(any())).thenReturn(QuestionBankSearchResponse.builder()
+                .results(List.of())
+                .strategy("MYSQL_FALLBACK")
+                .build());
+        AtomicBoolean nested = new AtomicBoolean();
+        doAnswer(invocation -> {
+            StreamingResponseHandler<AiMessage> handler = invocation.getArgument(1);
+            if (nested.compareAndSet(false, true)) {
+                interviewService.chatStream(1L, 33L, "重复提交");
+            }
+            handler.onNext("下一题");
+            handler.onComplete(Response.from(new AiMessage("下一题")));
+            return null;
+        }).when(streamingChatModel).generate(anyList(), any());
+
+        interviewService.chatStream(1L, 33L, "第一次提交");
+
+        verify(streamingChatModel).generate(anyList(), any());
+        verify(questionBankService).searchWithMetadata(any());
+    }
+
+    @Test
+    @DisplayName("records degraded status when vector search falls back after infrastructure failure")
+    void shouldLogDegradedRetrievalStatus() {
+        stubChatStream(32L, InterviewPhase.TECHNICAL);
+        when(questionBankService.searchWithMetadata(any())).thenReturn(QuestionBankSearchResponse.builder()
+                .results(List.of())
+                .strategy("MYSQL_FALLBACK_DEGRADED")
+                .build());
+
+        interviewService.chatStream(1L, 32L, "请继续");
+
+        ArgumentCaptor<RagRetrievalRequestLog> captor =
+                ArgumentCaptor.forClass(RagRetrievalRequestLog.class);
+        verify(ragRetrievalRequestLogMapper).insert(captor.capture());
+        assertThat(captor.getValue().getRetrievalStrategy()).isEqualTo("MYSQL_FALLBACK_DEGRADED");
+        assertThat(captor.getValue().getStatus()).isEqualTo("DEGRADED");
+        assertThat(captor.getValue().getErrorMessage()).contains("Qdrant");
+    }
+
+    @Test
     @DisplayName("无需检索的阶段记录 SKIPPED 成功请求日志")
     void shouldLogSkippedRequestWhenSearchRequestIsNull() {
         stubChatStream(24L, InterviewPhase.OPENING);
@@ -366,6 +508,16 @@ class InterviewServiceImplTest {
     }
 
     private void stubChatStream(Long recordId, InterviewPhase nextPhase) {
+        stubChatStreamWithoutStreaming(recordId, nextPhase);
+        doAnswer(invocation -> {
+            StreamingResponseHandler<AiMessage> handler = invocation.getArgument(1);
+            handler.onNext("下一题");
+            handler.onComplete(Response.from(new AiMessage("下一题")));
+            return null;
+        }).when(streamingChatModel).generate(anyList(), any());
+    }
+
+    private InterviewRecord stubChatStreamWithoutStreaming(Long recordId, InterviewPhase nextPhase) {
         InterviewRecord record = new InterviewRecord();
         record.setId(recordId);
         record.setUserId(1L);
@@ -379,11 +531,6 @@ class InterviewServiceImplTest {
         when(interviewTurnPlanner.determineNextPhase(any(), anyList())).thenReturn(nextPhase);
         when(interviewTurnPlanner.plan(any(), anyList(), any(), any()))
                 .thenReturn(new InterviewTurnPlanner.InterviewTurnPlan(nextPhase, "coordinator"));
-        doAnswer(invocation -> {
-            StreamingResponseHandler<AiMessage> handler = invocation.getArgument(1);
-            handler.onNext("下一题");
-            handler.onComplete(Response.from(new AiMessage("下一题")));
-            return null;
-        }).when(streamingChatModel).generate(anyList(), any());
+        return record;
     }
 }

@@ -6,6 +6,7 @@ import com.interview.dto.MentorInsightResponse;
 import com.interview.dto.MentorInsightResponse.*;
 import com.interview.entity.InterviewRecord;
 import com.interview.mapper.InterviewRecordMapper;
+import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -33,6 +34,9 @@ public class MentorService {
 
     @Autowired
     private RagRetrievalLogMapper ragLogMapper;
+
+    @Autowired
+    private KnowledgeAtomMapper atomMapper;
 
     @Autowired
     private ChatLanguageModel chatModel;
@@ -110,38 +114,62 @@ public class MentorService {
     private KnowledgeCoverage buildKnowledgeCoverage(Long userId) {
         KnowledgeCoverage kc = new KnowledgeCoverage();
 
-        // 查询该用户所有检索日志中的分类统计（去重 atom_id）
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.interview.entity.KnowledgeAtom> totalQuery =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        totalQuery.select("category, COUNT(*) as total")
+                .eq("status", "PUBLISHED")
+                .groupBy("category");
+        List<Map<String, Object>> totalRows = atomMapper.selectMaps(totalQuery);
+
+        // 只统计真正进入 prompt context 的去重 atom。
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.interview.entity.RagRetrievalLog> query =
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         query.select("retrieved_category, COUNT(DISTINCT retrieved_atom_id) as cnt")
              .eq("user_id", userId)
+             .eq("context_selected", true)
              .groupBy("retrieved_category");
-        List<Map<String, Object>> rows = ragLogMapper.selectMaps(query);
+        List<Map<String, Object>> coveredRows = ragLogMapper.selectMaps(query);
+        Map<String, Integer> coveredByCategory = new HashMap<>();
+        for (Map<String, Object> row : coveredRows) {
+            String category = (String) row.get("retrieved_category");
+            Number count = (Number) row.get("cnt");
+            if (category != null && count != null) coveredByCategory.put(category, count.intValue());
+        }
 
         int coveredCats = 0;
         int coveredTotal = 0;
+        int publishedTotal = 0;
         List<KnowledgeCoverage.CategoryDetail> details = new ArrayList<>();
 
-        for (Map<String, Object> row : rows) {
-            String cat = (String) row.get("retrieved_category");
-            Number cnt = (Number) row.get("cnt");
-            if (cat == null || cnt == null) continue;
+        for (Map<String, Object> row : totalRows) {
+            String cat = (String) row.get("category");
+            Number total = (Number) row.get("total");
+            if (cat == null || total == null) continue;
+            int categoryTotal = total.intValue();
+            int covered = Math.min(coveredByCategory.getOrDefault(cat, 0), categoryTotal);
 
             KnowledgeCoverage.CategoryDetail detail = new KnowledgeCoverage.CategoryDetail();
             detail.setCategory(cat);
-            detail.setCovered(cnt.intValue());
-            detail.setTotal(cnt.intValue()); // total from same source for now
-            detail.setPercent(100.0);
+            detail.setCovered(covered);
+            detail.setTotal(categoryTotal);
+            detail.setPercent(categoryTotal > 0 ? roundPercent(covered * 100.0 / categoryTotal) : 0.0);
             details.add(detail);
-            coveredCats++;
-            coveredTotal += cnt.intValue();
+            if (covered > 0) coveredCats++;
+            coveredTotal += covered;
+            publishedTotal += categoryTotal;
         }
 
-        kc.setTotalCategories(coveredCats); // only categories that have been hit
+        kc.setTotalCategories(details.size());
         kc.setCoveredCategories(coveredCats);
-        kc.setCoveragePercent(coveredCats > 0 ? 100.0 : 0.0);
+        kc.setCoveragePercent(publishedTotal > 0
+                ? roundPercent(coveredTotal * 100.0 / publishedTotal)
+                : 0.0);
         kc.setDetails(details);
         return kc;
+    }
+
+    private double roundPercent(double value) {
+        return Math.round(value * 10.0) / 10.0;
     }
 
     private List<InterviewRecord> getHistory(Long userId) {

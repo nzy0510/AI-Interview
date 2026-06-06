@@ -28,6 +28,14 @@ _Avoid_: Any atom, draft atom.
 The process of selecting relevant published atoms from the question bank to ground interview follow-up questions.
 _Avoid_: DeepSeek memory, direct vector-store ownership.
 
+**Retrieval Candidate**:
+A published atom returned by retrieval for ranking and evaluation. A candidate is not necessarily included in the interview prompt.
+_Avoid_: Used atom.
+
+**Context Atom**:
+A retrieval candidate selected for the current prompt context. It becomes a used atom only after the model successfully completes the turn.
+_Avoid_: Every Top-20 candidate.
+
 **Question Bank Maintenance Skill**:
 The local workflow that prepares and reviews JSON import packages from source material. It generates artifacts only and does not publish content.
 _Avoid_: Server, API client, publishing service.
@@ -62,6 +70,7 @@ The interview phase that evaluates behavioral, communication, motivation, pressu
 - The **Question Bank Maintenance Skill** produces an **Import Package** from source material for human review.
 - The **Developer Admin Console** is the only publication surface for generated packages and requires both a **Developer Account** and `APP_ADMIN_TOKEN`.
 - MySQL is the source of truth for question-bank business state; Qdrant is a rebuildable retrieval index.
+- **RAG Retrieval** produces up to 20 **Retrieval Candidates** and selects up to 10 **Context Atoms**.
 - The **Technical Interview Stage** uses role-specific technical categories; the **HR Soft-Skill Stage** uses its dedicated category.
 
 ## Invariants
@@ -70,6 +79,9 @@ The interview phase that evaluates behavioral, communication, motivation, pressu
 - Question-bank publishing, reindexing, archival, and protected search are performed through the **Developer Admin Console**.
 - Secrets such as `APP_ADMIN_TOKEN`, JWT signing keys, SMTP credentials, and model API keys must stay in environment configuration and logs must not expose them.
 - Publication must validate the package before writing live atoms; only published atoms may be synchronized into interview retrieval.
+- A failed model stream must not consume Context Atoms, and one interview record may have only one active turn in the current single-instance runtime.
+- Qdrant synchronization failures must remain represented in MySQL as retryable state; database transactions must not contain external Qdrant side effects.
+- Empty-database JSON seeding is a first-installation exception. Normal publication and archival remain Developer Admin Console operations.
 - External MCP endpoints, MCP user tokens, MCP quota processing, and an MCP deployment service are not part of the current InterWise product boundary. Retired MCP tables may remain as read-only historical records.
 
 ## Decision Records
