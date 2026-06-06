@@ -198,6 +198,8 @@ graph TD
 
 `InterviewRetrievalService` 统一负责上一轮问题与当前回答的 query 构造、阶段分类路由、Top-20 候选检索、日志和 Top-10 上下文选择。只有模型成功完成当前轮后，Top-10 Atom 才会记为已使用；失败流不会消耗候选，同一面试记录也不会并发启动两轮。
 
+检索结果进入提示词前会经过轻量判定层：结合候选人回答是否低信息、是否连续低信息，以及本轮召回最高分，决定正常追问、补救追问、切换知识点或弱化题库上下文。低分召回不会进入提示词，也不会被标记为已使用；低信息回答即使召回可靠，也只给模型补救追问指令，不立即消耗 Atom。
+
 ### RAG Embedding 与候选集
 
 Docker 部署默认使用 `embedding-service` 加载 `intfloat/multilingual-e5-base`，后端通过 HTTP 调用该服务生成向量。普通本地 Java 运行仍默认使用内置 `all-minilm`，便于不启动 Python 模型服务时调试。
@@ -217,6 +219,8 @@ QDRANT_CONNECT_TIMEOUT_MS=3000
 QDRANT_READ_TIMEOUT_MS=5000
 APP_RAG_RETRIEVAL_LIMIT=20
 APP_RAG_CONTEXT_LIMIT=10
+APP_RAG_HIGH_CONFIDENCE_SCORE=0.70
+APP_RAG_MIN_CONTEXT_SCORE=0.55
 ```
 
 `multilingual-e5-base` 使用 768 维向量，不能写入旧的 384 维 `interview_atoms` collection。后端会校验已有 collection 的维度，不匹配时拒绝使用并记录降级检索。切换模型时使用新的 Qdrant collection 名称，并在服务启动后执行一次题库全量 reindex。

@@ -326,7 +326,7 @@ class InterviewServiceImplTest {
                 .strategy("QDRANT_VECTOR")
                 .build());
 
-        interviewService.chatStream(1L, 30L, "请继续");
+        interviewService.chatStream(1L, 30L, "RAG 会先检索相关知识，再把上下文交给大模型生成追问");
 
         ArgumentCaptor<List<String>> usedCaptor = ArgumentCaptor.forClass(List.class);
         verify(sessionStore).addUsedAtoms(org.mockito.ArgumentMatchers.eq(30L), usedCaptor.capture());

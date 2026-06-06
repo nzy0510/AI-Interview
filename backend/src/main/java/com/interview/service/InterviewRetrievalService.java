@@ -12,13 +12,16 @@ import com.interview.mapper.RagRetrievalRequestLogMapper;
 import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -31,6 +34,22 @@ public class InterviewRetrievalService {
     private static final Pattern SENSITIVE_KEY_VALUE_PATTERN = Pattern.compile(
             "(?i)\\b(api[_-]?key|token|password|secret)\\s*([=:])\\s*([^\\s,;]+)");
     private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+", Pattern.CASE_INSENSITIVE);
+    private static final List<String> LOW_INFORMATION_PHRASES = List.of(
+            "不会", "不知道", "不清楚", "不了解", "没做过", "没有做过", "不太会",
+            "不太清楚", "不熟", "不是很了解", "忘了", "说不上来", "没接触",
+            "没用过", "不懂");
+    private static final String REMEDIAL_DIRECTIVE = """
+            【本轮检索决策：补救追问】
+            候选人当前回答信息不足，但题库召回上下文较可靠。请围绕最相关的 1 个知识点做一次低难度补救追问，帮助候选人说明基本概念、流程或经验；不要直接给出标准答案。
+            """;
+    private static final String SWITCH_TOPIC_DIRECTIVE = """
+            【本轮检索决策：切换知识点】
+            候选人连续低信息回答，或当前回答信息不足且题库召回置信度较低。请切换到同岗位另一个核心知识点，不要继续围绕上一题深挖。
+            """;
+    private static final String WEAK_RETRIEVAL_DIRECTIVE = """
+            【本轮检索决策：召回置信度不足】
+            本轮题库召回置信度不足。请主要依据面试历史、岗位配置和覆盖策略自然提问，不要强行使用题库上下文。
+            """;
 
     private final QuestionBankService questionBankService;
     private final RagRetrievalLogMapper hitLogMapper;
@@ -42,6 +61,12 @@ public class InterviewRetrievalService {
 
     @Value("${app.rag.context-limit:10}")
     private int contextLimit = 10;
+
+    @Value("${app.rag.high-confidence-score:0.70}")
+    private double highConfidenceScore = 0.70;
+
+    @Value("${app.rag.min-context-score:0.55}")
+    private double minContextScore = 0.55;
 
     public InterviewRetrievalService(QuestionBankService questionBankService,
                                      RagRetrievalLogMapper hitLogMapper,
@@ -96,8 +121,11 @@ public class InterviewRetrievalService {
             }
         }
 
-        insertHitLogs(requestId, userId, record.getId(), turnIndex, queryText, position, candidates);
-        return selectContext(candidates);
+        RetrievalDecision decision = decide(message, chatHistory, candidates);
+        TurnRetrieval retrieval = selectContext(candidates, decision);
+        insertHitLogs(requestId, userId, record.getId(), turnIndex, queryText, position,
+                candidates, retrieval.promptAtomIds());
+        return retrieval;
     }
 
     private String buildQuery(List<ChatMessage> chatHistory, String message) {
@@ -131,7 +159,9 @@ public class InterviewRetrievalService {
 
     private void insertHitLogs(String requestId, Long userId, Long recordId, int turnIndex,
                                String queryText, String position,
-                               List<QuestionBankSearchResult> candidates) {
+                               List<QuestionBankSearchResult> candidates,
+                               List<String> promptAtomIds) {
+        Set<String> selected = new LinkedHashSet<>(promptAtomIds);
         int rank = 0;
         for (QuestionBankSearchResult result : candidates) {
             rank++;
@@ -147,7 +177,7 @@ public class InterviewRetrievalService {
             logEntry.setRetrievedCategory(result.getCategory());
             logEntry.setSimilarityScore(result.getScore());
             logEntry.setRankIndex(rank);
-            logEntry.setContextSelected(rank <= normalizedContextLimit());
+            logEntry.setContextSelected(selected.contains(result.getAtomId()));
             try {
                 hitLogMapper.insert(logEntry);
             } catch (Exception e) {
@@ -156,18 +186,77 @@ public class InterviewRetrievalService {
         }
     }
 
-    private TurnRetrieval selectContext(List<QuestionBankSearchResult> candidates) {
+    private TurnRetrieval selectContext(List<QuestionBankSearchResult> candidates, RetrievalDecision decision) {
         StringBuilder context = new StringBuilder();
-        List<String> atomIds = new ArrayList<>();
+        List<String> promptAtomIds = new ArrayList<>();
+        List<String> consumedAtomIds = new ArrayList<>();
+        if (decision.directive() != null && !decision.directive().isBlank()) {
+            context.append(decision.directive()).append("\n");
+        }
+        if (!decision.includeContext()) {
+            return new TurnRetrieval(context.toString(), List.of(), List.of());
+        }
         int count = Math.min(candidates.size(), normalizedContextLimit());
         for (int i = 0; i < count; i++) {
             QuestionBankSearchResult result = candidates.get(i);
-            if (result.getAtomId() != null) atomIds.add(result.getAtomId());
+            if (result.getScore() < minContextScore) continue;
+            if (result.getAtomId() != null) {
+                promptAtomIds.add(result.getAtomId());
+                if (decision.consumeContext()) consumedAtomIds.add(result.getAtomId());
+            }
             context.append(i + 1).append(". [atom_id: ")
                     .append(result.getAtomId() != null ? result.getAtomId() : "unknown")
                     .append("]\n").append(result.getPromptContext()).append("\n\n");
         }
-        return new TurnRetrieval(context.toString(), List.copyOf(atomIds));
+        if (promptAtomIds.isEmpty() && context.isEmpty()) {
+            context.append(WEAK_RETRIEVAL_DIRECTIVE).append("\n");
+        }
+        return new TurnRetrieval(context.toString(), List.copyOf(consumedAtomIds), List.copyOf(promptAtomIds));
+    }
+
+    private RetrievalDecision decide(String message, List<ChatMessage> chatHistory,
+                                     List<QuestionBankSearchResult> candidates) {
+        boolean lowInfoAnswer = isLowInformationAnswer(message);
+        boolean consecutiveLowInfo = lowInfoAnswer && previousUserAnswerWasLowInformation(chatHistory);
+        double topScore = candidates.stream()
+                .mapToDouble(QuestionBankSearchResult::getScore)
+                .max()
+                .orElse(0.0);
+        boolean confidentRetrieval = topScore >= highConfidenceScore;
+        boolean usableRetrieval = topScore >= minContextScore;
+
+        if (consecutiveLowInfo || (lowInfoAnswer && !usableRetrieval)) {
+            return new RetrievalDecision(SWITCH_TOPIC_DIRECTIVE, false, false);
+        }
+        if (lowInfoAnswer) {
+            return confidentRetrieval
+                    ? new RetrievalDecision(REMEDIAL_DIRECTIVE, true, false)
+                    : new RetrievalDecision(SWITCH_TOPIC_DIRECTIVE, false, false);
+        }
+        if (!usableRetrieval) {
+            return new RetrievalDecision(WEAK_RETRIEVAL_DIRECTIVE, false, false);
+        }
+        return new RetrievalDecision("", true, true);
+    }
+
+    private boolean previousUserAnswerWasLowInformation(List<ChatMessage> chatHistory) {
+        if (chatHistory == null || chatHistory.isEmpty()) return false;
+        for (int i = chatHistory.size() - 1; i >= 0; i--) {
+            if (chatHistory.get(i) instanceof UserMessage userMessage) {
+                return isLowInformationAnswer(userMessage.singleText());
+            }
+        }
+        return false;
+    }
+
+    private boolean isLowInformationAnswer(String message) {
+        if (message == null) return true;
+        String normalized = message.replaceAll("\\s+", "").toLowerCase();
+        if (normalized.length() <= 4) return true;
+        for (String phrase : LOW_INFORMATION_PHRASES) {
+            if (normalized.contains(phrase)) return true;
+        }
+        return false;
     }
 
     private void insertRequestLog(String requestId, Long userId, Long recordId, int turnIndex,
@@ -215,9 +304,12 @@ public class InterviewRetrievalService {
         return value.substring(0, maxLength);
     }
 
-    public record TurnRetrieval(String promptContext, List<String> contextAtomIds) {
+    private record RetrievalDecision(String directive, boolean includeContext, boolean consumeContext) {
+    }
+
+    public record TurnRetrieval(String promptContext, List<String> contextAtomIds, List<String> promptAtomIds) {
         public static TurnRetrieval empty() {
-            return new TurnRetrieval("", List.of());
+            return new TurnRetrieval("", List.of(), List.of());
         }
     }
 }

@@ -166,6 +166,8 @@ app:
   rag:
     retrieval-limit: ${APP_RAG_RETRIEVAL_LIMIT:20}
     context-limit: ${APP_RAG_CONTEXT_LIMIT:10}
+    high-confidence-score: ${APP_RAG_HIGH_CONFIDENCE_SCORE:0.70}
+    min-context-score: ${APP_RAG_MIN_CONTEXT_SCORE:0.55}
   embedding:
     provider: ${APP_EMBEDDING_PROVIDER:all-minilm}
     endpoint: ${APP_EMBEDDING_ENDPOINT:}
