@@ -70,7 +70,7 @@ The interview phase that evaluates behavioral, communication, motivation, pressu
 - The **Question Bank Maintenance Skill** produces an **Import Package** from source material for human review.
 - The **Developer Admin Console** is the only publication surface for generated packages and requires both a **Developer Account** and `APP_ADMIN_TOKEN`.
 - MySQL is the source of truth for question-bank business state; Qdrant is a rebuildable retrieval index.
-- **RAG Retrieval** produces up to 20 **Retrieval Candidates** and selects up to 10 **Context Atoms**.
+- **RAG Retrieval** normally produces up to 20 **Retrieval Candidates**, may expand to 30 candidates for short technical answers or mixed-topic answers, and selects up to 10 **Context Atoms**.
 - The **Technical Interview Stage** uses role-specific technical categories; the **HR Soft-Skill Stage** uses its dedicated category.
 
 ## Invariants

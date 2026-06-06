@@ -37,8 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -50,14 +48,13 @@ public class QuestionBankService {
     public static final String STATUS_ARCHIVED = "ARCHIVED";
     private static final int DEFAULT_SEARCH_LIMIT = 3;
     private static final int MAX_SEARCH_LIMIT = 30;
-    private static final Pattern FALLBACK_TERM_PATTERN =
-            Pattern.compile("[\\p{L}\\p{N}_+#.-]{2,}");
 
     private final KnowledgeAtomMapper atomMapper;
     private final KnowledgeAtomVersionMapper versionMapper;
     private final KnowledgeAtomImportBatchMapper batchMapper;
     private final PositionCategoryConfig categoryConfig;
     private final QdrantVectorService qdrantVectorService;
+    private final QuestionBankFallbackTerms fallbackTerms = new QuestionBankFallbackTerms();
 
     public QuestionBankService(KnowledgeAtomMapper atomMapper,
                                KnowledgeAtomVersionMapper versionMapper,
@@ -675,7 +672,7 @@ public class QuestionBankService {
     }
 
     private List<QuestionBankSearchResult> fallbackSearch(String query, List<String> categories, List<String> exclude, int limit) {
-        List<String> terms = fallbackTerms(query);
+        List<String> terms = fallbackTerms.from(query);
         QueryWrapper<KnowledgeAtom> wrapper = new QueryWrapper<>();
         wrapper.eq("status", STATUS_PUBLISHED)
                 .in(categories != null && !categories.isEmpty(), "category", categories)
@@ -695,16 +692,6 @@ public class QuestionBankService {
                 .sorted(Comparator.comparing(KnowledgeAtom::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(atom -> toResult(atom, 0.0))
                 .collect(Collectors.toList());
-    }
-
-    private List<String> fallbackTerms(String query) {
-        LinkedHashSet<String> terms = new LinkedHashSet<>();
-        Matcher matcher = FALLBACK_TERM_PATTERN.matcher(query);
-        while (matcher.find() && terms.size() < 8) {
-            terms.add(matcher.group());
-        }
-        if (terms.isEmpty()) terms.add(query);
-        return new ArrayList<>(terms);
     }
 
     private QuestionBankSearchResult toResult(KnowledgeAtom atom, double score) {
