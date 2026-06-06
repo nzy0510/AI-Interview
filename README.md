@@ -218,10 +218,14 @@ QDRANT_VECTOR_SIZE=768
 QDRANT_CONNECT_TIMEOUT_MS=3000
 QDRANT_READ_TIMEOUT_MS=5000
 APP_RAG_RETRIEVAL_LIMIT=20
+APP_RAG_RETRIEVAL_LIMIT_MAX=30
 APP_RAG_CONTEXT_LIMIT=10
 APP_RAG_HIGH_CONFIDENCE_SCORE=0.70
 APP_RAG_MIN_CONTEXT_SCORE=0.55
 ```
+
+`APP_RAG_RETRIEVAL_LIMIT` 是默认向量候选集预算。`APP_RAG_RETRIEVAL_LIMIT_MAX`
+是动态扩展上限：候选人本轮回答很短但包含明确技术信号，或回答中混杂多个技术点时，检索会临时扩大到该上限。低信息回答仍保持默认候选预算，并由轻量判定层决定是否补救追问、切换知识点、注入上下文或消耗 Atom。`APP_RAG_CONTEXT_LIMIT` 仍控制最终进入提示词的 Atom 数量，默认不随动态候选集扩大。
 
 `multilingual-e5-base` 使用 768 维向量，不能写入旧的 384 维 `interview_atoms` collection。后端会校验已有 collection 的维度，不匹配时拒绝使用并记录降级检索。切换模型时使用新的 Qdrant collection 名称，并在服务启动后执行一次题库全量 reindex。
 

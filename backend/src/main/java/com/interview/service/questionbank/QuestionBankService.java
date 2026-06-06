@@ -49,7 +49,7 @@ public class QuestionBankService {
     public static final String STATUS_PUBLISHED = "PUBLISHED";
     public static final String STATUS_ARCHIVED = "ARCHIVED";
     private static final int DEFAULT_SEARCH_LIMIT = 3;
-    private static final int MAX_SEARCH_LIMIT = 20;
+    private static final int MAX_SEARCH_LIMIT = 30;
     private static final Pattern FALLBACK_TERM_PATTERN =
             Pattern.compile("[\\p{L}\\p{N}_+#.-]{2,}");
 

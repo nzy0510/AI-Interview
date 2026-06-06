@@ -98,8 +98,8 @@ class QuestionBankServiceSearchTest {
     }
 
     @Test
-    @DisplayName("caps vector search limit at twenty candidates")
-    void shouldCapVectorSearchLimitAtTwenty() {
+    @DisplayName("allows vector search to retrieve thirty candidates")
+    void shouldAllowVectorSearchLimitAtThirty() {
         QuestionBankSearchRequest request = request("HashMap collision handling");
         request.setLimit(30);
         when(qdrantVectorService.search(any(), any(), any(), any(Integer.class))).thenReturn(List.of());
@@ -109,7 +109,22 @@ class QuestionBankServiceSearchTest {
 
         ArgumentCaptor<Integer> limitCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(qdrantVectorService).search(any(), any(), any(), limitCaptor.capture());
-        assertThat(limitCaptor.getValue()).isEqualTo(20);
+        assertThat(limitCaptor.getValue()).isEqualTo(30);
+    }
+
+    @Test
+    @DisplayName("caps vector search limit at thirty candidates")
+    void shouldCapVectorSearchLimitAtThirty() {
+        QuestionBankSearchRequest request = request("HashMap collision handling");
+        request.setLimit(50);
+        when(qdrantVectorService.search(any(), any(), any(), any(Integer.class))).thenReturn(List.of());
+        when(atomMapper.selectList(any())).thenReturn(List.of());
+
+        service.searchWithMetadata(request);
+
+        ArgumentCaptor<Integer> limitCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(qdrantVectorService).search(any(), any(), any(), limitCaptor.capture());
+        assertThat(limitCaptor.getValue()).isEqualTo(30);
     }
 
     @Test

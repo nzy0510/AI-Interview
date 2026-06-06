@@ -185,6 +185,7 @@ app:
     exempt-emails: ${APP_DEVELOPER_EXEMPT_EMAILS:}
   rag:
     retrieval-limit: ${APP_RAG_RETRIEVAL_LIMIT:20}
+    retrieval-limit-max: ${APP_RAG_RETRIEVAL_LIMIT_MAX:30}
     context-limit: ${APP_RAG_CONTEXT_LIMIT:10}
     high-confidence-score: ${APP_RAG_HIGH_CONFIDENCE_SCORE:0.70}
     min-context-score: ${APP_RAG_MIN_CONTEXT_SCORE:0.55}
