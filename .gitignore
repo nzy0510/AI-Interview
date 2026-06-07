@@ -116,10 +116,13 @@ conflicts_render.txt
 !/question_bank_imports/fixtures/import-lifecycle/*.json
 
 配置变量.txt
+/DEPLOYMENT.md
+/AZURE_OPERATIONS.md
 
 # ========== Docs ==========
 /docs/*
 !/docs/
+!/docs/rag-chain-summary.md
 !/docs/adr/
 !/docs/adr/*.md
 !/docs/contracts/

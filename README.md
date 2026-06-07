@@ -290,9 +290,8 @@ backend/src/test/resources/retrieval-eval/
 ├── image/展示图/                    # 项目页面截图
 ├── docker-compose.example.yml       # 本地 Compose 模板
 ├── docker-compose.prod.yml          # 生产 Compose
-├── DEPLOYMENT.md                    # Azure VM 部署指南
-├── AZURE_OPERATIONS.md              # 云端运维手册
 ├── CONTEXT.md                       # 领域语言与边界
+├── PLAN.md                          # 后续推进计划
 └── CHANGELOG.md                     # 更新日志
 ```
 
@@ -327,10 +326,9 @@ python -m unittest discover -s tests
 - `qdrant`
 - `caddy`（HTTPS profile）
 
-部署入口：
+当前线上体验地址：
 
-- [Azure VM 部署指南](DEPLOYMENT.md)
-- [Azure 运维说明](AZURE_OPERATIONS.md)
+- [https://interwise.japaneast.cloudapp.azure.com](https://interwise.japaneast.cloudapp.azure.com)
 
 生产环境重点检查：
 
@@ -340,13 +338,24 @@ python -m unittest discover -s tests
 - Qdrant points 数量与已发布题库 Atom 数量一致。
 - 切换模型、collection 或题库内容后执行全量 reindex，失败数为 0。
 
+## Todo
+
+后续推进计划详见 [PLAN.md](PLAN.md)，当前优先级：
+
+- [ ] 公开展示与项目可信度：持续优化 README、Release Notes、展示图和公开文档边界。
+- [ ] 动态 RAG 质量评测与 rerank 决策：用固定评测集验证 embedding、候选集、阈值和 rerank 收益。
+- [ ] 题库质量与岗位覆盖扩展：继续扩充 Java 后端、前端、AI 大模型、HR 软技能等分类题库。
+- [ ] 产品体验与面试闭环增强：优化准备页、报告、AI Mentor、视频面试和反馈入口。
+- [ ] 部署可靠性与数据保护：完善备份、健康检查、Qdrant 状态校验和本地/云端一致性。
+- [ ] 安全、隐私与成本控制：保持密钥隔离、限流额度、隐私说明和用户数据删除能力建设。
+
 ## 相关文档
 
 - [领域上下文](CONTEXT.md)
 - [题库导入生命周期 ADR](docs/adr/0002-question-bank-import-lifecycle.md)
 - [移除 MCP 功能 ADR](docs/adr/0004-remove-mcp-feature.md)
 - [RAG 检索评测设计](docs/superpowers/specs/2026-06-03-rag-retrieval-evaluation-design.md)
-- [RAG 链路总结](docs/interview-prep/interwise-rag-chain-summary.md)
+- [RAG 链路总结](docs/rag-chain-summary.md)
 
 ## 版本
 
