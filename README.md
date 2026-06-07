@@ -34,11 +34,13 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 
 ![历史报告页](image/展示图/历史报告页.png)
 
-![AI Mentor 分析页](image/展示图/ai mentor分析页.png)
+![AI Mentor 分析页](<image/展示图/ai mentor分析页.png>)
 
 ### 偏好设置与题库运维入口
 
 ![偏好设置页](image/展示图/偏好设置页.png)
+
+![题库维护页](image/展示图/题库维护.png)
 
 ## 系统架构
 
