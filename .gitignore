@@ -91,6 +91,7 @@ application-prod.yml
 /redis_data/
 /qdrant_data/
 /embedding_model_cache/
+/interwise_embedding_model_cache.tgz
 /document/
 /backups/
 

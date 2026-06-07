@@ -1,130 +1,189 @@
 # InterWise AI 模拟面试系统
 
-InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目采用 `Spring Boot 3 + MyBatis-Plus + LangChain4j + DeepSeek + Redis + MySQL 8 + Qdrant` 构建后端，前端使用 `Vue 3 + Vite + Element Plus`。系统支持文字面试、视频面试、简历画像、RAG 追问、面试复盘、AI Mentor 与数据库题库维护。
+InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把简历画像、文字面试、视频面试、数据库题库、动态 RAG 追问、面试复盘和 AI Mentor 打通到同一条学习闭环中，重点解决“只会单轮问答、题库与模拟面试割裂、追问缺少依据、训练结果难以复盘”的问题。
 
+后端基于 `Spring Boot 3 + MyBatis-Plus + LangChain4j + MySQL + Redis + Qdrant`，前端基于 `Vue 3 + Vite + Element Plus`。Docker 部署默认使用独立 `embedding-service` 加载 `intfloat/multilingual-e5-base`，通过 Qdrant 为面试追问提供可重建的语义索引。
 
-## 核心能力
+## 项目亮点
 
-- 文字 / 视频双模式面试：支持 SSE 流式回答、语音识别、语音播报、摄像头情绪分析。
-- 多角色面试流程：基于 `InterviewPhase` 状态机在开场、技术、HR、收尾和结束阶段流转，完整面试会进入独立 HR 软技能专项阶段。
-- 岗位化追问：技术阶段结合岗位、难度、重点能力、简历画像和题库检索生成追问；支持 Java、前端和 AI 大模型岗位，HR 阶段独立使用 `HR软技能` 题库分类。
-- 数据库题库：知识原子落入 MySQL，发布后的题目同步到 Qdrant，供面试 RAG 检索。
-- 题库维护 Skill：`skills/interview-question-bank` 支持从 PDF、DOCX、TXT、MD、JSON 生成导入包，由开发者管理面板校验和发布。
-- 简历画像：PDF 简历解析后写入 `resume_profile`，前端以服务端状态为准，避免旧浏览器缓存误用。
-- AI Mentor：聚合面试历史、知识覆盖、风险提醒和行动建议，Redis 缓存 24 小时并支持刷新。
-- 访问统计与成本保护：记录页面访问、关键行为、反馈、异常和限流命中；使用 Redis + MySQL 快照限制每日 AI 面试、对话、简历解析和 Mentor 生成额度。
-- Docker 本地启动：`frontend + backend + embedding-service + mysql + redis + qdrant` 一键编排。
+- 动态面试 RAG：不是传统知识库问答式“用户问题 -> 检索 -> 摘要回答”，而是在每一轮面试中把候选人回答、岗位、阶段、历史已问知识点和题库召回结果转成“下一问决策信号”。
+- 模拟面试与题库打通：MySQL 保存可审核、可发布、可归档的知识原子，Qdrant 只作为可重建的语义索引；已发布 Atom 才能进入面试追问链路。
+- 追问路径更贴近真实面试：技术阶段按岗位和难度召回，结合低信息回答、弱召回、连续回避、已用 Atom 排除等信号，决定补救追问、切换知识点或继续深挖。
+- 多模式训练闭环：支持文字面试、视频面试、简历画像、历史报告、AI Mentor 分析和知识覆盖率复盘。
+- 题库工程化运维：提供开发者可见的 Question Bank Admin，支持导入包校验、试运行、发布、归档、恢复、搜索预览、增量/全量 reindex。
+- 可评测的 RAG 链路：内置离线检索评测工具链，固定 AI 大模型岗位评测集，支持比较 embedding、候选集大小和 rerank 效果。
+- 成本与稳定性保护：内置访问事件、每日额度、限流、反馈记录、RAG 请求级日志和 Qdrant 失败降级路径。
+
+## 效果展示
+
+### 工作台与准备流程
+
+![工作台主页面](image/展示图/工作台主页面.png)
+
+![面试准备页](image/展示图/面试准备页.png)
+
+### 文字面试与视频面试
+
+![文字面试页](image/展示图/文字面试页.png)
+
+![视频面试页](image/展示图/视频面试页.png)
+
+### 简历画像、历史报告与 AI Mentor
+
+![简历画像页](image/展示图/简历画像页.png)
+
+![历史报告页](image/展示图/历史报告页.png)
+
+![AI Mentor 分析页](image/展示图/ai mentor分析页.png)
+
+### 偏好设置与题库运维入口
+
+![偏好设置页](image/展示图/偏好设置页.png)
+
+## 系统架构
+
+![InterWise 系统架构图](image/架构图/InterWise-系统架构图.png)
+
+```mermaid
+graph LR
+    User["候选人 / 训练用户"] --> Frontend["Vue 3 前端"]
+    Frontend -->|"HTTP / SSE"| Backend["Spring Boot 后端"]
+    Backend --> LLM["DeepSeek / OpenAI 兼容模型"]
+    Backend --> MySQL[("MySQL: 业务真相")]
+    Backend --> Redis[("Redis: 会话缓存 / 限流 / Mentor 缓存")]
+    Backend --> Qdrant[("Qdrant: 语义索引")]
+    Backend --> Embed["embedding-service: multilingual-e5-base"]
+    Embed --> Qdrant
+    Admin["Question Bank Admin"] --> Backend
+    Script["question_bank_import.py"] --> Package["题库导入包"]
+    Package --> Admin
+```
+
+核心边界：
+
+- MySQL 是用户、面试、报告、题库、导入批次和同步状态的业务真相。
+- Qdrant 是可重建的向量索引，不直接承载题库发布状态。
+- embedding-service 只负责文本向量化，默认输出 768 维 multilingual-e5 向量。
+- 前端不直接访问数据库、Redis 或 Qdrant，所有维护动作走后端 API 与管理校验。
+
+## 动态 RAG 链路
+
+![InterWise RAG 流程图](image/架构图/InterWise-RAG流程图.png)
+
+InterWise 的 RAG 不是独立知识库问答模块，而是嵌入模拟面试流程中的“追问决策层”。
+
+```mermaid
+graph TD
+    Answer["候选人当前回答"] --> Query["结合上一问、岗位、阶段构造检索 query"]
+    Query --> Route["岗位 / 阶段分类路由"]
+    Route --> Search["Qdrant 召回已发布 Atom"]
+    Search --> Signals["低信息回答、弱召回、连续回避、已用 Atom 排除"]
+    Signals --> Decision{"下一问策略"}
+    Decision -->|"召回可靠"| Deepen["注入 Top-N Atom 深挖"]
+    Decision -->|"回答空泛"| Remedy["补救追问"]
+    Decision -->|"召回弱或连续低信息"| Switch["切换知识点"]
+    Deepen --> Prompt["面试官 Prompt"]
+    Remedy --> Prompt
+    Switch --> Prompt
+```
+
+默认策略：
+
+- `APP_RAG_RETRIEVAL_LIMIT=20`：默认召回候选集。
+- `APP_RAG_RETRIEVAL_LIMIT_MAX=30`：短技术回答或多技术点混杂时可动态扩展。
+- `APP_RAG_CONTEXT_LIMIT=10`：最终进入提示词的上下文 Atom 上限。
+- `APP_RAG_HIGH_CONFIDENCE_SCORE=0.70`：高置信召回阈值。
+- `APP_RAG_MIN_CONTEXT_SCORE=0.55`：低于该分数不注入题库上下文。
+
+这一设计和传统 RAG 的差异在于：召回结果不直接拼成答案，而是影响 AI 面试官下一轮追问方式；系统还会记录候选 Atom、实际进入上下文的 Atom、零命中、失败原因和检索策略，便于后续人工评测与 rerank 验证。
+
+## 当前功能
+
+### 面试训练
+
+- 文字面试：SSE 流式生成，按面试阶段推进，支持技术追问、HR 软技能阶段和结束总结。
+- 视频面试：摄像头与语音交互入口，结合浏览器能力进行更接近真实场景的训练。
+- 面试准备：选择岗位、难度、重点方向和简历信息，为后续追问提供上下文。
+- 历史报告：保存面试记录、评分、反馈和复盘建议。
+
+### 简历与 Mentor
+
+- 简历画像：解析 PDF 简历并生成结构化画像。
+- AI Mentor：基于历史面试、知识覆盖率和风险点给出训练建议。
+- 知识覆盖：以已发布题库 Atom 为分母，以实际进入面试上下文的 Atom 为分子，避免只统计“看似召回”的候选。
+
+### 题库与 RAG 运维
+
+- 题库导入包：`scripts/question_bank_import.py` 将 PDF、DOCX、TXT、MD、JSON 转为可审核 JSON 包。
+- 管理面板：Settings 中的 Question Bank Admin 支持校验、试运行、发布、归档、恢复、搜索和 reindex。
+- 同步状态：Qdrant 写入或删除失败会保留可重试状态，不让数据库事务和外部索引状态悄悄分叉。
+- 离线评测：`scripts/retrieval_eval` 支持导出、构建候选池、预标注、计算指标和 rerank 对比。
+
+### 运营保护
+
+- 访问统计：记录页面访问、关键行为、异常、反馈和限流命中。
+- 每日额度：限制 AI 面试、AI Chat、简历解析和 Mentor 生成次数。
+- 开发者豁免：支持按用户 ID、用户名或邮箱配置开发者白名单。
+- 健康检查：`/api/health` 汇总应用、MySQL、Redis、Qdrant 状态。
 
 ## 技术栈
 
 ### 后端
 
-- Java 17
-- Spring Boot 3.2.4
-- MyBatis-Plus 3.5.5
-- LangChain4j 0.29.1
-- DeepSeek API
-- AllMiniLmL6V2 Embedding Model（本地 Java 默认）
-- multilingual-e5-base Embedding Service（Docker 默认）
-- MySQL 8.0
-- Redis 7
-- Qdrant
-- Flyway 9.22.3
-- Apache PDFBox
-- Fastjson2
-- JJWT
+| 技术 | 版本 / 说明 |
+| --- | --- |
+| Java | 17 |
+| Spring Boot | 3.2.4 |
+| MyBatis-Plus | 3.5.5 |
+| LangChain4j | 0.29.1 |
+| MySQL | 8.0 |
+| Redis | 7 |
+| Qdrant | 向量检索 |
+| Flyway | 9.22.3 |
+| PDFBox | 简历 PDF 解析 |
+| DeepSeek API | OpenAI 兼容聊天模型 |
+| multilingual-e5-base | Docker 默认 embedding 模型 |
 
 ### 前端
 
-- Vue 3.5
-- Vite 7
-- Element Plus
-- Axios
-- ECharts / echarts-wordcloud
-- face-api.js
-- Web Speech API
+| 技术 | 版本 / 说明 |
+| --- | --- |
+| Vue | 3.5 |
+| Vite | 7 |
+| Element Plus | 2.13 |
+| Axios | HTTP 客户端 |
+| ECharts | 图表与词云 |
+| face-api.js | 视频面试情绪分析辅助 |
+| Web Speech API | 浏览器语音能力 |
 
-## 架构概览
+### 基础设施
 
-```mermaid
-graph LR
-    User["用户"] --> Frontend["Vue 3 前端"]
-    Frontend -->|"HTTP / SSE"| Backend["Spring Boot 后端"]
-    Backend --> LLM["DeepSeek"]
-    Backend --> Embedding["Embedding Service"]
-    Backend --> MySQL[("MySQL 8")]
-    Backend --> Redis[("Redis")]
-    Backend --> Qdrant[("Qdrant")]
-    Skill["interview-question-bank Skill"] --> Package["JSON 导入包"]
-    Package --> Admin["Question Bank Admin"]
-    Admin --> Backend
-```
-
-配套架构图可直接在 GitHub 中预览：
-
-- [InterWise 系统架构图](image/架构图/InterWise-系统架构图.png)
-- [InterWise RAG 流程图](image/架构图/InterWise-RAG流程图.png)
-
-架构语言与关键决策：
-
-- [领域上下文与术语](CONTEXT.md)
-- [ADR 0002：题库导入生命周期](docs/adr/0002-question-bank-import-lifecycle.md)
-- [ADR 0004：移除 MCP 功能](docs/adr/0004-remove-mcp-feature.md)
-
-## 主要目录
-
-```text
-.
-├── CONTEXT.md                      # InterWise 根级领域语言与边界
-├── backend/
-│   ├── src/main/java/com/interview/
-│   │   ├── config/                 # LLM、Redis、Prompt、岗位分类、JWT 配置
-│   │   ├── controller/             # REST API 与题库维护接口
-│   │   ├── dto/                    # 请求 / 响应 DTO
-│   │   ├── entity/                 # MySQL 实体与 InterviewPhase
-│   │   ├── mapper/                 # MyBatis-Plus Mapper
-│   │   ├── service/                # 面试、简历、Mentor、RAG、题库服务
-│   │   └── utils/                  # JwtUtils 等工具
-│   └── src/main/resources/
-│       ├── db/migration/           # Flyway 迁移
-│       └── knowledge_base/atoms/   # 旧 JSON 题库种子，启动时可导入数据库
-├── frontend/
-│   └── src/
-│       ├── views/                  # 首页、面试、视频面试、简历、历史、Mentor、设置
-│       ├── components/             # dashboard、layout 等组件
-│       ├── api/                    # Axios API 封装
-│       └── utils/                  # auth、request、interviewEntry
-├── mysql/init/init.sql             # Docker 首次初始化脚本
-├── scripts/
-│   ├── question_bank_import.py     # PDF/DOCX/TXT/MD/JSON -> 题库导入包
-│   ├── atomizer.py                 # 旧知识原子生成脚本
-│   └── reclassify_hot200.py        # 旧题库分类整理脚本
-├── embedding-service/              # Docker 默认使用的 multilingual-e5-base HTTP 向量服务
-├── skills/interview-question-bank/ # Codex 题库维护 Skill
-├── docs/adr/                       # 架构决策记录
-├── image/架构图/                   # 系统架构图与 RAG 流程图 PNG
-├── docker-compose.example.yml      # 本地 Docker Compose 模板
-├── docker-compose.prod.yml         # 生产部署模板
-├── .env.example                    # 环境变量模板
-└── README.md
-```
+| 组件 | 用途 |
+| --- | --- |
+| Docker Compose | 本地与云端多容器编排 |
+| embedding-service | FastAPI 向量服务 |
+| Caddy | 生产 HTTPS 入口 |
+| Azure VM | 当前云端部署形态 |
 
 ## 快速启动
 
-### 1. 准备环境
+### 环境要求
 
 - Docker Desktop / Docker Compose
-- 可用的 DeepSeek API Key
-- 如需注册和找回密码，准备 SMTP 邮箱授权码
+- JDK 17
+- Node.js 20+
+- Python 3.10+（仅运行题库脚本或检索评测时需要）
+- DeepSeek API Key
+- SMTP 邮箱授权码（注册、找回密码需要）
 
-### 2. 创建配置文件
+### 创建配置
 
 ```powershell
 Copy-Item .env.example .env
 Copy-Item docker-compose.example.yml docker-compose.yml
 ```
 
-至少补齐：
+至少配置：
 
 ```env
 DB_PASSWORD=your_mysql_password
@@ -136,9 +195,9 @@ MAIL_USERNAME=your_email@qq.com
 MAIL_PASSWORD=your_smtp_authorization_code
 ```
 
-`APP_ADMIN_TOKEN` 用于前端 Operations 统计页、管理反馈接口与题库管理面板；不要把真实值写入代码或提交到 Git。
+不要提交 `.env`、真实 API Key、JWT Secret、邮箱授权码或数据库密码。
 
-### 3. 启动
+### Docker 启动
 
 ```powershell
 docker compose up -d --build
@@ -148,100 +207,55 @@ docker compose up -d --build
 
 - 前端：`http://localhost`
 - 后端：`http://localhost:8080`
+- Qdrant：`http://localhost:6333`
 - MySQL：`localhost:13307`
 - Redis：`localhost:6379`
-- Qdrant：`http://localhost:6333`
 
-如果 Windows 提示端口不可用，优先检查 Docker Desktop 是否已启动，以及本机端口是否被占用或被系统排除。
+首次构建 embedding-service 会下载 PyTorch、sentence-transformers 和 multilingual-e5 模型，耗时取决于网络质量。若切换过 embedding 模型或 Qdrant collection，启动后需要在 Question Bank Admin 中执行全量 reindex。
 
-## 数据库与迁移
+## 本地开发
 
-项目以 MySQL 8.0 为当前标准数据库版本。首次启动时：
+### 后端
 
-1. `mysql/init/init.sql` 创建基础表。
-2. Flyway 自动执行 `backend/src/main/resources/db/migration` 下的版本迁移。
-3. `V6__add_question_bank.sql` 创建题库相关表。
-4. `V7__add_analytics_rate_limit_tables.sql` 创建访问事件、每日额度和反馈表。
-5. `V12__track_rag_context_selection.sql` 标记候选 Atom 是否实际进入面试上下文。
-6. 当 `QUESTION_BANK_SEED_FROM_JSON=true` 且题库为空时，后端会从 `knowledge_base/atoms/**/*.json` 导入题库种子。
-
-当前题库导入逻辑会跳过旧 JSON 中重复的 `atom_id`，唯一题目发布后会同步到 Qdrant。
-该启动种子仅用于首次安装空库初始化，是 Developer Admin Console 发布约束的安装期例外；日常新增、修改、发布和归档仍必须通过管理面板完成。
-
-## 题库与 Qdrant
-
-### 题库数据流
-
-```mermaid
-graph TD
-    Source["PDF / DOCX / TXT / MD / JSON"] --> Script["scripts/question_bank_import.py"]
-    Script --> Package["导入包"]
-    Package --> Admin["Settings / Question Bank Admin"]
-    Admin --> API["/api/admin/question-bank"]
-    API --> MySQL[("knowledge_atom")]
-    MySQL --> Qdrant[("interview_atoms_e5_base collection")]
-    Qdrant --> Interview["面试 RAG 追问"]
+```powershell
+cd backend
+mvn test
+mvn spring-boot:run
 ```
 
-### 维护入口
+普通 Java 本地运行可以使用内置 AllMiniLmL6V2 embedding 便于调试；Docker 和生产部署默认走 HTTP embedding-service。
 
-题库写入只通过开发者可见的 `Settings -> Question Bank Admin` 面板进行。开发者输入 `APP_ADMIN_TOKEN` 后，可上传生成的 JSON 导入包、校验、试运行、正式发布、查询与维护索引；脚本和 Skill 不直接写入数据库或调用发布接口。
+### 前端
 
-### RAG 检索日志
-
-面试题库检索会记录两层日志：
-
-- `rag_retrieval_request_log`：每次检索请求一行，包含零命中、跳过和失败请求，用于分析召回覆盖、检索策略与延迟。
-- `rag_retrieval_log`：每个候选知识原子一行，通过 `request_id` 关联请求级日志；`context_selected=true` 表示该 Atom 实际进入 Top-10 提示词上下文。
-
-`query_text` 可能包含候选人回答内容，只允许受限访问；导出检索评测集前必须脱敏，不能把用户 ID、记录 ID、完整原始面试记录或其他个人信息提交到 Git。
-
-`InterviewRetrievalService` 统一负责上一轮问题与当前回答的 query 构造、阶段分类路由、Top-20 候选检索、日志和 Top-10 上下文选择。只有模型成功完成当前轮后，Top-10 Atom 才会记为已使用；失败流不会消耗候选，同一面试记录也不会并发启动两轮。
-
-检索结果进入提示词前会经过轻量判定层：结合候选人回答是否低信息、是否连续低信息，以及本轮召回最高分，决定正常追问、补救追问、切换知识点或弱化题库上下文。低分召回不会进入提示词，也不会被标记为已使用；低信息回答即使召回可靠，也只给模型补救追问指令，不立即消耗 Atom。
-
-### RAG Embedding 与候选集
-
-Docker 部署默认使用 `embedding-service` 加载 `intfloat/multilingual-e5-base`，后端通过 HTTP 调用该服务生成向量。普通本地 Java 运行仍默认使用内置 `all-minilm`，便于不启动 Python 模型服务时调试。
-
-关键配置：
-
-```env
-APP_EMBEDDING_PROVIDER=http
-APP_EMBEDDING_ENDPOINT=http://embedding-service:8000/embed
-APP_EMBEDDING_QUERY_PREFIX=query:
-APP_EMBEDDING_PASSAGE_PREFIX=passage:
-APP_EMBEDDING_CONNECT_TIMEOUT_MS=3000
-APP_EMBEDDING_READ_TIMEOUT_MS=10000
-QDRANT_COLLECTION=interview_atoms_e5_base
-QDRANT_VECTOR_SIZE=768
-QDRANT_CONNECT_TIMEOUT_MS=3000
-QDRANT_READ_TIMEOUT_MS=5000
-APP_RAG_RETRIEVAL_LIMIT=20
-APP_RAG_RETRIEVAL_LIMIT_MAX=30
-APP_RAG_CONTEXT_LIMIT=10
-APP_RAG_HIGH_CONFIDENCE_SCORE=0.70
-APP_RAG_MIN_CONTEXT_SCORE=0.55
+```powershell
+cd frontend
+npm install
+npm run dev
+npm run build
 ```
 
-`APP_RAG_RETRIEVAL_LIMIT` 是默认向量候选集预算。`APP_RAG_RETRIEVAL_LIMIT_MAX`
-是动态扩展上限：候选人本轮回答很短但包含明确技术信号，或回答中混杂多个技术点时，检索会临时扩大到该上限。低信息回答仍保持默认候选预算，并由轻量判定层决定是否补救追问、切换知识点、注入上下文或消耗 Atom。`APP_RAG_CONTEXT_LIMIT` 仍控制最终进入提示词的 Atom 数量，默认不随动态候选集扩大。
+### 题库导入包
 
-`multilingual-e5-base` 使用 768 维向量，不能写入旧的 384 维 `interview_atoms` collection。后端会校验已有 collection 的维度，不匹配时拒绝使用并记录降级检索。切换模型时使用新的 Qdrant collection 名称，并在服务启动后执行一次题库全量 reindex。
+```powershell
+python scripts/question_bank_import.py `
+  --category AI大模型 `
+  --mode DRAFT `
+  --source path\to\source.md `
+  --out question_bank_imports
+```
 
-生产环境当前默认约定：
+生成的导入包默认位于 `question_bank_imports/`，该目录用于本地运维，不提交到 Git。发布时进入 Settings -> Question Bank Admin，由开发者账号和 `APP_ADMIN_TOKEN` 双重校验。
 
-- `QDRANT_COLLECTION=interview_atoms_e5_base`
-- `QDRANT_VECTOR_SIZE=768`
-- Qdrant points 数量应与已发布题库原子数量一致。
-- 切换 `APP_EMBEDDING_PROVIDER`、`QDRANT_COLLECTION` 或 `QDRANT_VECTOR_SIZE` 后，需要通过开发者题库管理面板执行全量 reindex，并确认失败数为 0。
-- 发布失败使用 `FAILED` 状态重试；归档删除失败使用 `DELETE_FAILED` 状态，未同步重建会同时补偿 Qdrant 写入与删除。
+### RAG 离线评测
 
-### RAG 离线检索评测
+```powershell
+python -m pip install -r scripts/retrieval_eval/requirements.txt
+python -m scripts.retrieval_eval.validate_dataset --help
+python -m scripts.retrieval_eval.calculate_metrics --help
+python -m scripts.retrieval_eval.rerank_candidates --help
+```
 
-`scripts/retrieval_eval` 提供 AI 大模型岗位的离线检索评测工具链，用于比较候选集大小、中文或多语言 Embedding 模型，以及后续 rerank 的潜在价值。该流程只读 MySQL，并在本地加载模型计算相似度，不会修改生产 Qdrant collection。
-
-固定评测数据提交到：
+固定评测集位于：
 
 ```text
 backend/src/test/resources/retrieval-eval/
@@ -250,219 +264,90 @@ backend/src/test/resources/retrieval-eval/
   ai-model-v1-metadata.json
 ```
 
-v1 Atom 快照和 100 条 query 数据集一旦审核提交即保持不可变。原始导出、未审核 query、候选池、模型建议和报告写入 `output/retrieval-eval/`，默认不提交到 Git。
+原始导出和未审核候选池默认写入 `output/retrieval-eval/`，不提交到 Git。
 
-安装可选依赖：
-
-```powershell
-python -m pip install -r scripts/retrieval_eval/requirements.txt
-```
-
-配置只读数据库账号：
-
-```env
-RETRIEVAL_EVAL_DB_HOST=localhost
-RETRIEVAL_EVAL_DB_PORT=3306
-RETRIEVAL_EVAL_DB_USER=readonly_user
-RETRIEVAL_EVAL_DB_PASSWORD=replace_me
-RETRIEVAL_EVAL_DB_NAME=interview_db
-```
-
-典型流程：
-
-```powershell
-python scripts/retrieval_eval/export_atoms.py --output output/retrieval-eval/ai-model-atoms.jsonl
-python scripts/retrieval_eval/extract_real_queries.py --limit 40 --output output/retrieval-eval/real-queries.jsonl
-```
-
-人工检查真实 query 的脱敏结果并填写 `scenario` 后，再生成补齐 query：
-
-```powershell
-python scripts/retrieval_eval/generate_synthetic_queries.py `
-  --real-queries output/retrieval-eval/real-queries.jsonl `
-  --atoms output/retrieval-eval/ai-model-atoms.jsonl `
-  --output output/retrieval-eval/ai-model-v1-unjudged.jsonl
-```
-
-评分、候选池和模型预标注：
-
-```powershell
-python scripts/retrieval_eval/score_embeddings.py `
-  --queries output/retrieval-eval/ai-model-v1-unjudged.jsonl `
-  --atoms output/retrieval-eval/ai-model-atoms.jsonl `
-  --output output/retrieval-eval/embedding-rankings.jsonl `
-  --top-k 30
-
-python scripts/retrieval_eval/build_candidate_pool.py `
-  --queries output/retrieval-eval/ai-model-v1-unjudged.jsonl `
-  --atoms output/retrieval-eval/ai-model-atoms.jsonl `
-  --rankings output/retrieval-eval/embedding-rankings.jsonl `
-  --output output/retrieval-eval/candidate-pool.jsonl
-
-python scripts/retrieval_eval/prelabel_candidates.py `
-  --queries output/retrieval-eval/ai-model-v1-unjudged.jsonl `
-  --atoms output/retrieval-eval/ai-model-atoms.jsonl `
-  --pool output/retrieval-eval/candidate-pool.jsonl `
-  --output output/retrieval-eval/candidate-pool-prelabeled.jsonl
-```
-
-模型建议不是评测真值。人工审核 Atom 快照、query 和 `0-3` relevance judgment 后，才能写入固定 v1 数据集。验证和生成报告：
-
-```powershell
-python scripts/retrieval_eval/validate_dataset.py `
-  --dataset backend/src/test/resources/retrieval-eval/ai-model-v1.jsonl `
-  --metadata backend/src/test/resources/retrieval-eval/ai-model-v1-metadata.json `
-  --atoms backend/src/test/resources/retrieval-eval/ai-model-v1-atoms.jsonl
-
-python scripts/retrieval_eval/score_embeddings.py `
-  --queries backend/src/test/resources/retrieval-eval/ai-model-v1.jsonl `
-  --atoms backend/src/test/resources/retrieval-eval/ai-model-v1-atoms.jsonl `
-  --output output/retrieval-eval/embedding-rankings.jsonl `
-  --top-k 30
-
-python scripts/retrieval_eval/calculate_metrics.py `
-  --dataset backend/src/test/resources/retrieval-eval/ai-model-v1.jsonl `
-  --rankings output/retrieval-eval/embedding-rankings.jsonl `
-  --metrics-output output/retrieval-eval/ai-model-v1-metrics.json `
-  --report-output output/retrieval-eval/ai-model-v1-report.md `
-  --seed 20260603
-```
-
-评估 rerank 时，先基于当前推荐的 `multilingual-e5-base` Top-20 候选生成二阶段排序，再与原始 e5 排序合并计算指标：
-
-```powershell
-python scripts/retrieval_eval/rerank_candidates.py `
-  --queries backend/src/test/resources/retrieval-eval/ai-model-v1.jsonl `
-  --atoms backend/src/test/resources/retrieval-eval/ai-model-v1-atoms.jsonl `
-  --rankings output/retrieval-eval/ai-model-v1-rankings-multilingual-e5-base.jsonl `
-  --output output/retrieval-eval/ai-model-v1-rankings-e5-bge-reranker-base.jsonl `
-  --source-model multilingual-e5-base `
-  --candidate-top-k 20 `
-  --reranker bge-reranker-base
-
-Get-Content `
-  output/retrieval-eval/ai-model-v1-rankings-multilingual-e5-base.jsonl, `
-  output/retrieval-eval/ai-model-v1-rankings-e5-bge-reranker-base.jsonl `
-  | Set-Content output/retrieval-eval/ai-model-v1-rankings-e5-vs-rerank.jsonl
-
-python scripts/retrieval_eval/calculate_metrics.py `
-  --dataset backend/src/test/resources/retrieval-eval/ai-model-v1.jsonl `
-  --rankings output/retrieval-eval/ai-model-v1-rankings-e5-vs-rerank.jsonl `
-  --metrics-output output/retrieval-eval/ai-model-v1-metrics-e5-vs-rerank.json `
-  --report-output output/retrieval-eval/ai-model-v1-report-e5-vs-rerank.md `
-  --baseline-model multilingual-e5-base `
-  --seed 20260603
-```
-
-生产链路当前不启用二阶段 rerank。本评测集上，`bge-reranker-base` 和 `bge-reranker-v2-m3` 纯重排均拉低 Top-3 排序指标；融合分数只有小幅、置信度不足的提升，且会降低部分 HitRate 指标。后续只有在新数据集或新 reranker 明确提升 Recall@3、NDCG@3、MRR 且不损害 HitRate 后，才进入生产实现。
-
-## 题库维护 Skill
-
-仓库内置 Skill：
+## 项目结构
 
 ```text
-skills/interview-question-bank/
+.
+├── backend/                         # Spring Boot 后端
+│   ├── src/main/java/com/interview/
+│   │   ├── controller/              # REST API
+│   │   ├── service/                 # 面试、简历、Mentor、RAG、题库服务
+│   │   ├── service/questionbank/    # 题库发布、检索、Qdrant 同步
+│   │   ├── entity/                  # MySQL 实体
+│   │   └── config/                  # LLM、Redis、Embedding、JWT 等配置
+│   └── src/main/resources/db/migration/
+├── frontend/                        # Vue 3 前端
+│   └── src/views/                   # 工作台、准备页、面试页、历史、Mentor、设置
+├── embedding-service/               # FastAPI multilingual-e5 向量服务
+├── scripts/question_bank_import.py  # 题库导入包生成
+├── scripts/retrieval_eval/          # RAG 离线评测工具链
+├── tests/                           # Python 工具链测试
+├── docs/adr/                        # 架构决策记录
+├── docs/superpowers/                # 重要实现计划与设计记录
+├── image/架构图/                    # 系统架构图与 RAG 流程图
+├── image/展示图/                    # 项目页面截图
+├── docker-compose.example.yml       # 本地 Compose 模板
+├── docker-compose.prod.yml          # 生产 Compose
+├── DEPLOYMENT.md                    # Azure VM 部署指南
+├── AZURE_OPERATIONS.md              # 云端运维手册
+├── CONTEXT.md                       # 领域语言与边界
+└── CHANGELOG.md                     # 更新日志
 ```
-
-它的定位是给开发者维护私有题库使用，而不是给普通用户开放后台。典型流程：
-
-1. 准备 PDF、DOCX、TXT、MD 或 JSON 资料。
-2. 使用 `scripts/question_bank_import.py` 生成导入包。
-3. 按需评审导入包。
-4. 登录开发者账号，打开 `Settings -> Question Bank Admin` 并输入 `APP_ADMIN_TOKEN`。
-5. 上传导入包，先校验与试运行，再明确发布并在面板中验证索引和检索结果。
-
-HR 软技能题库应使用 `HR软技能` 分类，先生成 `DRAFT` 导入包并在管理面板校验；人工确认后再发布并按需重建索引。
-
-AI 大模型岗位使用 `AI大模型` 题库分类；导入包发布后，`AI大模型` 和 `大模型` 岗位关键字都会路由到该分类。
-
-示例：
-
-```powershell
-python scripts/question_bank_import.py --input .\materials\redis.pdf --category redis --mode DRAFT
-```
-
-默认导入包文件名为 `question_bank_imports/qb-<category>-<mode>-<YYYYMMDD-HHMMSS>-<shortid>.json`，例如 `qb-redis-draft-20260601-205707-e7d1a9.json`；需要指定文件名时使用 `--output`。
-
-生成后，使用网页管理面板完成导入与发布，不再存在脚本直提或外部 MCP 入口。
-
-## 本地开发
-
-### 后端
-
-```powershell
-cd backend
-mvn spring-boot:run
-```
-
-本地后端需要配置：
-
-- MySQL 8.0
-- Redis
-- Qdrant
-- DeepSeek API Key
-- JWT 签名密钥
-- 可选 SMTP 邮箱
-
-### 前端
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-前端通过 `VITE_API_BASE_URL` 指向后端，默认可使用 `.env.example` 中的 `http://localhost:8080`。
 
 ## 验证命令
-
-后端测试：
 
 ```powershell
 cd backend
 mvn test
 ```
 
-前端构建：
-
 ```powershell
 cd frontend
 npm run build
+npx vitest run
 ```
-
-前端单测：
 
 ```powershell
-cd frontend
-npm exec vitest -- --run
+python -m unittest discover -s tests
 ```
 
-当前项目在 Windows 环境中偶尔会遇到 Vitest / esbuild `spawn EPERM`，通常提升权限重跑即可。
+发布前建议至少完成后端测试、前端构建、前端单元测试和 Python 工具链测试。涉及 embedding-service 或 Qdrant 的变更，还应在 Docker 环境验证 collection 维度、points 数量和全量 reindex 结果。
 
-## 访问统计、限流与每日额度
+## 部署
 
-生产默认开启接口限流和每日 AI 成本额度：
+当前生产形态是单台 Azure Ubuntu VM + Docker Compose：
 
-- 登录、注册、验证码、重置密码、开始面试、AI 对话、报告生成、简历解析、Mentor 刷新和反馈提交都会按 IP 或用户维度限流。
-- 每个登录用户默认每日额度：开始面试 5 次、AI 对话 80 轮、简历解析 3 次、AI Mentor 生成 3 次。
-- 超限统一返回 `429` 和友好提示，例如“今日 AI 对话额度已用完，请明天再试”。
-- 页面访问、登录注册、面试开始/结束、报告查看、反馈、异常和限流命中会写入 `app_event_log`。
-- 额度使用会同步到 `user_daily_usage`，反馈写入 `user_feedback`。
+- `frontend`
+- `backend`
+- `embedding-service`
+- `mysql`
+- `redis`
+- `qdrant`
+- `caddy`（HTTPS profile）
 
-相关环境变量：
+部署入口：
 
-```env
-APP_ADMIN_TOKEN=replace_with_a_strong_admin_analytics_token
-APP_ANALYTICS_HASH_SALT=replace_with_a_long_random_analytics_hash_salt
-APP_RATE_LIMIT_ENABLED=true
-APP_QUOTA_ENABLED=true
-APP_DAILY_INTERVIEW_LIMIT=5
-APP_DAILY_AI_CHAT_TURN_LIMIT=80
-APP_DAILY_RESUME_PARSE_LIMIT=3
-APP_DAILY_MENTOR_GENERATE_LIMIT=3
-```
+- [Azure VM 部署指南](DEPLOYMENT.md)
+- [Azure 运维说明](AZURE_OPERATIONS.md)
 
-登录后访问 `/admin/analytics`，输入 `APP_ADMIN_TOKEN` 可查看 PV、UV、注册、登录、面试完成率、限流命中、今日额度使用和最新反馈。
+生产环境重点检查：
 
-## Azure 云端服务器部署
-- 该项目已完成 Azure 云端部署，当前内测地址为 https://interwise.japaneast.cloudapp.azure.com
+- `GET /api/health` 返回 200，且 app、mysql、redis、qdrant 都为 `UP`。
+- `embedding-service` 健康检查通过。
+- Qdrant collection 使用 `interview_atoms_e5_base`，向量维度为 768。
+- Qdrant points 数量与已发布题库 Atom 数量一致。
+- 切换模型、collection 或题库内容后执行全量 reindex，失败数为 0。
+
+## 相关文档
+
+- [领域上下文](CONTEXT.md)
+- [题库导入生命周期 ADR](docs/adr/0002-question-bank-import-lifecycle.md)
+- [移除 MCP 功能 ADR](docs/adr/0004-remove-mcp-feature.md)
+- [RAG 检索评测设计](docs/superpowers/specs/2026-06-03-rag-retrieval-evaluation-design.md)
+- [RAG 链路总结](docs/interview-prep/interwise-rag-chain-summary.md)
+
+## 版本
+
+当前稳定版本以 GitHub Releases 为准。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
