@@ -1,0 +1,20 @@
+{
+  "id": "prompt-compression-in-rag",
+  "subject": "提示压缩在RAG中的必要性",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "RAG",
+    "提示压缩",
+    "上下文管理",
+    "token优化"
+  ],
+  "content": {
+    "principles": "提示压缩是对RAG中过长的上下文输入进行“瘦身”，剔除冗余信息、重复段落、无关句子，保留关键事实和语义。常用方法：用小模型做重排序或摘要（如BGE reranker），只保留高分chunk；或在prompt组装时限制chunk数量，控制总token数。",
+    "pitfalls": "常见陷阱：忽视上下文长度限制，导致请求被拒或推理成本高；未过滤噪声内容，干扰生成质量。",
+    "follow_up_paths": [
+      "提示压缩与HyDE（假设文档嵌入）如何结合使用？",
+      "在长文档场景中，如何平衡压缩率和信息完整性？"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "llm-agent-dynamic-api-calling",
+  "subject": "LLM Agent动态API调用机制",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "Agent",
+    "API调用",
+    "工具抽象",
+    "运行时绑定"
+  ],
+  "content": {
+    "principles": "LLM Agent动态API调用的核心是将自然语言意图转为结构化请求，通过工具抽象和运行时绑定实现。Agent不直接拼接URL调用接口，而是通过定义好的工具描述（Tool Description）让模型知道可用能力。工具封装为带name、description、parameters的格式，用JSON Schema描述输入。模型输出明确指定要调用的工具及参数，Agent框架捕获调用意图后由统一的Tool Executor执行真实请求，包括参数校验、鉴权、重试。典型框架如LangChain、LlamaIndex采用此设计，建议拆分为两层：一层对齐模型理解，一层处理HTTP、序列化等底层操作。整体是“模型提议+系统执行”的分离设计，模型只负责决策，实际API调用由运行时安全落地，避免幻觉乱发请求。",
+    "pitfalls": "常见错误包括：模型输出工具调用格式不规范；未做参数校验导致运行时错误；忽略鉴权和重试机制；将网络请求逻辑混入模型决策层。面试陷阱可能考察如何防止Agent滥用API或处理工具调用失败。",
+    "follow_up_paths": [
+      "如何确保Agent调用的API安全性？",
+      "请设计一个支持动态工具注册的Agent框架"
+    ]
+  }
+}

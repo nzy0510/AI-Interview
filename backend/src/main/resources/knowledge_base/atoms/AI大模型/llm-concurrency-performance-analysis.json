@@ -1,0 +1,21 @@
+{
+  "id": "llm-concurrency-performance-analysis",
+  "subject": "LLM并发访问的性能瓶颈分析",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "并发",
+    "性能瓶颈",
+    "动态批处理",
+    "KV Cache",
+    "PagedAttention"
+  ],
+  "content": {
+    "principles": "大模型服务采用动态批处理（Dynamic Batching），多个用户请求合并成batch处理。性能瓶颈通常不在算力，而在显存带宽和KV Cache管理。prefill阶段可批量处理，吞吐接近峰值；decode阶段逐token生成，长文本和高采样参数会拖慢速度。真正瓶颈是KV Cache显存占用，如A100 80GB跑Llama3-8B，每个请求约2GB，最多撑40个并发。优化方向：PagedAttention降低显存压力、连续批处理（Continuous Batching）、控制最大生成长度。",
+    "pitfalls": "常见误解是认为每个用户只能分到1/N的tokens/s，忽略了批处理能力；或者只关注算力而忽视显存带宽和KV Cache管理；没有考虑请求排队时间远超生成时间的情况。",
+    "follow_up_paths": [
+      "如何设计自适应批处理策略以平衡延迟和吞吐？",
+      "在混合负载（短文本+长文本）下如何优化调度？"
+    ]
+  }
+}

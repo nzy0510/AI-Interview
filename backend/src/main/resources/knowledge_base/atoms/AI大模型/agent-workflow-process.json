@@ -1,0 +1,21 @@
+{
+  "id": "agent-workflow-process",
+  "subject": "Agent智能体的工作过程",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "Agent",
+    "智能体",
+    "规划",
+    "工具调用",
+    "反馈闭环"
+  ],
+  "content": {
+    "principles": "Agent智能体以目标驱动，通过感知、决策、执行和反馈闭环工作。步骤：1）从环境或用户指令获取输入；2）规划：用思维链或ReAct框架将大目标拆解为小步骤；3）工具调用：LLM判断是否调用外部工具（如查天气、发邮件），生成请求参数；4）结合工具返回结果推理，决定继续调用或生成回复。循环直至目标达成。常用框架：LangChain、LlamaIndex。",
+    "pitfalls": "忽略规划步骤导致任务执行混乱；工具调用参数生成错误；未处理工具返回异常导致流程中断。",
+    "follow_up_paths": [
+      "Agent如何应对工具调用失败或超时？",
+      "ReAct框架与思维链在Agent规划中有何区别？"
+    ]
+  }
+}

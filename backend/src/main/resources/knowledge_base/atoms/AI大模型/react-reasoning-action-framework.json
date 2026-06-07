@@ -1,0 +1,20 @@
+{
+  "id": "react-reasoning-action-framework",
+  "subject": "ReAct 推理-行动框架",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "ReAct",
+    "推理",
+    "行动",
+    "Agent"
+  ],
+  "content": {
+    "principles": "ReAct 让 LLM 在推理时交错进行思考（Reasoning）和行动（Action）。模型先分析当前情况并设定目标，然后执行具体操作（如调用 API、查数据库），将结果反馈后继续下一轮思考，直到完成任务。适合需要外部交互的多步任务，如查天气并决策是否带伞。相比纯推理能获取实时数据，相比纯指令驱动多了规划和反思能力。",
+    "pitfalls": "常见误解是认为 ReAct 只是简单链式调用，忽略其循环和状态更新；或混淆 ReAct 与 CoT，ReAct 包含行动步骤而 CoT 仅推理。面试可能问如何防止 ReAct 陷入无限循环，需设计终止条件或最大步数。",
+    "follow_up_paths": [
+      "ReAct 模式中如何设计有效的终止条件？",
+      "ReAct 与 Plan-and-Execute 模式有何异同？"
+    ]
+  }
+}

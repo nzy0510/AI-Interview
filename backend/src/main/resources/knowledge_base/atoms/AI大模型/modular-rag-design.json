@@ -1,0 +1,21 @@
+{
+  "id": "modular-rag-design",
+  "subject": "Modular RAG：模块化检索增强生成",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "Modular RAG",
+    "模块化",
+    "检索",
+    "重排序",
+    "上下文融合"
+  ],
+  "content": {
+    "principles": "Modular RAG将RAG系统拆解为独立可替换模块，如检索模块（多路召回）、重排序模块（精细打分）、上下文融合（去重摘要）、生成控制（动态决定是否检索）。每个模块可独立优化和替换，适合复杂场景如企业知识库中需结合时间过滤、权限判断等逻辑。LangChain和LlamaIndex支持灵活组合。",
+    "pitfalls": "模块间耦合度过高导致替换困难；忽略模块间接口标准化；过度模块化增加系统复杂度和维护成本。",
+    "follow_up_paths": [
+      "Modular RAG与传统端到端RAG在维护性上有何优劣？",
+      "如何设计模块接口以支持灵活替换？"
+    ]
+  }
+}

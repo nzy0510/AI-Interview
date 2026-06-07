@@ -1,0 +1,20 @@
+{
+  "id": "mcp-security-design",
+  "subject": "MCP协议安全性设计",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "MCP",
+    "安全",
+    "传输加密",
+    "认证"
+  ],
+  "content": {
+    "principles": "MCP安全性设计涵盖：传输安全（TLS/SSL）、身份认证（双向证书/API Key/OAuth）、访问控制（如Kafka ACL）、数据加密（字段级加密敏感信息）、审计日志（记录来源/时间/动作）、防重放攻击（nonce/时间戳窗口+唯一序列号去重）。",
+    "pitfalls": "仅依赖网络层加密而忽略字段级加密；未实现防重放机制导致安全漏洞。",
+    "follow_up_paths": [
+      "如何设计MCP协议的nonce校验机制？",
+      "在微服务架构中，MCP安全如何与Service Mesh集成？"
+    ]
+  }
+}

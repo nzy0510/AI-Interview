@@ -1,0 +1,21 @@
+{
+  "id": "gptcache-semantic-cache",
+  "subject": "GPTCache：语义缓存中间件",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "GPTCache",
+    "语义缓存",
+    "向量数据库",
+    "RAG",
+    "成本优化"
+  ],
+  "content": {
+    "principles": "GPTCache是专为大模型应用设计的语义缓存中间件，通过向量相似度判断请求是否语义相近，减少对API的调用次数。流程：用户请求转成embedding向量，在向量数据库搜索最近似结果，相似度超阈值则返回缓存答案，否则调大模型并存入缓存。适合高频问答、客服机器人、RAG系统等场景。",
+    "pitfalls": "embedding模型选择和距离计算方式直接影响命中精度，太松易误中，太严不起作用。建议搭配Milvus、Pinecone或Chroma做向量存储。",
+    "follow_up_paths": [
+      "如何评估GPTCache的缓存命中率？",
+      "GPTCache与RAG系统的集成方式？"
+    ]
+  }
+}

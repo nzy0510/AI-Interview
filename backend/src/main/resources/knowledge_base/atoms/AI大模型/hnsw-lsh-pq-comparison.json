@@ -1,0 +1,21 @@
+{
+  "id": "hnsw-lsh-pq-comparison",
+  "subject": "HNSW、LSH、PQ技术对比",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "HNSW",
+    "LSH",
+    "PQ",
+    "ANN",
+    "向量索引"
+  ],
+  "content": {
+    "principles": "三种常用ANN技术：1) HNSW（Hierarchical Navigable Small World）是多层图结构，高层稀疏快速跳转，底层密集精细搜索，召回率高、延迟稳定，但建索引内存开销大；2) LSH（Locality-Sensitive Hashing）通过哈希函数将相似向量映射到同一桶，实现简单、存储省，但召回率不如HNSW；3) PQ（Product Quantization）将高维向量分段聚类压缩，如128维float压到16字节，检索时用对称距离近似。常组合使用，如Faiss的IVFPQ先聚类定位候选集再PQ压缩。",
+    "pitfalls": "认为LSH在所有场景下召回率都低；忽略PQ的精度损失；未考虑HNSW的内存开销在资源受限场景下的影响。",
+    "follow_up_paths": [
+      "如何根据数据分布和查询延迟要求选择HNSW、LSH、PQ的组合？",
+      "在十亿级向量场景下，IVFPQ的参数如何调优？"
+    ]
+  }
+}

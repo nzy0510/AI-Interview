@@ -1,0 +1,21 @@
+{
+  "id": "rag-data-cleaning-and-preprocessing",
+  "subject": "RAG应用中的数据清洗和预处理",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "RAG",
+    "数据清洗",
+    "文本切分",
+    "元数据",
+    "编码统一"
+  ],
+  "content": {
+    "principles": "数据清洗和预处理直接决定RAG检索质量。关键步骤：1）文本切分合理，使用RecursiveCharacterTextSplitter保留段落上下文，chunk size 512-1024 token，overlap 100-200 token；2）清理噪声，用BeautifulSoup或trafilatura提取正文，正则过滤乱码；3）元数据注入，给每个chunk加来源URL、标题、章节名等信息；4）编码统一为UTF-8，中文场景做繁简归一化；5）可选实体增强，用spaCy或HanLP抽关键词、人名、地名，附加到metadata。整个流程可串成pipeline，用Apache Beam或Airflow调度。",
+    "pitfalls": "常见错误是忽略元数据注入或编码统一，导致后续检索和向量化问题。面试官可能陷阱：过度依赖固定chunk size而不考虑内容密度。",
+    "follow_up_paths": [
+      "如何确定chunk size和overlap的最佳值？",
+      "实体增强在RAG中如何提升检索效果？"
+    ]
+  }
+}

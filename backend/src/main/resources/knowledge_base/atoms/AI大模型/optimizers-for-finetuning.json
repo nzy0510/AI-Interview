@@ -1,0 +1,19 @@
+{
+  "id": "optimizers-for-finetuning",
+  "subject": "微调中常用的优化器",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "优化器",
+    "AdamW",
+    "微调"
+  ],
+  "content": {
+    "principles": "常用优化器：1) SGD with Momentum：加动量项减少震荡，但学习率敏感，大模型微调少用。2) Adam：自适应学习率，对稀疏梯度友好，BERT等预训练模型微调常用，但内存开销大。3) AdamW：Adam升级版，将权重衰减单独计算，解决正则化理论缺陷，HuggingFace Transformers默认推荐。4) Lion：仅用一阶动量，内存比Adam少一半，某些NLP任务效果更好，但对学习率更敏感。当前主流是AdamW，因其稳定性和效果兼备。",
+    "pitfalls": "常见错误是忽略AdamW与Adam的区别，直接使用Adam可能导致正则化效果不佳。另一个陷阱是认为Lion一定优于AdamW，实际上Lion对学习率更敏感，需要精细调参。",
+    "follow_up_paths": [
+      "为什么AdamW在微调中比Adam更受欢迎？请从权重衰减角度解释。",
+      "在资源受限时，你会选择Lion还是AdamW？为什么？"
+    ]
+  }
+}

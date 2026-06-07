@@ -1,0 +1,20 @@
+{
+  "id": "dynamic-weight-allocation-in-multi-recall",
+  "subject": "LangChain多路召回结果的动态权重分配",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "LangChain",
+    "多路召回",
+    "重排序",
+    "动态权重"
+  ],
+  "content": {
+    "principles": "动态权重分配方法：1）重排序模型：用BGE-Reranker或Cohere Rerank对合并后的候选集打分，实现动态加权，LangChain中用RunnableLambda包装；2）基于查询特征的路由加权：用RouterRetriever配合LLM判断query类型，动态选择或加权子检索器；3）LLM自评估：将各路召回结果和query输入LLM打分排序，灵活性高但成本高。代码上使用EnsembleRetriever组合多个BaseRetriever，权重动态计算而非写死。",
+    "pitfalls": "权重写死导致无法适应不同查询；忽略重排序模型导致召回质量下降；LLM自评估成本过高不适用于高频场景。",
+    "follow_up_paths": [
+      "如何设计查询特征提取模块以支持路由加权？",
+      "重排序模型的选择对最终效果的影响有多大？"
+    ]
+  }
+}

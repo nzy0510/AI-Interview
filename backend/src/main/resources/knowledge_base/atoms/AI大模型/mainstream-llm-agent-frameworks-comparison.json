@@ -1,0 +1,21 @@
+{
+  "id": "mainstream-llm-agent-frameworks-comparison",
+  "subject": "主流 LLM Agent 框架对比",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "LangChain",
+    "LlamaIndex",
+    "AutoGPT",
+    "Semantic Kernel",
+    "Dify"
+  ],
+  "content": {
+    "principles": "主流框架各有侧重：LangChain 生态最全、灵活但调试困难；LlamaIndex 专注 RAG，文档处理优化好；AutoGPT 主打自主分解但易循环，适合概念验证；Semantic Kernel 与 Azure 绑定，适合 .NET 企业级；Dify/FastGPT 低代码可视化，适合快速试错但灵活性受限。选型依据场景：RAG 用 LlamaIndex，快速原型用 LangChain 或 Dify，企业可控用 Semantic Kernel。",
+    "pitfalls": "盲目选择流行框架而不考虑场景；忽略生产环境对稳定性和可调试性的要求。面试可能问为何 AutoGPT 不适合生产，需指出其不可控循环和输出不稳定。",
+    "follow_up_paths": [
+      "在构建企业级知识库 Agent 时，你会选择 LlamaIndex 还是 LangChain？为什么？",
+      "低代码 Agent 框架（如 Dify）的局限性有哪些？"
+    ]
+  }
+}

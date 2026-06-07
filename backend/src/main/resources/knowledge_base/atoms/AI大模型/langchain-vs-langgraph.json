@@ -1,0 +1,20 @@
+{
+  "id": "langchain-vs-langgraph",
+  "subject": "LangChain 与 LangGraph 的区别",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "LangChain",
+    "LangGraph",
+    "框架对比",
+    "Agent编排"
+  ],
+  "content": {
+    "principles": "LangChain 是工具箱，适合构建简单链式流水线（如文档加载→检索→LLM生成），流程线性，适合原型和轻量应用。LangGraph 是升级控制器，专攻有状态、多步骤、带循环的复杂 Agent 流程，用有向图建模，支持条件跳转、失败重试、人类介入等控制流。LangGraph 核心是 StateGraph，节点读写共享状态，条件边决定下一步。",
+    "pitfalls": "易混淆两者定位：LangChain 不能处理循环和复杂状态，LangGraph 不擅长简单线性链。面试可能问何时选 LangChain 而非 LangGraph，答案应聚焦任务复杂度。",
+    "follow_up_paths": [
+      "在什么场景下你会选择 LangChain 而不是 LangGraph？",
+      "LangGraph 的 StateGraph 如何管理并发或并行节点？"
+    ]
+  }
+}

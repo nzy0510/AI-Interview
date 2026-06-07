@@ -1,0 +1,20 @@
+{
+  "id": "ai-powered-ticket-classification-system",
+  "subject": "智能工单分类系统的AI环节与技术选型",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "工单分类",
+    "技术选型",
+    "Prompt Learning",
+    "模型部署"
+  ],
+  "content": {
+    "principles": "智能工单分类的AI参与环节：1）预处理：用规则+轻量模型（如TinyBERT）做文本清洗和标准化，避免大模型的高延迟；2）核心分类：固定类别用RoBERTa+CRF（推理快、易维护），动态类别用Prompt Learning配合P-tuning v2接大模型（如ChatGLM-6B）做zero-shot分类；3）后置反馈闭环：分错工单进人工复核，用Label Studio+Milvus相似样本检索辅助标注，数据定期回流增量训练；4）工程部署：小模型用TensorFlow Lite或ONNX Runtime，大模型用vLLM批处理异步推理，避免成本过高。",
+    "pitfalls": "所有请求都走大模型导致成本爆炸；忽略预处理步骤导致分类准确率下降；未建立反馈闭环导致模型无法持续优化。",
+    "follow_up_paths": [
+      "如何设计增量训练策略以平衡模型更新频率和稳定性？",
+      "在多分类任务中，如何处理类别不平衡问题？"
+    ]
+  }
+}

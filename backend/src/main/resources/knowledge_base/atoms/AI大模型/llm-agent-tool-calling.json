@@ -1,0 +1,20 @@
+{
+  "id": "llm-agent-tool-calling",
+  "subject": "LLM Agent工具调用机制",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "LLM Agent",
+    "工具调用",
+    "ReAct",
+    "规划能力"
+  ],
+  "content": {
+    "principles": "LLM Agent通过输出结构化指令调用外部工具（如shell命令、API、搜索引擎），由代理程序执行。工具调用是自主决策的落地手段，结合ReAct模式（推理+动作）实现任务分解与执行。典型框架如LangChain提供动作封装。工具调用能力依赖模型对工具接口的理解和规划能力。",
+    "pitfalls": "常见错误是工具调用缺乏错误处理，导致任务中断。另外，模型可能生成无效指令或误用工具。",
+    "follow_up_paths": [
+      "如何设计工具调用的错误恢复机制？",
+      "多工具场景下，如何优化工具选择策略？"
+    ]
+  }
+}

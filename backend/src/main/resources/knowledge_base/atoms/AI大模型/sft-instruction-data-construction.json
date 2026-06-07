@@ -1,0 +1,19 @@
+{
+  "id": "sft-instruction-data-construction",
+  "subject": "SFT指令微调数据的构建方法",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "SFT",
+    "指令微调",
+    "数据构建"
+  ],
+  "content": {
+    "principles": "SFT数据构建为“指令-输入-输出”三元组结构。关键不是数据量，而是覆盖多样任务类型和表达方式。标准样本包含instruction（任务描述）、input（待处理内容，可为空）、output（期望输出）。高质量数据比大规模噪声数据更有效。",
+    "pitfalls": "只堆数据量忽略多样性；指令表述不一致导致模型泛化差；输入输出格式不统一；忽略任务难度平衡导致模型偏向简单任务。",
+    "follow_up_paths": [
+      "如何自动生成或扩增指令微调数据？",
+      "指令微调数据中任务类型分布对模型能力的影响？"
+    ]
+  }
+}

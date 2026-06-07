@@ -118,6 +118,7 @@ graph TD
 - 管理面板：Settings 中的 Question Bank Admin 支持校验、试运行、发布、归档、恢复、搜索和 reindex。
 - 同步状态：Qdrant 写入或删除失败会保留可重试状态，不让数据库事务和外部索引状态悄悄分叉。
 - 离线评测：`scripts/retrieval_eval` 支持导出、构建候选池、预标注、计算指标和 rerank 对比。
+- 内置基础题库：仓库仅随代码内置基础可运行题库，覆盖 Java 后端、前端、消息队列、HR 通用能力与 AI 大模型等核心方向；本地首次空库启动会自动导入 `backend/src/main/resources/knowledge_base/atoms/**/*.json` 并建立 Qdrant 索引。云端私有扩展题库、临时导入包和运维数据不会自动同步到他人本地部署，需要开发者通过 Question Bank Admin 单独导入、发布和 reindex。
 
 ### 运营保护
 

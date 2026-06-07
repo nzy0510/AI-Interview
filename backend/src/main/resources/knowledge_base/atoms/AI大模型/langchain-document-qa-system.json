@@ -1,0 +1,20 @@
+{
+  "id": "langchain-document-qa-system",
+  "subject": "使用LangChain构建文档问答系统",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "LangChain",
+    "文档问答",
+    "向量检索",
+    "RAG"
+  ],
+  "content": {
+    "principles": "构建文档问答系统的核心步骤：1）文档加载与分割：使用DocumentLoaders从PDF/Word/网页抓取内容，用RecursiveCharacterTextSplitter按段落或固定长度（如500 token）切分；2）向量化与检索：用Embedding Model（如text-embedding-ada-002或BGE）生成向量，存入向量数据库（Chroma/Pinecone/Milvus），用户提问时检索top-k相似文本块；3）提示工程与模型调用：将检索到的上下文和问题组装成prompt，用PromptTemplate规范格式；4）链式调用：用LLMChain或RetrievalQA链串联步骤。数据预处理和检索质量决定效果上限。",
+    "pitfalls": "分块策略不当导致语义割裂或丢失全局逻辑；检索结果不准确导致模型回答错误；忽略PromptTemplate导致模型幻觉。",
+    "follow_up_paths": [
+      "如何优化分块策略以平衡语义完整性和检索效率？",
+      "当文档包含表格或图片时，如何处理以支持问答？"
+    ]
+  }
+}

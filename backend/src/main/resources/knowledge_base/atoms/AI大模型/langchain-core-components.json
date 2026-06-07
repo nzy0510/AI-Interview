@@ -1,0 +1,21 @@
+{
+  "id": "langchain-core-components",
+  "subject": "LangChain核心组件",
+  "category": "AI大模型",
+  "difficulty": "junior",
+  "tags": [
+    "LangChain",
+    "组件",
+    "模型IO",
+    "链",
+    "代理"
+  ],
+  "content": {
+    "principles": "LangChain的核心组件包括：1）Model I/O：封装与大模型交互，支持多种模型类型（OpenAI、Anthropic、Hugging Face等），统一调用方式；2）Prompts：提示词管理模块，含PromptTemplate和ExampleSelector，支持变量化模板和few-shot示例注入；3）Chains：将多个步骤串成流水线，如先摘要再情感分析，常用LLMChain，可自定义复杂链式逻辑；4）Agents：允许模型决策下一步动作，依赖Tools和AgentExecutor，典型场景如结合SerpAPI做搜索代理；5）Memory：维持对话状态，常见有ConversationBufferMemory（保存全部历史）和ConversationSummaryMemory（只存摘要）；6）Retrieval：结合向量数据库做检索增强，如用FAISS或Chroma存储文档嵌入，查询时先检索相关片段再生成答案，缓解幻觉。这些组件可单独使用或组合，关键是按需选取。",
+    "pitfalls": "常见错误包括：不按需选取组件，一上来全堆砌；忽略Memory对长对话的性能影响；Retrieval时未优化向量检索参数。面试陷阱可能考察组件间的依赖关系或要求对比不同Memory实现。",
+    "follow_up_paths": [
+      "LangChain中Chain和Agent的区别是什么？",
+      "如何优化LangChain的检索增强生成（RAG）性能？"
+    ]
+  }
+}

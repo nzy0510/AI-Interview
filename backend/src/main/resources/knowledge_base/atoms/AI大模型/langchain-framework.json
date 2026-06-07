@@ -1,0 +1,21 @@
+{
+  "id": "langchain-framework",
+  "subject": "LangChain框架：链式调用与外部数据对接",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "LangChain",
+    "链式调用",
+    "RAG",
+    "Agent",
+    "向量数据库"
+  ],
+  "content": {
+    "principles": "LangChain是帮助快速搭建大模型应用的框架，核心能力包括：1）链式调用，将多个步骤串起来（如查数据库→模型总结→发通知）；2）与外部数据对接，如通过向量数据库做RAG；3）Agent模式，让模型自主决定下一步操作。代码简洁，几行即可定义链。适合动态输入、多步推理、结合私有数据的场景。",
+    "pitfalls": "如果只是简单问答，LangChain可能显得重。Agent模式下模型输出格式需严格解析，否则易出错。",
+    "follow_up_paths": [
+      "LangChain的Agent模式如何实现工具调用？",
+      "LangChain与LlamaIndex的对比？"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "llm-agent-common-capabilities",
+  "subject": "LLM Agent 常见功能",
+  "category": "AI大模型",
+  "difficulty": "junior",
+  "tags": [
+    "LLM Agent",
+    "规划",
+    "工具调用",
+    "记忆",
+    "多Agent协作"
+  ],
+  "content": {
+    "principles": "LLM Agent 核心功能包括：规划与目标分解（如拆解竞品分析任务）、工具调用（Function Calling 触发外部 API）、记忆能力（短期上下文+长期向量存储）、自主执行与反思（ReAct 模式）、多 Agent 协作（角色分工如 MetaGPT）。需设计 fallback 机制和人工介入点以应对失败。",
+    "pitfalls": "过度依赖自主执行而忽略错误处理；误认为多 Agent 协作简单，实际需解决通信和冲突。面试可能问如何防止 Agent 陷入无效循环，需强调反思和终止条件。",
+    "follow_up_paths": [
+      "多 Agent 协作中如何解决角色间的任务冲突？",
+      "Agent 的反思机制如何实现？请举例。"
+    ]
+  }
+}

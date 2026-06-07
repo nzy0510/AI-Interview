@@ -1,0 +1,21 @@
+{
+  "id": "chunking-strategies-comparison",
+  "subject": "RAG中常见分块策略的区别",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "RAG",
+    "分块策略",
+    "固定大小",
+    "语义分割",
+    "滑动窗口"
+  ],
+  "content": {
+    "principles": "常见分块策略：1）固定大小分块：按字符或token数硬切，简单但易撕裂语义；2）基于段落或标题分割：利用自然断点，保留语义单元，但块大小不均；3）滑动窗口重叠分块：缓解语义断裂，但增加索引量和存储成本；4）语义感知分块（如RecursiveCharacterTextSplitter）：先按标点切再合并，保证句子完整，更稳定。",
+    "pitfalls": "常见陷阱：选错策略导致检索效果差；滑动窗口重叠过大增加成本；语义分块延迟高，不适合实时场景。",
+    "follow_up_paths": [
+      "在结构化文档（如Markdown）中，如何自动识别标题层级进行分块？",
+      "语义感知分块如何利用embedding模型判断语义边界？"
+    ]
+  }
+}

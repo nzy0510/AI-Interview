@@ -1,0 +1,20 @@
+{
+  "id": "multimodal-alignment-training",
+  "subject": "多模态对齐训练",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "多模态",
+    "对齐训练",
+    "CLIP",
+    "端到端训练"
+  ],
+  "content": {
+    "principles": "多模态对齐训练将不同模态（文本、图像、音频）映射到同一语义空间，如CLIP将图片和文字特征对齐。模型通过视觉编码器（如ViT）和文本tokenizer分别处理输入，经交叉注意力融合。端到端训练确保语言模型真正理解图像内容，而非猜测。典型代表如LLaVA、Qwen-VL。",
+    "pitfalls": "误区是认为多模态任务仅靠prompt工程即可，实际必须依赖对齐训练。忽略模态间语义鸿沟会导致推理错误。",
+    "follow_up_paths": [
+      "多模态对齐训练中如何避免模态偏差？",
+      "如何评估对齐训练的效果？"
+    ]
+  }
+}

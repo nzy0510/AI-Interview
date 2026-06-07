@@ -1,0 +1,20 @@
+{
+  "id": "query-expansion-definition-and-need",
+  "subject": "查询扩展的定义与在RAG中的必要性",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "查询扩展",
+    "RAG",
+    "查询改写",
+    "语义理解"
+  ],
+  "content": {
+    "principles": "查询扩展将用户原始问题变形为更完整、信息更丰富的查询语句，解决用户query短、关键词稀疏导致的检索不准确问题。常见做法：1）同义词/近义词扩写，如'续航'换成'电池寿命'；2）基于大模型做多跳推理，将原始问题拆成多个子问题；3）查询重写，将口语化表达转成标准检索语言。不做查询扩展的RAG系统召回率通常很低，尤其面对缩写、俚语、模糊表达时。LangChain、LlamaIndex内置了query transformation模块来解决这个断层。",
+    "pitfalls": "常见错误是过度扩展导致查询偏离原始意图。面试官可能陷阱：认为查询扩展只适用于短query，忽略长query也可能需要语义补全。",
+    "follow_up_paths": [
+      "如何评估查询扩展的效果？",
+      "查询扩展与query改写有什么区别？"
+    ]
+  }
+}

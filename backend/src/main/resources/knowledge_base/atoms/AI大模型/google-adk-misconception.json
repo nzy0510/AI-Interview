@@ -1,0 +1,20 @@
+{
+  "id": "google-adk-misconception",
+  "subject": "Google ADK的常见误解与ADB/ADK区别",
+  "category": "AI大模型",
+  "difficulty": "junior",
+  "tags": [
+    "ADB",
+    "ADK",
+    "Android调试",
+    "调试工具"
+  ],
+  "content": {
+    "principles": "Google ADK常被误解为ADB（Android Debug Bridge）。ADB是Android开发中最基础的调试工具，由客户端（电脑）、adbd服务（手机）和连接（USB或网络）三部分组成，用于安装应用、查看日志、执行shell命令。ADK全称Android Open Accessory Development Kit，是让Android设备与外部硬件配件通信的方案，基于USB主机模式，但实际使用较少，多被蓝牙或Wi-Fi取代。",
+    "pitfalls": "常见错误是将ADK与ADB混淆，日常开发提到的'ADK'九成是口误，实际要用的是ADB。",
+    "follow_up_paths": [
+      "ADB有哪些常用命令？请列举并说明用途",
+      "在什么场景下会用到ADK而非ADB？"
+    ]
+  }
+}

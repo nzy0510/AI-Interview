@@ -1,0 +1,20 @@
+{
+  "id": "copilot-vs-agent-mode",
+  "subject": "Copilot模式与Agent模式的区别",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "Copilot",
+    "Agent",
+    "AI编程辅助",
+    "自主规划"
+  ],
+  "content": {
+    "principles": "Copilot模式是实时建议者，响应延迟<200ms，决策链路短，不主动发起动作，典型如GitHub Copilot补全代码。Agent模式能自主规划和执行任务，拆解需求、调用工具、检查结果、修正错误，依赖LLM推理和外部工具链（如LangChain、AutoGPT）。关键区别：Copilot等待触发输出建议，Agent自主决定下一步输出完成任务。",
+    "pitfalls": "混淆两者能力边界，认为Agent可完全替代Copilot；忽略Agent模式对LLM推理能力和工具链的依赖；未考虑Agent自主执行的安全风险。",
+    "follow_up_paths": [
+      "Agent模式如何保证任务执行的安全性和可靠性？",
+      "Copilot和Agent在代码生成质量上有何差异？"
+    ]
+  }
+}

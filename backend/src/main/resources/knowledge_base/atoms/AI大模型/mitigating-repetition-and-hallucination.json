@@ -1,0 +1,20 @@
+{
+  "id": "mitigating-repetition-and-hallucination",
+  "subject": "微调缓解模型输出重复和幻觉的方法",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "重复",
+    "幻觉",
+    "指令微调",
+    "RLHF"
+  ],
+  "content": {
+    "principles": "重复问题可通过推理时设置n-gram重复惩罚（如no_repeat_ngram_size=2）缓解；幻觉可通过指令微调（高质量问答对，如Alpaca格式）和RLHF（人类偏好训练奖励模型+PPO）改善。工程上常配合检索增强（RAG）让模型查实时数据。推理时控制top_p（0.9）和temperature（0.7）也能减少幻觉。",
+    "pitfalls": "过度依赖微调根治幻觉，实际需结合RAG；指令微调数据质量低反而加剧幻觉；RLHF成本高且奖励模型设计不当；重复惩罚设置过大导致输出不流畅。",
+    "follow_up_paths": [
+      "如何构建高质量的指令微调数据集以减少幻觉？",
+      "RLHF中奖励模型如何避免被对抗样本欺骗？"
+    ]
+  }
+}

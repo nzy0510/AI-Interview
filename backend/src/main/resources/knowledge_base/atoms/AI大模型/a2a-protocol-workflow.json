@@ -1,0 +1,21 @@
+{
+  "id": "a2a-protocol-workflow",
+  "subject": "A2A协议的工作原理与流程",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "A2A",
+    "微服务",
+    "API通信",
+    "消息队列",
+    "幂等性"
+  ],
+  "content": {
+    "principles": "A2A（Application-to-Application）协议是系统间通信模式的统称，通常基于HTTP/HTTPS或消息队列实现。流程包括：发起方构造请求→通过网络传输→接收方解析并执行业务逻辑→返回结果。安全控制常用OAuth2、JWT，为降低耦合可引入API网关。实际落地需考虑超时、重试、熔断等容错机制。异步场景引入消息中间件（如Kafka、RocketMQ）实现事件驱动。A2A流量比用户请求更稳定，但对准确性和幂等性要求更高。",
+    "pitfalls": "常见陷阱是忽略容错机制，导致一个服务卡住拖垮整条链路。另外，A2A通信中数据一致性容易出错，需配合熔断、限流、trace跟踪保障可靠性。",
+    "follow_up_paths": [
+      "请设计一个A2A通信的幂等性方案",
+      "在微服务架构中，A2A通信与用户请求处理有何不同？"
+    ]
+  }
+}

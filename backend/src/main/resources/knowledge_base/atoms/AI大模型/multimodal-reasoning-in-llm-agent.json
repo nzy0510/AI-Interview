@@ -1,0 +1,21 @@
+{
+  "id": "multimodal-reasoning-in-llm-agent",
+  "subject": "LLM Agent多模态推理",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "多模态",
+    "LLM Agent",
+    "CLIP",
+    "交叉注意力",
+    "工具调用"
+  ],
+  "content": {
+    "principles": "多模态推理将文本、图像等模态信息统一到向量空间对齐。图像经视觉编码器（如ViT）转patch embeddings，文本经tokenizer转token embeddings，通过交叉注意力让LLM理解图像特征。推理时结合上下文做因果推断，复杂任务可引入外部工具调用（如识别公式后计算）。典型代表如LLaVA、Qwen-VL，依赖端到端对齐训练，纯prompt工程无法解决跨模态语义鸿沟。",
+    "pitfalls": "误区是认为多模态任务仅靠prompt工程即可，实际必须依赖对齐训练。另外，忽略工具调用的规划能力会导致推理不完整。",
+    "follow_up_paths": [
+      "多模态对齐训练中如何平衡不同模态的表示？",
+      "如何评估多模态Agent的推理正确性？"
+    ]
+  }
+}

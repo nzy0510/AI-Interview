@@ -1,0 +1,20 @@
+{
+  "id": "bge-milvus-rag-combination",
+  "subject": "BGE + Milvus 中文RAG组合",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "RAG",
+    "BGE",
+    "Milvus",
+    "中文检索"
+  ],
+  "content": {
+    "principles": "BGE（智源研究院）通过查询-文档对增强训练，适配RAG检索偏好。Milvus作为向量数据库，与BGE组合可实现本地可控、高效的检索增强生成。",
+    "pitfalls": "忽略BGE的查询-文档对训练特性，直接当通用Embedding用可能效果不佳；Milvus部署时未考虑索引优化导致检索延迟高。",
+    "follow_up_paths": [
+      "BGE的训练数据如何构造？",
+      "Milvus中IVF_FLAT和HNSW索引的适用场景有何区别？"
+    ]
+  }
+}

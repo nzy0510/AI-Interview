@@ -1,0 +1,20 @@
+{
+  "id": "langgraph-graph-based-agent-orchestration",
+  "subject": "LangGraph 图结构编排原理",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "LangGraph",
+    "Agent编排",
+    "有向图",
+    "状态管理"
+  ],
+  "content": {
+    "principles": "LangGraph 将多 Agent 交互建模为有向图，节点是执行单元（如 LLM 调用、工具执行、条件判断、人工审核），边代表控制流或数据流向。通过共享的 state 对象传递上下文，支持条件边（conditional edges）实现动态路由，如根据意图跳转或判断是否需要人工介入。整个流程状态显式维护，支持暂停、恢复和循环，适合复杂多步协作任务。",
+    "pitfalls": "常见误区是认为 LangGraph 只是简单流水线，忽略其有状态和循环能力；或混淆节点与普通函数，忘记节点间通过 state 共享数据而非参数传递。面试陷阱可能问如何实现回滚或并行分支，需强调条件边和状态设计。",
+    "follow_up_paths": [
+      "如何用 LangGraph 实现一个带人工审核的多轮审批流？",
+      "LangGraph 与 AutoGen 在图编排上的核心差异是什么？"
+    ]
+  }
+}

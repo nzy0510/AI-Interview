@@ -1,0 +1,20 @@
+{
+  "id": "langchain-core-architecture",
+  "subject": "LangChain核心架构",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "LangChain",
+    "架构",
+    "链",
+    "抽象"
+  ],
+  "content": {
+    "principles": "LangChain的设计围绕让大模型灵活接入外部能力，通过标准化接口降低扩展成本。核心组织单元是链（Chain），可将多个处理步骤串成流水线，每个环节可替换。关键抽象有四个：1）Model I/O：封装大模型输入输出，支持主流服务；2）Retriever：负责从外部获取数据，典型用FAISS或Chroma做向量检索；3）Tool：允许模型调用外部函数，如搜索天气、执行Python代码；4）Agent：根据prompt决定调用哪些Tool，实现动态决策流。实际项目中Agent常结合ReAct模式工作，模型输出带特殊标记的文本，框架解析后触发工具调用，结果再拼回继续推理，形成闭环。与直接调API的最大区别是将“感知-决策-行动”循环变成可配置的工作流。注意链路越长，延迟叠加越明显，调试越困难，简单任务直接用LLMClient更稳。",
+    "pitfalls": "常见错误包括：过度设计复杂链导致延迟高；忽略调试难度；在简单任务上滥用Agent架构。面试陷阱可能考察对ReAct模式的理解或要求优化长链性能。",
+    "follow_up_paths": [
+      "LangChain中如何实现自定义Chain？",
+      "请对比LangChain与直接调用LLM API的优劣"
+    ]
+  }
+}

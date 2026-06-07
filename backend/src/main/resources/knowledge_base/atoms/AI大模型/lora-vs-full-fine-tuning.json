@@ -1,0 +1,20 @@
+{
+  "id": "lora-vs-full-fine-tuning",
+  "subject": "LoRA vs 全量微调：效果与成本权衡",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "LoRA",
+    "微调",
+    "效果",
+    "成本"
+  ],
+  "content": {
+    "principles": "LoRA（Low-Rank Adaptation）是一种参数高效的微调方法，通过低秩矩阵更新权重，显著降低计算和存储成本，适用于探索性实验和资源受限场景。全量微调则更新所有参数，效果上限更高，但成本高昂。通常LoRA是平衡效果和成本的首选，追求极致性能时再考虑全量微调。",
+    "pitfalls": "误以为LoRA效果一定差于全量微调，实际在多数任务上LoRA可接近全量性能；忽略LoRA秩（rank）和alpha超参数对效果的影响；在数据量充足时仍盲目使用LoRA导致欠拟合。",
+    "follow_up_paths": [
+      "LoRA的秩如何影响模型性能？如何选择最优秩？",
+      "全量微调中如何避免灾难性遗忘？"
+    ]
+  }
+}

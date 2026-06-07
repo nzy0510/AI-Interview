@@ -1,0 +1,19 @@
+{
+  "id": "prompt-engineering-structure",
+  "subject": "Prompt工程的结构化设计",
+  "category": "AI大模型",
+  "difficulty": "junior",
+  "tags": [
+    "prompt engineering",
+    "结构化设计",
+    "few-shot"
+  ],
+  "content": {
+    "principles": "一个高质量的prompt应包含六个核心要素：角色定义（明确给谁用）、背景描述（交代业务场景）、指令主体（具体任务）、示例样本（few-shot提升准确率）、输出约束（如JSON格式、字数限制）、异常处理机制（模糊输入时的降级策略）。这种结构化设计能让大模型稳定输出符合预期的结果。",
+    "pitfalls": "常见错误是只写指令而忽略角色和背景，导致模型输出风格或内容不匹配；或者缺少输出约束，导致格式混乱难以解析；没有异常处理机制时，模型在模糊输入下可能产生不可控输出。",
+    "follow_up_paths": [
+      "如何针对不同任务类型（分类、生成、抽取）调整prompt结构？",
+      "在复杂任务中如何设计多轮prompt或链式prompt？"
+    ]
+  }
+}

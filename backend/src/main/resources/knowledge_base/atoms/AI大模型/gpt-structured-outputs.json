@@ -1,0 +1,20 @@
+{
+  "id": "gpt-structured-outputs",
+  "subject": "GPT Structured Outputs：结构化输出",
+  "category": "AI大模型",
+  "difficulty": "junior",
+  "tags": [
+    "GPT",
+    "结构化输出",
+    "JSON",
+    "API"
+  ],
+  "content": {
+    "principles": "GPT Structured Outputs让大模型输出结构化数据（如JSON），通过指定schema，模型按格式返回数据，便于程序直接解析。OpenAI从2023年底支持response_format参数和JSON Schema，适用于gpt-3.5-turbo和gpt-4。适合配置生成、表单填充、API数据抽取等任务。",
+    "pitfalls": "模型不会自动输出结构，必须显式设置参数。复杂schema可能增加token消耗，需权衡清晰度与成本。",
+    "follow_up_paths": [
+      "如何设计高效的JSON Schema？",
+      "结构化输出与自由文本输出的性能对比？"
+    ]
+  }
+}

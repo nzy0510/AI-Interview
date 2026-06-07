@@ -1,0 +1,19 @@
+{
+  "id": "lora-low-rank-adaptation-principles",
+  "subject": "LoRA低秩适应原理与流程",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "LoRA",
+    "参数高效微调",
+    "PEFT"
+  ],
+  "content": {
+    "principles": "LoRA（Low-Rank Adaptation）通过向原始权重矩阵注入低秩分解矩阵ΔW = BA（A∈R^{r×d}, B∈R^{d×r}，r远小于d）来微调。训练时冻结原始权重，只训练A和B；推理时可将ΔW合并回原权重，不增加额外推理开销。例如r=8时参数量可降至原来的1/96，训练速度翻倍。",
+    "pitfalls": "误以为LoRA适用于所有层，实际通常只插入注意力层的Q、V投影；忽略r值选择，r过小可能欠拟合，过大则失去参数高效优势；未正确合并权重导致推理速度下降。",
+    "follow_up_paths": [
+      "LoRA的秩r如何影响模型性能和参数量？如何选择最优r？",
+      "LoRA与Adapter相比在显存占用和推理效率上有何差异？"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "peft-methods-comparison",
+  "subject": "PEFT典型方法：LoRA、Adapter、Prompt Tuning/Preﬁx Tuning",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "PEFT",
+    "LoRA",
+    "Adapter",
+    "Prompt Tuning"
+  ],
+  "content": {
+    "principles": "1) LoRA：在原始权重旁注入低秩矩阵，训练时只更新小矩阵，推理无延迟，是主流选择。2) Adapter：在Transformer模块间插入小型前馈网络（通常两层MLP），原模型冻结，只训练插入模块，效果好但增加推理延迟。3) Prompt Tuning/Preﬁx Tuning：通过可学习的软提示向量引导模型输出，Preﬁx Tuning将向量拼接在每一层输入前，Prompt Tuning只加在第一层，节省参数但对初始化敏感，小模型上不稳定。",
+    "pitfalls": "常见错误是认为Adapter和LoRA效果相当，实际上Adapter因推理延迟增加而逐渐被LoRA取代。另一个陷阱是忽略Prompt Tuning在小模型上的不稳定性，导致效果波动大。",
+    "follow_up_paths": [
+      "为什么LoRA在推理时无延迟而Adapter有？请从结构上解释。",
+      "在少样本场景下，Prompt Tuning和LoRA哪个更合适？为什么？"
+    ]
+  }
+}

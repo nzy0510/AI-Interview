@@ -1,0 +1,20 @@
+{
+  "id": "rag-rerank-definition-and-implementation",
+  "subject": "RAG中的Rerank定义与实现",
+  "category": "AI大模型",
+  "difficulty": "junior",
+  "tags": [
+    "RAG",
+    "Rerank",
+    "交叉编码器",
+    "检索优化"
+  ],
+  "content": {
+    "principles": "Rerank是对检索阶段召回的文档片段重新打分排序，挑出最相关结果喂给大模型。流程：先用向量数据库做相似度搜索（如top-5候选），再用交叉编码器（如BGE-Reranker、Cohere Rerank API）将query和每个文档拼接输入，输出相关性分数，按得分排序取前2-3个高质量段落。代码示例：pairs = [(query, doc) for doc in retrieved_docs]; scores = reranker.predict(pairs); ranked_docs = [doc for _, doc in sorted(zip(scores, retrieved_docs), reverse=True)]。Rerank能提升10%-20%的最终回答准确率，尤其适用于客服、医疗等容错低的场景。",
+    "pitfalls": "常见误区是认为Rerank总是必要，实际上在可接受一定噪声的场景下可直接使用向量检索。面试官可能陷阱：混淆Rerank与向量检索的排序机制。",
+    "follow_up_paths": [
+      "Rerank模型相比向量检索的优缺点是什么？",
+      "如何选择适合业务场景的Rerank模型？"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "rag-tuning-effect-evaluation",
+  "subject": "RAG调优后的效果评估标准与方法",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "RAG",
+    "效果评估",
+    "召回指标",
+    "生成质量",
+    "事实一致性"
+  ],
+  "content": {
+    "principles": "RAG调优后需用量化指标和真实场景反馈评估。方法：1）召回阶段用Recall@5和MRR，如企业知识库用1000条历史问题测试；2）生成质量用Rouge-L、BERTScore或BARTScore，BERTScore能更好捕捉语义匹配；3）事实一致性检测用Faithfulness指标，如RAGAS量化模型是否基于检索文档生成；4）人工评估从相关性、准确性、完整性、可读性四个维度打分，如金融投研场景分析师盲评。真实项目中，结合自动指标和人工评估，如法律咨询系统用LangChain+Pinecone时，需覆盖召回和生成全流程。",
+    "pitfalls": "常见错误是只依赖Rouge-L等文本相似度指标，忽略事实一致性。面试官可能陷阱：认为人工评估可完全替代自动指标。",
+    "follow_up_paths": [
+      "如何构建RAG评估的测试集？",
+      "事实一致性检测在RAG中如何实现？"
+    ]
+  }
+}

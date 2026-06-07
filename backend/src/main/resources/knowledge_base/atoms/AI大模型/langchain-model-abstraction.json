@@ -1,0 +1,20 @@
+{
+  "id": "langchain-model-abstraction",
+  "subject": "LangChain Model的抽象封装",
+  "category": "AI大模型",
+  "difficulty": "junior",
+  "tags": [
+    "LangChain",
+    "模型封装",
+    "接口统一",
+    "ChatModel"
+  ],
+  "content": {
+    "principles": "LangChain Model是对各种大语言模型的统一抽象封装，提供标准接口，让开发者不关心底层模型是哪家，都能用同样方式传入prompt、拿到输出。支持流式输出、带历史对话的会话模型（ChatModel）以及结构化输出解析。与PromptTemplate、RetrievalChain等组件无缝配合，解决AI应用开发中的胶水问题。",
+    "pitfalls": "常见误解是认为LangChain Model是一个独立模型，实际上它是框架层面的抽象。另外，切换模型时虽然代码改动小，但不同模型的输出质量和行为差异仍需注意。",
+    "follow_up_paths": [
+      "LangChain Model如何支持流式输出？请描述实现机制",
+      "在切换模型时，除了接口适配，还需要考虑哪些因素？"
+    ]
+  }
+}

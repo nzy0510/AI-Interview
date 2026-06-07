@@ -1,0 +1,20 @@
+{
+  "id": "spring-ai-mcp-integration",
+  "subject": "Spring AI集成MCP",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "Spring AI",
+    "MCP",
+    "Java",
+    "集成"
+  ],
+  "content": {
+    "principles": "Spring AI集成MCP需自定义客户端适配器：1）定义请求结构体匹配MCP字段（context/prompt/model）；2）通过@RegisterAiClient或手动配置Bean；3）注入ChatClient并设置baseUrl。实际请求需在header/payload中携带会话ID等元数据，可封装在拦截器中。Spring AI 0.8.0+支持SPI扩展机制。",
+    "pitfalls": "误以为主流厂商（通义千问、百川）都支持MCP；忽略拦截器封装导致重复代码。",
+    "follow_up_paths": [
+      "Spring AI中如何实现MCP协议的自定义拦截器？",
+      "SPI扩展机制相比手动配置有何优势？"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "mcp-workflow",
+  "subject": "MCP工作流程",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "MCP",
+    "Agent",
+    "工具调用"
+  ],
+  "content": {
+    "principles": "MCP工作流程：1）用户输入进入Agent循环；2）Controller判断是否需要外部调用；3）按MCP标准生成tool call消息；4）Adapter调用具体服务并获取结果；5）将结果结构化回填到prompt上下文。解耦模型逻辑与外部系统，类似LangChain/Semantic Kernel底层机制。",
+    "pitfalls": "忽略意图解析步骤直接调用工具；或未将工具结果正确注入上下文导致模型理解偏差。",
+    "follow_up_paths": [
+      "MCP中如何实现工具注册与发现？",
+      "如何保证工具调用结果的安全性？"
+    ]
+  }
+}

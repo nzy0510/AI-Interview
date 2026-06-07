@@ -1,0 +1,20 @@
+{
+  "id": "embedding-in-rag",
+  "subject": "RAG中Embedding的作用与原理",
+  "category": "AI大模型",
+  "difficulty": "junior",
+  "tags": [
+    "RAG",
+    "Embedding",
+    "向量化",
+    "语义相似度"
+  ],
+  "content": {
+    "principles": "Embedding将文本转为数字向量，保留语义信息。在RAG中用于：1）离线将知识库文档切片向量化存入向量数据库（如FAISS、Milvus）；2）线上将用户问题转为向量，检索top-k相似chunk。效果取决于向量是否将语义相近的文本映射到邻近空间。",
+    "pitfalls": "常见错误：忽略embedding模型选型对召回率的影响；未考虑向量索引构建方式（如HNSW、IVF）对检索速度和精度的影响。",
+    "follow_up_paths": [
+      "如何评估embedding模型在特定领域（如医疗、法律）的检索效果？",
+      "向量数据库的索引参数（如efConstruction、M）如何调优？"
+    ]
+  }
+}

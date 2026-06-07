@@ -1,0 +1,19 @@
+{
+  "id": "convert-application-to-mcp-service",
+  "subject": "将应用转换为MCP服务",
+  "category": "AI大模型",
+  "difficulty": "principal",
+  "tags": [
+    "MCP",
+    "微服务",
+    "架构改造"
+  ],
+  "content": {
+    "principles": "MCP是面向云原生的模块化编程模型，核心是微内核+插件结构。改造步骤：1）识别业务边界清晰、依赖收敛的模块（如鉴权、限流）；2）引入MCP运行时容器（如Jigsaw模块系统或自研ClassLoader隔离）；3）将功能打成jar包，配置module.json声明入口类和依赖。",
+    "pitfalls": "试图重写整个系统而非识别可插拔模块；忽略模块间依赖关系导致运行时冲突。",
+    "follow_up_paths": [
+      "如何设计MCP插件的热加载机制？",
+      "在Spring Boot应用中如何逐步迁移到MCP架构？"
+    ]
+  }
+}

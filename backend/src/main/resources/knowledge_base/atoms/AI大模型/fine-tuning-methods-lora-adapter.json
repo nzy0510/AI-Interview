@@ -1,0 +1,21 @@
+{
+  "id": "fine-tuning-methods-lora-adapter",
+  "subject": "常见微调方法：全量微调、LoRA、Adapter、P-Tuning",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "微调",
+    "LoRA",
+    "Adapter",
+    "P-Tuning",
+    "Prompt Tuning"
+  ],
+  "content": {
+    "principles": "1）全量微调：放开所有参数训练，效果最好但显存消耗大（8张A100不一定扛住Llama 2 7B）。2）LoRA：冻结原权重，加低秩矩阵做增量，显存省70%，训练快，是主流方案。3）Adapter：在Transformer层间插入小神经网络模块，固定主干只调小模块。4）P-Tuning/Prompt Tuning：学一组虚拟token的embedding，适合少样本但效果波动大。选择：数据多资源足可试全量微调，大多数情况LoRA性价比高。",
+    "pitfalls": "LoRA的秩（rank）选择影响效果，太小可能欠拟合，太大增加参数量。P-Tuning对初始化敏感，效果波动大。",
+    "follow_up_paths": [
+      "LoRA的秩如何选择？对效果有何影响？",
+      "如何评估不同微调方法的性价比？"
+    ]
+  }
+}

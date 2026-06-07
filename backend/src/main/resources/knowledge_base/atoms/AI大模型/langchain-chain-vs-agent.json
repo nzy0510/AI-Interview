@@ -1,0 +1,20 @@
+{
+  "id": "langchain-chain-vs-agent",
+  "subject": "LangChain中Chain与Agent的概念及应用场景",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "LangChain",
+    "Chain",
+    "Agent",
+    "任务编排"
+  ],
+  "content": {
+    "principles": "Chain是函数式组合，将多个处理步骤按固定顺序串联，每个环节输出自动作为下一环节输入，适合流程明确、步骤固定的场景（如内容生成流水线、结构化信息提取）。Agent让LLM自己决定下一步，充当'决策大脑'，根据当前状态选择调用工具或推理，适合开放性任务（如智能客服、自动化运维诊断）。Agent的代价是性能开销大，每步都需LLM推理，易陷入循环或误判。",
+    "pitfalls": "常见错误是在简单或固定流程中使用Agent，导致不必要的性能开销。应优先评估任务复杂度，选择合适抽象。",
+    "follow_up_paths": [
+      "请设计一个混合使用Chain和Agent的复杂任务流程",
+      "如何优化Agent的性能，减少不必要的LLM调用？"
+    ]
+  }
+}

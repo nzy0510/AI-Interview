@@ -1,0 +1,21 @@
+{
+  "id": "embedding-models-comparison",
+  "subject": "RAG中常用Embedding模型对比",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "RAG",
+    "Embedding模型",
+    "Sentence-BERT",
+    "BGE",
+    "Cohere"
+  ],
+  "content": {
+    "principles": "主流Embedding模型：Sentence-BERT（如paraphrase-MiniLM-L6-v2）轻量快速；Cohere multilingual-2支持多语言；OpenAI text-embedding-ada-002英文精度高；BGE（如bge-small-zh-v1.5）中文场景效果好；Jina AI jina-embeddings-v2支持长文本（8192 token）。选型需考虑语言、部署方式、精度和延迟。",
+    "pitfalls": "常见陷阱：在中文场景使用英文优化模型导致召回差；依赖云端API忽略本地部署需求；未考虑模型对长文本的支持能力。",
+    "follow_up_paths": [
+      "如何针对特定领域微调embedding模型以提升检索效果？",
+      "多语言场景下，如何选择或组合embedding模型？"
+    ]
+  }
+}

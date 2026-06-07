@@ -1,0 +1,21 @@
+{
+  "id": "advanced-rag-definition",
+  "subject": "Advanced RAG：增强检索与生成协同",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "Advanced RAG",
+    "查询重写",
+    "重排序",
+    "上下文压缩",
+    "Self-RAG"
+  ],
+  "content": {
+    "principles": "Advanced RAG在基础RAG上优化检索和生成协同效率，包括：查询重写（如LLM拆解问题或改写关键词）、重排序（如Cross-Encoder精细打分）、混合召回（结合BM25和向量检索）、上下文压缩（提取相关句子减少噪声）、Self-RAG（模型自主判断是否需要检索和采纳结果）。典型实现如LangChain + FAISS/BGE + Cohere Rerank组合。",
+    "pitfalls": "过度堆砌模块而不根据业务场景调整权重；忽略查询重写对召回率的提升作用；重排序模型选择不当导致延迟过高。",
+    "follow_up_paths": [
+      "如何评估Advanced RAG各模块的贡献？",
+      "Self-RAG与传统RAG在推理可控性上有何区别？"
+    ]
+  }
+}

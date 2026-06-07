@@ -1,0 +1,21 @@
+{
+  "id": "rag-pdf-table-handling",
+  "subject": "使用LangChain处理PDF表格数据召回",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "RAG",
+    "PDF解析",
+    "表格处理",
+    "LangChain",
+    "数据预处理"
+  ],
+  "content": {
+    "principles": "PDF表格在RAG中处理困难，因为传统文本切片会破坏表格结构。解决方案：1）使用PyMuPDF或pdfplumber提取表格，保持行列结构，转为HTML或Markdown格式；2）将结构化表格作为独立Document，设置元数据标记（如{\"source_type\": \"table\", \"page\": 5}）；3）向量化时表格整体作为一个chunk嵌入，避免行级拆分，可配合混合检索动态提升表格chunk权重；4）大表格可用'表头+行'组合生成子chunk，每条保留完整表头信息。关键在于提前结构化，而非依赖向量模型理解破碎文本。",
+    "pitfalls": "常见错误是直接对PDF文本切片，导致表格数据丢失结构信息。面试官可能追问：如何处理跨页表格或复杂合并单元格？",
+    "follow_up_paths": [
+      "除了pdfplumber，还有哪些工具可以提取PDF表格？",
+      "如何评估表格结构化后的召回效果？"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "llm-agent-architecture-components",
+  "subject": "LLM Agent 基本架构",
+  "category": "AI大模型",
+  "difficulty": "junior",
+  "tags": [
+    "LLM Agent",
+    "架构",
+    "感知",
+    "规划",
+    "记忆",
+    "工具调用"
+  ],
+  "content": {
+    "principles": "LLM Agent 架构包含四大模块：感知模块（接收外部输入并格式化）、规划模块（推理与任务分解，如 CoT 和 Plan-and-Execute）、记忆模块（短期上下文窗口和长期向量数据库）、工具调用与执行模块（通过 Function Calling 触发 API）。整体形成“观察→思考→决策→行动→观察”的闭环。",
+    "pitfalls": "容易忽略记忆模块的长期存储设计，或误以为 Agent 只需 LLM 调用。面试可能问如何平衡短期和长期记忆，需提及上下文窗口限制和检索策略。",
+    "follow_up_paths": [
+      "如何设计 Agent 的长期记忆以支持跨会话任务？",
+      "规划模块中任务分解的粒度如何确定？"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "a2a-vs-mcp-protocol-relationship",
+  "subject": "A2A协议与MCP协议的关系",
+  "category": "AI大模型",
+  "difficulty": "senior",
+  "tags": [
+    "A2A",
+    "MCP",
+    "协议对比",
+    "分层架构"
+  ],
+  "content": {
+    "principles": "A2A和MCP都是服务间通信协议方案，但定位和层级不同。A2A指Application-to-Application，是业务应用之间的直接调用协议，如通过Dubbo、Spring Cloud RPC或gRPC实现，不经过页面层，常见于微服务架构中订单系统调库存系统。MCP（Module Communication Protocol）更多指模块级通信规范，通常运行在同一应用内部的不同逻辑模块之间，或轻量级跨进程通信封装，抽象层级比A2A低，类似中间件内部组件交互的语言。类比：A2A是城市间高速公路，独立应用之间跑整车货；MCP是工厂内部传送带，不同车间之间传递零件，节奏更紧凑、协议更定制化。两者是分层协作关系，A2A解决系统边界调用，MCP处理内部模块协同，在SOFAStack等架构中常同时存在。",
+    "pitfalls": "常见错误包括：混淆A2A和MCP的定位；在模块内部误用A2A增加复杂度；在系统边界使用MCP导致耦合。面试陷阱可能考察对分层架构的理解或要求设计跨系统与模块内通信方案。",
+    "follow_up_paths": [
+      "在微服务架构中，如何选择A2A和MCP？",
+      "请举例说明A2A和MCP在实际项目中的协作方式"
+    ]
+  }
+}

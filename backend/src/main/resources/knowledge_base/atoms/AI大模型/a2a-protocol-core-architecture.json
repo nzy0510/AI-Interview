@@ -1,0 +1,20 @@
+{
+  "id": "a2a-protocol-core-architecture",
+  "subject": "A2A协议核心架构与组件",
+  "category": "AI大模型",
+  "difficulty": "mid",
+  "tags": [
+    "A2A",
+    "协议",
+    "微服务",
+    "服务间通信"
+  ],
+  "content": {
+    "principles": "A2A（Application-to-Application）协议描述系统间通过预定义接口直接通信的模式，不依赖用户参与。核心架构是去中心化或轻量网关控制的服务直连，常见于微服务、B2B集成或内部系统协同。典型组件包括：1）服务提供方：暴露RESTful API或gRPC接口；2）服务消费方：主动发起请求的应用；3）认证与授权模块：常用OAuth2 Client Credentials模式或API密钥；4）API网关（可选）：如Kong或Apigee，负责限流、日志、路由，但高并发内网调用时常绕过网关直连降低延迟；5）服务注册与发现：如Eureka或Nacos，帮助消费方找到可用实例。代码示例使用WebClient发起异步请求。注意网络超时、重试策略和熔断机制，配合Hystrix或Resilience4j防止雪崩效应。",
+    "pitfalls": "常见错误包括：忽略超时和重试策略导致雪崩；未实现熔断机制；过度依赖网关增加延迟；认证授权设计不当。面试陷阱可能考察A2A与RPC的区别或要求设计容错方案。",
+    "follow_up_paths": [
+      "A2A协议中如何实现服务发现？",
+      "请设计一个高可用的A2A调用链路"
+    ]
+  }
+}
