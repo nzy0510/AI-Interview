@@ -256,6 +256,27 @@ python scripts/question_bank_import.py `
 
 生成的导入包默认位于 `question_bank_imports/`，该目录用于本地运维，不提交到 Git。发布时进入 Settings -> Question Bank Admin，由开发者账号和 `APP_ADMIN_TOKEN` 双重校验；本地部署者可以用同一入口维护自己的私有题库，发布成功后会写入 MySQL 并同步到 Qdrant。
 
+### 内置题库维护 Skill
+
+仓库内置了面向开发者的 Agent Skill：
+
+```text
+.agents/skills/interview-question-bank/SKILL.md
+```
+
+开发者在 Codex 或兼容 Agent 中维护自己的题库时，可以直接要求使用 `interview-question-bank` skill。该 skill 的职责是把 PDF、DOCX、TXT、MD、JSON 等资料整理为标准题库导入包，并在发布前提醒维护者审核 atom 质量、选择导入模式和确认分类。
+
+推荐流程：
+
+1. 准备原始材料，明确目标分类，例如 `AI大模型`、`java`、`frontend`。
+2. 让 Agent 使用 `interview-question-bank` skill 生成导入包，或直接运行 `scripts/question_bank_import.py`。
+3. 优先使用 `DRAFT` 模式生成可审核包；只有确认要直接发布时才使用 `AUTO_PUBLISH`。
+4. 登录本地部署的开发者账号，进入 Settings -> Question Bank Admin。
+5. 输入 `APP_ADMIN_TOKEN`，上传 JSON 导入包，先 validate / dry run，再 publish。
+6. 发布后在管理面板检查 atom 状态、Qdrant 同步状态，并按需执行 reindex 和 search preview。
+
+这个 skill 只负责“生成和审查导入包”，不绕过后台权限直接写库；题库发布仍由本地 Question Bank Admin 执行，便于每个部署者维护自己的私有题库。
+
 ### RAG 离线评测
 
 ```powershell
