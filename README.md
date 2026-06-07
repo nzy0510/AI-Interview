@@ -196,6 +196,15 @@ MAIL_USERNAME=your_email@qq.com
 MAIL_PASSWORD=your_smtp_authorization_code
 ```
 
+若本地部署者需要维护自己的题库，先在前端注册/登录一个本地账号，再把该账号加入开发者白名单，例如：
+
+```env
+APP_DEVELOPER_EXEMPT_USERNAMES=your_login_username
+# 或使用邮箱：APP_DEVELOPER_EXEMPT_EMAILS=you@example.com
+```
+
+重启后端后，该账号可在 Settings -> Question Bank Admin 输入 `APP_ADMIN_TOKEN`，执行题库导入、发布、归档、恢复、搜索预览和 reindex。仓库内置题库只负责空库首次初始化，后续自定义题库以本地 MySQL 和 Qdrant 数据为准，不需要提交到 Git。
+
 不要提交 `.env`、真实 API Key、JWT Secret、邮箱授权码或数据库密码。
 
 ### Docker 启动
@@ -245,7 +254,7 @@ python scripts/question_bank_import.py `
   --out question_bank_imports
 ```
 
-生成的导入包默认位于 `question_bank_imports/`，该目录用于本地运维，不提交到 Git。发布时进入 Settings -> Question Bank Admin，由开发者账号和 `APP_ADMIN_TOKEN` 双重校验。
+生成的导入包默认位于 `question_bank_imports/`，该目录用于本地运维，不提交到 Git。发布时进入 Settings -> Question Bank Admin，由开发者账号和 `APP_ADMIN_TOKEN` 双重校验；本地部署者可以用同一入口维护自己的私有题库，发布成功后会写入 MySQL 并同步到 Qdrant。
 
 ### RAG 离线评测
 

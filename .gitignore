@@ -146,6 +146,10 @@ backend/mvn_result.txt
 .superpowers/
 .superpower/
 
+# Demo video local artifacts
+/demo-video/
+/docs/demo-video-*.md
+
 # Retrieval evaluation raw and generated artifacts
 /output/retrieval-eval/
 /.cache/retrieval-eval/
