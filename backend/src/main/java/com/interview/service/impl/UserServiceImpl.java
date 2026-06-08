@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +40,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private UserPreferenceMapper prefMapper;
+
+    @Value("${app.developer.exempt-emails:}")
+    private String developerExemptEmails;
 
     @Override
     public String login(LoginDTO loginDTO) {
@@ -138,6 +142,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         if (StrUtil.isNotBlank(nickname)) user.setNickname(nickname);
         if (StrUtil.isNotBlank(email)) {
+            String normalizedEmail = normalizeEmail(email);
+            if (!normalizedEmail.equals(normalizeEmail(user.getEmail())) && developerExemptEmailSet().contains(normalizedEmail)) {
+                throw new RuntimeException("开发者白名单邮箱不能通过资料页绑定");
+            }
             // 检查邮箱唯一
             LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(User::getEmail, email).ne(User::getId, userId);
@@ -188,6 +196,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     private boolean isBcryptHash(String value) {
         return value != null && (value.startsWith("$2a$") || value.startsWith("$2b$") || value.startsWith("$2y$"));
+    }
+
+    private Set<String> developerExemptEmailSet() {
+        if (developerExemptEmails == null || developerExemptEmails.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(developerExemptEmails.split(","))
+                .map(this::normalizeEmail)
+                .filter(email -> !email.isBlank())
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    private String normalizeEmail(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
     }
 
     @Override

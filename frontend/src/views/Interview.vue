@@ -113,7 +113,6 @@ import { Microphone, ArrowLeft, UserFilled } from '@element-plus/icons-vue'
 import { startInterviewAPI, finishInterviewAPI, getHistoryDetailAPI } from '@/api/interview'
 import { getPreferenceAPI } from '@/api/user'
 import * as echarts from 'echarts'
-import { marked } from 'marked'
 import { userKey } from '@/utils/auth'
 import InterviewReportOverlay from '@/components/interview/InterviewReportOverlay.vue'
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
@@ -126,6 +125,7 @@ import {
 import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFallback } from '@/utils/interviewEntry'
 import { trackEvent } from '@/utils/analytics'
 import { getAnonymousId } from '@/utils/visitor'
+import { renderSafeMarkdown } from '@/utils/markdown'
 
 const route = useRoute()
 const router = useRouter()
@@ -201,8 +201,7 @@ let voiceRoundCount = 0
 
 // --- Markdown Rendering ---
 const renderMarkdown = (text) => {
-  if (!text) return ''
-  return marked.parse(text)
+  return renderSafeMarkdown(text)
 }
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────────

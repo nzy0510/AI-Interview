@@ -10,8 +10,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
+import java.security.SecureRandom;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,9 +36,9 @@ public class EmailService {
     // 验证码缓存：key = email, value = CodeEntry(code, expireTime)
     private final Map<String, CodeEntry> codeCache = new ConcurrentHashMap<>();
     private final ScheduledExecutorService cleaner = Executors.newSingleThreadScheduledExecutor();
-    private final Random random = new Random();
+    private final SecureRandom random = new SecureRandom();
 
-    private record CodeEntry(String code, long expireTime) {
+    private record CodeEntry(String code, long expireTime, int failedAttempts) {
         boolean isExpired() {
             return System.currentTimeMillis() > expireTime;
         }
@@ -70,7 +70,7 @@ public class EmailService {
         }
 
         String code = String.format("%06d", random.nextInt(1000000));
-        codeCache.put(toEmail, new CodeEntry(code, System.currentTimeMillis() + 5 * 60 * 1000));
+        codeCache.put(toEmail, new CodeEntry(code, System.currentTimeMillis() + 5 * 60 * 1000, 0));
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
@@ -83,7 +83,7 @@ public class EmailService {
             log.info("验证码已发送至 {}", toEmail);
         } catch (MailException e) {
             codeCache.remove(toEmail);
-            log.error("邮件发送失败: {}", rootCauseMessage(e), e);
+            log.error("邮件发送失败: {}", rootCauseMessage(e));
             if (appEventService != null) {
                 appEventService.recordSystemEvent(null, "VERIFICATION_CODE_FAILED", "system",
                         Map.of("purpose", purpose != null ? purpose : ""), false, rootCauseMessage(e));
@@ -98,11 +98,18 @@ public class EmailService {
     public boolean verifyCode(String email, String code) {
         CodeEntry entry = codeCache.get(email);
         if (entry == null || entry.isExpired()) {
+            codeCache.remove(email);
             return false;
         }
         if (entry.code.equals(code)) {
             codeCache.remove(email); // 验证成功后立即失效
             return true;
+        }
+        int failedAttempts = entry.failedAttempts + 1;
+        if (failedAttempts >= 5) {
+            codeCache.remove(email);
+        } else {
+            codeCache.put(email, new CodeEntry(entry.code, entry.expireTime, failedAttempts));
         }
         return false;
     }

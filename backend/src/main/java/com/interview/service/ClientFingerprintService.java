@@ -15,13 +15,13 @@ public class ClientFingerprintService {
     private String hashSalt;
 
     public String clientIp(HttpServletRequest request) {
-        String forwarded = firstHeader(request, "X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
         String realIp = firstHeader(request, "X-Real-IP");
         if (realIp != null && !realIp.isBlank()) {
             return realIp.trim();
+        }
+        String forwarded = firstHeader(request, "X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();
     }

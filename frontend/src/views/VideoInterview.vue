@@ -67,7 +67,6 @@ import { ref, reactive, onMounted, onBeforeUnmount, nextTick, watch, computed } 
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { marked } from 'marked'
 import * as echarts from 'echarts'
 import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
 import { getPreferenceAPI } from '@/api/user'
@@ -84,6 +83,7 @@ import {
 import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFallback } from '@/utils/interviewEntry'
 import { trackEvent } from '@/utils/analytics'
 import { getAnonymousId } from '@/utils/visitor'
+import { renderSafeMarkdown } from '@/utils/markdown'
 
 const router = useRouter()
 const route = useRoute()
@@ -154,7 +154,7 @@ let voiceTurns = []
 let turnStart = 0
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const renderMarkdown = (text) => text ? marked.parse(text) : ''
+const renderMarkdown = (text) => renderSafeMarkdown(text)
 
 const emotionLabel = (key) => EMOTION_LABELS[key] || key
 

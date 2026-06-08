@@ -75,6 +75,21 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("资料页不能绑定开发者白名单邮箱")
+    void shouldRejectProfileEmailUpdateToDeveloperExemptEmail() {
+        User user = createUser();
+        when(userMapper.selectById(1L)).thenReturn(user);
+        ReflectionTestUtils.setField(userService, "developerExemptEmails", "dev@example.com");
+
+        assertThatThrownBy(() -> userService.updateProfile(1L, "新昵称", "dev@example.com"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("开发者白名单邮箱");
+
+        assertThat(user.getEmail()).isEqualTo("admin@test.com");
+        verify(userMapper, never()).updateById(any());
+    }
+
+    @Test
     @DisplayName("修改密码：旧密码正确时成功")
     void shouldChangePasswordWithCorrectOldPassword() {
         User user = createUser();

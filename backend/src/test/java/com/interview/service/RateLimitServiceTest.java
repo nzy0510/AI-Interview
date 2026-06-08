@@ -38,6 +38,29 @@ class RateLimitServiceTest {
     }
 
     @Test
+    @DisplayName("存在可信代理真实 IP 时，不应使用客户端可伪造的 X-Forwarded-For 绕过限流")
+    void shouldIgnoreSpoofedForwardedForWhenRealIpIsPresent() {
+        ClientFingerprintService fingerprintService = new ClientFingerprintService();
+        RequestUserResolver userResolver = mock(RequestUserResolver.class);
+        DeveloperAccessService developerAccessService = mock(DeveloperAccessService.class);
+        RateLimitService service = new RateLimitService(fingerprintService, userResolver, developerAccessService);
+        ReflectionTestUtils.setField(service, "enabled", true);
+        ReflectionTestUtils.setField(fingerprintService, "hashSalt", "unit-test-salt");
+
+        for (int i = 0; i < 20; i++) {
+            MockHttpServletRequest request = loginRequestWithProxyHeaders("198.51.100." + i);
+            when(userResolver.resolveUserId(request)).thenReturn(null);
+            service.check(request);
+        }
+
+        MockHttpServletRequest blocked = loginRequestWithProxyHeaders("198.51.100.250");
+        when(userResolver.resolveUserId(blocked)).thenReturn(null);
+        assertThatThrownBy(() -> service.check(blocked))
+                .isInstanceOf(RateLimitExceededException.class)
+                .hasMessageContaining("登录尝试过于频繁");
+    }
+
+    @Test
     @DisplayName("开发者白名单账号跳过业务接口高频限制")
     void shouldSkipBusinessRateLimitForDeveloper() {
         ClientFingerprintService fingerprintService = new ClientFingerprintService();
@@ -57,5 +80,13 @@ class RateLimitServiceTest {
                 service.check(request);
             }
         }).doesNotThrowAnyException();
+    }
+
+    private MockHttpServletRequest loginRequestWithProxyHeaders(String spoofedForwardedFor) {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/user/login");
+        request.setRemoteAddr("172.18.0.10");
+        request.addHeader("X-Real-IP", "203.0.113.10");
+        request.addHeader("X-Forwarded-For", spoofedForwardedFor + ", 203.0.113.10");
+        return request;
     }
 }

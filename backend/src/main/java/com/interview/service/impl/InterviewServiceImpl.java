@@ -216,11 +216,11 @@ public class InterviewServiceImpl implements InterviewService {
 
                 @Override
                 public void onError(Throwable error) {
-                    log.error("AI 响应错误: ", error);
+                    log.error("AI 响应错误: {}", sanitizeErrorMessage(error.getMessage()));
                     recordSystemEvent(userId, "DEEPSEEK_STREAM_FAILED", "system",
-                            Map.of("recordId", recordId), false, error.getMessage());
+                            Map.of("recordId", recordId), false, sanitizeErrorMessage(error.getMessage()));
                     try {
-                        emitter.send(JSON.toJSONString(Map.of("error", error.getMessage())));
+                        emitter.send(JSON.toJSONString(Map.of("error", "AI 响应异常，请稍后重试")));
                         emitter.complete();
                     } catch (IOException e) {
                     } finally {
@@ -231,7 +231,7 @@ public class InterviewServiceImpl implements InterviewService {
         } catch (RuntimeException e) {
             activeInterviewTurns.remove(recordId);
             log.warn("面试轮次启动失败: recordId={}, error={}", recordId, sanitizeErrorMessage(e.getMessage()));
-            sendSseError(emitter, e.getMessage());
+            sendSseError(emitter, "面试轮次启动失败，请稍后重试");
         }
 
         return emitter;

@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,12 +45,13 @@ public class ResumeServiceImpl implements ResumeService {
     public Map<String, Object> parseAndAnalyze(MultipartFile file) throws Exception {
         // 1. 读取 PDF 纯文本
         String rawText = "";
-        try (InputStream is = file.getInputStream(); PDDocument document = PDDocument.load(is)) {
+        try (InputStream is = file.getInputStream();
+             PDDocument document = PDDocument.load(is, MemoryUsageSetting.setupTempFileOnly())) {
             PDFTextStripper stripper = new PDFTextStripper();
             rawText = stripper.getText(document);
         } catch (Exception e) {
-            log.error("PDF 读取与解析失败", e);
-            throw new Exception("简历读取失败，请确保上传了合法的 PDF 格式文件: " + e.getMessage());
+            log.warn("PDF 读取与解析失败: {}", e.getClass().getSimpleName());
+            throw new Exception("简历读取失败，请确保上传了合法的 PDF 格式文件");
         }
 
         // 为了防止大模型溢出，截断超长部分 (通常一两页的简历长度不会超过6000字)
@@ -85,8 +87,8 @@ public class ResumeServiceImpl implements ResumeService {
             
             return JSON.parseObject(jsonStr.trim(), Map.class);
         } catch (Exception e) {
-            log.error("大模型生成简历画像失败", e);
-            throw new Exception("AI生成简历画像异常，请重试。" + e.getMessage());
+            log.warn("大模型生成简历画像失败: {}", e.getClass().getSimpleName());
+            throw new Exception("AI生成简历画像异常，请稍后重试");
         }
     }
 

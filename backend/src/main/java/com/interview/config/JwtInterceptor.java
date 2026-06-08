@@ -37,8 +37,8 @@ public class JwtInterceptor implements HandlerInterceptor {
         String token = request.getHeader("Authorization");
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
-        } else {
-            // SSE EventSource 无法携带 Header，降级从 URL 参数取
+        } else if (allowsQueryToken(request)) {
+            // EventSource 无法携带 Header，仅允许面试 SSE 流接口从 URL 参数取 token
             token = request.getParameter("token");
         }
 
@@ -63,5 +63,17 @@ public class JwtInterceptor implements HandlerInterceptor {
         response.setStatus(401);
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write(JSON.toJSONString(Map.of("code", 401, "msg", msg)));
+    }
+
+    private boolean allowsQueryToken(HttpServletRequest request) {
+        if (!"GET".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String path = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        if (contextPath != null && !contextPath.isEmpty() && path.startsWith(contextPath)) {
+            path = path.substring(contextPath.length());
+        }
+        return "/api/interview/chatStream".equals(path);
     }
 }

@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -20,6 +23,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/resume")
 public class ResumeController {
+
+    private static final long MAX_RESUME_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
     @Autowired
     private ResumeService resumeService;
@@ -38,8 +43,9 @@ public class ResumeController {
     public Result<?> parseResume(@RequestParam("file") MultipartFile file,
                                  @RequestParam(value = "position", defaultValue = "软件开发") String position,
                                  HttpServletRequest request) {
-        if (file.isEmpty()) {
-            return Result.error("文件不能为空");
+        Result<?> validationError = validateResumeFile(file);
+        if (validationError != null) {
+            return validationError;
         }
         try {
             Long userId = getUserIdFromRequest(request);
@@ -56,8 +62,42 @@ public class ResumeController {
 
             return Result.success(analysisResult);
         } catch (Exception e) {
-            e.printStackTrace();
-            return Result.error(e.getMessage());
+            log.warn("简历解析失败: {}", e.getMessage());
+            return Result.error(500, "简历解析失败，请稍后重试");
+        }
+    }
+
+    private Result<?> validateResumeFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error(400, "文件不能为空");
+        }
+        if (file.getSize() > MAX_RESUME_FILE_SIZE_BYTES) {
+            return Result.error(400, "PDF 简历文件不能超过 5MB");
+        }
+
+        String filename = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase(Locale.ROOT) : "";
+        String contentType = file.getContentType() != null ? file.getContentType().toLowerCase(Locale.ROOT) : "";
+        if (!filename.endsWith(".pdf") || !isPdfContentType(contentType) || !hasPdfHeader(file)) {
+            return Result.error(400, "仅支持 PDF 格式简历");
+        }
+        return null;
+    }
+
+    private boolean isPdfContentType(String contentType) {
+        return "application/pdf".equals(contentType) || "application/x-pdf".equals(contentType);
+    }
+
+    private boolean hasPdfHeader(MultipartFile file) {
+        try (InputStream inputStream = file.getInputStream()) {
+            byte[] header = inputStream.readNBytes(4);
+            return header.length == 4
+                    && header[0] == '%'
+                    && header[1] == 'P'
+                    && header[2] == 'D'
+                    && header[3] == 'F';
+        } catch (IOException e) {
+            log.warn("读取简历文件头失败: {}", e.getMessage());
+            return false;
         }
     }
 
