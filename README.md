@@ -227,6 +227,10 @@ docker compose up -d --build
 
 ## 本地开发
 
+### 多 Agent 工作流试运行说明
+
+本次最小试运行用于验证多 Agent 协作流程本身，而不是交付复杂业务功能。主控线程负责拆分任务、分配文件 ownership、收集交付物并决定后续集成；Docs 子线程只在自己的任务分支和独立 worktree 中修改授权文件，不直接合并 `master`。开发类 Agent 默认使用独立 Codex 线程、独立 Git worktree 和独立任务分支，避免上下文污染和文件写入冲突。所有子任务完成后，再由 Integration Agent 串行收口分支、处理冲突并运行集成验证；审查也按 Testing、Security、Maintainability、必要时 Performance、Final Review 的顺序串行进行。
+
 ### 后端
 
 ```powershell
