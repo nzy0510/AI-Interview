@@ -360,6 +360,8 @@ Agent 名称：
 - 如果用户要求调整任务边界，主控先修改对应 `<agent_name>plan.md`，再重新请求审核。
 - 如果多个 Agent 的计划文件存在重叠写入范围，必须先调整 ownership。
 - 被批准后的计划文件是子 Agent 的唯一执行依据；子 Agent 不应根据聊天历史自行扩大范围。
+- 用户批准后、创建子线程/worktree 前，主控必须固化计划文件：默认提交到主控或 integration 分支；如果用户明确不希望提交计划文件，必须把批准后的完整计划文本传入子 Agent prompt，并在 run record 中记录未提交原因。
+- 子 Agent 启动后，主控必须回查 `git worktree list --porcelain` 和 `git -C <worktree> status --short --branch`，确认实际 worktree、分支和计划一致。
 
 ### 3.2 子 Agent 任务契约
 
@@ -589,10 +591,21 @@ docs/agents/plans/<feature>/security_reviewplan.md
 已批准的 <agent_name>plan.md
 ```
 
+创建后必须记录：
+
+```text
+实际 worktree 路径
+实际分支
+base commit
+批准后的计划文件路径或计划原文
+计划文件是否已提交
+```
+
 每个 Agent 先运行 baseline 检查：
 
 ```powershell
 git status --short --branch
+git worktree list --porcelain
 ```
 
 按任务类型选择：
@@ -660,8 +673,9 @@ Branch / Release Agent 执行：
 4. 更新 CHANGELOG。
 5. 提交或整理 commit。
 6. 推送或创建 PR。
-7. 清理 worktree。
-8. 输出发布说明。
+7. 确认计划文件、run record 和最终 diff 是否都已纳入提交。
+8. 清理 worktree。
+9. 输出发布说明。
 
 ---
 

@@ -2,6 +2,10 @@
 
 Agent 名称：
 
+计划状态：Draft / Approved
+
+基线 commit：
+
 角色：
 
 目标：

@@ -38,6 +38,8 @@
 - 只有写入范围互不重叠的开发任务才能并行。
 - 创建任何子线程/worktree 前，必须先为每个 Agent 生成 `docs/agents/plans/<feature>/<agent_name>plan.md` 并等待用户审核。
 - 用户未批准计划文件前，只能调整计划、ownership 和验证方案，不能派发实现任务。
+- 用户批准后、创建子线程/worktree 前，必须固化计划文件；默认提交到主控或 integration 分支。如果用户要求不提交计划文件，必须把批准后的完整计划文本传入子 Agent prompt，并在 run record 中记录原因。
+- 创建子线程/worktree 后，必须回查并记录实际 worktree 路径、分支、base commit、`git worktree list --porcelain` 和 `git -C <worktree> status --short --branch` 结果。
 - Integration、Testing Review、Security Review、Branch/Release 必须串行。
 - 子 Agent 不直接合并主分支，只提交自己的任务分支。
 - 每个子 Agent 都必须返回标准交付物：修改文件、测试命令、测试结果、风险、commit hash。
