@@ -127,6 +127,12 @@ conflicts_render.txt
 !/docs/rag-chain-summary.md
 !/docs/adr/
 !/docs/adr/*.md
+!/docs/agents/
+!/docs/agents/*.md
+!/docs/agents/templates/
+!/docs/agents/templates/*.md
+!/docs/agents/runs/
+!/docs/agents/runs/*.md
 !/docs/contracts/
 !/docs/contracts/*.md
 !/docs/superpowers/
