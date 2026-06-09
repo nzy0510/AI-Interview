@@ -129,6 +129,8 @@ conflicts_render.txt
 !/docs/adr/*.md
 !/docs/agents/
 !/docs/agents/*.md
+!/docs/agents/plans/
+!/docs/agents/plans/**/*.md
 !/docs/agents/templates/
 !/docs/agents/templates/*.md
 !/docs/agents/runs/

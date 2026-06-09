@@ -22,6 +22,7 @@
 - 分析需求是否适合并行拆分。
 - 生成或更新 `PLAN.md` / `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`。
 - 输出任务清单、文件所有权矩阵、分支/worktree 映射和验证计划。
+- 在创建子线程/worktree 前，为每个拟派发 Agent 生成一份 `<agent_name>plan.md`，交由用户审核。
 - 创建或指派各开发 Agent 的线程与 worktree。
 - 跟踪任务状态，收集各 Agent 交付物。
 - 判断是否进入集成、审查、合并或回滚。
@@ -45,6 +46,7 @@
 验证命令：
 审查关卡：
 回滚方案：
+Agent 计划文件：
 ```
 
 ### 1.2 Architect Agent
@@ -266,6 +268,8 @@ Ready for Design
   ↓
 Designed
   ↓
+Ready for Agent Plan Review
+  ↓
 Ready for Development
   ↓
 In Development
@@ -289,8 +293,9 @@ Archived
 | --- | --- | --- |
 | Draft | 只有想法或模糊需求 | 需求、非目标、约束基本写清楚 |
 | Ready for Design | 需求清楚 | Architect 输出设计和拆分建议 |
-| Designed | plan / contract / ownership 已完成 | Human 或主控批准进入开发 |
-| Ready for Development | 任务已拆分，分支和 worktree 方案确定 | worktree / branch / thread 创建完成 |
+| Designed | plan / contract / ownership 已完成 | 主控生成每个 Agent 的 `<agent_name>plan.md` |
+| Ready for Agent Plan Review | 每个 Agent 的计划文件已生成 | Human 审核并批准计划文件 |
+| Ready for Development | 任务已拆分，计划文件已批准，分支和 worktree 方案确定 | worktree / branch / thread 创建完成 |
 | In Development | 开发 Agent 正在实现 | 局部测试通过，交付物完整 |
 | Ready for Integration | 子任务完成且无阻断问题 | Integration Agent 开始合并 |
 | Integrated | integration branch 已合并子任务 | 集成测试完成，进入审查 |
@@ -303,6 +308,60 @@ Archived
 ---
 
 ## 3. 任务契约
+
+### 3.1 Agent 计划文件审核门禁
+
+主控不得在用户审核前创建开发类子线程或 worktree。进入 `Ready for Development` 前，必须先为每个拟派发 Agent 生成一份具体计划文件。
+
+推荐路径：
+
+```text
+docs/agents/plans/<feature>/<agent_name>plan.md
+```
+
+命名规则：
+
+```text
+controllerplan.md
+architectplan.md
+backendplan.md
+frontendplan.md
+rag_dataplan.md
+docsplan.md
+integrationplan.md
+testing_reviewplan.md
+security_reviewplan.md
+maintainability_reviewplan.md
+performance_reviewplan.md
+releaseplan.md
+```
+
+计划文件必须包含：
+
+```text
+Agent 名称：
+角色：
+目标：
+非目标：
+允许修改：
+禁止修改：
+输入材料：
+依赖前置任务：
+验收标准：
+必须运行的验证：
+预期交付物：
+风险提示：
+完成后返回格式：
+```
+
+审核规则：
+
+- 用户未明确批准前，不创建对应子线程/worktree。
+- 如果用户要求调整任务边界，主控先修改对应 `<agent_name>plan.md`，再重新请求审核。
+- 如果多个 Agent 的计划文件存在重叠写入范围，必须先调整 ownership。
+- 被批准后的计划文件是子 Agent 的唯一执行依据；子 Agent 不应根据聊天历史自行扩大范围。
+
+### 3.2 子 Agent 任务契约
 
 每个派发给子 Agent 的任务必须包含以下字段：
 
@@ -493,7 +552,31 @@ API contract
 风险
 ```
 
-主控确认后生成任务契约和 ownership 矩阵。
+主控确认后生成任务契约、ownership 矩阵和每个 Agent 的 `<agent_name>plan.md`。
+
+### Phase 1.5: Agent Plan Review
+
+主控输出并等待用户审核：
+
+```text
+docs/agents/plans/<feature>/architectplan.md
+docs/agents/plans/<feature>/backendplan.md
+docs/agents/plans/<feature>/frontendplan.md
+docs/agents/plans/<feature>/rag_dataplan.md
+docs/agents/plans/<feature>/docsplan.md
+docs/agents/plans/<feature>/integrationplan.md
+docs/agents/plans/<feature>/testing_reviewplan.md
+docs/agents/plans/<feature>/security_reviewplan.md
+```
+
+用户批准前：
+
+- 不创建子线程。
+- 不创建 worktree。
+- 不派发实现任务。
+- 只允许修改计划文件、ownership 矩阵和验证计划。
+
+用户批准后，状态进入 `Ready for Development`。
 
 ### Phase 2: Worktree Setup
 
@@ -503,7 +586,7 @@ API contract
 独立线程
 独立 worktree
 独立分支
-任务契约
+已批准的 <agent_name>plan.md
 ```
 
 每个 Agent 先运行 baseline 检查：
