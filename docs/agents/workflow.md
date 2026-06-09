@@ -387,7 +387,13 @@ Review 修复分支: codex/<feature>-review-fixes
 
 ### 5.2 Worktree 路径
 
-默认使用项目内隐藏目录：
+优先使用 Codex 或当前执行环境提供的原生 worktree。原生 worktree 通常位于：
+
+```text
+C:\Users\nzy\.codex\worktrees\<id>\interview
+```
+
+只有当前环境没有原生 worktree 能力时，才使用项目内隐藏目录作为 fallback：
 
 ```text
 .worktrees/<branch-name>
@@ -395,7 +401,8 @@ Review 修复分支: codex/<feature>-review-fixes
 
 要求：
 
-- `.worktrees/` 必须加入 `.gitignore`。
+- 使用原生 worktree 时，记录实际路径和对应线程即可，不强制迁移到项目内 `.worktrees/`。
+- 使用项目内 fallback 时，`.worktrees/` 必须加入 `.gitignore`。
 - 创建前运行 `git worktree list --porcelain` 确认当前状态。
 - 不在已有 linked worktree 中再创建嵌套 worktree。
 - 每个 worktree 绑定一个任务分支。
@@ -409,6 +416,8 @@ git worktree add .worktrees/codex-feature-backend -b codex/feature-backend origi
 git -C .worktrees/codex-feature-backend status --short --branch
 ```
 
+如果由 Codex 创建线程时自动创建 worktree，则以 Codex 返回的 worktree 路径为准，只需在 run record 中登记路径、分支和 ownership。
+
 ### 5.4 清理流程
 
 清理前必须确认 worktree 干净：
@@ -416,6 +425,14 @@ git -C .worktrees/codex-feature-backend status --short --branch
 ```powershell
 git -C .worktrees/codex-feature-backend status --short --branch
 git worktree remove .worktrees/codex-feature-backend
+git worktree prune --dry-run --verbose
+```
+
+Codex 原生 worktree 清理同样必须先确认干净：
+
+```powershell
+git -C C:\Users\nzy\.codex\worktrees\<id>\interview status --short --branch
+git worktree remove C:\Users\nzy\.codex\worktrees\<id>\interview
 git worktree prune --dry-run --verbose
 ```
 
