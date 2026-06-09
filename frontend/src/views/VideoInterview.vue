@@ -14,7 +14,10 @@
           style="margin-right: 12px"
           :disabled="showReport"
         />
-        <el-button type="danger" size="small" class="finish-button" @click="endInterview" :loading="isFinishing" :disabled="totalRounds < 1">
+        <el-button size="small" class="discard-button" @click="discardInterview" :loading="isDiscarding" :disabled="showReport || isFinishing">
+          退出
+        </el-button>
+        <el-button type="danger" size="small" class="finish-button" @click="endInterview" :loading="isFinishing" :disabled="totalRounds < 1 || isDiscarding">
           结束并生成报告
         </el-button>
       </div>
@@ -68,7 +71,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { startInterviewAPI, finishInterviewAPI } from '@/api/interview'
+import { startInterviewAPI, finishInterviewAPI, discardInterviewAPI } from '@/api/interview'
 import { getPreferenceAPI } from '@/api/user'
 import { initModels, analyzeFrame, getEmotionSummary, EMOTION_LABELS } from '@/utils/emotionAnalyzer'
 import { userKey } from '@/utils/auth'
@@ -98,6 +101,7 @@ const radarRef = ref(null)
 const recordId = ref(null)
 const isStreaming = ref(false)
 const isFinishing = ref(false)
+const isDiscarding = ref(false)
 const isListening = ref(false)
 const isSpeaking = ref(false)
 const showReport = ref(false)
@@ -445,7 +449,7 @@ function stopSpeaking() {
 
 // ─── Speech Recognition (background, auto-send on silence) ───────────────────
 function startListening() {
-  if (isStreaming.value || isSpeaking.value || showReport.value) return
+  if (isStreaming.value || isSpeaking.value || showReport.value || isDiscarding.value) return
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition
   if (!SR) return
@@ -519,6 +523,60 @@ const endInterview = async () => {
     })
   } catch { return }
   performEndInterview()
+}
+
+const discardInterview = async () => {
+  if (showReport.value || isFinishing.value || isDiscarding.value) return
+  if (isStreaming.value) {
+    ElMessage.warning('请等待当前 AI 回复结束后再退出')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm('退出后将丢弃本场面试记录，不生成报告。是否继续？', '退出面试', {
+      confirmButtonText: '确认退出', cancelButtonText: '继续面试', type: 'warning'
+    })
+  } catch { return }
+
+  isDiscarding.value = true
+  stopListening()
+  stopSpeaking()
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
+
+  if (!recordId.value) {
+    stopEmotionSampling()
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(t => t.stop())
+      mediaStream = null
+    }
+    isDiscarding.value = false
+    router.replace('/interview/setup')
+    return
+  }
+
+  const loadingMsg = ElMessage({ message: '正在退出面试...', type: 'info', duration: 0 })
+  let shouldResumeListening = false
+  try {
+    await discardInterviewAPI({ recordId: recordId.value })
+    trackEvent('INTERVIEW_DISCARD_CLIENT', { mode: 'video', recordId: recordId.value })
+    stopEmotionSampling()
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(t => t.stop())
+      mediaStream = null
+    }
+    ElMessage.success('已退出本场面试')
+    router.replace('/interview/setup')
+  } catch (err) {
+    shouldResumeListening = true
+    ElMessage.error('退出失败: ' + (err.message || '请检查后端连接'))
+  } finally {
+    loadingMsg.close()
+    isDiscarding.value = false
+    if (shouldResumeListening) startListening()
+  }
 }
 
 const performEndInterview = async (endType = 'manual') => {
@@ -660,6 +718,10 @@ function animateRadar() {
 }
 
 .finish-button {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.discard-button {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 

@@ -26,6 +26,9 @@ public interface InterviewService {
 
     InterviewRecord endInterview(Long userId, Long recordId, Integer wpm, String emotionJson);
 
+    /** 丢弃当前用户未完成的面试记录，不生成报告 */
+    void discardInterview(Long userId, Long recordId);
+
     /** 查询用户面试历史列表（已评分，按时间倒序，最多50条） */
     List<InterviewRecord> getHistoryList(Long userId);
 

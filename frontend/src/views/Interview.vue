@@ -14,7 +14,10 @@
             style="margin-right: 16px"
             :disabled="showReport"
           />
-          <el-button type="danger" size="small" class="finish-button" @click="endInterview" :loading="isFinishing">
+          <el-button size="small" class="discard-button" @click="discardInterview" :loading="isDiscarding" :disabled="showReport || isFinishing">
+            退出
+          </el-button>
+          <el-button type="danger" size="small" class="finish-button" @click="endInterview" :loading="isFinishing" :disabled="isDiscarding">
             结束并生成报告
           </el-button>
         </div>
@@ -110,7 +113,7 @@ import { ref, reactive, computed, onMounted, nextTick, onBeforeUnmount } from 'v
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Microphone, ArrowLeft, UserFilled } from '@element-plus/icons-vue'
-import { startInterviewAPI, finishInterviewAPI, getHistoryDetailAPI } from '@/api/interview'
+import { startInterviewAPI, finishInterviewAPI, discardInterviewAPI, getHistoryDetailAPI } from '@/api/interview'
 import { getPreferenceAPI } from '@/api/user'
 import * as echarts from 'echarts'
 import { userKey } from '@/utils/auth'
@@ -141,6 +144,7 @@ const isStreaming = ref(false)
 const currentPhase = ref('OPENING')
 const chatMainRef = ref(null)
 const isFinishing = ref(false)
+const isDiscarding = ref(false)
 const showReport = ref(false)
 const autoSend = ref(true) // auto-send on silence toggle
 const displayScore = ref(0)
@@ -633,6 +637,42 @@ const endInterview = async () => {
   performEndInterview()
 }
 
+const discardInterview = async () => {
+  if (showReport.value || isFinishing.value || isDiscarding.value) return
+  if (isStreaming.value) {
+    ElMessage.warning('请等待当前 AI 回复结束后再退出')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm('退出后将丢弃本场面试记录，不生成报告。是否继续？', '退出面试', {
+      confirmButtonText: '确认退出', cancelButtonText: '继续面试', type: 'warning'
+    })
+  } catch { return }
+
+  if (isRecording.value) stopRecording()
+  if (!recordId.value) {
+    clearActiveInterview()
+    router.replace('/interview/setup')
+    return
+  }
+
+  isDiscarding.value = true
+  const loadingMsg = ElMessage({ message: '正在退出面试...', type: 'info', duration: 0 })
+  try {
+    await discardInterviewAPI({ recordId: recordId.value })
+    trackEvent('INTERVIEW_DISCARD_CLIENT', { mode: 'text', recordId: recordId.value })
+    clearActiveInterview()
+    ElMessage.success('已退出本场面试')
+    router.replace('/interview/setup')
+  } catch (err) {
+    ElMessage.error('退出失败: ' + (err.message || '请检查后端连接'))
+  } finally {
+    loadingMsg.close()
+    isDiscarding.value = false
+  }
+}
+
 const performEndInterview = async (endType = 'manual') => {
   if (isRecording.value) stopRecording()
   isFinishing.value = true
@@ -741,6 +781,10 @@ const performEndInterview = async (endType = 'manual') => {
 
 .finish-button {
   box-shadow: 0 0 0 1px rgba(58, 56, 139, 0.22);
+}
+
+.discard-button {
+  box-shadow: 0 0 0 1px rgba(23, 26, 31, 0.08);
 }
 
 .chat-main {

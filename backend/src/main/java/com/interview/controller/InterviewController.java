@@ -1,6 +1,7 @@
 package com.interview.controller;
 
 import com.interview.common.Result;
+import com.interview.dto.DiscardInterviewRequest;
 import com.interview.dto.FinishInterviewRequest;
 import com.interview.dto.StartInterviewRequest;
 import com.interview.service.InterviewService;
@@ -46,5 +47,13 @@ public class InterviewController {
         com.interview.entity.InterviewRecord record = interviewService.endInterview(
                 userId, req.getRecordId(), wpm, req.getEmotionJson());
         return Result.success(record);
+    }
+
+    @PostMapping("/discard")
+    public Result<Void> discardInterview(@Valid @RequestBody DiscardInterviewRequest req,
+                                         HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        interviewService.discardInterview(userId, req.getRecordId());
+        return Result.success();
     }
 }

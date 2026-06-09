@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.atLeast;
@@ -123,6 +124,24 @@ class InterviewServiceImplTest {
         assertThatThrownBy(() -> interviewService.endInterview(1L, 99L, 0, null))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("无权访问");
+    }
+
+    @Test
+    @DisplayName("退出面试只删除当前用户未完成记录且不生成评估报告")
+    void shouldDiscardOwnedUnfinishedInterviewWithoutGeneratingReport() {
+        InterviewRecord record = new InterviewRecord();
+        record.setId(11L);
+        record.setUserId(1L);
+        record.setPhase(InterviewPhase.TECHNICAL.name());
+        when(interviewRecordMapper.selectOne(any())).thenReturn(record);
+        when(interviewRecordMapper.delete(any())).thenReturn(1);
+
+        interviewService.discardInterview(1L, 11L);
+
+        verify(interviewRecordMapper).delete(any());
+        verify(sessionStore).delete(11L);
+        verify(evaluationGenerator, never()).generate(any(), anyList(), anyInt());
+        verify(mentorTaskExecutor, never()).execute(any());
     }
 
     @Test

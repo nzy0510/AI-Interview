@@ -279,6 +279,28 @@ public class InterviewServiceImpl implements InterviewService {
         return completeInterview(record, wpm, emotionJson);
     }
 
+    @Override
+    public void discardInterview(Long userId, Long recordId) {
+        InterviewRecord record = loadOwnedRecord(userId, recordId);
+        if (InterviewPhase.FINISHED.name().equals(record.getPhase())
+                || record.getEndTime() != null
+                || record.getScore() != null) {
+            throw new RuntimeException("已完成的面试记录不能退出");
+        }
+        if (activeInterviewTurns.contains(recordId)) {
+            throw new RuntimeException("当前轮次正在处理中，请稍后退出");
+        }
+
+        int deleted = interviewRecordMapper.delete(new LambdaQueryWrapper<InterviewRecord>()
+                .eq(InterviewRecord::getId, recordId)
+                .eq(InterviewRecord::getUserId, userId));
+        if (deleted != 1) {
+            throw new RuntimeException("面试记录不存在或无权访问");
+        }
+        sessionStore.delete(recordId);
+        activeInterviewTurns.remove(recordId);
+    }
+
     private InterviewRecord completeInterview(InterviewRecord record, Integer wpm, String emotionJson) {
         Long recordId = record.getId();
         if (InterviewPhase.FINISHED.name().equals(record.getPhase()) && record.getScore() != null) {
