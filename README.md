@@ -362,6 +362,7 @@ python -m unittest discover -s tests
 当前线上体验地址：
 
 - [https://interwise.japaneast.cloudapp.azure.com](https://interwise.japaneast.cloudapp.azure.com)
+- 目前处于关闭状态,后续将更换部署平台
 
 生产环境重点检查：
 
@@ -381,6 +382,7 @@ python -m unittest discover -s tests
 - [ ] 产品体验与面试闭环增强：优化准备页、报告、AI Mentor、视频面试和反馈入口。
 - [ ] 部署可靠性与数据保护：完善备份、健康检查、Qdrant 状态校验和本地/云端一致性。
 - [ ] 安全、隐私与成本控制：保持密钥隔离、限流额度、隐私说明和用户数据删除能力建设。
+- [ ] 更换部署平台
 
 ## 相关文档
 
