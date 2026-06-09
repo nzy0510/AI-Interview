@@ -7,8 +7,10 @@
 ## Review 类型
 
 ```text
-Testing / Security / Maintainability / Performance / Final
+Combined / Testing / Security / Maintainability / Performance / Final
 ```
+
+L1 轻量多 Agent 默认使用 `Combined` Review，一次性覆盖测试合理性、安全敏感信息和维护性/文档一致性。L2/L3/High-risk 才默认拆分 Testing / Security / Maintainability；Performance 和 Final 按需启用。
 
 ## 输入
 

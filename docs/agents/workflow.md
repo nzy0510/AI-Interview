@@ -310,6 +310,43 @@ Archived
 
 ## 3. 任务契约
 
+### 3.0 任务分级与调度决策
+
+当用户没有明确指定是否启用多 Agent 时，主控必须先做调度判定，再制定和派发任务。调度判定必须写入总执行包，并先于 Agent 任务卡生成。
+
+主控必须输出：
+
+```text
+任务等级：L0 / L1 / L2 / L3 / High-risk
+调度模式：单 Agent / 轻量多 Agent / 标准多 Agent / 完整多 Agent
+是否启用多 Agent：
+启用的 Agent：
+不启用完整链路的理由：
+人工审核节点：
+自动继续范围：
+```
+
+默认路由表：
+
+| 等级 | 适用任务 | 默认调度 | 用户审核 |
+| --- | --- | --- | --- |
+| L0 单 Agent | README 小改、错别字、链接修复、轻量说明、局部文档整理 | 当前线程或单 Docs Agent；不创建多 Agent worktree | 不需要总执行包审核，除非用户要求 |
+| L1 轻量多 Agent | 用户明确要求流程试运行、较大文档更新、发布说明、低风险工具脚本小改 | Controller + 1 个执行 Agent + 可选 1 个合并 Review | 审核总执行包 |
+| L2 标准多 Agent | 同时涉及后端/前端/RAG/Data/Docs 中两个以上模块，但不触及高风险面 | Controller + Architect + 对应开发 Agent + Integration + Review | 审核总执行包和最终 merge/push |
+| L3 完整多 Agent | 跨后端、前端、RAG、数据库、部署、发布的完整功能交付 | 完整角色链路 | 审核总执行包、范围升级、最终 merge/push/release |
+| High-risk | 认证授权、数据库 migration、部署配置、密钥、生产数据、依赖源、计费、安全策略 | 在对应等级基础上强制加入 Security/Testing/Integration/Release 审查 | 必须审核高风险操作和最终发布 |
+
+裁剪规则：
+
+- 文档-only 且只改 `README.md`、`CHANGELOG.md` 或 `docs/**` 时，默认不得启用完整多 Agent 链路。
+- L0 任务默认走 `docs/agents/non-multi-agent.md`，除非用户明确要求多 Agent 试运行。
+- L1 任务可以创建任务卡和 run record，但不需要 Architect、Backend、Frontend、RAG/Data、Integration、Testing/Security/Maintainability 多个独立 Review 或 Release 全部参与；除非用户明确要求验证这些环节。
+- L2/L3 才需要进入 `Plan Packet Review`。
+- High-risk 是覆盖规则：即使改动很小，也必须加入相应审查和人工审核点。
+- L1 的默认 Review 形态是一个合并 Review Agent，覆盖测试合理性、安全敏感信息和文档/维护性；只有 L2/L3/High-risk 才默认拆分 Testing / Security / Maintainability / Performance。
+- Performance Review 只在数据库、RAG、embedding、批处理、并发、高频接口、前端大列表、视频或明显性能敏感路径变更时启用。
+- Branch / Release Agent 只在准备 commit 整理、push、PR、merge、release notes 或清理已完成 worktree 时启用；本地试运行不默认启用。
+
 ### 3.1 总执行包审核门禁
 
 默认采用“重要节点人工审核，细碎步骤自动推进”。主控不得在用户审核总执行包前创建开发类子线程或 worktree。进入 `Ready for Development` 前，必须先生成总执行包，并把各 Agent 的关键边界汇总给用户一次性审核。
@@ -321,7 +358,10 @@ Archived
 非目标：
 验收标准：
 是否适合多 Agent：
+任务等级：
+调度模式：
 需要的 Agent：
+不启用完整链路的理由：
 任务拆分：
 文件所有权矩阵：
 分支/worktree 映射：
@@ -332,7 +372,7 @@ Archived
 回滚方案：
 ```
 
-每个 Agent 可以有独立任务卡或计划文件，用于执行和审计。推荐路径：
+每个 Agent 可以有独立任务卡或计划文件，用于执行和审计。L1 默认只需要总执行包加执行 Agent 任务卡；如启用 Review，使用一个合并 review 任务卡即可。L2/L3/High-risk 再按角色拆出多份任务卡。推荐路径：
 
 ```text
 docs/agents/plans/<feature>/<agent_name>plan.md
@@ -374,6 +414,8 @@ Agent 名称：
 风险提示：
 完成后返回格式：
 ```
+
+任务卡应避免重复总执行包的大段内容。总执行包负责全局目标、分支映射、自动继续范围和回滚方案；任务卡只保留该 Agent 需要执行的局部目标、ownership、输入、验证和返回格式。
 
 审核规则：
 
@@ -581,9 +623,14 @@ git worktree prune --dry-run --verbose
 需求摘要
 非目标
 验收标准
+任务等级
+调度模式
 是否适合多 Agent
 需要哪些 Agent
+不启用完整链路的理由
 ```
+
+如果判定为 L0，默认使用单 Agent 或当前线程完成，不进入后续多 Agent phase。只有 L1/L2/L3/High-risk 才继续生成总执行包或任务卡。
 
 ### Phase 1: Design
 
@@ -616,7 +663,15 @@ Agent 拆分
 回滚方案
 ```
 
-如需保留细粒度审计，主控同时生成但不逐个停审：
+如需保留细粒度审计，主控同时生成但不逐个停审。L1 默认只生成必要任务卡，例如：
+
+```text
+docs/agents/plans/<feature>/controllerplan.md
+docs/agents/plans/<feature>/docsplan.md
+docs/agents/plans/<feature>/reviewplan.md
+```
+
+L2/L3/High-risk 再按实际启用角色拆分：
 
 ```text
 docs/agents/plans/<feature>/architectplan.md
@@ -627,6 +682,9 @@ docs/agents/plans/<feature>/docsplan.md
 docs/agents/plans/<feature>/integrationplan.md
 docs/agents/plans/<feature>/testing_reviewplan.md
 docs/agents/plans/<feature>/security_reviewplan.md
+docs/agents/plans/<feature>/maintainability_reviewplan.md
+docs/agents/plans/<feature>/performance_reviewplan.md
+docs/agents/plans/<feature>/releaseplan.md
 ```
 
 用户批准前：
@@ -697,6 +755,8 @@ Integration Agent 执行：
 5. 运行集成验证。
 6. 输出 integration report。
 
+L1 默认不单独启用 Integration Agent；主控可以在当前线程完成只读 diff/ownership 检查，或由一个合并 Review Agent 审查最终 diff。只有用户明确要求验证 Integration 环节，或存在多个子分支、多个写 Owner、冲突风险、准备 merge/push/release 时，才创建 Integration Agent。
+
 建议合并顺序：
 
 ```text
@@ -719,6 +779,8 @@ Maintainability Review
 Performance Review
 Final Review
 ```
+
+L1 默认使用一个合并 Review Agent，输出测试合理性、安全敏感信息、文档/维护性结论。L2/L3/High-risk 才默认拆分 Testing Review、Security Review、Maintainability Review；Performance Review 和 Final Review 均按需启用。
 
 性能审查可按需启用。
 
@@ -881,6 +943,14 @@ Worktree cleanup:
 
 ## 11. 当前项目推荐 Agent 组合
 
+L1 文档 / 低风险工具小改：
+
+```text
+Controller
+Docs 或对应执行 Agent
+Combined Review（可选）
+```
+
 常规功能：
 
 ```text
@@ -892,7 +962,7 @@ Docs
 Integration
 Testing Review
 Security Review
-Branch / Release
+Branch / Release（准备 push / PR / merge / release 时）
 ```
 
 RAG / 题库功能：
@@ -908,7 +978,7 @@ Integration
 Testing Review
 Security Review
 Performance Review
-Branch / Release
+Branch / Release（准备 push / PR / merge / release 时）
 ```
 
 纯文档 / Release：
@@ -916,8 +986,8 @@ Branch / Release
 ```text
 Controller
 Docs
-Review
-Branch / Release
+Combined Review（可选）
+Branch / Release（仅发布说明、push、PR、merge 或 release 时）
 ```
 
 安全修复：

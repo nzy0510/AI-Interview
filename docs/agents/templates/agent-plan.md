@@ -1,5 +1,7 @@
 # <agent_name>plan.md
 
+用途：本文件是单个 Agent 的局部执行卡，不是总执行包的复制件。全局目标、完整分支矩阵、自动继续范围和回滚方案应放在 controllerplan 或总执行包中；这里只保留该 Agent 执行所需的最小上下文。
+
 Agent 名称：
 
 计划状态：Draft / Approved
@@ -23,6 +25,11 @@ Agent 名称：
 ## 输入材料
 
 -
+
+## 上游依据
+
+- 批准总执行包：
+- 本 Agent ownership：
 
 ## 依赖前置任务
 

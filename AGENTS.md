@@ -12,7 +12,7 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 git status --short --branch
 ```
 
-然后按任务类型选择规则文档：
+然后按任务类型(根据大概的判断，选择单agent或多agent，如果拿不准，可以Ask me to help you decide.)选择规则文档：
 
 | 场景 | 必读文档 |
 | --- | --- |
@@ -26,19 +26,33 @@ git status --short --branch
 
 如果只是小改动或单线程任务，使用 `docs/agents/non-multi-agent.md`，不要强行套多 Agent 流程。
 
-## 项目结构速览
+## 项目结构
 
 ```text
-backend/                         # Spring Boot 后端
-frontend/                        # Vue 3 前端
-embedding-service/               # FastAPI multilingual-e5 向量服务
-scripts/question_bank_import.py  # 题库导入包生成
-scripts/retrieval_eval/          # RAG 离线评测工具链
-tests/                           # Python 工具链测试
-docs/agents/                     # Agent 协作协议、模板和运行记录
-docs/superpowers/                # 重要实现计划与设计记录
-image/架构图/                    # 系统架构图与 RAG 流程图
-image/展示图/                    # 项目页面截图
+.
+├── backend/                         # Spring Boot 后端
+│   ├── src/main/java/com/interview/
+│   │   ├── controller/              # REST API
+│   │   ├── service/                 # 面试、简历、Mentor、RAG、题库服务
+│   │   ├── service/questionbank/    # 题库发布、检索、Qdrant 同步
+│   │   ├── entity/                  # MySQL 实体
+│   │   └── config/                  # LLM、Redis、Embedding、JWT 等配置
+│   └── src/main/resources/db/migration/
+├── frontend/                        # Vue 3 前端
+│   └── src/views/                   # 工作台、准备页、面试页、历史、Mentor、设置
+├── embedding-service/               # FastAPI multilingual-e5 向量服务
+├── scripts/question_bank_import.py  # 题库导入包生成
+├── scripts/retrieval_eval/          # RAG 离线评测工具链
+├── tests/                           # Python 工具链测试
+├── docs/adr/                        # 架构决策记录
+├── docs/superpowers/                # 重要实现计划与设计记录
+├── image/架构图/                    # 系统架构图与 RAG 流程图
+├── image/展示图/                    # 项目页面截图
+├── docker-compose.example.yml       # 本地 Compose 模板
+├── docker-compose.prod.yml          # 生产 Compose
+├── CONTEXT.md                       # 领域语言与边界
+├── PLAN.md                          # 后续推进计划
+└── CHANGELOG.md                     # 更新日志
 ```
 
 `.codegraph/`、`.understand-anything/`、`.worktrees/` 属于本地 Agent / 代码智能工具产物，不应提交到 Git。
