@@ -21,8 +21,8 @@
 - 与用户交互，澄清需求、非目标、约束和验收标准。
 - 分析需求是否适合并行拆分。
 - 生成或更新 `PLAN.md` / `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`。
-- 输出任务清单、文件所有权矩阵、分支/worktree 映射和验证计划。
-- 在创建子线程/worktree 前，为每个拟派发 Agent 生成一份 `<agent_name>plan.md`，交由用户审核。
+- 输出总执行包：任务清单、文件所有权矩阵、分支/worktree 映射、验证计划、风险点和人工审核节点。
+- 在创建子线程/worktree 前，为每个拟派发 Agent 生成任务卡或 `<agent_name>plan.md`，并将关键边界汇总到总执行包交由用户一次性审核。
 - 创建或指派各开发 Agent 的线程与 worktree。
 - 跟踪任务状态，收集各 Agent 交付物。
 - 判断是否进入集成、审查、合并或回滚。
@@ -46,7 +46,8 @@
 验证命令：
 审查关卡：
 回滚方案：
-Agent 计划文件：
+待审核总执行包：
+Agent 任务卡：
 ```
 
 ### 1.2 Architect Agent
@@ -268,7 +269,7 @@ Ready for Design
   ↓
 Designed
   ↓
-Ready for Agent Plan Review
+Ready for Plan Packet Review
   ↓
 Ready for Development
   ↓
@@ -293,9 +294,9 @@ Archived
 | --- | --- | --- |
 | Draft | 只有想法或模糊需求 | 需求、非目标、约束基本写清楚 |
 | Ready for Design | 需求清楚 | Architect 输出设计和拆分建议 |
-| Designed | plan / contract / ownership 已完成 | 主控生成每个 Agent 的 `<agent_name>plan.md` |
-| Ready for Agent Plan Review | 每个 Agent 的计划文件已生成 | Human 审核并批准计划文件 |
-| Ready for Development | 任务已拆分，计划文件已批准，分支和 worktree 方案确定 | worktree / branch / thread 创建完成 |
+| Designed | plan / contract / ownership 已完成 | 主控生成总执行包和必要的 Agent 任务卡 |
+| Ready for Plan Packet Review | 总执行包已生成 | Human 审核并批准关键边界 |
+| Ready for Development | 任务已拆分，总执行包已批准，分支和 worktree 方案确定 | worktree / branch / thread 创建完成 |
 | In Development | 开发 Agent 正在实现 | 局部测试通过，交付物完整 |
 | Ready for Integration | 子任务完成且无阻断问题 | Integration Agent 开始合并 |
 | Integrated | integration branch 已合并子任务 | 集成测试完成，进入审查 |
@@ -309,11 +310,29 @@ Archived
 
 ## 3. 任务契约
 
-### 3.1 Agent 计划文件审核门禁
+### 3.1 总执行包审核门禁
 
-主控不得在用户审核前创建开发类子线程或 worktree。进入 `Ready for Development` 前，必须先为每个拟派发 Agent 生成一份具体计划文件。
+默认采用“重要节点人工审核，细碎步骤自动推进”。主控不得在用户审核总执行包前创建开发类子线程或 worktree。进入 `Ready for Development` 前，必须先生成总执行包，并把各 Agent 的关键边界汇总给用户一次性审核。
 
-推荐路径：
+总执行包必须包含：
+
+```text
+目标：
+非目标：
+验收标准：
+是否适合多 Agent：
+需要的 Agent：
+任务拆分：
+文件所有权矩阵：
+分支/worktree 映射：
+验证命令：
+高风险操作：
+自动继续范围：
+必须回到用户审核的触发条件：
+回滚方案：
+```
+
+每个 Agent 可以有独立任务卡或计划文件，用于执行和审计。推荐路径：
 
 ```text
 docs/agents/plans/<feature>/<agent_name>plan.md
@@ -336,10 +355,12 @@ performance_reviewplan.md
 releaseplan.md
 ```
 
-计划文件必须包含：
+Agent 任务卡必须包含：
 
 ```text
 Agent 名称：
+计划状态：
+基线 commit：
 角色：
 目标：
 非目标：
@@ -356,12 +377,35 @@ Agent 名称：
 
 审核规则：
 
-- 用户未明确批准前，不创建对应子线程/worktree。
-- 如果用户要求调整任务边界，主控先修改对应 `<agent_name>plan.md`，再重新请求审核。
+- 用户未明确批准总执行包前，不创建子线程/worktree。
+- 用户批准总执行包后，低风险任务卡不再逐个停下来审核；主控可以按总执行包自动创建子线程/worktree 并派发任务。
+- 如果用户要求调整任务边界，主控先修改总执行包和对应任务卡，再重新请求审核关键变更。
 - 如果多个 Agent 的计划文件存在重叠写入范围，必须先调整 ownership。
 - 被批准后的计划文件是子 Agent 的唯一执行依据；子 Agent 不应根据聊天历史自行扩大范围。
-- 用户批准后、创建子线程/worktree 前，主控必须固化计划文件：默认提交到主控或 integration 分支；如果用户明确不希望提交计划文件，必须把批准后的完整计划文本传入子 Agent prompt，并在 run record 中记录未提交原因。
+- 用户批准后、创建子线程/worktree 前，主控必须固化总执行包和任务卡：默认提交到主控或 integration 分支；如果用户明确不希望提交，必须把批准后的完整文本传入子 Agent prompt，并在 run record 中记录未提交原因。
 - 子 Agent 启动后，主控必须回查 `git worktree list --porcelain` 和 `git -C <worktree> status --short --branch`，确认实际 worktree、分支和计划一致。
+
+必须回到用户审核的触发条件：
+
+- 需要修改未授权文件或扩大 ownership。
+- 多个 Agent 出现写入范围冲突。
+- 涉及数据库 migration、认证授权、安全策略、部署配置、密钥、计费、生产数据或外部依赖源变更。
+- 测试失败、审查阻断问题未修复，或 Agent 想绕过既定验证。
+- 需要切换实现方案、依赖来源、模型/服务提供方或降级方案。
+- 需要执行破坏性 Git / 文件操作，或清理有未提交内容的 worktree。
+- 准备 merge、push、发布 release 或变更目标分支历史。
+
+可以自动继续的低风险步骤：
+
+- 创建已批准范围内的任务分支和 worktree。
+- 把批准后的任务卡传给子 Agent。
+- 子 Agent 在授权文件范围内实现和自测。
+- 修复局部 lint、格式、类型或测试失败。
+- 提交到自己的任务分支。
+- Integration Agent 做 ownership、冲突、diff 和验证结果检查。
+- Review Agent 输出阻断/非阻断问题。
+- 维护 run record。
+- 清理已确认干净的 worktree。
 
 ### 3.2 子 Agent 任务契约
 
@@ -554,11 +598,25 @@ API contract
 风险
 ```
 
-主控确认后生成任务契约、ownership 矩阵和每个 Agent 的 `<agent_name>plan.md`。
+主控确认后生成总执行包、ownership 矩阵和必要的 Agent 任务卡。
 
-### Phase 1.5: Agent Plan Review
+### Phase 1.5: Plan Packet Review
 
-主控输出并等待用户审核：
+主控输出并等待用户审核总执行包：
+
+```text
+目标 / 非目标 / 验收标准
+Agent 拆分
+文件所有权矩阵
+分支/worktree 映射
+验证命令
+高风险操作
+自动继续范围
+必须回到用户审核的触发条件
+回滚方案
+```
+
+如需保留细粒度审计，主控同时生成但不逐个停审：
 
 ```text
 docs/agents/plans/<feature>/architectplan.md
@@ -576,7 +634,7 @@ docs/agents/plans/<feature>/security_reviewplan.md
 - 不创建子线程。
 - 不创建 worktree。
 - 不派发实现任务。
-- 只允许修改计划文件、ownership 矩阵和验证计划。
+- 只允许修改总执行包、任务卡、ownership 矩阵和验证计划。
 
 用户批准后，状态进入 `Ready for Development`。
 
@@ -588,7 +646,7 @@ docs/agents/plans/<feature>/security_reviewplan.md
 独立线程
 独立 worktree
 独立分支
-已批准的 <agent_name>plan.md
+已批准总执行包内的 Agent 任务卡
 ```
 
 创建后必须记录：
@@ -597,8 +655,9 @@ docs/agents/plans/<feature>/security_reviewplan.md
 实际 worktree 路径
 实际分支
 base commit
-批准后的计划文件路径或计划原文
-计划文件是否已提交
+批准后的总执行包路径或原文
+任务卡路径或原文
+总执行包和任务卡是否已提交
 ```
 
 每个 Agent 先运行 baseline 检查：
@@ -873,25 +932,3 @@ Branch / Release
 ```
 
 ---
-
-## 12. 后续搭建建议
-
-建议按三步落地：
-
-1. 文档协议阶段
-   - 将本文件迁移或同步到 `docs/agents/workflow.md`。
-   - 新增 `docs/agents/templates/`，保存各类 Agent Prompt。
-   - 用 1 个小功能手动跑完整流程。
-
-2. 半自动阶段
-   - 固定 worktree 创建脚本。
-   - 固定运行记录模板。
-   - 固定 Review checklist。
-   - 主控手动创建线程，Agent 按模板执行。
-
-3. 自动调度阶段
-   - 让主控根据 ownership 矩阵自动创建 Codex worktree thread。
-   - 子 Agent 自动提交任务分支。
-   - Integration Agent 自动合并到 integration branch。
-   - Review Agent 自动输出阻断报告。
-   - Human 只在 Designed、Ready to Merge、Released 三个节点审批。

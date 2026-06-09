@@ -8,13 +8,14 @@ Base commit:
 
 Target branch:
 
-## Plan Review
+## Plan Packet Review
 
-| Agent | Plan File | Status | Approval Evidence | Committed |
+| Item | Path | Status | Approval Evidence | Committed |
 | --- | --- | --- | --- | --- |
-| | | Draft / Approved | | Yes / No |
+| Plan packet | | Draft / Approved | | Yes / No |
+| Agent task card | | Draft / Approved | | Yes / No |
 
-If an approved plan file is not committed, record the reason and confirm the full approved plan text was passed to the child Agent prompt.
+If an approved plan packet or task card is not committed, record the reason and confirm the full approved text was passed to the child Agent prompt.
 
 ## Agents
 
