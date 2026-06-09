@@ -2,50 +2,69 @@
 
 This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
-## Agent skills
+## 当前项目结构
+```text
+.
+├── backend/                         # Spring Boot 后端
+│   ├── src/main/java/com/interview/
+│   │   ├── controller/              # REST API
+│   │   ├── service/                 # 面试、简历、Mentor、RAG、题库服务
+│   │   ├── service/questionbank/    # 题库发布、检索、Qdrant 同步
+│   │   ├── entity/                  # MySQL 实体
+│   │   └── config/                  # LLM、Redis、Embedding、JWT 等配置
+│   └── src/main/resources/db/migration/
+├── frontend/                        # Vue 3 前端
+│   └── src/views/                   # 工作台、准备页、面试页、历史、Mentor、设置
+├── embedding-service/               # FastAPI multilingual-e5 向量服务
+├── scripts/question_bank_import.py  # 题库导入包生成
+├── scripts/retrieval_eval/          # RAG 离线评测工具链
+├── tests/                           # Python 工具链测试
+├── docs/superpowers/                # 重要实现计划与设计记录
+├── .codegraph/                      # 代码库知识图谱
+├── image/架构图/                    # 系统架构图与 RAG 流程图
+├── image/展示图/                    # 项目页面截图
+├── docker-compose.example.yml       # 本地 Compose 模板
+├── docker-compose.prod.yml          # 生产 Compose
+├── CONTEXT.md                       # 领域语言与边界
+├── PLAN.md                          # 后续推进计划
+└── CHANGELOG.md                     # 更新日志
+```
+## 验证命令
 
-### Issue tracker
+```powershell
+cd backend
+mvn test
+```
 
-Issues live as GitHub issues in `nzy0510/AI-Interview`. See `docs/agents/issue-tracker.md`.
+```powershell
+cd frontend
+npm run build
+npx vitest run
+```
 
-### Triage labels
+```powershell
+python -m unittest discover -s tests
+```
 
-Default label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
-
-## 沟通与工作流规则
+## 沟通与开发准备
 
 - 默认使用中文回答。
-- 修改代码前，先简要说明计划。
-- 不确定需求时，先提出关键问题，不要直接猜测实现。
-- 不要一次性大范围重构，优先小步修改。
+- 当发现用户不确定需求时，对用户进行"面试追问"，确定方向及边界，不盲目开始。
+
+## 开发规范
+
+- 优先基于superpower插件提供的工作流程进行项目开发。
+- 修改代码前，必须先确认当前分支和工作区状态，有问题或不规范先向我确认。
+- 新增接口时，保持与现有 REST API 风格一致。
+- 不要在 Controller 中写复杂业务逻辑。
+- 不要在 Service 中直接拼接复杂 SQL。
+- 不要让业务逻辑全部堆积于同一文件导致过于臃肿。
 - 修改完成后，必须总结：
   - 修改了哪些文件
   - 每个文件为什么改
   - 是否运行了测试
   - 是否还有遗留风险
-- 如果有多个方案，先推荐当前项目最合适的一个，并说明理由。
-
-## Spring Boot 规则
-
-- 新增接口时，保持与现有 REST API 风格一致。
-- 不要在 Controller 中写复杂业务逻辑。
-- 不要在 Service 中直接拼接复杂 SQL。
-- 不要随意修改全局配置，例如 `application.yml`、`SecurityConfig`、`WebMvcConfig`，若要修改，先进行询问。
-- 修改配置文件前，先说明影响范围。
-- 涉及事务时，优先在 Service 层使用 `@Transactional`。
-- 涉及认证授权时，必须检查 Spring Security / JWT / 拦截器相关逻辑。
-
-## 功能添加要求
-
-- 按照生产级项目规范修改，增加功能
-- 准备一份更新文档，在添加新功能时，记录下所做的修改，防止后续遗忘，导致重复出现相同的错误
-- 更新每个功能前，详细询问确认用户需求，一次性考虑周全，而非将应用跑起来就"完事大吉"，要符合生产级应用的需要
-- 更新后对每个更改内容进行说明并解释
-- 功能更新后同步更新README文档
+- 一个阶段开发交付后，按照Post Delivery analyis skill和 maintian-changelog skill做好相关总结和更新日志维护。
 
 ## 测试规则
 
@@ -61,85 +80,17 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agent
 ## 安全规则
 
 - 不要把 API Key、数据库密码、JWT Secret 写入代码。
-- 不要把 `.env`、`application-local.yml`、密钥文件提交到 Git。
+- 不要把 `.env`、`application-local.yml`、`application.yml`、密钥文件提交到 Git。
 - 日志中不能打印完整 API Key、access token、refresh token、密码或敏感信息。
+- 每次提交前，必须确认安全问题。
 - 如果发现疑似密钥泄露，必须立即提醒我轮换密钥。
 
 ## git 操作要求
-- 修改代码前，必须先确认当前分支和工作区状态。
-- 每次更新功能时都新创建功能分支
-- ai agent 可以自主commit 和 push 并合并到主分支，但是一定要在确认功能无误后再合并
+
+- agent可主动提交，不过必须确认无误。
 - 注意保护隐私内容，并做好git_ignore工作，不上传没必要的文件
-- 遇到 merge conflict 时，先说明冲突内容和解决建议，再等待我确认。
-- 提交前必须展示修改文件、commit message 和测试结果。
-- commit message 使用 Conventional Commits，例如 `feat:`、`fix:`、`docs:`、`refactor:`、`test:`、`chore:`。
+- 遇到 merge conflict 时，先说明、总结冲突内容和解决建议，再等待我确认。
+- 确认提交后，commit message 使用 Conventional Commits，例如 `feat:`、`fix:`、`docs:`、`refactor:`、`test:`、`chore:`。
 
-## 功能开发规则
-- 在进行难度较大的开发工作时，优先采用tdd工作流进行测试开发。
-- 新增功能时，必须修改README文档并同步更新
-
-# AGENTS.md
-
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
-
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
-
-## 1. Think Before Coding
-
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
-
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-## 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+## 其他规范
+- 当发现用户需要理解某些代码逻辑时，若有.codegraph/目录，则优先根据该目录下的代码库知识图谱进行回答;若图谱知识不足以支撑完整回答，则重新审查代码库。
