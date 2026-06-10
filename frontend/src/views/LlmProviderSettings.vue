@@ -64,13 +64,13 @@
               v-for="item in configs"
               :key="item.id"
               class="config-card"
-              :class="{ 'is-active': item.enabled, 'is-editing': form.id === item.id }"
+              :class="{ 'is-active': isLlmConfigActive(item), 'is-editing': form.id === item.id }"
             >
               <div class="config-card__head">
                 <div>
                   <div class="config-title-row">
                     <h3>{{ item.displayName || getLlmProviderLabel(item.provider) }}</h3>
-                    <el-tag v-if="item.enabled" type="success" size="small" effect="dark">当前启用</el-tag>
+                    <el-tag v-if="isLlmConfigActive(item)" type="success" size="small" effect="dark">当前启用</el-tag>
                   </div>
                   <p class="config-subtitle">{{ getLlmProviderLabel(item.provider) }}</p>
                 </div>
@@ -108,7 +108,7 @@
                   测试连接
                 </el-button>
                 <el-button
-                  v-if="!item.enabled"
+                  v-if="!isLlmConfigActive(item)"
                   type="success"
                   size="small"
                   :loading="actionConfigId === item.id && actionType === 'activate'"
@@ -238,6 +238,7 @@ import {
   getLlmConfigSourceLabel,
   getLlmProviderLabel,
   getLlmProviderPreset,
+  isLlmConfigActive,
   llmProviderPresets,
   maskApiKeyHint,
   sanitizeLlmMessage

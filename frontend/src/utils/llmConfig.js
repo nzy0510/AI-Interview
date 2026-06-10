@@ -41,6 +41,9 @@ const providerPresetMap = llmProviderPresets.reduce((acc, item) => {
   return acc
 }, {})
 
+providerPresetMap.kimi = providerPresetMap.moonshot
+providerPresetMap.glm = providerPresetMap.zhipu
+
 const missingConfigPatterns = [
   'llm config',
   'llm provider',
@@ -61,6 +64,10 @@ export function getLlmProviderPreset(provider) {
 
 export function getLlmProviderLabel(provider) {
   return getLlmProviderPreset(provider).label
+}
+
+export function isLlmConfigActive(config) {
+  return Boolean(config?.active ?? config?.enabled)
 }
 
 export function createLlmConfigDraft(provider = 'deepseek') {
@@ -124,7 +131,7 @@ export function sanitizeLlmMessage(message) {
 }
 
 export function deriveLlmConfigStatus(configs = []) {
-  const active = Array.isArray(configs) ? configs.find((item) => item?.enabled) : null
+  const active = Array.isArray(configs) ? configs.find(isLlmConfigActive) : null
   return {
     resolved: true,
     hasAnyConfig: Array.isArray(configs) && configs.length > 0,

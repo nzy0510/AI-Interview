@@ -6,6 +6,7 @@ import {
   createUnknownLlmConfigStatus,
   deriveLlmConfigStatus,
   getLlmProviderLabel,
+  isLlmConfigActive,
   isMissingLlmConfigError,
   sanitizeLlmMessage
 } from '../llmConfig'
@@ -54,14 +55,20 @@ describe('llm config utils', () => {
 
   it('derives active status from config list', () => {
     const status = deriveLlmConfigStatus([
-      { id: 1, provider: 'deepseek', enabled: false },
-      { id: 2, provider: 'zhipu', modelName: 'glm-5.1', displayName: '主线路', enabled: true }
+      { id: 1, provider: 'deepseek', active: false },
+      { id: 2, provider: 'glm', modelName: 'glm-5.1', displayName: '主线路', active: true }
     ])
 
     expect(status.hasAnyConfig).toBe(true)
     expect(status.hasActiveConfig).toBe(true)
-    expect(status.activeProvider).toBe('zhipu')
+    expect(status.activeProvider).toBe('glm')
     expect(status.activeDisplayName).toBe('主线路')
+  })
+
+  it('keeps backward compatibility for enabled field and provider aliases', () => {
+    expect(isLlmConfigActive({ enabled: true })).toBe(true)
+    expect(getLlmProviderLabel('kimi')).toBe('Kimi / Moonshot')
+    expect(getLlmProviderLabel('glm')).toBe('GLM / 智谱')
   })
 
   it('recognizes missing-config backend errors', () => {
