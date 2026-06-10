@@ -195,13 +195,3 @@ question-bank:
 jwt:
   sign-key: ${JWT_SIGN_KEY}
   expire-ms: ${JWT_EXPIRE_MS:86400000}
-
-# DeepSeek AI 配置 (LangChain4j OpenAI 兼容格式)
-langchain4j:
-  open-ai:
-    chat-model:
-      base-url: https://api.deepseek.com/v1
-      api-key: ${DEEPSEEK_API_KEY}
-      model-name: deepseek-chat
-      temperature: 0.7
-      max-tokens: 2000

@@ -196,13 +196,3 @@ app:
     passage-prefix: ${APP_EMBEDDING_PASSAGE_PREFIX:}
     connect-timeout-ms: ${APP_EMBEDDING_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${APP_EMBEDDING_READ_TIMEOUT_MS:10000}
-
-# DeepSeek AI 配置 (LangChain4j OpenAI 兼容格式)
-langchain4j:
-  open-ai:
-    chat-model:
-      base-url: https://api.deepseek.com/v1
-      api-key: ${DEEPSEEK_API_KEY}
-      model-name: deepseek-chat
-      temperature: 0.7
-      max-tokens: 2000
