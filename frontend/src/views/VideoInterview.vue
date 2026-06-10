@@ -77,6 +77,7 @@ import { initModels, analyzeFrame, getEmotionSummary, EMOTION_LABELS } from '@/u
 import { userKey } from '@/utils/auth'
 import InterviewReportOverlay from '@/components/interview/InterviewReportOverlay.vue'
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
+import { buildLlmConfigRouteQuery, isMissingLlmConfigError } from '@/utils/llmConfig'
 import {
   buildVideoInterviewReportMetrics,
   detectInterviewControlMarkers,
@@ -246,7 +247,12 @@ onMounted(async () => {
     trackEvent('INTERVIEW_START_CLIENT', { mode: 'video', position: position.value })
     // 4. AI starts first — trigger opening
     triggerAiTurn()
-  } catch {
+  } catch (error) {
+    if (isMissingLlmConfigError(error)) {
+      ElMessage.warning('请先在大模型配置中启用一个 Provider')
+      router.replace({ path: '/llm-providers', query: buildLlmConfigRouteQuery('video-interview') })
+      return
+    }
     ElMessage.error('连接失败，请确认后端已启动')
     router.back()
   }

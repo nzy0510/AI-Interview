@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -7,11 +7,18 @@ import {
   DataAnalysis,
   Document,
   Monitor,
+  Operation,
   Setting,
   UserFilled,
   MagicStick
 } from '@element-plus/icons-vue'
 import { submitFeedbackAPI } from '@/api/analytics'
+import { getLlmConfigStatusAPI } from '@/api/llm'
+import {
+  buildLlmConfigRouteQuery,
+  createUnknownLlmConfigStatus,
+  normalizeLlmConfigStatus
+} from '@/utils/llmConfig'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +26,7 @@ const router = useRouter()
 const navItems = [
   { path: '/', label: '工作台', icon: Monitor },
   { path: '/interview/setup', label: '面试准备', icon: MagicStick },
+  { path: '/llm-providers', label: '大模型配置', icon: Operation },
   { path: '/mentor', label: 'AI Mentor', icon: DataAnalysis },
   { path: '/resume', label: '简历画像', icon: UserFilled },
   { path: '/history', label: '历史报告', icon: Document },
@@ -28,10 +36,22 @@ const navItems = [
 const currentTitle = computed(() => route.meta?.title || '工作台')
 const feedbackVisible = ref(false)
 const feedbackLoading = ref(false)
+const llmStatus = ref(createUnknownLlmConfigStatus())
 const feedbackForm = reactive({
   category: 'bug',
   content: '',
   contact: ''
+})
+
+const showLlmWarning = computed(() => llmStatus.value.resolved && !llmStatus.value.hasActiveConfig)
+const sidebarStatusText = computed(() => {
+  if (showLlmWarning.value) {
+    return '未启用大模型配置'
+  }
+  if (llmStatus.value.resolved && llmStatus.value.hasActiveConfig) {
+    return llmStatus.value.activeDisplayName || llmStatus.value.activeProvider || '大模型已就绪'
+  }
+  return '服务运行正常'
 })
 
 const isActive = (path) => {
@@ -62,6 +82,30 @@ const submitFeedback = async () => {
     feedbackLoading.value = false
   }
 }
+
+const openLlmSettings = () => {
+  router.push({
+    path: '/llm-providers',
+    query: buildLlmConfigRouteQuery('dashboard')
+  })
+}
+
+const loadLlmStatus = async () => {
+  try {
+    const data = await getLlmConfigStatusAPI({ silent: true })
+    llmStatus.value = normalizeLlmConfigStatus(data)
+  } catch {
+    llmStatus.value = createUnknownLlmConfigStatus()
+  }
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    loadLlmStatus()
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -92,9 +136,12 @@ const submitFeedback = async () => {
         </button>
       </nav>
 
-      <div class="app-shell__sidebar-footer">
+      <div class="app-shell__sidebar-footer" :class="{ 'is-warning': showLlmWarning }">
         <div class="app-shell__status-dot" />
-        <span>服务运行正常</span>
+        <span>{{ sidebarStatusText }}</span>
+        <button v-if="showLlmWarning" type="button" class="app-shell__sidebar-link" @click="openLlmSettings">
+          去配置
+        </button>
       </div>
     </aside>
 
@@ -267,10 +314,15 @@ const submitFeedback = async () => {
   margin-top: auto;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   padding-top: 20px;
   color: var(--app-text-muted);
   font-size: 0.88rem;
+}
+
+.app-shell__sidebar-footer.is-warning {
+  color: #8a5a12;
 }
 
 .app-shell__status-dot {
@@ -279,6 +331,21 @@ const submitFeedback = async () => {
   border-radius: 50%;
   background: var(--app-success);
   box-shadow: 0 0 0 4px rgba(47, 158, 106, 0.12);
+}
+
+.app-shell__sidebar-footer.is-warning .app-shell__status-dot {
+  background: #e6a23c;
+  box-shadow: 0 0 0 4px rgba(230, 162, 60, 0.14);
+}
+
+.app-shell__sidebar-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .app-shell__main {

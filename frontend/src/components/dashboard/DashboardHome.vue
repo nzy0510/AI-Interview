@@ -65,6 +65,15 @@
       </div>
     </section>
 
+    <section v-if="showLlmConfigPrompt" class="llm-callout">
+      <div>
+        <div class="section-kicker">LLM Ready</div>
+        <h2>先完成大模型配置</h2>
+        <p>当前账号还没有启用可用的 Provider。文字面试、视频面试和 AI Mentor 需要先完成配置。</p>
+      </div>
+      <el-button type="primary" plain @click="goLlmSettings">去配置</el-button>
+    </section>
+
     <div class="dashboard-grid">
       <div class="dashboard-main">
         <section class="section-block recent-section">
@@ -236,9 +245,15 @@ import {
   ArrowRight, Document, Loading, Operation,
   TrendCharts, VideoCamera
 } from '@element-plus/icons-vue'
+import { getLlmConfigStatusAPI } from '@/api/llm'
 import { getHistoryListAPI } from '@/api/interview'
 import { getMentorInsightAPI, getKnowledgeCoverageAPI, getPreferenceAPI, getCurrentUserAPI } from '@/api/user'
 import { getUsername, getNickname, setNickname, userKey, withAuthHeaders } from '@/utils/auth'
+import {
+  buildLlmConfigRouteQuery,
+  createUnknownLlmConfigStatus,
+  normalizeLlmConfigStatus
+} from '@/utils/llmConfig'
 import { interviewSetupDefaults } from '@/mock/setup'
 
 const router = useRouter()
@@ -251,6 +266,7 @@ const latestScore = ref('--')
 const knowledgeCats = ref('--')
 const recentInterviews = ref([])
 const mentorInsight = ref(null)
+const llmStatus = ref(createUnknownLlmConfigStatus())
 
 const showModeDialog = ref(false)
 const showResumeDialog = ref(false)
@@ -271,10 +287,13 @@ const getScoreType = (s) => s >= 85 ? 'success' : s >= 70 ? 'primary' : s >= 55 
 const formatTime = (d) => d ? new Date(d).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '--'
 
 const statusText = computed(() => {
+  if (showLlmConfigPrompt.value) return '尚未启用大模型配置，请先完成 Provider 设置后再开始 AI 功能。'
   if (recentInterviews.value.length === 0) return '今日建议：先上传简历，再进入文字模式热身'
   const latest = recentInterviews.value[0]
   return `最近一次面试：${latest.position} · ${latest.score}分 · ${latest.interviewMode === 'video' ? '视频' : '文字'}模式`
 })
+
+const showLlmConfigPrompt = computed(() => llmStatus.value.resolved && !llmStatus.value.hasActiveConfig)
 
 const lastActiveText = computed(() => {
   if (recentInterviews.value.length === 0) return '暂无记录'
@@ -351,11 +370,21 @@ const loadMentor = async () => {
       knowledgeCats.value = String(cov.knowledgeCoverage.details.length)
     }
   } catch { /* optional */ }
+  if (showLlmConfigPrompt.value) return
   // 异步加载 AI 洞察（含 LLM，可能慢但不阻塞页面）
   try {
     const data = await getMentorInsightAPI()
     if (data) mentorInsight.value = data
   } catch { /* Mentor unavailable */ }
+}
+
+const loadLlmStatus = async () => {
+  try {
+    const data = await getLlmConfigStatusAPI({ silent: true })
+    llmStatus.value = normalizeLlmConfigStatus(data)
+  } catch {
+    llmStatus.value = createUnknownLlmConfigStatus()
+  }
 }
 
 const buildInterviewQuery = (mode) => ({
@@ -369,8 +398,21 @@ const buildInterviewQuery = (mode) => ({
 })
 
 const goSetup = () => router.push('/interview/setup')
-const goTextInterview = () => router.push({ path: '/interview', query: buildInterviewQuery('text') })
-const goVideoInterview = () => router.push({ path: '/video-interview', query: buildInterviewQuery('video') })
+const goLlmSettings = () => router.push({ path: '/llm-providers', query: buildLlmConfigRouteQuery('dashboard') })
+const ensureLlmReady = () => {
+  if (!showLlmConfigPrompt.value) return true
+  ElMessage.warning('请先配置并启用一个大模型 Provider')
+  goLlmSettings()
+  return false
+}
+const goTextInterview = () => {
+  if (!ensureLlmReady()) return
+  router.push({ path: '/interview', query: buildInterviewQuery('text') })
+}
+const goVideoInterview = () => {
+  if (!ensureLlmReady()) return
+  router.push({ path: '/video-interview', query: buildInterviewQuery('video') })
+}
 const goResumePage = () => { showResumeManager.value = false; router.push({ path: '/resume' }) }
 const openResumeManager = () => { showResumeManager.value = true }
 const useExistingResume = () => { showResumeDialog.value = false; showModeDialog.value = true }
@@ -432,7 +474,7 @@ const loadPreference = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([checkExistingResume(), loadHistory(), loadPreference(), loadNickname()])
+  await Promise.all([checkExistingResume(), loadHistory(), loadPreference(), loadNickname(), loadLlmStatus()])
   // 页面核心数据已就绪，Mentor 异步加载不阻塞渲染
   loadMentor()
 })
@@ -503,6 +545,30 @@ onMounted(async () => {
 .secondary-cta, .ghost-cta { background: #fff; color: #191c1e; }
 
 .hero-panel { display: grid; gap: 14px; min-width: 0; }
+
+.llm-callout {
+  margin-top: 18px;
+  padding: 20px 22px;
+  border-radius: 20px;
+  border: 1px solid rgba(230, 162, 60, 0.18);
+  background: rgba(255, 248, 235, 0.9);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.llm-callout h2 {
+  margin: 6px 0 0;
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.llm-callout p {
+  margin: 8px 0 0;
+  color: #5e5d59;
+  line-height: 1.65;
+}
 
 .status-card {
   padding: 20px;
@@ -711,6 +777,7 @@ onMounted(async () => {
 @media (max-width: 720px) {
   .dashboard-home { padding: 16px; }
   .hero-slab, .section-block, .aside-block { padding: 18px; }
+  .llm-callout { flex-direction: column; align-items: flex-start; }
   .overview-grid { grid-template-columns: 1fr; }
   .recent-item { flex-direction: column; }
   .mode-options { grid-template-columns: 1fr; }
