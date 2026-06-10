@@ -1,6 +1,6 @@
 # Agent 协作设计
 
-目标：在当前项目基础上建立一套可复现、线程隔离、worktree 隔离、可并行开发、可串行审查与集成的多 Agent 工作流。
+这是一套可复现、线程隔离、worktree 隔离、可并行开发、可串行审查与集成的多 Agent 工作流。
 
 核心原则：
 
@@ -23,7 +23,7 @@
 - 生成或更新 `PLAN.md` / `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`。
 - 输出总执行包：任务清单、文件所有权矩阵、分支/worktree 映射、验证计划、风险点和人工审核节点。
 - 在创建子线程/worktree 前，为每个拟派发 Agent 生成任务卡或 `<agent_name>plan.md`，并将关键边界汇总到总执行包交由用户一次性审核。
-- 创建或指派各开发 Agent 的线程与 worktree。
+- 创建或指派各开发 Agent 的线程与 worktree；各agent使用的模型强度根据任务类型自主判断。
 - 跟踪任务状态，收集各 Agent 交付物。
 - 判断是否进入集成、审查、合并或回滚。
 
@@ -539,6 +539,7 @@ Review 修复分支: codex/<feature>-review-fixes
 ```text
 C:\Users\nzy\.codex\worktrees\<id>\interview
 ```
+若出现工作树配置相关的报错，先查询原因并修复。
 
 只有当前环境没有原生 worktree 能力时，才使用项目内隐藏目录作为 fallback：
 

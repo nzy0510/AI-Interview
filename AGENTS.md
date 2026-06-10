@@ -12,7 +12,7 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 git status --short --branch
 ```
 
-然后按任务类型(根据大概的判断，选择单agent或多agent，如果拿不准，可以Ask me to help you decide.)选择规则文档：
+然后按任务类型选择规则文档：
 
 | 场景 | 必读文档 |
 | --- | --- |
@@ -56,8 +56,9 @@ git status --short --branch
 ```
 
 `.codegraph/`、`.understand-anything/`、`.worktrees/` 属于本地 Agent / 代码智能工具产物，不应提交到 Git。
+- .codegraph/ 下的内容能让agent快速理解项目代码结构、调用链和影响范围
 
-## 硬性规则
+## 统一硬性规则
 
 - 保护用户和其他 Agent 的未提交改动；不要回滚不是自己造成的改动。
 - 不提交 `.env`、`application-local.yml`、密钥文件、私有部署文件、私有题库、临时导入包或本地视频产物。
@@ -84,3 +85,17 @@ python -m unittest discover -s tests
 ```
 
 无法运行测试时，必须说明原因。
+
+## 本地测试运行
+
+### 后端
+```powershell
+cd E:\Develop\interview\backend
+mvn spring-boot:run
+```
+
+### 前端
+```powershell
+cd E:\Develop\interview\frontend
+npm run dev
+```
