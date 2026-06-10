@@ -1,7 +1,10 @@
 package com.interview.service.impl;
 
 import com.alibaba.fastjson2.JSON;
+import com.interview.exception.LlmProviderRequiredException;
 import com.interview.service.ResumeService;
+import com.interview.service.UserLlmConfigService;
+import com.interview.service.UserLlmModelFactory;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -28,7 +31,10 @@ import java.time.LocalDateTime;
 public class ResumeServiceImpl implements ResumeService {
 
     @Autowired
-    private ChatLanguageModel chatModel;
+    private UserLlmConfigService userLlmConfigService;
+
+    @Autowired
+    private UserLlmModelFactory userLlmModelFactory;
 
     @Autowired
     private ResumeProfileMapper resumeProfileMapper;
@@ -42,7 +48,8 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
-    public Map<String, Object> parseAndAnalyze(MultipartFile file) throws Exception {
+    public Map<String, Object> parseAndAnalyze(Long userId, MultipartFile file) throws Exception {
+        userLlmConfigService.ensureActiveProvider(userId);
         // 1. 读取 PDF 纯文本
         String rawText = "";
         try (InputStream is = file.getInputStream();
@@ -66,6 +73,8 @@ public class ResumeServiceImpl implements ResumeService {
 
         // 3. 呼叫大模型执行生成
         try {
+            ChatLanguageModel chatModel = userLlmModelFactory.createChatModel(
+                    userLlmConfigService.requireActiveRuntimeConfig(userId));
             Response<dev.langchain4j.data.message.AiMessage> aiResponse = chatModel.generate(
                     List.of(
                             new SystemMessage(prompt),
@@ -86,6 +95,8 @@ public class ResumeServiceImpl implements ResumeService {
             }
             
             return JSON.parseObject(jsonStr.trim(), Map.class);
+        } catch (LlmProviderRequiredException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("大模型生成简历画像失败: {}", e.getClass().getSimpleName());
             throw new Exception("AI生成简历画像异常，请稍后重试");

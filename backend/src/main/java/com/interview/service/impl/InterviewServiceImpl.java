@@ -4,11 +4,14 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewRecord;
+import com.interview.exception.LlmProviderRequiredException;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.service.InterviewRetrievalService;
 import com.interview.service.InterviewService;
 import com.interview.service.InterviewTurnPlanner;
 import com.interview.service.UsageQuotaService;
+import com.interview.service.UserLlmConfigService;
+import com.interview.service.UserLlmModelFactory;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -47,7 +50,10 @@ public class InterviewServiceImpl implements InterviewService {
     private InterviewRecordMapper interviewRecordMapper;
 
     @Autowired
-    private OpenAiStreamingChatModel streamingChatModel;
+    private UserLlmConfigService userLlmConfigService;
+
+    @Autowired
+    private UserLlmModelFactory userLlmModelFactory;
 
     @Autowired
     private com.interview.service.SessionStore sessionStore;
@@ -94,6 +100,7 @@ public class InterviewServiceImpl implements InterviewService {
     @Override
     public Long startInterview(Long userId, String position, String mode, List<String> resumeQuestions,
                                String difficultyLevel, List<String> focusAreas) {
+        userLlmConfigService.ensureActiveProvider(userId);
         consumeQuota(userId, UsageQuotaService.INTERVIEW_START);
 
         InterviewRecord record = new InterviewRecord();
@@ -156,6 +163,8 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         try {
+            OpenAiStreamingChatModel streamingChatModel =
+                    userLlmModelFactory.createStreamingChatModel(userLlmConfigService.requireActiveRuntimeConfig(userId));
             InterviewPhase nextPhase = interviewTurnPlanner.determineNextPhase(record, chatHistory);
             List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
             InterviewRetrievalService.TurnRetrieval retrieval = interviewRetrievalService.retrieve(
@@ -228,6 +237,9 @@ public class InterviewServiceImpl implements InterviewService {
                     }
                 }
             });
+        } catch (LlmProviderRequiredException e) {
+            activeInterviewTurns.remove(recordId);
+            sendSseError(emitter, e.getMessage());
         } catch (RuntimeException e) {
             activeInterviewTurns.remove(recordId);
             log.warn("面试轮次启动失败: recordId={}, error={}", recordId, sanitizeErrorMessage(e.getMessage()));

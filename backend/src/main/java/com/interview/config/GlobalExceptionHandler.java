@@ -1,6 +1,7 @@
 package com.interview.config;
 
 import com.interview.common.Result;
+import com.interview.exception.LlmProviderRequiredException;
 import com.interview.exception.QuotaExceededException;
 import com.interview.exception.RateLimitExceededException;
 import com.interview.service.AppEventService;
@@ -37,6 +38,14 @@ public class GlobalExceptionHandler {
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         recordException(request, "QUOTA_EXCEEDED", e.getMessage());
         return Result.error(429, e.getMessage());
+    }
+
+    @ExceptionHandler(LlmProviderRequiredException.class)
+    public Result<String> handleLlmProviderRequired(LlmProviderRequiredException e, HttpServletResponse response,
+                                                    HttpServletRequest request) {
+        response.setStatus(HttpStatus.BAD_REQUEST.value());
+        recordException(request, "LLM_PROVIDER_REQUIRED", e.getMessage());
+        return Result.error(400, e.getMessage());
     }
 
     /**
