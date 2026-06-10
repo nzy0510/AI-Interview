@@ -50,7 +50,7 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 graph LR
     User["候选人 / 训练用户"] --> Frontend["Vue 3 前端"]
     Frontend -->|"HTTP / SSE"| Backend["Spring Boot 后端"]
-    Backend --> LLM["DeepSeek / OpenAI 兼容模型"]
+    Backend --> LLM["用户启用的 OpenAI-compatible 模型"]
     Backend --> MySQL[("MySQL: 业务真相")]
     Backend --> Redis[("Redis: 会话缓存 / 限流 / Mentor 缓存")]
     Backend --> Qdrant[("Qdrant: 语义索引")]
@@ -144,7 +144,7 @@ graph TD
 | Qdrant | 向量检索 |
 | Flyway | 9.22.3 |
 | PDFBox | 简历 PDF 解析 |
-| DeepSeek API | OpenAI 兼容聊天模型 |
+| OpenAI-compatible Chat API | 用户自配 DeepSeek / Kimi / GLM / Qwen / 自定义兼容模型 |
 | multilingual-e5-base | Docker 默认 embedding 模型 |
 
 ### 前端
@@ -176,7 +176,7 @@ graph TD
 - JDK 17
 - Node.js 20+
 - Python 3.10+（仅运行题库脚本或检索评测时需要）
-- DeepSeek API Key
+- 用户自备 OpenAI-compatible API 账号（如 DeepSeek、Kimi、GLM、Qwen 或自定义兼容供应商）
 - SMTP 邮箱授权码（注册、找回密码需要）
 
 ### 创建配置
@@ -190,7 +190,7 @@ Copy-Item docker-compose.example.yml docker-compose.yml
 
 ```env
 DB_PASSWORD=your_mysql_password
-DEEPSEEK_API_KEY=your_deepseek_api_key
+APP_LLM_CONFIG_ENCRYPTION_KEY=your_base64_or_high_entropy_encryption_key
 JWT_SIGN_KEY=your_jwt_signing_key_at_least_32_characters
 APP_ADMIN_TOKEN=your_strong_ops_admin_token
 APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
@@ -206,6 +206,13 @@ APP_DEVELOPER_EXEMPT_USERNAMES=your_login_username
 ```
 
 重启后端后，该账号可在 Settings -> Question Bank Admin 输入 `APP_ADMIN_TOKEN`，执行题库导入、发布、归档、恢复、搜索预览和 reindex。仓库内置题库只负责空库首次初始化，后续自定义题库以本地 MySQL 和 Qdrant 数据为准，不需要提交到 Git。
+
+与用户自定义大模型配置相关的边界：
+
+- 项目不提供系统兜底 API Key；普通用户若没有有效的启用配置，文字面试、视频面试、报告生成和 AI Mentor 等用户侧 LLM 功能应先引导其到侧边栏“大模型配置”完成配置。
+- V1 只支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 和自定义。
+- 服务端只需要 `APP_LLM_CONFIG_ENCRYPTION_KEY` 这类加密密钥来加密保存用户 API Key；不要在 `.env`、示例配置、日志或文档里写入任何真实供应商密钥。
+- 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置；管理员不能查看用户 API Key 明文。
 
 不要提交 `.env`、真实 API Key、JWT Secret、邮箱授权码或数据库密码。
 
@@ -224,6 +231,23 @@ docker compose up -d --build
 - Redis：`localhost:6379`
 
 首次构建 embedding-service 会下载 PyTorch、sentence-transformers 和 multilingual-e5 模型，耗时取决于网络质量。若切换过 embedding 模型或 Qdrant collection，启动后需要在 Question Bank Admin 中执行全量 reindex。
+
+### 本地测试用户自定义大模型配置
+
+本轮只做本地可测试实现，不连接云端服务器。开发者或测试者可以按下面路径验证：
+
+1. 在后端环境变量中配置 `APP_LLM_CONFIG_ENCRYPTION_KEY`，确保服务端具备加密保存用户 API Key 的能力；缺失时不应明文降级。
+2. 启动前后端后，注册并登录一个普通测试账号。
+3. 进入侧边栏“大模型配置”，从 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 或自定义 OpenAI-compatible 预设中选择一个，填写 `Base URL`、模型名和 API Key。
+4. 先执行“测试连接”，确认成功后再保存；失败时只应看到脱敏错误，不应看到完整 API Key、Bearer Token 或密文。
+5. 如需切换供应商，可继续新增多个配置，但同一时间只启用一个 active 配置。
+6. 在未配置或未启用有效 provider 的情况下，面试、报告、Mentor 等用户侧 LLM 功能应被阻断并提示先完成配置。
+
+本地测试注意事项：
+
+- 项目不提供系统默认 key，也不应再依赖全局 `DEEPSEEK_API_KEY` 作为普通用户兜底。
+- API Key 明文只允许在用户提交配置和测试连接时经过后端瞬时处理；列表页、状态接口和管理员界面都不应回显明文。
+- 文档中的供应商名称只是 OpenAI-compatible 预设示例，不代表项目代用户提供账号、额度或官方 SDK。
 
 ## 本地开发
 
