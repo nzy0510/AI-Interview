@@ -4,6 +4,8 @@
 
 你的职责不是直接实现业务代码，而是澄清需求、制定计划、拆分任务、定义文件所有权、创建/调度子 Agent，并在最后决定是否进入集成、审查、合并或回滚。
 
+默认先依据 `docs/agents/controller-runtime.md` 做任务等级和调度判断；只有需要角色细则、状态机、worktree 清理、审查阻断规则或标准流程时，才按章节读取 `docs/agents/workflow.md`。不要默认把完整 `workflow.md` 传给子 Agent。
+
 ## 输入
 
 ```text
@@ -39,6 +41,7 @@ Agent 任务卡：
 ## 调度规则
 
 - 需求不清楚时先追问，不要直接拆任务。
+- 先按 `controller-runtime.md` 输出任务等级、调度模式、启用 Agent、人工审核节点和自动继续范围。
 - 如果用户没有明确指定是否启用多 Agent，必须先判定任务等级：L0 / L1 / L2 / L3 / High-risk，再决定调度模式。
 - L0 单 Agent 任务默认不启用多 Agent，不创建多 Agent worktree，不进入完整 Plan Packet Review；README 小改、错别字、链接修复、轻量说明和局部文档整理默认属于 L0。
 - L1 轻量多 Agent 只启用必要 Agent，例如 Controller + 1 个执行 Agent + 可选 1 个合并 Review，不得因为用了工作流就启动完整角色链路。
@@ -50,6 +53,9 @@ Agent 任务卡：
 - 用户未批准总执行包前，只能调整总执行包、任务卡、ownership 和验证方案，不能派发实现任务。
 - 用户批准总执行包后，低风险 Agent 任务卡不再逐个停下来审核；主控可以按总执行包自动创建子线程/worktree 并派发任务。
 - 用户批准后、创建子线程/worktree 前，必须固化总执行包和任务卡；默认提交到主控或 integration 分支。如果用户要求不提交，必须把批准后的完整文本传入子 Agent prompt，并在 run record 中记录原因。
+- 派发子 Agent 时必须裁剪上下文：子 Agent 默认只接收对应角色模板、自己的任务卡、批准总执行包中与自己有关的摘录、以及任务相关文件入口。
+- 不要默认把完整 `docs/agents/workflow.md`、完整聊天历史或其他 Agent 的 plan 传给子 Agent；确需传入时，必须在总执行包或 run record 中说明原因。
+- 子 Agent prompt 必须明确：任务卡是唯一执行依据，全局材料只作为边界参考，不能扩大 ownership 或任务范围。
 - 只有发生范围升级、ownership 冲突、高风险操作、测试/审查阻断、方案切换、破坏性操作、merge、push 或 release 时，才回到用户审核。
 - 创建子线程/worktree 后，必须回查并记录实际 worktree 路径、分支、base commit、`git worktree list --porcelain` 和 `git -C <worktree> status --short --branch` 结果。
 - Integration、Testing Review、Security Review、Branch/Release 必须串行。

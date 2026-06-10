@@ -1,6 +1,6 @@
 # Non-Multi-Agent Workflow
 
-用于普通单 Agent 开发、修 bug、文档更新、局部重构和小型维护任务。若用户明确要求多 Agent、并行开发或 worktree 隔离，改读 `docs/agents/workflow.md`。
+用于普通单 Agent 开发、修 bug、文档更新、局部重构和小型维护任务。若用户明确要求多 Agent、并行开发或 worktree 隔离，先改读 `docs/agents/controller-runtime.md`；需要细则时再读 `docs/agents/workflow.md`。
 
 ## 基础工作流
 

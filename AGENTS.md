@@ -17,12 +17,12 @@ git status --short --branch
 | 场景 | 必读文档 |
 | --- | --- |
 | 普通单 Agent 开发、修 bug、文档更新、局部重构 | `docs/agents/non-multi-agent.md` |
-| 多 Agent、并行开发、worktree 隔离、主控/子 Agent 协作 | `docs/agents/workflow.md` |
+| 多 Agent、并行开发、worktree 隔离、主控/子 Agent 协作 | 先读 `docs/agents/controller-runtime.md`；需要细则时再读 `docs/agents/workflow.md` |
 | 多 Agent 提示词模板 | `docs/agents/templates/*.md` |
 | 题库导入包生成和审核 | `.agents/skills/interview-question-bank/SKILL.md` |
 | 题库导入生命周期 | `docs/contracts/question-bank-import-lifecycle.md` |
 
-如果用户明确提到“多 Agent”、“子线程”、“主控 Agent”、“并行”、“worktree 隔离”或“按工作流开发”，必须先阅读 `docs/agents/workflow.md`，再输出任务拆分、ownership、分支/worktree 映射和验证计划。
+如果用户明确提到“多 Agent”、“子线程”、“主控 Agent”、“并行”、“worktree 隔离”或“按工作流开发”，必须先阅读 `docs/agents/controller-runtime.md`，再输出任务等级、调度模式、任务拆分、ownership、分支/worktree 映射和验证计划。只有需要角色细则、状态机、清理流程或模板细节时，再阅读 `docs/agents/workflow.md`。
 
 如果只是小改动或单线程任务，使用 `docs/agents/non-multi-agent.md`，不要强行套多 Agent 流程。
 

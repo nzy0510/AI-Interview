@@ -2,6 +2,15 @@
 
 这是一套可复现、线程隔离、worktree 隔离、可并行开发、可串行审查与集成的多 Agent 工作流。
 
+主控 Agent 的默认运行入口是 `docs/agents/controller-runtime.md`。本文件是完整参考细则，用于查询角色职责、状态机、任务契约、worktree 清理、审查阻断规则和标准流程；不要默认把本文件全文传给子 Agent。
+
+阅读策略：
+
+- 主控启动时先读 `docs/agents/controller-runtime.md`。
+- 只有需要细则时，主控再按章节读取本文件。
+- 子 Agent 默认只接收对应角色模板、自己的任务卡、总执行包相关摘录和任务入口文件。
+- 如需把本文件全文传给子 Agent，必须在总执行包或 run record 中说明原因。
+
 核心原则：
 
 - 主控 Agent 只做需求澄清、计划、任务拆分、调度和最终决策，不直接承担大块业务实现。
@@ -251,12 +260,13 @@ image/**
 - 生成 Conventional Commit。
 - 更新 CHANGELOG 和必要文档。
 - 推送分支、创建 PR 或发布 release notes。
-- 清理已完成 worktree。
+- 清理本次任务已完成、已合入且干净的 worktree 和本地任务分支。
 
 限制：
 
 - 不在未通过集成测试和审查时推送主分支。
 - 不清理有未提交更改的 worktree。
+- 不清理未确认属于本次任务的历史分支、远端跟踪分支或其他 Agent 仍在使用的分支。
 
 ---
 
@@ -417,6 +427,26 @@ Agent 名称：
 
 任务卡应避免重复总执行包的大段内容。总执行包负责全局目标、分支映射、自动继续范围和回滚方案；任务卡只保留该 Agent 需要执行的局部目标、ownership、输入、验证和返回格式。
 
+### 3.1.1 子 Agent 上下文装配规则
+
+`docs/agents/workflow.md` 是主控 Agent 的全量治理手册，不是子 Agent 的默认执行上下文。主控派发子 Agent 时必须裁剪上下文，避免把完整工作流、完整聊天历史或其他 Agent 的计划文件传入执行线程。
+
+默认上下文：
+
+- Controller Agent：可以读取完整 `docs/agents/workflow.md`、`docs/agents/templates/controller.md` 和相关计划/运行记录模板。
+- 开发类 Agent：只接收 `docs/agents/templates/development-worker.md`、自己的 `<agent_name>plan.md`、批准总执行包中与本 Agent 有关的摘录、以及任务相关代码/文档入口。
+- Integration Agent：只接收 `docs/agents/templates/integration.md`、`integrationplan.md`、ownership 矩阵、子分支列表和各 Agent 交付物。
+- Review Agent：只接收 `docs/agents/templates/review.md`、对应 review plan、base/head diff、任务契约和测试结果。
+- Branch / Release Agent：只接收 `docs/agents/templates/release.md`、releaseplan、验证和 review 结果、目标分支信息。
+
+限制：
+
+- 子 Agent 不默认读取完整 `docs/agents/workflow.md`。
+- 子 Agent 不默认读取其他 Agent 的 plan。
+- 子 Agent 不应根据聊天历史、完整总执行包或全局角色说明扩大 ownership。
+- 如果确需向某个子 Agent 提供完整 `workflow.md`，主控必须在总执行包或 run record 中说明原因。
+- 子 Agent prompt 中必须明确“任务卡是唯一执行依据；全局材料只作为边界参考，不能扩大执行范围”。
+
 审核规则：
 
 - 用户未明确批准总执行包前，不创建子线程/worktree。
@@ -568,11 +598,21 @@ git -C .worktrees/codex-feature-backend status --short --branch
 
 ### 5.4 清理流程
 
+任务完成后，Branch / Release Agent 负责判断本次任务创建的 worktree 和本地任务分支是否可清理；开发类 Agent 不应自行删除其他 Agent 的 worktree 或分支。Integration Agent 可以报告合并状态和干净状态，但除非总执行包明确授权，不默认执行删除。
+
+可清理条件：
+
+- 分支和 worktree 明确属于本次任务。
+- 分支 commit 已被目标分支或已批准的 integration branch 包含。
+- 对应 worktree 状态干净，没有未提交、未暂存或未跟踪的任务文件。
+- 不属于其他任务、历史保留分支、远端仍需维护的分支或用户明确要求保留的分支。
+
 清理前必须确认 worktree 干净：
 
 ```powershell
 git -C .worktrees/codex-feature-backend status --short --branch
 git worktree remove .worktrees/codex-feature-backend
+git branch -d codex/feature-backend
 git worktree prune --dry-run --verbose
 ```
 
@@ -581,12 +621,16 @@ Codex 原生 worktree 清理同样必须先确认干净：
 ```powershell
 git -C C:\Users\nzy\.codex\worktrees\<id>\interview status --short --branch
 git worktree remove C:\Users\nzy\.codex\worktrees\<id>\interview
+git branch -d codex/feature-backend
 git worktree prune --dry-run --verbose
 ```
 
 禁止：
 
 - 不删除有未提交更改的 worktree。
+- 不删除未合入目标分支或 integration branch 的任务分支。
+- 不删除不属于本次任务的 `codex/*` 分支。
+- 不删除远端分支，除非用户明确要求并确认远端状态。
 - 不用 `git reset --hard` 清理未知状态。
 - 不让 IDE 扫描 `.worktrees/`，避免 Maven / frontend project model 混乱。
 
@@ -796,7 +840,7 @@ Branch / Release Agent 执行：
 5. 提交或整理 commit。
 6. 推送或创建 PR。
 7. 确认计划文件、run record 和最终 diff 是否都已纳入提交。
-8. 清理 worktree。
+8. 按 5.4 清理本次任务已合入且干净的 worktree 和本地任务分支。
 9. 输出发布说明。
 
 ---
