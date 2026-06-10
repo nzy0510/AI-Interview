@@ -6,25 +6,10 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 
 ## 先判断工作模式
 
-开始任务前先执行：
+如果用户明确提到“多 Agent”或“按工作流开发”：
 
-```powershell
-git status --short --branch
-```
-
-然后按任务类型选择规则文档：
-
-| 场景 | 必读文档 |
-| --- | --- |
-| 普通单 Agent 开发、修 bug、文档更新、局部重构 | `docs/agents/non-multi-agent.md` |
-| 多 Agent、并行开发、worktree 隔离、主控/子 Agent 协作 | 先读 `docs/agents/controller-runtime.md`；需要细则时再读 `docs/agents/workflow.md` |
-| 多 Agent 提示词模板 | `docs/agents/templates/*.md` |
-| 题库导入包生成和审核 | `.agents/skills/interview-question-bank/SKILL.md` |
-| 题库导入生命周期 | `docs/contracts/question-bank-import-lifecycle.md` |
-
-如果用户明确提到“多 Agent”、“子线程”、“主控 Agent”、“并行”、“worktree 隔离”或“按工作流开发”，必须先阅读 `docs/agents/controller-runtime.md`，再输出任务等级、调度模式、任务拆分、ownership、分支/worktree 映射和验证计划。只有需要角色细则、状态机、清理流程或模板细节时，再阅读 `docs/agents/workflow.md`。
-
-如果只是小改动或单线程任务，使用 `docs/agents/non-multi-agent.md`，不要强行套多 Agent 流程。
+- 同时也读 `docs/agents/controller-runtime.md`；再输出任务等级、调度模式、任务拆分、ownership、分支/worktree 映射和验证计划。只有需要角色细则、状态机、清理流程或模板细节时，再阅读 `docs/agents/workflow.md`。
+- 多 Agent 提示词模板： `docs/agents/templates/*.md`
 
 ## 项目结构
 
@@ -58,15 +43,78 @@ git status --short --branch
 `.codegraph/`、`.understand-anything/`、`.worktrees/` 属于本地 Agent / 代码智能工具产物，不应提交到 Git。
 - .codegraph/ 下的内容能让agent快速理解项目代码结构、调用链和影响范围
 
-## 统一硬性规则
+## 硬性规则
 
 - 保护用户和其他 Agent 的未提交改动；不要回滚不是自己造成的改动。
 - 不提交 `.env`、`application-local.yml`、密钥文件、私有部署文件、私有题库、临时导入包或本地视频产物。
 - 不在日志或文档中暴露完整 API Key、access token、refresh token、密码或敏感请求头。
 - 修改配置文件、认证授权、部署文件、数据库 migration 前，必须说明影响范围。
 - 不使用 `git reset --hard`、`git checkout --` 等破坏性命令，除非用户明确要求。
-- 完成后必须说明修改文件、修改原因、验证命令、测试结果和遗留风险。
+- 完成后必须说明修改文件、修改原因、验证命令、测试结果和遗留风险,并调用Post Delibery Analysis skill给出下一步计划。
 - 如遇到docker部署失败，优先重试。还是失败再汇报。
+
+## 基础工作流
+
+- 修改代码前，必须先执行 `git status --short --branch`。
+- 如果发现用户已有未提交改动，必须区分“本次任务相关”和“用户/其他 Agent 的改动”，不要回滚或覆盖无关内容。
+- 需求不清楚时，先追问关键问题；不要猜测实现。
+- 如果存在多个方案，先推荐最适合当前项目结构的方案，并说明取舍。
+- 优先小步修改，避免一次性大范围重构。
+- 完成后必须总结：
+  - 修改了哪些文件
+  - 每个文件为什么改
+  - 运行了哪些测试
+  - 是否还有遗留风险
+
+## Spring Boot 规则
+
+- 新增接口时，保持与现有 REST API 风格一致。
+- 不要在 Controller 中写复杂业务逻辑。
+- 不要在 Service 中直接拼接复杂 SQL。
+- 涉及事务时，优先在 Service 层使用 `@Transactional`。
+- 涉及认证授权时，必须检查 Spring Security / JWT / 拦截器相关逻辑。
+- 不要随意修改 `application.yml`、`SecurityConfig`、`WebMvcConfig` 等全局配置；确需修改时先说明影响范围。
+
+## 前端规则
+
+- 保持 Vue 3、现有组件、路由、API client 和样式组织方式。
+- 不引入新的 UI 库、状态库或大型依赖，除非用户明确批准。
+- 页面改动必须考虑移动端和桌面布局，不允许明显重叠、溢出或按钮文字挤压。
+- 面向后台、设置、题库、数据面板的页面保持工作台式信息密度，避免营销式大卡片堆叠。
+- 涉及接口变更时，必须同步检查前后端 contract。
+
+## 测试规则
+
+- 新增业务逻辑时，优先补充单元测试。
+- 修复 bug 时，优先写能复现 bug 的测试，再修复。
+- Service 层优先使用 JUnit + Mockito。
+- Controller 层优先使用 MockMvc。
+- 前端逻辑优先使用 Vitest 或项目已有测试方式。
+- Python 工具链使用 `python -m unittest discover -s tests`。
+- 不要为了让测试通过而删除有效断言。
+- 修改测试前，先确认是测试过时，还是业务逻辑错误。
+- 如果无法运行测试，必须说明原因。
+
+## Git 规则
+
+- 修改前必须确认分支和工作区状态。
+- 可以在用户授权下自主 commit / push；最终 merge / release 前需要确认。
+- 遇到 merge conflict 时，先说明冲突文件、冲突原因和建议方案，再处理。
+- 提交前展示修改文件、commit message 和测试结果。
+- commit message 使用 Conventional Commits，例如 `feat:`、`fix:`、`docs:`、`refactor:`、`test:`、`chore:`。
+- 不使用 `git reset --hard`、`git checkout --` 等破坏性命令，除非用户明确要求。
+
+## 文档与交付
+
+- 新增功能或用户可见行为变化时，同步更新 README、CHANGELOG 或相关 docs。
+- 重要架构和流程变更优先写入 `docs/agents/`、`docs/adr/` 或 `docs/superpowers/`。
+- 一个阶段开发交付后，按 post-delivery analysis 和 maintain-changelog 的思路总结修改、验证和风险。
+
+## 代码理解
+
+- 当用户需要理解某段代码逻辑时，优先使用 `.codegraph/` 中的代码库知识图谱；如果图谱不足，再审查源码。
+- agent也应优先采取`.codegraph/` 中的代码库知识图谱来理解项目架构。
+- 回答架构、RAG、题库、部署等问题时，以当前代码和配置为准，不凭历史记忆下结论。
 
 ## 常用验证命令
 
