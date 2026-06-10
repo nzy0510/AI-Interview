@@ -239,6 +239,7 @@ import {
   getLlmProviderLabel,
   getLlmProviderPreset,
   isLlmConfigActive,
+  isLlmTestSuccess,
   llmProviderPresets,
   maskApiKeyHint,
   sanitizeLlmMessage
@@ -273,9 +274,10 @@ const formatTemperature = (value) => {
 }
 
 const getTestSummary = (item) => {
-  if (!item?.lastTestTime) return item?.lastTestStatus === 'success' ? '最近一次测试通过' : '暂无测试记录'
+  const testPassed = isLlmTestSuccess(item?.lastTestStatus)
+  if (!item?.lastTestTime) return testPassed ? '最近一次测试通过' : '暂无测试记录'
   const timeText = new Date(item.lastTestTime).toLocaleString('zh-CN')
-  return `${item.lastTestStatus === 'success' ? '通过' : '失败'} · ${timeText}`
+  return `${testPassed ? '通过' : '失败'} · ${timeText}`
 }
 
 const handleProviderChange = (provider) => {

@@ -70,6 +70,10 @@ export function isLlmConfigActive(config) {
   return Boolean(config?.active ?? config?.enabled)
 }
 
+export function isLlmTestSuccess(status) {
+  return ['success', 'succeeded', 'passed', 'pass', 'ok'].includes(String(status || '').trim().toLowerCase())
+}
+
 export function createLlmConfigDraft(provider = 'deepseek') {
   const preset = getLlmProviderPreset(provider)
   return {

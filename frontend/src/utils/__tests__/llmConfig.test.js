@@ -7,6 +7,7 @@ import {
   deriveLlmConfigStatus,
   getLlmProviderLabel,
   isLlmConfigActive,
+  isLlmTestSuccess,
   isMissingLlmConfigError,
   sanitizeLlmMessage
 } from '../llmConfig'
@@ -69,6 +70,12 @@ describe('llm config utils', () => {
     expect(isLlmConfigActive({ enabled: true })).toBe(true)
     expect(getLlmProviderLabel('kimi')).toBe('Kimi / Moonshot')
     expect(getLlmProviderLabel('glm')).toBe('GLM / 智谱')
+  })
+
+  it('normalizes saved LLM test statuses from backend', () => {
+    expect(isLlmTestSuccess('SUCCESS')).toBe(true)
+    expect(isLlmTestSuccess('success')).toBe(true)
+    expect(isLlmTestSuccess('FAILED')).toBe(false)
   })
 
   it('recognizes missing-config backend errors', () => {
