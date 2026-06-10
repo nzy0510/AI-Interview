@@ -31,7 +31,7 @@ Target branch: TBD after plan approval
 | Architect | 架构契约 | TBD | read-only/TBD | TBD | design/contract | Pending |  |
 | Backend | 后端实现 | TBD | `codex/user-llm-provider-backend` | TBD | backend/migration/tests | Pending |  |
 | Frontend | 前端实现 | TBD | `codex/user-llm-provider-frontend` | TBD | frontend/tests | Pending |  |
-| Docs | 文档 | TBD | `codex/user-llm-provider-docs` | TBD | README/deploy docs/examples | Pending |  |
+| Docs | 文档 | 019eac57-da63-79d0-be40-d5e6e77e5a1e | `codex/user-llm-provider-docs` | `C:\Users\nzy\.codex\worktrees\ba06\interview` | README/docs/examples/run record supplement | Done |  |
 | Integration | 集成 | TBD | `codex/user-llm-provider-integration` | TBD | integration/run record | Pending |  |
 | Testing Review | 测试审查 | TBD | read-only | none | review report | Pending |  |
 | Security Review | 安全审查 | TBD | read-only | none | review report | Pending |  |
@@ -43,6 +43,7 @@ Target branch: TBD after plan approval
 | Agent | Command | Result | Notes |
 | --- | --- | --- | --- |
 | Controller | `git status --short --branch` | `## master...origin/master [ahead 5]`; dirty `AGENTS.md`, `docs/agents/workflow.md` | Pre-plan state |
+| Docs | `git status --short --branch` | `## HEAD (no branch)` then switched to `codex/user-llm-provider-docs` | Verified delegated Docs worktree before edits |
 | Pending | `git worktree list --porcelain` | Not run for setup yet | Run after approval |
 | Pending | `git -C <worktree> status --short --branch` | Not run | Run after worktree creation |
 
@@ -51,6 +52,8 @@ Target branch: TBD after plan approval
 | Command | Result | Notes |
 | --- | --- | --- |
 | `git status --short --branch` | Done | Current dirty files are not from this plan except new draft plan files after creation |
+| Docs doc sweep | Done | README / `.env.example` / `.env.prod.example` aligned to user-managed OpenAI-compatible provider flow without fallback key |
+| `git diff --check` | Done | Passed; only CRLF normalization warnings from working copy |
 
 ## Reviews
 
