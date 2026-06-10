@@ -344,7 +344,7 @@ SSE 接口 `GET /api/interview/chatStream` 无法可靠使用普通 JSON Result�
 
 新增页面建议：
 
-- 路由：`/llm-config`
+- 路由：`/llm-providers`
 - 侧边栏入口：`AppShell.vue` 新增“大模型配置”，图标使用现有 Element Plus 图标。
 - API client：新增 `frontend/src/api/llmConfig.js`。
 - Provider 预设：可放 `frontend/src/utils/llmProviderPresets.js`，但以后端 `GET /api/llm/providers/presets` 为准。
@@ -359,7 +359,7 @@ SSE 接口 `GET /api/interview/chatStream` 无法可靠使用普通 JSON Result�
 
 入口阻断：
 
-- `InterviewSetup.vue` 开始文字/视频面试前调用 status 或使用全局缓存状态；无配置时引导到 `/llm-config`。
+- `InterviewSetup.vue` 开始文字/视频面试前调用 status 或使用全局缓存状态；无配置时引导到 `/llm-providers`。
 - `Interview.vue` / `VideoInterview.vue` 对 `LLM_CONFIG_REQUIRED` SSE error 做明确跳转。
 - `Mentor.vue` 对 409 / `LLM_CONFIG_REQUIRED` 展示配置入口，不显示通用网络错误。
 - `Resume.vue` 上传解析前或收到 409 后引导配置。
@@ -381,12 +381,12 @@ SSE 接口 `GET /api/interview/chatStream` 无法可靠使用普通 JSON Result�
 
 ## Frontend Agent 最小实现契约
 
-- 新增 `/llm-config` 路由和侧边栏“大模型配置”入口。
+- 新增 `/llm-providers` 路由和侧边栏“大模型配置”入口。
 - 新增 `llmConfig.js` API client，对接 Architect API contract。
 - 新增配置页面：列表、新增、编辑、删除、启用、测试连接、active 状态、无配置状态。
 - Provider 预设至少 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen、自定义；最终显示以后端 presets 为准。
 - API Key 只存在表单内存，提交后清空；不写 localStorage/sessionStorage，不回显。
-- 处理 `LLM_CONFIG_REQUIRED`：面试准备、文字面试 SSE、视频面试 SSE、Mentor、简历画像都引导到 `/llm-config`。
+- 处理 `LLM_CONFIG_REQUIRED`：面试准备、文字面试 SSE、视频面试 SSE、Mentor、简历画像都引导到 `/llm-providers`。
 - 保持现有 Vue + Element Plus 风格，不引入新 UI/状态库。
 - 测试/构建至少覆盖页面主要状态、API client、无配置引导、构建通过。
 
