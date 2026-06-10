@@ -119,6 +119,7 @@ import * as echarts from 'echarts'
 import { userKey } from '@/utils/auth'
 import InterviewReportOverlay from '@/components/interview/InterviewReportOverlay.vue'
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
+import { buildLlmConfigRouteQuery, isMissingLlmConfigError } from '@/utils/llmConfig'
 import {
   buildTextInterviewReportMetrics,
   detectInterviewControlMarkers,
@@ -450,7 +451,12 @@ const startNewInterview = async (resumeQuestions) => {
     saveActiveInterview()
     trackEvent('INTERVIEW_START_CLIENT', { mode: 'text', position: position.value })
     triggerAiStart()
-  } catch {
+  } catch (error) {
+    if (isMissingLlmConfigError(error)) {
+      ElMessage.warning('请先在大模型配置中启用一个 Provider')
+      router.replace({ path: '/llm-providers', query: buildLlmConfigRouteQuery('interview') })
+      return
+    }
     ElMessage.error('连接失败，请确认后端已启动')
     router.back()
   }
