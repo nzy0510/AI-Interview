@@ -9,15 +9,30 @@
           <p class="page-subtitle">基于你的面试历史，AI 教练为你提供个性化诊断与提升建议。</p>
         </div>
       </div>
-      <el-button :icon="RefreshRight" :loading="refreshing" @click="refreshMentor">
-        刷新分析
-      </el-button>
+      <div class="header-actions">
+        <el-button v-if="showLlmConfigPrompt" type="primary" plain @click="goLlmSettings">
+          去配置
+        </el-button>
+        <el-button :icon="RefreshRight" :loading="refreshing" :disabled="showLlmConfigPrompt" @click="refreshMentor">
+          刷新分析
+        </el-button>
+      </div>
     </header>
 
     <el-main class="page-body">
-      <el-empty v-if="!mentorInsight && !loading" description="完成首次面试后，AI Mentor 将为你生成个性化分析报告" />
+      <section v-if="showLlmConfigPrompt" class="surface-card section-shell warning-shell">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">LLM Required</p>
+            <h2 class="section-title">AI Mentor 需要先启用一个 Provider</h2>
+            <p class="section-desc">当前账号还没有有效的大模型配置。请先前往“大模型配置”新增并启用一个可用 Provider。</p>
+          </div>
+        </div>
+      </section>
 
-      <template v-if="mentorInsight">
+      <el-empty v-if="!mentorInsight && !loading && !showLlmConfigPrompt" description="完成首次面试后，AI Mentor 将为你生成个性化分析报告" />
+
+      <template v-if="mentorInsight && !showLlmConfigPrompt">
         <!-- Diagnosis -->
         <section class="surface-card section-shell">
           <div class="section-head">
@@ -90,16 +105,38 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { getLlmConfigStatusAPI } from '@/api/llm'
 import { getMentorInsightAPI, refreshMentorInsightAPI } from '@/api/user'
+import {
+  buildLlmConfigRouteQuery,
+  createUnknownLlmConfigStatus,
+  isMissingLlmConfigError,
+  normalizeLlmConfigStatus
+} from '@/utils/llmConfig'
 
 const router = useRouter()
 const mentorInsight = ref(null)
 const refreshing = ref(false)
 const loading = ref(true)
+const llmStatus = ref(createUnknownLlmConfigStatus())
+const showLlmConfigPrompt = computed(() => llmStatus.value.resolved && !llmStatus.value.hasActiveConfig)
+
+const goLlmSettings = () => {
+  router.push({ path: '/llm-providers', query: buildLlmConfigRouteQuery('mentor') })
+}
+
+const loadLlmStatus = async () => {
+  try {
+    const data = await getLlmConfigStatusAPI({ silent: true })
+    llmStatus.value = normalizeLlmConfigStatus(data)
+  } catch {
+    llmStatus.value = createUnknownLlmConfigStatus()
+  }
+}
 
 const loadMentorData = async () => {
   loading.value = true
@@ -108,11 +145,26 @@ const loadMentorData = async () => {
     if (data) {
       mentorInsight.value = { ...mentorInsight.value, ...data }
     }
-  } catch { /* Mentor unavailable */ }
+  } catch (error) {
+    if (isMissingLlmConfigError(error)) {
+      llmStatus.value = {
+        resolved: true,
+        hasAnyConfig: false,
+        hasActiveConfig: false,
+        activeProvider: '',
+        activeModelName: '',
+        activeDisplayName: ''
+      }
+    }
+  }
   loading.value = false
 }
 
 const refreshMentor = async () => {
+  if (showLlmConfigPrompt.value) {
+    goLlmSettings()
+    return
+  }
   refreshing.value = true
   try {
     const data = await refreshMentorInsightAPI()
@@ -126,7 +178,14 @@ const refreshMentor = async () => {
   refreshing.value = false
 }
 
-onMounted(loadMentorData)
+onMounted(async () => {
+  await loadLlmStatus()
+  if (showLlmConfigPrompt.value) {
+    loading.value = false
+    return
+  }
+  loadMentorData()
+})
 </script>
 
 <style scoped>
@@ -151,6 +210,7 @@ onMounted(loadMentorData)
 }
 
 .brand-cluster { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.header-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
 .icon-button { flex: 0 0 auto; }
 .header-copy { min-width: 0; }
 
@@ -181,6 +241,11 @@ onMounted(loadMentorData)
   border: 1px solid rgba(69, 70, 82, 0.08);
   border-radius: 16px;
   box-shadow: 0 12px 30px rgba(25, 28, 30, 0.04);
+}
+
+.warning-shell {
+  border-color: rgba(230, 162, 60, 0.22);
+  background: rgba(255, 248, 235, 0.92);
 }
 
 .section-shell { padding: 24px; }
@@ -265,6 +330,7 @@ onMounted(loadMentorData)
 
 @media (max-width: 960px) {
   .mentor-header { flex-direction: column; align-items: stretch; }
+  .header-actions { justify-content: flex-start; }
   .diagnosis-grid { grid-template-columns: 1fr; }
 }
 

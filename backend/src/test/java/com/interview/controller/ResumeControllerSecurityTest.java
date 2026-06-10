@@ -9,6 +9,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,7 +37,7 @@ class ResumeControllerSecurityTest {
         assertThat(result.getCode()).isEqualTo(400);
         assertThat(result.getMsg()).contains("PDF");
         verify(usageQuotaService, never()).consume(7L, UsageQuotaService.RESUME_PARSE);
-        verify(resumeService, never()).parseAndAnalyze(file);
+        verify(resumeService, never()).parseAndAnalyze(anyLong(), eq(file));
     }
 
     @Test
@@ -62,6 +64,6 @@ class ResumeControllerSecurityTest {
         assertThat(result.getCode()).isEqualTo(400);
         assertThat(result.getMsg()).contains("不能超过");
         verify(usageQuotaService, never()).consume(7L, UsageQuotaService.RESUME_PARSE);
-        verify(resumeService, never()).parseAndAnalyze(file);
+        verify(resumeService, never()).parseAndAnalyze(anyLong(), eq(file));
     }
 }

@@ -49,7 +49,20 @@
               <span class="meta-label">今日面试额度</span>
               <strong>{{ interviewQuotaText }}</strong>
             </div>
+            <div class="meta-chip">
+              <span class="meta-label">大模型状态</span>
+              <strong>{{ llmStatusText }}</strong>
+            </div>
           </div>
+        </section>
+
+        <section v-if="showLlmConfigPrompt" class="surface-card llm-warning-card">
+          <div>
+            <p class="section-kicker">LLM Required</p>
+            <h3 class="section-title">开始面试前先启用一个 Provider</h3>
+            <p class="section-desc">当前账号还没有有效的大模型配置。完成配置后，文字面试和视频面试入口才会开放。</p>
+          </div>
+          <el-button type="primary" plain @click="goLlmSettings">去配置</el-button>
         </section>
 
         <div class="setup-grid">
@@ -179,6 +192,7 @@
                 <el-button
                   :type="mode === 'text' ? 'primary' : 'default'"
                   class="start-button"
+                  :disabled="showLlmConfigPrompt"
                   @click="startInterview('text')"
                 >
                   开始文字面试
@@ -186,6 +200,7 @@
                 <el-button
                   :type="mode === 'video' ? 'primary' : 'default'"
                   class="start-button"
+                  :disabled="showLlmConfigPrompt"
                   @click="startInterview('video')"
                 >
                   开始视频面试
@@ -226,10 +241,16 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { getLlmConfigStatusAPI } from '@/api/llm'
 import { interviewSetupDefaults, buildSetupSnapshot } from '@/mock/setup'
 import { getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
 import { getMyQuotaAPI } from '@/api/analytics'
 import { getToken, userKey, withAuthHeaders } from '@/utils/auth'
+import {
+  buildLlmConfigRouteQuery,
+  createUnknownLlmConfigStatus,
+  normalizeLlmConfigStatus
+} from '@/utils/llmConfig'
 
 const router = useRouter()
 const route = useRoute()
@@ -244,6 +265,7 @@ const experienceLevel = ref('mid')
 const focusAreas = ref([])
 const mode = ref('text')
 const quotaItems = ref([])
+const llmStatus = ref(createUnknownLlmConfigStatus())
 
 const clearResumeState = () => {
   resumeAnalysis.value = null
@@ -284,6 +306,15 @@ const interviewQuotaText = computed(() => {
   const item = quotaItems.value.find((q) => q.quotaType === 'interview_start')
   if (!item) return '加载中'
   return `${item.remaining}/${item.limit}`
+})
+
+const showLlmConfigPrompt = computed(() => llmStatus.value.resolved && !llmStatus.value.hasActiveConfig)
+const llmStatusText = computed(() => {
+  if (!llmStatus.value.resolved) return '待检测'
+  if (llmStatus.value.hasActiveConfig) {
+    return llmStatus.value.activeDisplayName || llmStatus.value.activeProvider || '已启用'
+  }
+  return '待配置'
 })
 
 const normalizeSupportedRole = (value) => {
@@ -355,6 +386,15 @@ const loadQuota = async () => {
   }
 }
 
+const loadLlmStatus = async () => {
+  try {
+    const data = await getLlmConfigStatusAPI({ silent: true })
+    llmStatus.value = normalizeLlmConfigStatus(data)
+  } catch {
+    llmStatus.value = createUnknownLlmConfigStatus()
+  }
+}
+
 let prefSaveTimer = null
 const autoSavePreference = () => {
   if (prefSaveTimer) clearTimeout(prefSaveTimer)
@@ -372,6 +412,7 @@ onMounted(async () => {
   await loadResumeProfile()
   await loadPreference()
   await loadQuota()
+  await loadLlmStatus()
   syncFromQuery()
 })
 
@@ -388,6 +429,11 @@ watch([role, experienceLevel, focusAreas, mode], () => {
 }, { deep: true })
 
 const startInterview = (preferredMode) => {
+  if (showLlmConfigPrompt.value) {
+    ElMessage.warning('请先配置并启用一个大模型 Provider')
+    goLlmSettings()
+    return
+  }
   const nextMode = preferredMode || mode.value || 'text'
   const query = {
     role: role.value || setupDefaults.roleOptions[0],
@@ -398,6 +444,10 @@ const startInterview = (preferredMode) => {
 
   const path = nextMode === 'video' ? '/video-interview' : '/interview'
   router.push({ path, query })
+}
+
+const goLlmSettings = () => {
+  router.push({ path: '/llm-providers', query: buildLlmConfigRouteQuery('interview-setup') })
 }
 </script>
 
@@ -520,6 +570,17 @@ const startInterview = (preferredMode) => {
   gap: 20px;
   align-items: flex-start;
   padding: 24px;
+}
+
+.llm-warning-card {
+  margin-top: 18px;
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid rgba(230, 162, 60, 0.2);
+  background: rgba(255, 248, 235, 0.92);
 }
 
 .hero-copy {
@@ -850,6 +911,11 @@ const startInterview = (preferredMode) => {
 
   .sticky-panel {
     position: static;
+  }
+
+  .llm-warning-card {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

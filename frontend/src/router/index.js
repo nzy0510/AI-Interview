@@ -61,6 +61,12 @@ const routes = [
     meta: { title: 'AI Mentor' }
   },
   {
+    path: '/llm-providers',
+    name: 'LlmProviderSettings',
+    component: loadView('LlmProviderSettings'),
+    meta: { title: '大模型配置' }
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: loadView('Settings'),

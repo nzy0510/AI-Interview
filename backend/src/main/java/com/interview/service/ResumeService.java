@@ -7,7 +7,7 @@ public interface ResumeService {
     /**
      * 解析上传的简历 PDF，并提取结构化大模型画像与定制化面试题
      */
-    Map<String, Object> parseAndAnalyze(MultipartFile file) throws Exception;
+    Map<String, Object> parseAndAnalyze(Long userId, MultipartFile file) throws Exception;
 
     /** UPSERT 简历画像：用户有则更新，无则插入 */
     void saveOrUpdateProfile(Long userId, String position, String analysisJson);

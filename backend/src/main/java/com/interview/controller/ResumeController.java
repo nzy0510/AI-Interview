@@ -1,8 +1,10 @@
 package com.interview.controller;
 
 import com.interview.common.Result;
+import com.interview.exception.LlmProviderRequiredException;
 import com.interview.service.ResumeService;
 import com.interview.service.UsageQuotaService;
+import com.interview.service.UserLlmConfigService;
 import com.interview.utils.JwtUtils;
 import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,9 @@ public class ResumeController {
     @Autowired
     private UsageQuotaService usageQuotaService;
 
+    @Autowired
+    private UserLlmConfigService userLlmConfigService;
+
     /**
      * 上传并解析简历（首次上传或覆盖更新）
      * 解析成功后自动存入 resume_profile 表
@@ -49,8 +54,9 @@ public class ResumeController {
         }
         try {
             Long userId = getUserIdFromRequest(request);
+            userLlmConfigService.ensureActiveProvider(userId);
             usageQuotaService.consume(userId, UsageQuotaService.RESUME_PARSE);
-            Map<String, Object> analysisResult = resumeService.parseAndAnalyze(file);
+            Map<String, Object> analysisResult = resumeService.parseAndAnalyze(userId, file);
 
             // 持久化到数据库（UPSERT）
             try {
@@ -61,6 +67,8 @@ public class ResumeController {
             }
 
             return Result.success(analysisResult);
+        } catch (LlmProviderRequiredException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("简历解析失败: {}", e.getMessage());
             return Result.error(500, "简历解析失败，请稍后重试");

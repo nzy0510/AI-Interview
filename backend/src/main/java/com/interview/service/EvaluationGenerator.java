@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import com.interview.exception.LlmProviderRequiredException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +22,11 @@ import java.util.List;
 @Slf4j
 public class EvaluationGenerator {
 
+    private static final java.util.regex.Pattern SENSITIVE_ERROR_PATTERN = java.util.regex.Pattern.compile(
+            "(?i)(api[_-]?key|token|password|secret|authorization)\\s*([=:])\\s*([^\\s,;]+)|Bearer\\s+[A-Za-z0-9._\\-]+");
     private final ChatLanguageModel chatModel;
+    private final UserLlmConfigService userLlmConfigService;
+    private final UserLlmModelFactory userLlmModelFactory;
     private final InterviewPrompts prompts;
     private final AppEventService appEventService;
 
@@ -31,6 +36,19 @@ public class EvaluationGenerator {
 
     public EvaluationGenerator(ChatLanguageModel chatModel, InterviewPrompts prompts, AppEventService appEventService) {
         this.chatModel = chatModel;
+        this.userLlmConfigService = null;
+        this.userLlmModelFactory = null;
+        this.prompts = prompts;
+        this.appEventService = appEventService;
+    }
+
+    public EvaluationGenerator(UserLlmConfigService userLlmConfigService,
+                               UserLlmModelFactory userLlmModelFactory,
+                               InterviewPrompts prompts,
+                               AppEventService appEventService) {
+        this.chatModel = null;
+        this.userLlmConfigService = userLlmConfigService;
+        this.userLlmModelFactory = userLlmModelFactory;
         this.prompts = prompts;
         this.appEventService = appEventService;
     }
@@ -50,7 +68,7 @@ public class EvaluationGenerator {
 
         try {
             log.info("开始生成 AI 评估报告 (recordId={}, 对话轮数={})", record.getId(), historyMessages.size());
-            Response<AiMessage> evalResponse = chatModel.generate(evalMessages);
+            Response<AiMessage> evalResponse = resolveChatModel(record.getUserId()).generate(evalMessages);
             String raw = evalResponse.content().text().replace("```json", "").replace("```", "").trim();
             log.info("AI 评估原始响应: {}", raw);
 
@@ -80,14 +98,32 @@ public class EvaluationGenerator {
                     record.setEmotionJson(existing.toJSONString());
                 } catch (Exception ignored) {}
             }
+        } catch (LlmProviderRequiredException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("评估生成失败 (recordId={})", record.getId(), e);
+            String sanitized = sanitizeErrorMessage(e.getMessage());
+            log.error("评估生成失败 (recordId={}): {}", record.getId(), sanitized);
             if (appEventService != null) {
                 appEventService.recordSystemEvent(record.getUserId(), "DEEPSEEK_EVALUATION_FAILED", "system",
-                        java.util.Map.of("recordId", record.getId()), false, e.getMessage());
+                        java.util.Map.of("recordId", record.getId()), false, sanitized);
             }
             record.setScore(0);
-            record.setFeedback("AI 评估生成异常: " + e.getMessage());
+            record.setFeedback("AI 评估生成异常，请检查大模型配置或稍后重试");
         }
+    }
+
+    private ChatLanguageModel resolveChatModel(Long userId) {
+        if (chatModel != null) {
+            return chatModel;
+        }
+        return userLlmModelFactory.createChatModel(userLlmConfigService.requireActiveRuntimeConfig(userId));
+    }
+
+    private String sanitizeErrorMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return "AI 评估生成失败";
+        }
+        String sanitized = SENSITIVE_ERROR_PATTERN.matcher(message).replaceAll("[REDACTED]");
+        return sanitized.length() > 300 ? sanitized.substring(0, 300) : sanitized;
     }
 }
