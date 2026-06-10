@@ -40,6 +40,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -82,6 +83,12 @@ class InterviewServiceImplTest {
     @Mock
     private TaskExecutor mentorTaskExecutor;
 
+    @Mock
+    private UserLlmConfigService userLlmConfigService;
+
+    @Mock
+    private UserLlmModelFactory userLlmModelFactory;
+
     @InjectMocks
     private InterviewServiceImpl interviewService;
 
@@ -90,6 +97,11 @@ class InterviewServiceImplTest {
         InterviewRetrievalService retrievalService = new InterviewRetrievalService(
                 questionBankService, ragRetrievalLogMapper, ragRetrievalRequestLogMapper, appEventService);
         ReflectionTestUtils.setField(interviewService, "interviewRetrievalService", retrievalService);
+        UserLlmRuntimeConfig runtimeConfig = new UserLlmRuntimeConfig(
+                1L, 1L, "deepseek", "DeepSeek", "https://api.deepseek.com/v1",
+                "deepseek-chat", "sk-test", 0.7);
+        lenient().when(userLlmConfigService.requireActiveRuntimeConfig(any())).thenReturn(runtimeConfig);
+        lenient().when(userLlmModelFactory.createStreamingChatModel(any())).thenReturn(streamingChatModel);
     }
 
     @Test
@@ -124,6 +136,19 @@ class InterviewServiceImplTest {
         assertThatThrownBy(() -> interviewService.endInterview(1L, 99L, 0, null))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("无权访问");
+    }
+
+    @Test
+    @DisplayName("未配置启用大模型时拒绝开始面试")
+    void shouldRejectStartingInterviewWithoutActiveProvider() {
+        org.mockito.Mockito.doThrow(new com.interview.exception.LlmProviderRequiredException())
+                .when(userLlmConfigService).ensureActiveProvider(1L);
+
+        assertThatThrownBy(() -> interviewService.startInterview(1L, "Java", "text"))
+                .isInstanceOf(com.interview.exception.LlmProviderRequiredException.class)
+                .hasMessageContaining("请先配置大模型 API");
+
+        verifyNoInteractions(interviewRecordMapper);
     }
 
     @Test

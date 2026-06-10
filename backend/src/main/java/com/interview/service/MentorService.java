@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.interview.dto.MentorInsightResponse;
 import com.interview.dto.MentorInsightResponse.*;
 import com.interview.entity.InterviewRecord;
+import com.interview.exception.LlmProviderRequiredException;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
@@ -29,6 +30,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MentorService {
 
+    private static final java.util.regex.Pattern SENSITIVE_ERROR_PATTERN = java.util.regex.Pattern.compile(
+            "(?i)(api[_-]?key|token|password|secret|authorization)\\s*([=:])\\s*([^\\s,;]+)|Bearer\\s+[A-Za-z0-9._\\-]+");
+
     @Autowired
     private InterviewRecordMapper recordMapper;
 
@@ -39,7 +43,10 @@ public class MentorService {
     private KnowledgeAtomMapper atomMapper;
 
     @Autowired
-    private ChatLanguageModel chatModel;
+    private UserLlmConfigService userLlmConfigService;
+
+    @Autowired
+    private UserLlmModelFactory userLlmModelFactory;
 
     @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
@@ -69,6 +76,7 @@ public class MentorService {
      * 获取 AI Mentor 洞察报告，可按需绕过缓存并重新生成。
      */
     public MentorInsightResponse getInsight(Long userId, boolean forceRefresh) {
+        userLlmConfigService.ensureActiveProvider(userId);
         if (forceRefresh) {
             evictCache(userId);
         }
@@ -240,6 +248,8 @@ public class MentorService {
                 new UserMessage(historySummary.toString())
         );
         try {
+            ChatLanguageModel chatModel = userLlmModelFactory.createChatModel(
+                    userLlmConfigService.requireActiveRuntimeConfig(userId));
             Response<AiMessage> response = chatModel.generate(messages);
             if (appEventService != null) {
                 appEventService.recordSystemEvent(userId, "MENTOR_GENERATE", "ai",
@@ -247,10 +257,13 @@ public class MentorService {
             }
             return response.content().text()
                     .replace("```json", "").replace("```", "").trim();
+        } catch (LlmProviderRequiredException e) {
+            throw e;
         } catch (RuntimeException e) {
+            String sanitized = sanitizeErrorMessage(e.getMessage());
             if (appEventService != null) {
                 appEventService.recordSystemEvent(userId, "DEEPSEEK_MENTOR_FAILED", "system",
-                        Map.of("historyCount", history.size()), false, e.getMessage());
+                        Map.of("historyCount", history.size()), false, sanitized);
             }
             throw e;
         }
@@ -373,5 +386,13 @@ public class MentorService {
         }
         localCache.remove(userId);
         localCacheExpiry.remove(userId);
+    }
+
+    private String sanitizeErrorMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return "AI Mentor 生成失败";
+        }
+        String sanitized = SENSITIVE_ERROR_PATTERN.matcher(message).replaceAll("[REDACTED]");
+        return sanitized.length() > 300 ? sanitized.substring(0, 300) : sanitized;
     }
 }

@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS user_llm_config (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    provider VARCHAR(64) NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    base_url VARCHAR(512) NOT NULL,
+    model_name VARCHAR(128) NOT NULL,
+    encrypted_api_key TEXT NOT NULL,
+    api_key_hint VARCHAR(32) NOT NULL,
+    temperature DOUBLE NOT NULL DEFAULT 0.7,
+    active TINYINT(1) NOT NULL DEFAULT 0,
+    last_test_status VARCHAR(32) NULL,
+    last_test_message VARCHAR(500) NULL,
+    last_test_time DATETIME NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_llm_display_name (user_id, display_name),
+    KEY idx_user_llm_user_active (user_id, active),
+    KEY idx_user_llm_user_provider (user_id, provider)
+);
