@@ -6,9 +6,11 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 
 ## 先判断工作模式
 
+- 修改代码前，必须先执行 `git status --short --branch`。
+
 如果用户明确提到“多 Agent”或“按工作流开发”：
 
-- 同时也读 `docs/agents/controller-runtime.md`；再输出任务等级、调度模式、任务拆分、ownership、分支/worktree 映射和验证计划。只有需要角色细则、状态机、清理流程或模板细节时，再阅读 `docs/agents/workflow.md`。
+- 除了当前规范文件，同时也读 `docs/agents/controller-runtime.md`；再输出任务等级、调度模式、任务拆分、ownership、分支/worktree 映射和验证计划。只有需要角色细则、状态机、清理流程或模板细节时，再阅读 `docs/agents/workflow.md`。
 - 多 Agent 提示词模板： `docs/agents/templates/*.md`
 
 ## 项目结构
@@ -40,8 +42,9 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 └── CHANGELOG.md                     # 更新日志
 ```
 
-`.codegraph/`、`.understand-anything/`、`.worktrees/` 属于本地 Agent / 代码智能工具产物，不应提交到 Git。
 - .codegraph/ 下的内容能让agent快速理解项目代码结构、调用链和影响范围
+- `.codegraph/`、`.understand-anything/`、`.worktrees/` 属于本地 Agent / 代码智能工具产物，不应提交到 Git。
+
 
 ## 硬性规则
 
@@ -50,21 +53,15 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 - 不在日志或文档中暴露完整 API Key、access token、refresh token、密码或敏感请求头。
 - 修改配置文件、认证授权、部署文件、数据库 migration 前，必须说明影响范围。
 - 不使用 `git reset --hard`、`git checkout --` 等破坏性命令，除非用户明确要求。
-- 完成后必须说明修改文件、修改原因、验证命令、测试结果和遗留风险,并调用Post Delibery Analysis skill给出下一步计划。
-- 如遇到docker部署失败，优先重试。还是失败再汇报。
+- 完成 feature、bugfix、refactor、deployment 或用户可见代码变更后，按 `post-delivery-analysis` skill 自动输出交付后分析和下一步建议；不得自动执行下一步建议，必须等待用户明确指令。
 
 ## 基础工作流
 
-- 修改代码前，必须先执行 `git status --short --branch`。
 - 如果发现用户已有未提交改动，必须区分“本次任务相关”和“用户/其他 Agent 的改动”，不要回滚或覆盖无关内容。
 - 需求不清楚时，先追问关键问题；不要猜测实现。
 - 如果存在多个方案，先推荐最适合当前项目结构的方案，并说明取舍。
 - 优先小步修改，避免一次性大范围重构。
-- 完成后必须总结：
-  - 修改了哪些文件
-  - 每个文件为什么改
-  - 运行了哪些测试
-  - 是否还有遗留风险
+- 如遇到docker部署失败，优先重试。还是失败再汇报。
 
 ## Spring Boot 规则
 
@@ -106,9 +103,8 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 
 ## 文档与交付
 
-- 新增功能或用户可见行为变化时，同步更新 README、CHANGELOG 或相关 docs。
+- 新增功能或用户可见行为变化时，用maintain-changelog skill维护更新日志文档。
 - 重要架构和流程变更优先写入 `docs/agents/`、`docs/adr/` 或 `docs/superpowers/`。
-- 一个阶段开发交付后，按 post-delivery analysis 和 maintain-changelog 的思路总结修改、验证和风险。
 
 ## 代码理解
 

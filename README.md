@@ -36,9 +36,11 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 
 ![AI Mentor 分析页](<image/展示图/ai mentor分析页.png>)
 
-### 偏好设置与题库运维入口
+### 偏好设置、大模型配置与题库运维入口
 
 ![偏好设置页](image/展示图/偏好设置页.png)
+
+![大模型配置页](image/展示图/llm配置界面.png)
 
 ![题库维护页](image/展示图/题库维护.png)
 
@@ -248,12 +250,6 @@ docker compose up -d --build
 - 项目不提供系统默认 key，也不应再依赖全局 `DEEPSEEK_API_KEY` 作为普通用户兜底。
 - API Key 明文只允许在用户提交配置和测试连接时经过后端瞬时处理；列表页、状态接口和管理员界面都不应回显明文。
 - 文档中的供应商名称只是 OpenAI-compatible 预设示例，不代表项目代用户提供账号、额度或官方 SDK。
-
-## 本地开发
-
-### 多 Agent 工作流试运行说明
-
-本次最小试运行用于验证多 Agent 协作流程本身，而不是交付复杂业务功能。主控线程负责拆分任务、分配文件 ownership、收集交付物并决定后续集成；Docs 子线程只在自己的任务分支和独立 worktree 中修改授权文件，不直接合并 `master`。开发类 Agent 默认使用独立 Codex 线程、独立 Git worktree 和独立任务分支，避免上下文污染和文件写入冲突。所有子任务完成后，再由 Integration Agent 串行收口分支、处理冲突并运行集成验证；审查也按 Testing、Security、Maintainability、必要时 Performance、Final Review 的顺序串行进行。
 
 ### 后端
 

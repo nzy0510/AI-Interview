@@ -164,3 +164,6 @@ backend/mvn_result.txt
 /output/retrieval-eval/
 /.cache/retrieval-eval/
 /scripts/retrieval_eval/.env
+
+# Workflow
+/docs/generic-agent-workflow

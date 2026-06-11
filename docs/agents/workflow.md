@@ -349,7 +349,7 @@ Archived
 裁剪规则：
 
 - 文档-only 且只改 `README.md`、`CHANGELOG.md` 或 `docs/**` 时，默认不得启用完整多 Agent 链路。
-- L0 任务默认走 `docs/agents/non-multi-agent.md`，除非用户明确要求多 Agent 试运行。
+- L0 任务默认只看 `AGENTS.md`，除非用户明确要求多 Agent 试运行。
 - L1 任务可以创建任务卡和 run record，但不需要 Architect、Backend、Frontend、RAG/Data、Integration、Testing/Security/Maintainability 多个独立 Review 或 Release 全部参与；除非用户明确要求验证这些环节。
 - L2/L3 才需要进入 `Plan Packet Review`。
 - High-risk 是覆盖规则：即使改动很小，也必须加入相应审查和人工审核点。
