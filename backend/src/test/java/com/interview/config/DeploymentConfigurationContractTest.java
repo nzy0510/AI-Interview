@@ -32,6 +32,20 @@ class DeploymentConfigurationContractTest {
         assertTimeoutPassThrough(Path.of("..", "docker-compose.prod.yml"));
     }
 
+    @Test
+    @DisplayName("keeps Nginx upload body limits compatible with knowledge files")
+    void shouldKeepNginxUploadLimitCompatibleWithKnowledgeFiles() throws IOException {
+        assertNginxUploadLimit(Path.of("..", "frontend", "nginx.conf"));
+        assertNginxUploadLimit(Path.of("..", "frontend", "nginx.local.conf"));
+    }
+
+    @Test
+    @DisplayName("keeps Spring multipart limits compatible with knowledge files")
+    void shouldKeepSpringMultipartLimitCompatibleWithKnowledgeFiles() throws IOException {
+        assertSpringMultipartLimit(Path.of("src", "main", "resources", "application.yml"));
+        assertSpringMultipartLimit(Path.of("src", "main", "resources", "application.yml.example"));
+    }
+
     private void assertDefaults(Path path) throws IOException {
         String content = Files.readString(path);
 
@@ -60,5 +74,18 @@ class DeploymentConfigurationContractTest {
                 .contains("provider: ${APP_EMBEDDING_PROVIDER:all-minilm}")
                 .contains("collection: ${QDRANT_COLLECTION:interview_atoms}")
                 .contains("vector-size: ${QDRANT_VECTOR_SIZE:384}");
+    }
+
+    private void assertNginxUploadLimit(Path path) throws IOException {
+        assertThat(Files.readString(path))
+                .as(path.toString())
+                .contains("client_max_body_size 21m;");
+    }
+
+    private void assertSpringMultipartLimit(Path path) throws IOException {
+        assertThat(Files.readString(path))
+                .as(path.toString())
+                .contains("max-file-size: ${APP_MULTIPART_MAX_FILE_SIZE:20MB}")
+                .contains("max-request-size: ${APP_MULTIPART_MAX_REQUEST_SIZE:21MB}");
     }
 }
