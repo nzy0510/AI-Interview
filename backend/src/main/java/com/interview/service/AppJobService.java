@@ -46,6 +46,19 @@ public class AppJobService {
     }
 
     @Transactional
+    public void updateRunningJob(Long jobId, String workerId, String stage, int progress) {
+        UpdateWrapper<AppJob> update = new UpdateWrapper<AppJob>()
+                .eq("id", jobId)
+                .eq("status", STATUS_RUNNING)
+                .set("stage", stage)
+                .set("progress", progress);
+        if (workerId != null) {
+            update.eq("claimed_by", workerId);
+        }
+        appJobMapper.update(null, update);
+    }
+
+    @Transactional
     public void completeJob(Long jobId, String resultJson) {
         appJobMapper.update(null, new UpdateWrapper<AppJob>()
                 .eq("id", jobId)

@@ -168,6 +168,12 @@ jwt:
 app:
   admin-token: ${APP_ADMIN_TOKEN:}
   upload-dir: ${APP_UPLOAD_DIR:uploads}
+  knowledge-storage:
+    root: ${APP_KNOWLEDGE_STORAGE_ROOT:knowledge-storage}
+  document-converter:
+    url: ${APP_DOCUMENT_CONVERTER_URL:http://localhost:8010}
+    connect-timeout-ms: ${APP_DOCUMENT_CONVERTER_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${APP_DOCUMENT_CONVERTER_READ_TIMEOUT_MS:30000}
   analytics:
     hash-salt: ${APP_ANALYTICS_HASH_SALT:interwise-dev-hash-salt}
   rate-limit:

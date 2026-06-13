@@ -41,6 +41,10 @@ public class AppJobRecoveryService {
                 appJobTaskExecutor.execute(() -> claimAndDispatch(job.getId())));
     }
 
+    public void dispatchJob(Long jobId) {
+        appJobTaskExecutor.execute(() -> claimAndDispatch(jobId));
+    }
+
     private void claimAndDispatch(Long jobId) {
         var claimed = appJobService.claimPendingJob(jobId, WORKER_ID, LOCK_TTL);
         if (claimed != null) {

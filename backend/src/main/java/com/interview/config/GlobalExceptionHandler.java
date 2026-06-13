@@ -48,6 +48,14 @@ public class GlobalExceptionHandler {
         return Result.error(400, e.getMessage());
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Result<String> handleIllegalArgument(IllegalArgumentException e, HttpServletResponse response,
+                                                HttpServletRequest request) {
+        response.setStatus(HttpStatus.BAD_REQUEST.value());
+        recordException(request, "BAD_REQUEST", e.getMessage());
+        return Result.error(400, e.getMessage());
+    }
+
     /**
      * 捕获鉴权相关异常（如 "未登录" "Token过期" 等）
      */
