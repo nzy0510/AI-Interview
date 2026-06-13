@@ -13,6 +13,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -50,5 +51,25 @@ class UserControllerTest {
                 .containsEntry("role", "ADMIN")
                 .containsEntry("isAdmin", true)
                 .containsEntry("isDeveloper", true);
+    }
+
+    @Test
+    void currentUserRejectsStaleTokenWhenUserNoLongerExists() {
+        UserController controller = new UserController();
+        UserService userService = mock(UserService.class);
+        DeveloperAccessService developerAccessService = mock(DeveloperAccessService.class);
+        AdminRoleService adminRoleService = mock(AdminRoleService.class);
+        ReflectionTestUtils.setField(controller, "userService", userService);
+        ReflectionTestUtils.setField(controller, "developerAccessService", developerAccessService);
+        ReflectionTestUtils.setField(controller, "adminRoleService", adminRoleService);
+
+        when(userService.getById(99L)).thenReturn(null);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("currentUserId", 99L);
+
+        assertThatThrownBy(() -> controller.getCurrentUser(request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("登录已失效，请重新登录");
     }
 }

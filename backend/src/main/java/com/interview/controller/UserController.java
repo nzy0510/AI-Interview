@@ -133,6 +133,9 @@ public class UserController {
     public Result<Map<String, Object>> getCurrentUser(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("currentUserId");
         var user = userService.getById(userId);
+        if (user == null) {
+            throw new RuntimeException("登录已失效，请重新登录");
+        }
         return Result.success(Map.of(
             "id", user.getId(),
             "username", user.getUsername(),
