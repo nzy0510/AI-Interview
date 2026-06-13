@@ -27,6 +27,7 @@ const navItems = [
   { path: '/', label: '工作台', icon: Monitor },
   { path: '/interview/setup', label: '面试准备', icon: MagicStick },
   { path: '/llm-providers', label: '大模型配置', icon: Operation },
+  { path: '/knowledge-workspace', label: '知识库 / 题库', icon: Document },
   { path: '/mentor', label: 'AI Mentor', icon: DataAnalysis },
   { path: '/resume', label: '简历画像', icon: UserFilled },
   { path: '/history', label: '历史报告', icon: Document },
@@ -415,6 +416,9 @@ watch(
     position: sticky;
     top: 0;
     z-index: 12;
+    min-width: 0;
+    max-width: 100vw;
+    overflow: hidden;
     gap: 16px;
     padding: 18px 16px 14px;
     border-right: 0;
@@ -422,6 +426,8 @@ watch(
   }
 
   .app-shell__nav {
+    min-width: 0;
+    max-width: 100%;
     flex-direction: row;
     overflow-x: auto;
     padding-bottom: 2px;

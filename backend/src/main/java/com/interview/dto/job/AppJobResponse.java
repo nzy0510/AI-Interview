@@ -11,6 +11,10 @@ public class AppJobResponse {
     private String jobType;
     private String scope;
     private Long ownerUserId;
+    private Long positionId;
+    private Long knowledgeBaseId;
+    private Long sourceFileId;
+    private Long recordId;
     private String status;
     private String stage;
     private Integer progress;
@@ -28,6 +32,10 @@ public class AppJobResponse {
         response.setJobType(job.getJobType());
         response.setScope(job.getScope());
         response.setOwnerUserId(job.getOwnerUserId());
+        response.setPositionId(job.getPositionId());
+        response.setKnowledgeBaseId(job.getKnowledgeBaseId());
+        response.setSourceFileId(job.getSourceFileId());
+        response.setRecordId(job.getRecordId());
         response.setStatus(job.getStatus());
         response.setStage(job.getStage());
         response.setProgress(job.getProgress());

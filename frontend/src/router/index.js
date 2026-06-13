@@ -67,6 +67,12 @@ const routes = [
     meta: { title: '大模型配置' }
   },
   {
+    path: '/knowledge-workspace',
+    name: 'KnowledgeWorkspace',
+    component: loadView('KnowledgeWorkspace'),
+    meta: { title: '知识库 / 题库' }
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: loadView('Settings'),
