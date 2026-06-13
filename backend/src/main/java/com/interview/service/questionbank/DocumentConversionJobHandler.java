@@ -18,6 +18,7 @@ public class DocumentConversionJobHandler implements AppJobHandler {
     private static final Pattern SENSITIVE_PATTERN = Pattern.compile(
             "(?i)(Authorization\\s*[:=]\\s*\\S+|Bearer\\s+\\S+|api_key\\s*[:=]\\s*\\S+|sk-[A-Za-z0-9_-]+)"
     );
+    private static final String CONVERTER_UNAVAILABLE_MESSAGE = "文档转换服务暂不可用，请确认 document-converter 已启动";
 
     private final KnowledgeSourceFileMapper sourceFileMapper;
     private final FileStorageService fileStorageService;
@@ -86,6 +87,16 @@ public class DocumentConversionJobHandler implements AppJobHandler {
         if (message == null) {
             return "文档转换失败";
         }
+        if (isConverterUnavailable(message)) {
+            return CONVERTER_UNAVAILABLE_MESSAGE;
+        }
         return SENSITIVE_PATTERN.matcher(message).replaceAll("[REDACTED]");
+    }
+
+    private boolean isConverterUnavailable(String message) {
+        String normalized = message.toLowerCase(Locale.ROOT);
+        return normalized.contains("connection refused")
+                || normalized.contains("connect timed out")
+                || normalized.contains("i/o error on post request");
     }
 }
