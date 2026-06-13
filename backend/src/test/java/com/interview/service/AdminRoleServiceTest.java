@@ -1,10 +1,12 @@
 package com.interview.service;
 
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.interview.entity.User;
 import com.interview.mapper.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -68,12 +70,12 @@ class AdminRoleServiceTest {
     void shouldKeepAtLeastOneAdmin() {
         User operator = user(1L, "ADMIN");
         when(userMapper.selectById(1L)).thenReturn(operator);
-        when(userMapper.selectCount(any())).thenReturn(1L);
+        when(userMapper.update(isNull(), any())).thenReturn(0);
 
         assertThatThrownBy(() -> service.revokeAdmin(1L, 1L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("至少保留一个管理员");
-        verify(userMapper, never()).update(isNull(), any());
+        verify(userMapper).update(isNull(), any());
     }
 
     @Test
@@ -83,7 +85,7 @@ class AdminRoleServiceTest {
         User target = user(2L, "ADMIN");
         when(userMapper.selectById(1L)).thenReturn(operator);
         when(userMapper.selectById(2L)).thenReturn(target);
-        when(userMapper.selectCount(any())).thenReturn(2L);
+        when(userMapper.update(isNull(), any())).thenReturn(1);
 
         User updated = service.revokeAdmin(2L, 1L);
 
@@ -93,11 +95,35 @@ class AdminRoleServiceTest {
         verify(userMapper).update(isNull(), any());
     }
 
+    @Test
+    @DisplayName("撤销 ADMIN 使用条件更新，避免并发下删光管理员")
+    void shouldUseConditionalUpdateWhenRevokingAdminRole() {
+        User operator = user(1L, "ADMIN");
+        User target = user(2L, "ADMIN");
+        when(userMapper.selectById(1L)).thenReturn(operator);
+        when(userMapper.selectById(2L)).thenReturn(target);
+        when(userMapper.update(isNull(), any())).thenReturn(0);
+
+        assertThatThrownBy(() -> service.revokeAdmin(2L, 1L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("至少保留一个管理员");
+
+        ArgumentCaptor<UpdateWrapper<User>> update = updateWrapperCaptor();
+        verify(userMapper).update(isNull(), update.capture());
+        assertThat(update.getValue().getSqlSegment()).contains("id", "role");
+        assertThat(update.getValue().getSqlSegment().toLowerCase()).contains("select count");
+    }
+
     private User user(Long id, String role) {
         User user = new User();
         user.setId(id);
         user.setUsername("user" + id);
         user.setRole(role);
         return user;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static ArgumentCaptor<UpdateWrapper<User>> updateWrapperCaptor() {
+        return ArgumentCaptor.forClass((Class) UpdateWrapper.class);
     }
 }

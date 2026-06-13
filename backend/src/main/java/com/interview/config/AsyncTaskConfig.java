@@ -17,4 +17,15 @@ public class AsyncTaskConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean("appJobTaskExecutor")
+    public ThreadPoolTaskExecutor appJobTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("app-job-");
+        executor.initialize();
+        return executor;
+    }
 }

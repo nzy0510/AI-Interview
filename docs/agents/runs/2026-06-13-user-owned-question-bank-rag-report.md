@@ -13,7 +13,7 @@ Target branch: master local checkout unless integration branch is created later
   worktree: E:\Develop\interview
   ownership: backend entity, mapper, migration, backend tests for IQB-01
   status: completed
-  commit: pending
+  commit: 6cfcb95
 
 - name: IQB-02 Backend/Auth Worker
   role: Backend/Frontend
@@ -21,7 +21,7 @@ Target branch: master local checkout unless integration branch is created later
   worktree: E:\Develop\interview
   ownership: admin role service/controller, admin-token frontend removal, backend/frontend tests
   status: completed
-  commit: pending
+  commit: 6cfcb95
 
 - name: IQB-02 Testing Review Worktree
   role: Testing Review
@@ -38,6 +38,42 @@ Target branch: master local checkout unless integration branch is created later
   ownership: read-only IQB-02 auth/security review
   status: completed
   thread: 019ec06d-632b-7121-a024-3f40f5cbe125
+
+- name: IQB-03 Job Executor Worker
+  role: Backend
+  branch: detached worktree from current working tree
+  worktree: C:\Users\nzy\.codex\worktrees\9e3a\interview
+  ownership: job lifecycle service/controller/recovery/executor tests for IQB-03
+  status: stalled; no IQB-03 file changes produced, replacement dispatched
+  thread: 019ec071-b214-7560-928d-a40865bd56df
+  commit: pending
+
+- name: IQB-03 Replacement Worker
+  role: Backend
+  branch: detached worktree from current working tree
+  worktree: C:\Users\nzy\.codex\worktrees\6697\interview
+  ownership: narrowed IQB-03 first lifecycle slice
+  status: completed first slice; integrated by controller
+  thread: 019ec074-6be2-7ab1-a5d1-1f06f4a54091
+  commit: pending
+
+- name: IQB-03 Remaining Worker
+  role: Backend
+  branch: detached worktree from current working tree
+  worktree: C:\Users\nzy\.codex\worktrees\8f98\interview
+  ownership: remaining IQB-03 service lifecycle/recovery/polling/executor skeleton
+  status: blocked; wrote service draft in worktree only, not integrated
+  thread: 019ec07a-f4c2-7c10-97f5-6efa294f7dd3
+  commit: pending
+
+- name: IQB-03 Completion Worker
+  role: Backend
+  branch: detached worktree from current working tree
+  worktree: C:\Users\nzy\.codex\worktrees\3738\interview
+  ownership: complete IQB-03 service/controller/recovery/executor tests and implementation
+  status: stopped after user requested no further subagent dispatch; final IQB-03 implementation completed by controller in main worktree
+  thread: 019ec081-b2b6-72e1-a5f1-de29879d0628
+  commit: pending
 
 ## Validation
 
@@ -65,6 +101,20 @@ Target branch: master local checkout unless integration branch is created later
   result: passed after IQB-02 implementation, existing chunk-size warning only
 - command: `git diff --check`
   result: passed after IQB-02 implementation; Git reported CRLF normalization warnings only
+- command: `cd backend; mvn "-Dtest=AppJobServiceTest" test`
+  result: passed for IQB-03 first lifecycle slice in replacement worktree after sandbox escalation, 1 test, 0 failures
+- command: `cd backend; mvn "-Dtest=AppJobServiceTest" test`
+  result: passed after controller integrated IQB-03 first lifecycle slice into main working tree, 1 test, 0 failures
+- command: `cd backend; mvn "-Dtest=AppJobControllerTest" "-Dsurefire.useFile=false" test`
+  result: red first after adding public job visibility expectation; failed because list query lacked scope condition and public detail returned 403
+- command: `cd backend; mvn "-Dtest=AppJobControllerTest" "-Dsurefire.useFile=false" test`
+  result: passed after public job visibility fix, 5 tests, 0 failures
+- command: `cd backend; mvn "-Dtest=AppJobServiceTest,AppJobControllerTest,AppJobRecoveryTest" "-Dsurefire.useFile=false" test`
+  result: passed after IQB-03 completion, 13 tests, 0 failures
+- command: `cd backend; mvn test`
+  result: failed inside sandbox before escalation; failures were missing parent fixtures/config files and Surefire report write permission
+- command: `cd backend; mvn test`
+  result: passed in real backend worktree after sandbox escalation, 157 tests, 0 failures
 
 ## Reviews
 

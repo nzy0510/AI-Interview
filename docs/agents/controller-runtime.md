@@ -183,3 +183,8 @@ git log --oneline -5
 | Review | `docs/agents/templates/review.md` |
 | Release / 清理 | `docs/agents/templates/release.md` |
 | run record | `docs/agents/templates/run-record.md` |
+
+## 9. 子agent探索代码库
+- 开发类子线程进入 worktree 后必须确认 .codegraph/ 是否存在。
+- 不存在则初始化索引。
+- codegraph 不可用时不能无限卡住，必须改用源码读取并在最终报告说明。
