@@ -1,18 +1,10 @@
 <template>
   <div class="question-bank-admin">
-    <div class="admin-token-row">
+    <div class="admin-panel-row">
       <div>
         <h3 class="panel-title">题库后台</h3>
-        <p class="panel-desc">使用 APP_ADMIN_TOKEN 执行题库导入、发布、归档和索引维护；令牌仅保存在当前页面状态中。</p>
+        <p class="panel-desc">管理员账号可执行题库导入、发布、归档和索引维护；权限由当前登录状态校验。</p>
       </div>
-      <el-input
-        v-model="adminToken"
-        class="token-input"
-        type="password"
-        show-password
-        clearable
-        placeholder="输入 APP_ADMIN_TOKEN"
-      />
     </div>
 
     <el-tabs v-model="activeTab" class="admin-tabs">
@@ -27,7 +19,7 @@
             <el-button :icon="Upload">选择 JSON 导入包</el-button>
           </el-upload>
           <span class="file-name">{{ fileName || '未选择文件' }}</span>
-          <el-button :icon="Search" :disabled="!importPackage || !hasAdminToken" :loading="importLoading" @click="validateImport">
+          <el-button :icon="Search" :disabled="!importPackage" :loading="importLoading" @click="validateImport">
             校验
           </el-button>
           <el-button :icon="Refresh" :disabled="!canDryRun" :loading="dryRunLoading" @click="dryRunImport">
@@ -104,17 +96,17 @@
           </el-select>
           <el-input v-model="atomFilters.sourceRef" clearable placeholder="来源" />
           <el-input v-model="atomFilters.batchId" clearable placeholder="批次号" />
-          <el-button type="primary" :icon="Search" :disabled="!hasAdminToken" :loading="atomsLoading" @click="loadAtoms">
+          <el-button type="primary" :icon="Search" :loading="atomsLoading" @click="loadAtoms">
             查询
           </el-button>
         </div>
 
         <div class="toolbar-line">
-          <el-button :icon="Delete" :disabled="!selectedAtomIds.length || !hasAdminToken" @click="archiveSelectedAtoms">归档所选</el-button>
-          <el-button :icon="Check" :disabled="!selectedAtomIds.length || !hasAdminToken" @click="publishSelectedAtoms">恢复发布</el-button>
-          <el-button :icon="Refresh" :disabled="!selectedAtomIds.length || !hasAdminToken" @click="reindexSelectedAtoms">重试所选索引</el-button>
-          <el-button :icon="Refresh" :disabled="!hasAdminToken" @click="reindexUnsynced">重建未同步</el-button>
-          <el-button type="warning" plain :icon="Refresh" :disabled="!hasAdminToken" @click="reindexAll">全量重建索引</el-button>
+          <el-button :icon="Delete" :disabled="!selectedAtomIds.length" @click="archiveSelectedAtoms">归档所选</el-button>
+          <el-button :icon="Check" :disabled="!selectedAtomIds.length" @click="publishSelectedAtoms">恢复发布</el-button>
+          <el-button :icon="Refresh" :disabled="!selectedAtomIds.length" @click="reindexSelectedAtoms">重试所选索引</el-button>
+          <el-button :icon="Refresh" @click="reindexUnsynced">重建未同步</el-button>
+          <el-button type="warning" plain :icon="Refresh" @click="reindexAll">全量重建索引</el-button>
         </div>
 
         <el-table :data="atoms" border stripe @selection-change="handleAtomSelectionChange" v-loading="atomsLoading">
@@ -142,10 +134,10 @@
 
       <el-tab-pane label="批次与检索" name="batches">
         <div class="toolbar-line">
-          <el-button type="primary" :icon="Refresh" :disabled="!hasAdminToken" :loading="categoriesLoading" @click="loadCategories">
+          <el-button type="primary" :icon="Refresh" :loading="categoriesLoading" @click="loadCategories">
             刷新分类概览
           </el-button>
-          <el-button :icon="Refresh" :disabled="!hasAdminToken" :loading="batchesLoading" @click="loadBatches">
+          <el-button :icon="Refresh" :loading="batchesLoading" @click="loadBatches">
             刷新批次
           </el-button>
         </div>
@@ -183,7 +175,7 @@
               <el-option label="5 条" :value="5" />
               <el-option label="10 条" :value="10" />
             </el-select>
-            <el-button type="primary" :icon="Search" :disabled="!hasAdminToken" :loading="searchLoading" @click="runSearchPreview">
+            <el-button type="primary" :icon="Search" :loading="searchLoading" @click="runSearchPreview">
               预览
             </el-button>
           </div>
@@ -234,9 +226,7 @@ import {
   validateQuestionBankImportAPI
 } from '@/api/questionBankAdmin'
 
-const adminToken = ref('')
 const activeTab = ref('import')
-const hasAdminToken = computed(() => Boolean(adminToken.value.trim()))
 
 const importPackage = ref(null)
 const fileName = ref('')
@@ -277,16 +267,8 @@ const searchForm = reactive({ query: '', category: '', limit: 3 })
 const searchResults = ref([])
 const searchLoading = ref(false)
 
-const canDryRun = computed(() => hasAdminToken.value && importPackage.value && preview.value && !preview.value.errors?.length)
+const canDryRun = computed(() => importPackage.value && preview.value && !preview.value.errors?.length)
 const canPublish = computed(() => canDryRun.value && dryRunResult.value && !dryRunResult.value.failed)
-
-const requireToken = () => {
-  if (!hasAdminToken.value) {
-    ElMessage.warning('请先输入 APP_ADMIN_TOKEN')
-    return false
-  }
-  return true
-}
 
 const handleFileChange = async (uploadFile) => {
   const raw = uploadFile.raw
@@ -310,10 +292,10 @@ const handleFileChange = async (uploadFile) => {
 }
 
 const validateImport = async () => {
-  if (!requireToken() || !importPackage.value) return
+  if (!importPackage.value) return
   importLoading.value = true
   try {
-    preview.value = await validateQuestionBankImportAPI(importPackage.value, adminToken.value)
+    preview.value = await validateQuestionBankImportAPI(importPackage.value)
     dryRunResult.value = null
     publishResult.value = null
     ElMessage.success(preview.value.errors?.length ? '校验完成，请处理错误' : '校验通过')
@@ -325,10 +307,10 @@ const validateImport = async () => {
 }
 
 const dryRunImport = async () => {
-  if (!requireToken() || !importPackage.value) return
+  if (!importPackage.value) return
   dryRunLoading.value = true
   try {
-    const response = await dryRunQuestionBankImportAPI(importPackage.value, adminToken.value)
+    const response = await dryRunQuestionBankImportAPI(importPackage.value)
     preview.value = response.preview
     dryRunResult.value = response.result
     publishResult.value = null
@@ -341,10 +323,10 @@ const dryRunImport = async () => {
 }
 
 const publishImport = async () => {
-  if (!requireToken() || !importPackage.value) return
+  if (!importPackage.value) return
   publishLoading.value = true
   try {
-    const response = await publishQuestionBankImportAPI(importPackage.value, adminToken.value)
+    const response = await publishQuestionBankImportAPI(importPackage.value)
     preview.value = response.preview
     publishResult.value = response.result
     ElMessage.success('题库已发布')
@@ -357,24 +339,22 @@ const publishImport = async () => {
 }
 
 const loadCategories = async () => {
-  if (!requireToken()) return
   categoriesLoading.value = true
   try {
-    categories.value = await getQuestionBankCategoriesAPI(adminToken.value)
+    categories.value = await getQuestionBankCategoriesAPI()
   } finally {
     categoriesLoading.value = false
   }
 }
 
 const loadAtoms = async () => {
-  if (!requireToken()) return
   atomsLoading.value = true
   try {
     const response = await searchQuestionBankAtomsAPI({
       ...atomFilters,
       page: atomPage.page,
       size: atomPage.size
-    }, adminToken.value)
+    })
     atoms.value = response.items || []
     atomPage.total = response.total || 0
   } finally {
@@ -383,10 +363,9 @@ const loadAtoms = async () => {
 }
 
 const loadBatches = async () => {
-  if (!requireToken()) return
   batchesLoading.value = true
   try {
-    const response = await listQuestionBankBatchesAPI({ page: 1, size: 50 }, adminToken.value)
+    const response = await listQuestionBankBatchesAPI({ page: 1, size: 50 })
     batches.value = response.items || []
   } finally {
     batchesLoading.value = false
@@ -409,51 +388,50 @@ const requirePhrase = async (phrase, title, message) => {
 
 const archiveSelectedAtoms = async () => {
   if (!await requirePhrase('ARCHIVE', '归档题目', '输入 ARCHIVE 确认归档所选题目。')) return
-  const result = await archiveQuestionBankAtomsAPI(selectedAtomIds.value, adminToken.value)
+  const result = await archiveQuestionBankAtomsAPI(selectedAtomIds.value)
   ElMessage.success(`归档完成：${resultText(result)}`)
   await loadAtoms()
 }
 
 const publishSelectedAtoms = async () => {
   if (!await requirePhrase('PUBLISH', '恢复发布', '输入 PUBLISH 确认恢复发布所选题目。')) return
-  const result = await publishQuestionBankAtomsAPI(selectedAtomIds.value, adminToken.value)
+  const result = await publishQuestionBankAtomsAPI(selectedAtomIds.value)
   ElMessage.success(`恢复发布完成：${resultText(result)}`)
   await loadAtoms()
 }
 
 const reindexSelectedAtoms = async () => {
-  const result = await reindexQuestionBankAtomsAPI(selectedAtomIds.value, adminToken.value)
+  const result = await reindexQuestionBankAtomsAPI(selectedAtomIds.value)
   ElMessage.success(`索引完成：${resultText(result)}`)
   await loadAtoms()
 }
 
 const reindexUnsynced = async () => {
-  const result = await reindexUnsyncedQuestionBankAPI(adminToken.value)
+  const result = await reindexUnsyncedQuestionBankAPI()
   ElMessage.success(`未同步题目处理完成：${resultText(result)}`)
   await loadAtoms()
 }
 
 const reindexAll = async () => {
   if (!await requirePhrase('REINDEX', '全量重建索引', '全量重建可能较慢。输入 REINDEX 确认继续。')) return
-  const result = await reindexAllQuestionBankAPI(adminToken.value)
+  const result = await reindexAllQuestionBankAPI()
   ElMessage.success(`全量重建完成：${resultText(result)}`)
   await loadAtoms()
 }
 
 const openBatch = async (row) => {
-  batchDetail.value = await getQuestionBankBatchAPI(row.batchId, adminToken.value)
+  batchDetail.value = await getQuestionBankBatchAPI(row.batchId)
   batchDialogVisible.value = true
 }
 
 const archiveBatch = async (row) => {
   if (!await requirePhrase('ARCHIVE', '归档批次', `输入 ARCHIVE 确认归档批次 ${row.batchId} 当前仍关联的题目。`)) return
-  const result = await archiveQuestionBankBatchAPI(row.batchId, adminToken.value)
+  const result = await archiveQuestionBankBatchAPI(row.batchId)
   ElMessage.success(`批次归档完成：${resultText(result)}`)
   await Promise.all([loadAtoms(), loadBatches()])
 }
 
 const runSearchPreview = async () => {
-  if (!requireToken()) return
   if (!searchForm.query || searchForm.query.trim().length <= 2) {
     ElMessage.warning('检索内容至少 3 个字符')
     return
@@ -464,7 +442,7 @@ const runSearchPreview = async () => {
       query: searchForm.query,
       categories: searchForm.category ? [searchForm.category] : [],
       limit: searchForm.limit
-    }, adminToken.value)
+    })
   } finally {
     searchLoading.value = false
   }
@@ -496,7 +474,7 @@ const scoreText = (score) => {
   gap: 16px;
 }
 
-.admin-token-row {
+.admin-panel-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 360px);
   gap: 16px;
@@ -611,7 +589,7 @@ const scoreText = (score) => {
 }
 
 @media (max-width: 860px) {
-  .admin-token-row {
+  .admin-panel-row {
     grid-template-columns: 1fr;
   }
 

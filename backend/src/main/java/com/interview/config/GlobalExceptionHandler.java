@@ -61,7 +61,7 @@ public class GlobalExceptionHandler {
             recordException(request, "UNAUTHORIZED", msg);
             return Result.error(401, msg);
         }
-        if (msg != null && msg.contains("无权访问")) {
+        if (msg != null && (msg.contains("无权访问") || msg.contains("至少保留一个管理员"))) {
             response.setStatus(HttpStatus.FORBIDDEN.value());
             recordException(request, "FORBIDDEN", msg);
             return Result.error(403, msg);

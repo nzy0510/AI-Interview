@@ -8,28 +8,21 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("user")
-public class User {
+@TableName("interview_turn")
+public class InterviewTurn {
     @TableId(type = IdType.AUTO)
     private Long id;
-    
-    private String username;
-    
-    private String password;
-    
-    private String email;
-    
-    private String nickname;
-    
-    private String avatar;
 
-    private String role;
-
-    private Long adminGrantedBy;
-
-    private LocalDateTime adminGrantedAt;
-    
+    private Long recordId;
+    private Long userId;
+    private Long positionId;
+    private Integer turnIndex;
+    private String phase;
+    private String aiQuestion;
+    private String userAnswer;
+    private String retrievedAtomIds;
+    private String contextSnapshotJson;
+    private String retrievalStrategy;
     private LocalDateTime createTime;
-    
     private LocalDateTime updateTime;
 }

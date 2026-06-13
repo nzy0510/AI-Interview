@@ -1,124 +1,108 @@
 import request from '@/utils/request'
 
-const adminHeaders = (adminToken) => ({ 'X-Admin-Token': adminToken })
-
-export const getQuestionBankCategoriesAPI = (adminToken) => {
+export const getQuestionBankCategoriesAPI = () => {
   return request({
     url: '/admin/question-bank/categories',
-    method: 'get',
-    headers: adminHeaders(adminToken)
+    method: 'get'
   })
 }
 
-export const validateQuestionBankImportAPI = (data, adminToken) => {
+export const validateQuestionBankImportAPI = (data) => {
   return request({
     url: '/admin/question-bank/import/validate',
     method: 'post',
-    data,
-    headers: adminHeaders(adminToken)
+    data
   })
 }
 
-export const dryRunQuestionBankImportAPI = (data, adminToken) => {
+export const dryRunQuestionBankImportAPI = (data) => {
   return request({
     url: '/admin/question-bank/import/dry-run',
     method: 'post',
-    data,
-    headers: adminHeaders(adminToken)
+    data
   })
 }
 
-export const publishQuestionBankImportAPI = (data, adminToken) => {
+export const publishQuestionBankImportAPI = (data) => {
   return request({
     url: '/admin/question-bank/import/publish',
     method: 'post',
-    data,
-    headers: adminHeaders(adminToken)
+    data
   })
 }
 
-export const searchQuestionBankAtomsAPI = (data, adminToken) => {
+export const searchQuestionBankAtomsAPI = (data) => {
   return request({
     url: '/admin/question-bank/atoms/search',
     method: 'post',
-    data,
-    headers: adminHeaders(adminToken)
+    data
   })
 }
 
-export const archiveQuestionBankAtomsAPI = (atomIds, adminToken) => {
+export const archiveQuestionBankAtomsAPI = (atomIds) => {
   return request({
     url: '/admin/question-bank/atoms/archive',
     method: 'post',
-    data: { atomIds },
-    headers: adminHeaders(adminToken)
+    data: { atomIds }
   })
 }
 
-export const publishQuestionBankAtomsAPI = (atomIds, adminToken) => {
+export const publishQuestionBankAtomsAPI = (atomIds) => {
   return request({
     url: '/admin/question-bank/atoms/publish',
     method: 'post',
-    data: { atomIds },
-    headers: adminHeaders(adminToken)
+    data: { atomIds }
   })
 }
 
-export const reindexQuestionBankAtomsAPI = (atomIds, adminToken) => {
+export const reindexQuestionBankAtomsAPI = (atomIds) => {
   return request({
     url: '/admin/question-bank/atoms/reindex',
     method: 'post',
-    data: { atomIds },
-    headers: adminHeaders(adminToken)
+    data: { atomIds }
   })
 }
 
-export const listQuestionBankBatchesAPI = (params, adminToken) => {
+export const listQuestionBankBatchesAPI = (params) => {
   return request({
     url: '/admin/question-bank/batches',
     method: 'get',
-    params,
-    headers: adminHeaders(adminToken)
+    params
   })
 }
 
-export const getQuestionBankBatchAPI = (batchId, adminToken) => {
+export const getQuestionBankBatchAPI = (batchId) => {
   return request({
     url: `/admin/question-bank/batches/${encodeURIComponent(batchId)}`,
-    method: 'get',
-    headers: adminHeaders(adminToken)
+    method: 'get'
   })
 }
 
-export const archiveQuestionBankBatchAPI = (batchId, adminToken) => {
+export const archiveQuestionBankBatchAPI = (batchId) => {
   return request({
     url: `/admin/question-bank/batches/${encodeURIComponent(batchId)}/archive`,
-    method: 'post',
-    headers: adminHeaders(adminToken)
+    method: 'post'
   })
 }
 
-export const reindexUnsyncedQuestionBankAPI = (adminToken) => {
+export const reindexUnsyncedQuestionBankAPI = () => {
   return request({
     url: '/admin/question-bank/reindex/unsynced',
-    method: 'post',
-    headers: adminHeaders(adminToken)
+    method: 'post'
   })
 }
 
-export const reindexAllQuestionBankAPI = (adminToken) => {
+export const reindexAllQuestionBankAPI = () => {
   return request({
     url: '/admin/question-bank/reindex/all',
-    method: 'post',
-    headers: adminHeaders(adminToken)
+    method: 'post'
   })
 }
 
-export const previewQuestionBankSearchAPI = (data, adminToken) => {
+export const previewQuestionBankSearchAPI = (data) => {
   return request({
     url: '/admin/question-bank/search-preview',
     method: 'post',
-    data,
-    headers: adminHeaders(adminToken)
+    data
   })
 }

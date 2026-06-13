@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,7 +39,9 @@ class QuestionBankAdminControllerTest {
     @BeforeEach
     void setUp() {
         QuestionBankAdminController controller = new QuestionBankAdminController(questionBankService, adminGuardService);
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new com.interview.config.GlobalExceptionHandler())
+                .build();
     }
 
     @Test
@@ -54,5 +58,19 @@ class QuestionBankAdminControllerTest {
 
         verify(adminGuardService).requireAdmin(any());
         verify(questionBankService).listAtoms(any());
+    }
+
+    @Test
+    @DisplayName("普通用户被拒绝访问题库管理接口")
+    void shouldRejectOrdinaryUser() throws Exception {
+        doThrow(new RuntimeException("无权访问管理数据")).when(adminGuardService).requireAdmin(any());
+
+        mockMvc.perform(post("/api/admin/question-bank/atoms/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"page\":1,\"size\":20}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+
+        verify(questionBankService, never()).listAtoms(any());
     }
 }

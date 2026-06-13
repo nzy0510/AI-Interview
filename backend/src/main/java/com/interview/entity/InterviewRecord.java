@@ -22,6 +22,9 @@ public class InterviewRecord {
     /** 面试岗位，如 "Java后端开发" 或 "Web前端开发" */
     private String position;
 
+    /** 结构化岗位 ID；新面试记录必须绑定 interview_position */
+    private Long positionId;
+
     /** 完整对话历史，存储为 JSON 字符串 */
     private String chatHistory;
 

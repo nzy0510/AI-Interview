@@ -17,18 +17,7 @@
       </div>
     </header>
 
-    <section class="token-band">
-      <el-input
-        v-model="adminToken"
-        type="password"
-        show-password
-        placeholder="输入 APP_ADMIN_TOKEN 后查看统计"
-        @keyup.enter="loadSummary"
-      />
-      <el-button :loading="loading" @click="loadSummary">加载统计</el-button>
-    </section>
-
-    <el-empty v-if="!summary && !loading" description="输入管理令牌后加载运营数据" />
+    <el-empty v-if="!summary && !loading" description="管理员账号登录后可加载运营数据" />
 
     <template v-if="summary">
       <section class="metric-grid">
@@ -96,12 +85,10 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { getAnalyticsSummaryAPI } from '@/api/analytics'
 
 const LEGACY_TOKEN_KEY = 'interwise_admin_token'
 
-const adminToken = ref('')
 const days = ref(7)
 const loading = ref(false)
 const summary = ref(null)
@@ -125,14 +112,9 @@ const metrics = computed(() => {
 })
 
 const loadSummary = async () => {
-  if (!adminToken.value.trim()) {
-    ElMessage.warning('请先输入管理令牌')
-    summary.value = null
-    return
-  }
   loading.value = true
   try {
-    summary.value = await getAnalyticsSummaryAPI(days.value, adminToken.value.trim())
+    summary.value = await getAnalyticsSummaryAPI(days.value)
   } catch (e) {
     summary.value = null
   } finally {
@@ -151,8 +133,7 @@ onMounted(() => {
   color: #191c1e;
 }
 
-.ops-header,
-.token-band {
+.ops-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -191,14 +172,6 @@ onMounted(() => {
 
 .days-select {
   width: 132px;
-}
-
-.token-band {
-  align-items: center;
-  padding: 16px;
-  background: #ffffff;
-  border: 1px solid rgba(69, 70, 82, 0.08);
-  border-radius: 12px;
 }
 
 .metric-grid {
@@ -274,7 +247,6 @@ onMounted(() => {
 
 @media (max-width: 720px) {
   .ops-header,
-  .token-band,
   .ops-controls {
     flex-direction: column;
     align-items: stretch;

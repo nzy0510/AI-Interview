@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,6 +44,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Value("${app.developer.exempt-emails:}")
     private String developerExemptEmails;
+
+    @Value("${app.bootstrap-admin.username:nzy333}")
+    private String bootstrapAdminUsername;
+
+    @Value("${app.bootstrap-admin.email:1525764737@qq.com}")
+    private String bootstrapAdminEmail;
 
     @Override
     public String login(LoginDTO loginDTO) {
@@ -94,6 +101,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setPassword(hashPassword(registerDTO.getPassword()));
         user.setEmail(registerDTO.getEmail());
         user.setNickname("User_" + System.currentTimeMillis() % 10000);
+        user.setRole("USER");
+        if (isBootstrapAdmin(registerDTO)) {
+            user.setRole("ADMIN");
+            user.setAdminGrantedAt(LocalDateTime.now());
+        }
 
         this.save(user);
     }
@@ -210,6 +222,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     private String normalizeEmail(String value) {
         return value == null ? "" : value.trim().toLowerCase();
+    }
+
+    private boolean isBootstrapAdmin(RegisterDTO registerDTO) {
+        String expectedUsername = normalizeIdentity(bootstrapAdminUsername);
+        String expectedEmail = normalizeEmail(bootstrapAdminEmail);
+        if (expectedUsername.isBlank() || expectedEmail.isBlank()) {
+            return false;
+        }
+        return expectedUsername.equals(normalizeIdentity(registerDTO.getUsername()))
+                && expectedEmail.equals(normalizeEmail(registerDTO.getEmail()));
+    }
+
+    private String normalizeIdentity(String value) {
+        return value == null ? "" : value.trim();
     }
 
     @Override

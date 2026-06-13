@@ -3,44 +3,42 @@ package com.interview.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@DisplayName("AdminGuardService — 管理统计访问控制")
+@DisplayName("AdminGuardService — 管理员角色访问控制")
 class AdminGuardServiceTest {
 
     @Test
-    @DisplayName("开发者账号携带正确令牌时允许访问")
-    void shouldAllowDeveloperWithValidToken() {
-        DeveloperAccessService developerAccessService = mock(DeveloperAccessService.class);
+    @DisplayName("ADMIN 用户无需旧管理令牌也允许访问")
+    void shouldAllowAdminUserWithoutLegacyToken() {
+        AdminRoleService adminRoleService = mock(AdminRoleService.class);
         RequestUserResolver requestUserResolver = mock(RequestUserResolver.class);
-        AdminGuardService service = new AdminGuardService(developerAccessService, requestUserResolver);
-        ReflectionTestUtils.setField(service, "adminToken", "test-admin-token");
+        AdminGuardService service = new AdminGuardService(adminRoleService, requestUserResolver);
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/analytics/summary");
-        request.addHeader("X-Admin-Token", "test-admin-token");
         when(requestUserResolver.resolveUserId(request)).thenReturn(1L);
-        when(developerAccessService.isDeveloper(1L)).thenReturn(true);
 
         assertThatCode(() -> service.requireAdmin(request)).doesNotThrowAnyException();
+        verify(adminRoleService).requireAdmin(1L);
     }
 
     @Test
-    @DisplayName("普通账号即使携带正确令牌也不能访问管理数据")
-    void shouldRejectNonDeveloperEvenWithValidToken() {
-        DeveloperAccessService developerAccessService = mock(DeveloperAccessService.class);
+    @DisplayName("非 ADMIN 用户即使携带旧令牌也不能访问管理数据")
+    void shouldRejectNonAdminEvenWithLegacyToken() {
+        AdminRoleService adminRoleService = mock(AdminRoleService.class);
         RequestUserResolver requestUserResolver = mock(RequestUserResolver.class);
-        AdminGuardService service = new AdminGuardService(developerAccessService, requestUserResolver);
-        ReflectionTestUtils.setField(service, "adminToken", "test-admin-token");
+        AdminGuardService service = new AdminGuardService(adminRoleService, requestUserResolver);
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/analytics/summary");
         request.addHeader("X-Admin-Token", "test-admin-token");
         when(requestUserResolver.resolveUserId(request)).thenReturn(2L);
-        when(developerAccessService.isDeveloper(2L)).thenReturn(false);
+        doThrow(new RuntimeException("无权访问管理数据")).when(adminRoleService).requireAdmin(2L);
 
         assertThatThrownBy(() -> service.requireAdmin(request))
                 .isInstanceOf(RuntimeException.class)
@@ -48,17 +46,15 @@ class AdminGuardServiceTest {
     }
 
     @Test
-    @DisplayName("开发者账号携带错误令牌时仍然拒绝访问")
-    void shouldRejectDeveloperWithInvalidToken() {
-        DeveloperAccessService developerAccessService = mock(DeveloperAccessService.class);
+    @DisplayName("缺少当前用户身份时拒绝访问")
+    void shouldRejectMissingCurrentUser() {
+        AdminRoleService adminRoleService = mock(AdminRoleService.class);
         RequestUserResolver requestUserResolver = mock(RequestUserResolver.class);
-        AdminGuardService service = new AdminGuardService(developerAccessService, requestUserResolver);
-        ReflectionTestUtils.setField(service, "adminToken", "test-admin-token");
+        AdminGuardService service = new AdminGuardService(adminRoleService, requestUserResolver);
 
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/analytics/summary");
-        request.addHeader("X-Admin-Token", "wrong-token");
-        when(requestUserResolver.resolveUserId(request)).thenReturn(1L);
-        when(developerAccessService.isDeveloper(1L)).thenReturn(true);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/admin/question-bank/categories");
+        when(requestUserResolver.resolveUserId(request)).thenReturn(null);
+        doThrow(new RuntimeException("无权访问管理数据")).when(adminRoleService).requireAdmin(null);
 
         assertThatThrownBy(() -> service.requireAdmin(request))
                 .isInstanceOf(RuntimeException.class)

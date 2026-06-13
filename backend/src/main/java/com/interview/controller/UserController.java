@@ -7,6 +7,7 @@ import com.interview.dto.RegisterDTO;
 import com.interview.dto.ResetPasswordDTO;
 import com.interview.entity.UserPreference;
 import com.interview.service.DeveloperAccessService;
+import com.interview.service.AdminRoleService;
 import com.interview.service.MentorService;
 import com.interview.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +30,9 @@ public class UserController {
 
     @Autowired
     private DeveloperAccessService developerAccessService;
+
+    @Autowired
+    private AdminRoleService adminRoleService;
 
     @PostMapping("/login")
     public Result<String> login(@RequestBody @Validated LoginDTO loginDTO) {
@@ -135,6 +139,8 @@ public class UserController {
             "nickname", user.getNickname() != null ? user.getNickname() : user.getUsername(),
             "email", user.getEmail() != null ? user.getEmail() : "",
             "avatar", user.getAvatar() != null ? user.getAvatar() : "",
+            "role", user.getRole() != null ? user.getRole() : "USER",
+            "isAdmin", adminRoleService.isAdmin(userId),
             "isDeveloper", developerAccessService.isDeveloper(userId)
         ));
     }

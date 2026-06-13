@@ -2,6 +2,7 @@ package com.interview.service;
 
 import com.interview.entity.User;
 import com.interview.entity.UserPreference;
+import com.interview.dto.RegisterDTO;
 import com.interview.dto.LoginDTO;
 import com.interview.mapper.UserMapper;
 import com.interview.mapper.UserPreferenceMapper;
@@ -58,6 +59,95 @@ class UserServiceTest {
         u.setEmail("admin@test.com");
         u.setNickname("管理员");
         return u;
+    }
+
+    @Test
+    @DisplayName("注册 bootstrap admin 账号时授予 ADMIN 角色并记录授权时间")
+    void shouldGrantAdminRoleWhenRegisteringConfiguredBootstrapAdmin() {
+        RegisterDTO dto = new RegisterDTO();
+        dto.setUsername("nzy333");
+        dto.setEmail("1525764737@qq.com");
+        dto.setPassword("123456");
+        dto.setCode("000000");
+        ReflectionTestUtils.setField(userService, "bootstrapAdminUsername", "nzy333");
+        ReflectionTestUtils.setField(userService, "bootstrapAdminEmail", "1525764737@qq.com");
+        when(emailService.verifyCode("1525764737@qq.com", "000000")).thenReturn(true);
+        when(userMapper.selectCount(any())).thenReturn(0L);
+        when(userMapper.insert(any(User.class))).thenReturn(1);
+
+        userService.register(dto);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userMapper).insert(captor.capture());
+        assertThat(captor.getValue().getRole()).isEqualTo("ADMIN");
+        assertThat(captor.getValue().getAdminGrantedBy()).isNull();
+        assertThat(captor.getValue().getAdminGrantedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("普通注册用户默认授予 USER 角色")
+    void shouldGrantUserRoleForNormalRegistration() {
+        RegisterDTO dto = new RegisterDTO();
+        dto.setUsername("alice");
+        dto.setEmail("alice@example.com");
+        dto.setPassword("123456");
+        dto.setCode("000000");
+        ReflectionTestUtils.setField(userService, "bootstrapAdminUsername", "nzy333");
+        ReflectionTestUtils.setField(userService, "bootstrapAdminEmail", "1525764737@qq.com");
+        when(emailService.verifyCode("alice@example.com", "000000")).thenReturn(true);
+        when(userMapper.selectCount(any())).thenReturn(0L);
+        when(userMapper.insert(any(User.class))).thenReturn(1);
+
+        userService.register(dto);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userMapper).insert(captor.capture());
+        assertThat(captor.getValue().getRole()).isEqualTo("USER");
+        assertThat(captor.getValue().getAdminGrantedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("修改 bootstrap admin 配置后默认账号不会被误授 ADMIN")
+    void shouldNotGrantAdminToDefaultAccountWhenBootstrapConfigIsChanged() {
+        RegisterDTO dto = new RegisterDTO();
+        dto.setUsername("nzy333");
+        dto.setEmail("1525764737@qq.com");
+        dto.setPassword("123456");
+        dto.setCode("000000");
+        ReflectionTestUtils.setField(userService, "bootstrapAdminUsername", "owner");
+        ReflectionTestUtils.setField(userService, "bootstrapAdminEmail", "owner@example.com");
+        when(emailService.verifyCode("1525764737@qq.com", "000000")).thenReturn(true);
+        when(userMapper.selectCount(any())).thenReturn(0L);
+        when(userMapper.insert(any(User.class))).thenReturn(1);
+
+        userService.register(dto);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userMapper).insert(captor.capture());
+        assertThat(captor.getValue().getRole()).isEqualTo("USER");
+        assertThat(captor.getValue().getAdminGrantedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("匹配自定义 bootstrap admin 配置的账号会被授予 ADMIN")
+    void shouldGrantAdminToConfiguredBootstrapAccount() {
+        RegisterDTO dto = new RegisterDTO();
+        dto.setUsername("owner");
+        dto.setEmail("owner@example.com");
+        dto.setPassword("123456");
+        dto.setCode("000000");
+        ReflectionTestUtils.setField(userService, "bootstrapAdminUsername", "owner");
+        ReflectionTestUtils.setField(userService, "bootstrapAdminEmail", "owner@example.com");
+        when(emailService.verifyCode("owner@example.com", "000000")).thenReturn(true);
+        when(userMapper.selectCount(any())).thenReturn(0L);
+        when(userMapper.insert(any(User.class))).thenReturn(1);
+
+        userService.register(dto);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userMapper).insert(captor.capture());
+        assertThat(captor.getValue().getRole()).isEqualTo("ADMIN");
+        assertThat(captor.getValue().getAdminGrantedAt()).isNotNull();
     }
 
     @Test

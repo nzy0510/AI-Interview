@@ -109,12 +109,12 @@
       </section>
 
       <!-- Operations -->
-      <section v-if="isDeveloper" class="surface-card section-shell">
+      <section v-if="isAdmin" class="surface-card section-shell">
         <div class="section-head operations-head">
           <div>
             <p class="section-kicker">Operations</p>
             <h2 class="section-title">运营入口</h2>
-            <p class="section-desc">仅开发者账号可见，用于查看访问统计、用户反馈与额度保护。</p>
+            <p class="section-desc">仅管理员账号可见，用于查看访问统计、用户反馈与额度保护。</p>
           </div>
           <el-button type="primary" :icon="DataAnalysis" @click="router.push('/admin/analytics')">
             打开统计
@@ -146,7 +146,7 @@ const router = useRouter()
 const savingProfile = ref(false)
 const savingPref = ref(false)
 const changingPwd = ref(false)
-const isDeveloper = ref(false)
+const isAdmin = ref(false)
 
 const roleOptions = interviewSetupDefaults.roleOptions
 
@@ -167,7 +167,7 @@ const loadData = async () => {
       profile.nickname = user.nickname || ''
       profile.email = user.email || ''
       profile.avatar = user.avatar ? ((import.meta.env.VITE_API_BASE_URL || '') + user.avatar) : ''
-      isDeveloper.value = Boolean(user.isDeveloper)
+      isAdmin.value = Boolean(user.isAdmin)
     }
   } catch { /* defaults ok */ }
   try {
