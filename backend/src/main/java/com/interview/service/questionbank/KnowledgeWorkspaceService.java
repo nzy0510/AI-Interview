@@ -27,6 +27,7 @@ public class KnowledgeWorkspaceService {
     private static final String SCOPE_PRIVATE = "PRIVATE";
     private static final String STATUS_ACTIVE = "ACTIVE";
     private static final String STATUS_ARCHIVED = "ARCHIVED";
+    private static final int MAX_DESCRIPTION_LENGTH = 300;
 
     private final InterviewPositionMapper positionMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
@@ -53,8 +54,12 @@ public class KnowledgeWorkspaceService {
 
         List<Long> positionIds = positions.stream().map(InterviewPosition::getId).toList();
         Map<Long, KnowledgeBase> basesByPosition = knowledgeBaseMapper.selectList(new QueryWrapper<KnowledgeBase>()
-                        .in("position_id", positionIds))
+                        .in("position_id", positionIds)
+                        .and(wrapper -> wrapper
+                                .eq("scope", SCOPE_PUBLIC)
+                                .or(nested -> nested.eq("scope", SCOPE_PRIVATE).eq("owner_user_id", currentUserId))))
                 .stream()
+                .filter(item -> isVisibleScoped(item.getScope(), item.getOwnerUserId(), currentUserId))
                 .collect(Collectors.toMap(KnowledgeBase::getPositionId, item -> item, (left, right) -> left, LinkedHashMap::new));
 
         List<Long> knowledgeBaseIds = basesByPosition.values().stream()
@@ -65,8 +70,12 @@ public class KnowledgeWorkspaceService {
                 ? Map.of()
                 : sourceFileMapper.selectList(new QueryWrapper<KnowledgeSourceFile>()
                         .in("knowledge_base_id", knowledgeBaseIds)
+                        .and(wrapper -> wrapper
+                                .eq("scope", SCOPE_PUBLIC)
+                                .or(nested -> nested.eq("scope", SCOPE_PRIVATE).eq("owner_user_id", currentUserId)))
                         .orderByDesc("create_time", "id"))
                 .stream()
+                .filter(item -> isVisibleScoped(item.getScope(), item.getOwnerUserId(), currentUserId))
                 .collect(Collectors.groupingBy(KnowledgeSourceFile::getKnowledgeBaseId, LinkedHashMap::new, Collectors.toList()));
 
         List<KnowledgePositionResponse> responseItems = new ArrayList<>();
@@ -86,7 +95,7 @@ public class KnowledgeWorkspaceService {
     public KnowledgePositionResponse createPrivatePosition(Long currentUserId, KnowledgePositionCreateRequest request) {
         requireUser(currentUserId);
         String name = cleanName(request != null ? request.name() : null);
-        String description = request != null && request.description() != null ? request.description().trim() : "";
+        String description = cleanDescription(request != null ? request.description() : null);
         LocalDateTime now = LocalDateTime.now();
 
         InterviewPosition position = new InterviewPosition();
@@ -177,5 +186,21 @@ public class KnowledgeWorkspaceService {
             throw new IllegalArgumentException("岗位名称不能超过 80 个字符");
         }
         return cleaned;
+    }
+
+    private String cleanDescription(String description) {
+        if (description == null) {
+            return "";
+        }
+        String cleaned = description.trim();
+        if (cleaned.length() > MAX_DESCRIPTION_LENGTH) {
+            throw new IllegalArgumentException("岗位说明不能超过 300 个字符");
+        }
+        return cleaned;
+    }
+
+    private boolean isVisibleScoped(String scope, Long ownerUserId, Long currentUserId) {
+        return SCOPE_PUBLIC.equalsIgnoreCase(scope)
+                || (SCOPE_PRIVATE.equalsIgnoreCase(scope) && currentUserId.equals(ownerUserId));
     }
 }

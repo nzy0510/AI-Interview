@@ -284,11 +284,15 @@ const createPosition = async () => {
 
 const archivePosition = async () => {
   if (!activePosition.value || !isPositionEditable(activePosition.value)) return
-  await ElMessageBox.confirm(`确认归档「${activePosition.value.name}」？归档后不能继续上传文件。`, '归档岗位', {
-    confirmButtonText: '归档',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
+  try {
+    await ElMessageBox.confirm(`确认归档「${activePosition.value.name}」？归档后不能继续上传文件。`, '归档岗位', {
+      confirmButtonText: '归档',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
   archiving.value = true
   try {
     await archivePrivatePositionAPI(activePosition.value.id)
@@ -314,7 +318,12 @@ const beforeUpload = (file) => {
 }
 
 const uploadFile = async ({ file, onSuccess, onError }) => {
-  if (!activePosition.value?.knowledgeBase?.id) return
+  if (!activePosition.value?.knowledgeBase?.id) {
+    const error = new Error('当前岗位没有可上传的知识库')
+    ElMessage.error(error.message)
+    onError?.(error)
+    return
+  }
   try {
     const result = await uploadKnowledgeFileAPI(activePosition.value.knowledgeBase.id, file)
     ElMessage.success('文件已上传，正在转换')
@@ -347,7 +356,10 @@ const startPolling = () => {
   if (pollTimer) return
   pollTimer = window.setInterval(async () => {
     await loadWorkspace()
-    const activeJobs = jobs.value.some((job) => ['PENDING', 'RUNNING'].includes(job.status))
+    const visibleSourceFileIds = new Set(sourceFiles.value.map((file) => file.id))
+    const activeJobs = jobs.value.some((job) =>
+      visibleSourceFileIds.has(job.sourceFileId) && ['PENDING', 'RUNNING'].includes(job.status)
+    )
     if (!activeJobs) {
       window.clearInterval(pollTimer)
       pollTimer = null

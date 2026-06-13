@@ -52,7 +52,8 @@ class KnowledgeWorkspaceServiceTest {
                 knowledgeBase(12L, 2L, "PRIVATE", 7L)
         ));
         when(sourceFileMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(
-                sourceFile(101L, 12L, "PRIVATE", 7L, "guide.md")
+                sourceFile(101L, 12L, "PRIVATE", 7L, "guide.md"),
+                sourceFile(102L, 12L, "PRIVATE", 8L, "other-user.md")
         ));
 
         KnowledgeWorkspaceResponse response = service.listWorkspace(7L);
@@ -88,6 +89,19 @@ class KnowledgeWorkspaceServiceTest {
         assertThat(response.editable()).isTrue();
         assertThat(response.knowledgeBase().id()).isEqualTo(30L);
         verify(positionMapper).updateById(any(InterviewPosition.class));
+    }
+
+    @Test
+    @DisplayName("岗位说明长度与前端输入限制保持一致")
+    void shouldRejectDescriptionLongerThanFrontendLimit() {
+        String tooLong = "a".repeat(301);
+
+        assertThatThrownBy(() -> service.createPrivatePosition(7L,
+                new KnowledgePositionCreateRequest("算法工程师", tooLong)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("岗位说明不能超过 300 个字符");
+
+        verify(positionMapper, never()).insert(any());
     }
 
     @Test
