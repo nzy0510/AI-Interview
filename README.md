@@ -10,7 +10,7 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 - 模拟面试与题库打通：MySQL 保存可审核、可发布、可归档的知识原子，Qdrant 只作为可重建的语义索引；已发布 Atom 才能进入面试追问链路。
 - 追问路径更贴近真实面试：技术阶段按岗位和难度召回，结合低信息回答、弱召回、连续回避、已用 Atom 排除等信号，决定补救追问、切换知识点或继续深挖。
 - 多模式训练闭环：支持文字面试、视频面试、简历画像、历史报告、AI Mentor 分析和知识覆盖率复盘。
-- 题库工程化运维：提供开发者可见的 Question Bank Admin，支持导入包校验、试运行、发布、归档、恢复、搜索预览、增量/全量 reindex。
+- 用户自主管理题库：登录用户可在知识库 / 题库工作台维护私有岗位、上传知识文件、生成和审查知识原子；公共 starter 岗位由 `ADMIN` 角色维护。
 - 可评测的 RAG 链路：内置离线检索评测工具链，固定 AI 大模型岗位评测集，支持比较 embedding、候选集大小和 rerank 效果。
 - 成本与稳定性保护：内置访问事件、每日额度、限流、反馈记录、RAG 请求级日志和 Qdrant 失败降级路径。
 
@@ -36,7 +36,7 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 
 ![AI Mentor 分析页](<image/展示图/ai mentor分析页.png>)
 
-### 偏好设置、大模型配置与题库运维入口
+### 偏好设置、大模型配置与题库工作台
 
 ![偏好设置页](image/展示图/偏好设置页.png)
 
@@ -58,9 +58,9 @@ graph LR
     Backend --> Qdrant[("Qdrant: 语义索引")]
     Backend --> Embed["embedding-service: multilingual-e5-base"]
     Embed --> Qdrant
-    Admin["Question Bank Admin"] --> Backend
-    Script["question_bank_import.py"] --> Package["题库导入包"]
-    Package --> Admin
+    Workspace["知识库 / 题库工作台"] --> Backend
+    Admin["ADMIN 角色"] --> Workspace
+    Script["question_bank_import.py"] --> Package["本地导入包"]
 ```
 
 核心边界：
@@ -68,7 +68,7 @@ graph LR
 - MySQL 是用户、面试、报告、题库、导入批次和同步状态的业务真相。
 - Qdrant 是可重建的向量索引，不直接承载题库发布状态。
 - embedding-service 只负责文本向量化，默认输出 768 维 multilingual-e5 向量。
-- 前端不直接访问数据库、Redis 或 Qdrant，所有维护动作走后端 API 与管理校验。
+- 前端不直接访问数据库、Redis 或 Qdrant，所有维护动作走后端 API 与用户 ownership / `ADMIN` 角色校验。
 
 ## 动态 RAG 链路
 
@@ -116,19 +116,19 @@ graph TD
 - AI Mentor：基于历史面试、知识覆盖率和风险点给出训练建议。
 - 知识覆盖：以已发布题库 Atom 为分母，以实际进入面试上下文的 Atom 为分子，避免只统计“看似召回”的候选。
 
-### 题库与 RAG 运维
+### 题库与 RAG
 
-- 题库导入包：`scripts/question_bank_import.py` 将 PDF、DOCX、TXT、MD、JSON 转为可审核 JSON 包。
-- 管理面板：Settings 中的 Question Bank Admin 支持校验、试运行、发布、归档、恢复、搜索和 reindex。
+- 知识库 / 题库工作台：用户可以查看公共 starter 岗位，创建私有岗位，上传 PDF、DOCX、Markdown/MD、TXT，跟踪转换任务并维护知识原子。
+- 题库导入包：`scripts/question_bank_import.py` 仍可作为本地开发工具，将 PDF、DOCX、TXT、MD、JSON 转为可审核 JSON 包；普通产品流程优先使用应用内导入。
 - 同步状态：Qdrant 写入或删除失败会保留可重试状态，不让数据库事务和外部索引状态悄悄分叉。
 - 离线评测：`scripts/retrieval_eval` 支持导出、构建候选池、预标注、计算指标和 rerank 对比。
-- 内置基础题库：仓库仅随代码内置基础可运行题库，覆盖 Java 后端、前端、消息队列、HR 通用能力与 AI 大模型等核心方向；本地首次空库启动会自动导入 `backend/src/main/resources/knowledge_base/atoms/**/*.json` 并建立 Qdrant 索引。云端私有扩展题库、临时导入包和运维数据不会自动同步到他人本地部署，需要开发者通过 Question Bank Admin 单独导入、发布和 reindex。
+- 内置基础题库：仓库随代码内置可运行公共 starter 题库，覆盖 Java 后端、Web 前端、AI 大模型应用等方向；本地首次空库启动会自动导入 `backend/src/main/resources/knowledge_base/atoms/**/*.json` 并建立 Qdrant 索引。用户私有题库保存在自己的 MySQL/Qdrant 数据中，不会提交到 Git 或同步到其他部署。
 
 ### 运营保护
 
 - 访问统计：记录页面访问、关键行为、异常、反馈和限流命中。
 - 每日额度：限制 AI 面试、AI Chat、简历解析和 Mentor 生成次数。
-- 开发者豁免：支持按用户 ID、用户名或邮箱配置开发者白名单。
+- 开发者豁免：支持按用户 ID、用户名或邮箱配置本地调试/成本保护豁免；管理功能使用登录用户的 `ADMIN` 角色授权。
 - 健康检查：`/api/health` 汇总应用、MySQL、Redis、Qdrant 状态。
 
 ## 技术栈
@@ -194,20 +194,19 @@ Copy-Item docker-compose.example.yml docker-compose.yml
 DB_PASSWORD=your_mysql_password
 APP_LLM_CONFIG_ENCRYPTION_KEY=your_base64_or_high_entropy_encryption_key
 JWT_SIGN_KEY=your_jwt_signing_key_at_least_32_characters
-APP_ADMIN_TOKEN=your_strong_ops_admin_token
 APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
 MAIL_USERNAME=your_email@qq.com
 MAIL_PASSWORD=your_smtp_authorization_code
 ```
 
-若本地部署者需要维护自己的题库，先在前端注册/登录一个本地账号，再把该账号加入开发者白名单，例如：
+若本地部署者需要维护自己的题库，先在前端注册/登录账号，进入侧边栏“知识库 / 题库”创建私有岗位并上传知识文件。管理员维护公共 starter 内容时，应使用具备 `ADMIN` 角色的账号；开发者白名单只用于本地调试和成本保护豁免，例如：
 
 ```env
 APP_DEVELOPER_EXEMPT_USERNAMES=your_login_username
 # 或使用邮箱：APP_DEVELOPER_EXEMPT_EMAILS=you@example.com
 ```
 
-重启后端后，该账号可在 Settings -> Question Bank Admin 输入 `APP_ADMIN_TOKEN`，执行题库导入、发布、归档、恢复、搜索预览和 reindex。仓库内置题库只负责空库首次初始化，后续自定义题库以本地 MySQL 和 Qdrant 数据为准，不需要提交到 Git。
+仓库内置题库只负责空库首次初始化，后续自定义题库以本地 MySQL 和 Qdrant 数据为准，不需要提交到 Git。
 
 与用户自定义大模型配置相关的边界：
 
@@ -232,7 +231,7 @@ docker compose up -d --build
 - MySQL：`localhost:13307`
 - Redis：`localhost:6379`
 
-首次构建 embedding-service 会下载 PyTorch、sentence-transformers 和 multilingual-e5 模型，耗时取决于网络质量。若切换过 embedding 模型或 Qdrant collection，启动后需要在 Question Bank Admin 中执行全量 reindex。
+首次构建 embedding-service 会下载 PyTorch、sentence-transformers 和 multilingual-e5 模型，耗时取决于网络质量。若切换过 embedding 模型或 Qdrant collection，启动后需要通过知识库 / 题库维护流程重建索引。
 
 ### 本地测试用户自定义大模型配置
 
@@ -280,7 +279,7 @@ python scripts/question_bank_import.py `
   --out question_bank_imports
 ```
 
-生成的导入包默认位于 `question_bank_imports/`，该目录用于本地运维，不提交到 Git。发布时进入 Settings -> Question Bank Admin，由开发者账号和 `APP_ADMIN_TOKEN` 双重校验；本地部署者可以用同一入口维护自己的私有题库，发布成功后会写入 MySQL 并同步到 Qdrant。
+生成的导入包默认位于 `question_bank_imports/`，该目录用于本地维护，不提交到 Git。旧 JSON 包发布入口不再是普通产品路径；用户自定义题库优先通过知识库 / 题库工作台上传文件、生成原子、人工审查并发布。
 
 ### 内置题库维护 Skill
 
@@ -290,18 +289,17 @@ python scripts/question_bank_import.py `
 .agents/skills/interview-question-bank/SKILL.md
 ```
 
-开发者在 Codex 或兼容 Agent 中维护自己的题库时，可以直接要求使用 `interview-question-bank` skill。该 skill 的职责是把 PDF、DOCX、TXT、MD、JSON 等资料整理为标准题库导入包，并在发布前提醒维护者审核 atom 质量、选择导入模式和确认分类。
+开发者在 Codex 或兼容 Agent 中整理题库材料时，可以直接要求使用 `interview-question-bank` skill。该 skill 的职责是把 PDF、DOCX、TXT、MD、JSON 等资料整理为可审核材料或旧导入包，并提醒维护者审核 atom 质量、选择导入模式和确认分类。
 
 推荐流程：
 
 1. 准备原始材料，明确目标分类，例如 `AI大模型`、`java`、`frontend`。
 2. 让 Agent 使用 `interview-question-bank` skill 生成导入包，或直接运行 `scripts/question_bank_import.py`。
 3. 优先使用 `DRAFT` 模式生成可审核包；只有确认要直接发布时才使用 `AUTO_PUBLISH`。
-4. 登录本地部署的开发者账号，进入 Settings -> Question Bank Admin。
-5. 输入 `APP_ADMIN_TOKEN`，上传 JSON 导入包，先 validate / dry run，再 publish。
-6. 发布后在管理面板检查 atom 状态、Qdrant 同步状态，并按需执行 reindex 和 search preview。
+4. 普通产品流程中，登录账号后进入“知识库 / 题库”，上传源文件并通过应用内流程生成、审查和发布 atom。
+5. 如需继续使用旧 JSON 包作为开发者工具，应先确认其 schema 已适配当前用户自有题库模型，再由具备 `ADMIN` 角色的账号执行维护操作。
 
-这个 skill 只负责“生成和审查导入包”，不绕过后台权限直接写库；题库发布仍由本地 Question Bank Admin 执行，便于每个部署者维护自己的私有题库。
+这个 skill 只负责“生成和审查材料/导入包”，不绕过后台权限直接写库；题库发布应走当前应用内的 ownership 或 `ADMIN` 角色校验。
 
 ### RAG 离线评测
 

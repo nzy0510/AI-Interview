@@ -1,90 +1,130 @@
 # InterWise
 
-InterWise is an AI mock interview product with a single product runtime and a developer-maintained question bank. This context records the domain language that current code and documentation should preserve.
+InterWise 是一个 AI 模拟面试产品。当前方向是完全开源、可本地自部署、也可演进为云端开放平台的单一产品运行时：系统提供公共 starter 面试知识，同时允许普通用户维护自己的私有岗位与私有题库。
 
-## Language
+本文记录当前代码和文档应保持一致的领域语言与边界。
 
-**InterWise**:
-The product that provides mock interviews, resume analysis, review reports, operations controls, and developer-managed interview knowledge.
-_Avoid_: AI-Interview when referring to the product name.
+## 领域语言
 
-**Main App**:
-The user-facing web application that owns registration, login, interviews, resumes, reports, Settings, quota enforcement, and developer operations.
-_Avoid_: Backend-only app, old project.
+**InterWise**：
+产品名称。提供模拟面试、简历画像、面试报告、AI Mentor、运营控制、公共 starter 题库与用户自有题库能力。
+_避免_：用 AI-Interview 指代产品名。
 
-**Question Bank**:
-The curated interview knowledge collection shared by interview RAG retrieval and developer maintenance workflows.
-_Avoid_: Vector database, external service database.
+**主应用**：
+面向用户的 Web 应用。负责注册、登录、面试、简历、报告、设置、额度保护、管理员操作、知识库 / 题库工作台和 RAG 检索。
+_避免_：后端应用、旧项目。
 
-**Knowledge Atom**:
-The smallest importable and retrievable question-bank unit, with answer guidance, classification, difficulty, tags, and publication state.
-_Avoid_: Raw document chunk.
+**开放平台**：
+InterWise 的目标部署形态。既支持个人拉取代码后本地自部署，也支持未来云端多用户平台；每个普通用户拥有隔离的岗位、知识文件、LLM Provider、面试记录和报告。
+_避免_：只面向开发者的后台工具、单人私有脚本。
 
-**Published Atom**:
-A knowledge atom that is available for interview retrieval.
-_Avoid_: Any atom, draft atom.
+**公共岗位**：
+平台内置并由管理员维护的只读 starter 岗位。第一版公共岗位为 `Java 后端开发`、`Web 前端开发`、`AI 大模型应用开发`。
+_避免_：全局分类、静态岗位字符串。
 
-**RAG Retrieval**:
-The process of selecting relevant published atoms from the question bank to ground interview follow-up questions.
-_Avoid_: DeepSeek memory, direct vector-store ownership.
+**私有岗位**：
+普通用户自己创建和维护的岗位。私有岗位只属于当前用户，并绑定自己的默认知识库。
+_避免_：公共岗位副本混入公共题库。
 
-**Retrieval Candidate**:
-A published atom returned by retrieval for ranking and evaluation. A candidate is not necessarily included in the interview prompt.
-_Avoid_: Used atom.
+**知识库 / 题库工作台**：
+用户管理公共岗位、私有岗位、知识文件、知识原子、导入任务、审查和发布状态的产品入口。
+_避免_：Developer Admin Console、Question Bank Admin、脚本发布入口。
 
-**Context Atom**:
-A retrieval candidate selected for the current prompt context. It becomes a used atom only after the model successfully completes the turn.
-_Avoid_: Every Top-20 candidate.
+**题库**：
+用于面试 RAG 检索的面试知识集合。题库包含公共 starter 内容和用户私有内容。
+_避免_：向量数据库、外部服务数据库。
 
-**Question Bank Maintenance Skill**:
-The local workflow that prepares and reviews JSON import packages from source material. It generates artifacts only and does not publish content.
-_Avoid_: Server, API client, publishing service.
+**知识原子**：
+最小可导入、可审查、可发布、可检索的题库单元，包含答案指导、分类、难度、标签、常见误区、追问路径、审查状态和发布状态。
+_避免_：原始文档 chunk。
 
-**Import Package**:
-The structured JSON package produced from source material before validation and publication.
-_Avoid_: Direct database patch, Qdrant payload.
+**已发布原子**：
+已经通过审查并可参与面试检索的知识原子。
+_避免_：任意 atom、草稿 atom。
 
-**Developer Admin Console**:
-The developer-only Settings panel used to upload an import package, supply `APP_ADMIN_TOKEN`, validate, dry-run, publish, search, archive, and maintain indexing.
-_Avoid_: Public administration endpoint, script submission.
+**源文件**：
+用户上传到某个岗位默认知识库中的 PDF、DOCX、Markdown/MD 或 TXT 文件。源文件会保存原文件和转换后的 Markdown。
+_避免_：临时上传、直接入库文档。
 
-**Developer Account**:
-A trusted InterWise account that can see developer operations while still requiring the configured admin token for protected management actions.
-_Avoid_: Root user, unlimited account.
+**导入任务**：
+围绕源文件转换、知识原子生成、二审、发布、重建索引或报告生成的异步任务。第一版使用 MySQL `app_job` 加本地 `TaskExecutor`。
+_避免_：外部 MQ 必选方案、阻塞式请求处理。
 
-**AI Usage Quota**:
-The website quota that protects cost-bearing AI workflows such as interviews, resume analysis, reports, and Mentor generation.
-_Avoid_: Authorization.
+**RAG 检索**：
+从所选岗位的已发布原子中选择候选内容，用于支撑面试追问决策。公共面试只能检索所选公共岗位内容；私有面试只能检索当前用户所选私有岗位内容。
+_避免_：DeepSeek 记忆、无作用域向量查询、直接向量库所有权。
 
-**Technical Interview Stage**:
-The interview phase that evaluates role-specific engineering knowledge, project depth, architecture trade-offs, and implementation reasoning.
+**检索候选**：
+RAG 检索返回并参与排序/评估的已发布原子。候选不等于已经进入面试提示词。
+_避免_：已使用 atom。
 
-**HR Soft-Skill Stage**:
-The interview phase that evaluates behavioral, communication, motivation, pressure-handling, collaboration, and career-planning signals through a dedicated HR question-bank category.
+**上下文原子**：
+被选入当前面试提示词上下文的检索候选。只有模型成功完成本轮后，它才会成为已使用原子。
+_避免_：所有 Top-20 候选。
 
-## Relationships
+**管理员账号**：
+拥有 `ADMIN` 角色的普通 InterWise 账号。管理员维护公共 starter 内容、公共岗位和管理员授权。
+_避免_：Root 用户、无限制账号、admin token 持有人。
 
-- **InterWise** contains one **Main App**.
-- The **Main App** owns users, interviews, Settings, developer operations, question-bank publication, and RAG retrieval.
-- The **Question Bank** contains many **Knowledge Atoms**; only **Published Atoms** participate in **RAG Retrieval**.
-- The **Question Bank Maintenance Skill** produces an **Import Package** from source material for human review.
-- The **Developer Admin Console** is the only publication surface for generated packages and requires both a **Developer Account** and `APP_ADMIN_TOKEN`.
-- MySQL is the source of truth for question-bank business state; Qdrant is a rebuildable retrieval index.
-- **RAG Retrieval** normally produces up to 20 **Retrieval Candidates**, may expand to 30 candidates for short technical answers or mixed-topic answers, and selects up to 10 **Context Atoms**.
-- The **Technical Interview Stage** uses role-specific technical categories; the **HR Soft-Skill Stage** uses its dedicated category.
+**用户 LLM Provider**：
+用户自己配置的 OpenAI-compatible 大模型供应商配置。第一版同一时间只有一个 active Provider，所有成本型 LLM 操作都使用当前 active Provider。
+_避免_：系统兜底 API Key、管理员代用户配置密钥。
 
-## Invariants
+**题库维护 Skill**：
+本地 Agent 工作流，用于整理和审查材料或旧 JSON 导入包。它只能生成和检查工件，不能直接发布内容。
+_避免_：服务端、API client、发布服务。
 
-- Scripts and Skills may generate and locally validate import packages, but they must not publish atoms directly.
-- Question-bank publishing, reindexing, archival, and protected search are performed through the **Developer Admin Console**.
-- Secrets such as `APP_ADMIN_TOKEN`, JWT signing keys, SMTP credentials, and model API keys must stay in environment configuration and logs must not expose them.
-- Publication must validate the package before writing live atoms; only published atoms may be synchronized into interview retrieval.
-- A failed model stream must not consume Context Atoms, and one interview record may have only one active turn in the current single-instance runtime.
-- Qdrant synchronization failures must remain represented in MySQL as retryable state; database transactions must not contain external Qdrant side effects.
-- Empty-database JSON seeding is a first-installation exception. Normal publication and archival remain Developer Admin Console operations.
-- External MCP endpoints, MCP user tokens, MCP quota processing, and an MCP deployment service are not part of the current InterWise product boundary. Retired MCP tables may remain as read-only historical records.
+**导入包**：
+旧本地工具从源材料生成的结构化 JSON 包。导入包属于开发者工具工件，不是用户自有题库的普通产品路径。
+_避免_：直接数据库补丁、Qdrant payload。
 
-## Decision Records
+**AI 使用额度**：
+保护成本型 AI 工作流的站点额度，例如面试、简历解析、报告生成和 AI Mentor。
+_避免_：认证授权。
 
-- [ADR 0002: Question Bank Import Lifecycle](docs/adr/0002-question-bank-import-lifecycle.md)
-- [ADR 0004: Remove MCP Feature From InterWise](docs/adr/0004-remove-mcp-feature.md)
+**技术面试阶段**：
+评估岗位相关工程知识、项目深度、架构取舍和实现推理的面试阶段。
+
+**HR 软技能阶段**：
+评估行为沟通、动机、压力处理、协作和职业规划的面试阶段。
+
+## 关系
+
+- **InterWise** 包含一个 **主应用**。
+- **主应用** 拥有用户、面试、设置、管理员操作、知识库 / 题库工作台、题库发布和 RAG 检索。
+- **开放平台** 要同时支持本地自部署和未来云端多用户部署。
+- **公共岗位** 由 **管理员账号** 维护，普通用户只读使用或复制为私有岗位。
+- **私有岗位** 由所属用户维护，默认绑定一个私有知识库。
+- **题库** 包含多个 **知识原子**；只有 **已发布原子** 参与 **RAG 检索**。
+- **源文件** 归属于某个岗位的默认知识库，并通过 **导入任务** 转换、生成和审查知识原子。
+- **题库维护 Skill** 可以生成或审查 **导入包**，但正常发布发生在 **知识库 / 题库工作台** 或 `ADMIN` 角色保护的维护流程中。
+- MySQL 是题库业务状态、任务状态、报告快照和权限作用域的事实源。
+- Qdrant 是可重建语义索引，必须通过 payload 保留 scope、owner、position、knowledge base、source file、atom id 和发布状态。
+- **RAG 检索** 只能按所选岗位和作用域过滤；私有题库缺少已发布且索引成功的原子时，不应静默降级开始面试。
+
+## 不变量
+
+- 普通产品流程不再依赖 `APP_ADMIN_TOKEN`。
+- 管理能力来自登录用户的 `ADMIN` 角色，不能只由前端隐藏入口保证。
+- 普通用户不能创建、编辑、发布、重建索引或归档公共资源。
+- 普通用户不能读取或修改其他用户的私有岗位、文件、原子、任务或报告。
+- 用户可以复制公共岗位为自己的私有岗位；复制后的内容不应被公共题库后续更新静默覆盖。
+- 所有成本型 LLM 操作必须使用当前用户或执行管理员的 active Provider；没有 active Provider 时应阻止并提示配置。
+- 项目不提供系统兜底 API Key。
+- 脚本和 Skill 可以生成、整理、校验本地工件，但不能绕过产品授权直接发布原子。
+- 题库发布、重建索引、归档和受保护检索必须经过用户 ownership 或 `ADMIN` 角色校验。
+- JWT 签名密钥、SMTP 凭据、用户 Provider API Key、加密密钥和存储凭据不能进入日志、文档示例或仓库提交。
+- 发布前必须验证知识原子；只有已发布原子可同步到面试检索。
+- Qdrant 同步失败必须在 MySQL 中保留为可重试状态；数据库事务中不应包含不可回滚的外部 Qdrant 副作用。
+- 面试开始必须绑定结构化岗位；旧字符串岗位只能作为迁移兼容信息，不能作为新检索权限依据。
+- 私有岗位没有已发布且索引成功的知识时，应阻止开始面试，而不是 MySQL fallback 或无题库面试。
+- 面试报告应保存快照；后续 atom 修改或归档不能改变历史报告。
+- 第一版不引入 RabbitMQ、Kafka 等外部消息队列；MySQL job 表和本地 `TaskExecutor` 是默认自部署友好的异步基础。
+- 第一版文件存储通过 `FileStorageService` 使用本地挂载路径；对象存储、外部 MQ、多知识库、标签级面试筛选属于后续扩展。
+- 外部 MCP endpoint、MCP 用户 token、MCP 配额处理和 MCP 部署服务不属于当前 InterWise 产品边界。历史 MCP 表可作为只读归档记录存在。
+
+## 当前决策来源
+
+- [用户自有题库、RAG 与报告重构 Issue 拆分](docs/superpowers/plans/2026-06-13-user-owned-question-bank-rag-report-issues.md)
+- [用户自有题库后续优化](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-followups.md)
+- [用户自有题库、RAG 与报告重构设计](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-design.zh.md)

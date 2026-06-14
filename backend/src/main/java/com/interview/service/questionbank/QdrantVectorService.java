@@ -122,6 +122,13 @@ public class QdrantVectorService {
             payload.put("category", atom.getCategory());
             payload.put("difficulty", atom.getDifficulty());
             payload.put("status", atom.getStatus());
+            payload.put("publication_status", atom.getPublicationStatus());
+            payload.put("vector_status", atom.getVectorStatus());
+            payload.put("scope", atom.getScope());
+            payload.put("owner_user_id", atom.getOwnerUserId());
+            payload.put("position_id", atom.getPositionId());
+            payload.put("knowledge_base_id", atom.getKnowledgeBaseId());
+            payload.put("source_file_id", atom.getSourceFileId());
             payload.put("updated_at", LocalDateTime.now().toString());
 
             Map<String, Object> point = new LinkedHashMap<>();

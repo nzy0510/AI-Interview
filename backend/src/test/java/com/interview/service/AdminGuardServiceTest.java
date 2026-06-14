@@ -52,7 +52,7 @@ class AdminGuardServiceTest {
         RequestUserResolver requestUserResolver = mock(RequestUserResolver.class);
         AdminGuardService service = new AdminGuardService(adminRoleService, requestUserResolver);
 
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/admin/question-bank/categories");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/analytics/summary");
         when(requestUserResolver.resolveUserId(request)).thenReturn(null);
         doThrow(new RuntimeException("无权访问管理数据")).when(adminRoleService).requireAdmin(null);
 

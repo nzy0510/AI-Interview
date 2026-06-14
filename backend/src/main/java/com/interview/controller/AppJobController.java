@@ -6,6 +6,7 @@ import com.interview.dto.job.AppJobResponse;
 import com.interview.entity.AppJob;
 import com.interview.mapper.AppJobMapper;
 import com.interview.service.AdminRoleService;
+import com.interview.service.AppJobRecoveryService;
 import com.interview.service.AppJobService;
 import com.interview.service.RequestUserResolver;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,15 +26,18 @@ public class AppJobController {
 
     private final AppJobMapper appJobMapper;
     private final AppJobService appJobService;
+    private final AppJobRecoveryService appJobRecoveryService;
     private final RequestUserResolver requestUserResolver;
     private final AdminRoleService adminRoleService;
 
     public AppJobController(AppJobMapper appJobMapper,
                             AppJobService appJobService,
+                            AppJobRecoveryService appJobRecoveryService,
                             RequestUserResolver requestUserResolver,
                             AdminRoleService adminRoleService) {
         this.appJobMapper = appJobMapper;
         this.appJobService = appJobService;
+        this.appJobRecoveryService = appJobRecoveryService;
         this.requestUserResolver = requestUserResolver;
         this.adminRoleService = adminRoleService;
     }
@@ -76,6 +80,7 @@ public class AppJobController {
         if (!appJobService.retryJob(jobId, userId, admin)) {
             throw new RuntimeException("无权访问作业或作业不可重试");
         }
+        appJobRecoveryService.dispatchJob(jobId);
         return Result.success();
     }
 

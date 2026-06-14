@@ -150,9 +150,8 @@ interview:
         "evaluation": "用仅仅三句话极其精练地总结该候选人的技术亮点和可能的短板。"
       }
 
-# 应用治理、额度与 MCP token 配置
+# 应用治理、额度与用户自定义题库配置
 app:
-  admin-token: ${APP_ADMIN_TOKEN:}
   analytics:
     hash-salt: ${APP_ANALYTICS_HASH_SALT:}
   rate-limit:

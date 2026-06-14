@@ -85,6 +85,29 @@ class AppJobRecoveryTest {
                 "No app job handler for type: QUESTION_BANK_IMPORT", true);
     }
 
+    @Test
+    @DisplayName("handler 写入的结果会随完成状态保存")
+    void shouldCompleteWithHandlerResultJson() {
+        AppJobService appJobService = mock(AppJobService.class);
+        AppJobHandler handler = new AppJobHandler() {
+            @Override
+            public String jobType() {
+                return "GENERATE_ATOMS";
+            }
+
+            @Override
+            public void handle(AppJob job) {
+                job.setResultJson("{\"atomLimitReached\":true}");
+            }
+        };
+        AppJobDispatcher dispatcher = new AppJobDispatcher(appJobService, List.of(handler));
+        AppJob job = job("GENERATE_ATOMS");
+
+        dispatcher.dispatch(job);
+
+        verify(appJobService).completeJob(20L, null, "{\"atomLimitReached\":true}");
+    }
+
     private AppJob job(String jobType) {
         AppJob job = new AppJob();
         job.setId(20L);

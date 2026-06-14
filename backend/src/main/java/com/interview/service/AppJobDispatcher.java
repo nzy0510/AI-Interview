@@ -29,7 +29,7 @@ public class AppJobDispatcher {
         }
         try {
             handler.handle(job);
-            appJobService.completeJob(job.getId(), job.getClaimedBy(), null);
+            appJobService.completeJob(job.getId(), job.getClaimedBy(), job.getResultJson());
         } catch (RuntimeException e) {
             appJobService.failJob(job.getId(), job.getClaimedBy(), job.getStage(), e.getMessage(), true);
         }

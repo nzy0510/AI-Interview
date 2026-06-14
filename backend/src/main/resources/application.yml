@@ -169,9 +169,8 @@ jwt:
   sign-key: ${JWT_SIGN_KEY}
   expire-ms: ${JWT_EXPIRE_MS:86400000}
 
-# 访问统计、管理令牌、限流与 AI 成本额度
+# 访问统计、限流与 AI 成本额度
 app:
-  admin-token: ${APP_ADMIN_TOKEN:}
   upload-dir: ${APP_UPLOAD_DIR:uploads}
   knowledge-storage:
     root: ${APP_KNOWLEDGE_STORAGE_ROOT:knowledge-storage}

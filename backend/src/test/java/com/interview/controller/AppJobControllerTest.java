@@ -5,6 +5,7 @@ import com.interview.config.GlobalExceptionHandler;
 import com.interview.entity.AppJob;
 import com.interview.mapper.AppJobMapper;
 import com.interview.service.AdminRoleService;
+import com.interview.service.AppJobRecoveryService;
 import com.interview.service.AppJobService;
 import com.interview.service.RequestUserResolver;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,6 +44,9 @@ class AppJobControllerTest {
     private AppJobService appJobService;
 
     @Mock
+    private AppJobRecoveryService appJobRecoveryService;
+
+    @Mock
     private RequestUserResolver requestUserResolver;
 
     @Mock
@@ -53,6 +57,7 @@ class AppJobControllerTest {
         AppJobController controller = new AppJobController(
                 appJobMapper,
                 appJobService,
+                appJobRecoveryService,
                 requestUserResolver,
                 adminRoleService
         );
@@ -157,6 +162,23 @@ class AppJobControllerTest {
                 .andExpect(jsonPath("$.code").value(200));
 
         verify(appJobService).retryJob(4L, 99L, true);
+        verify(appJobRecoveryService).dispatchJob(4L);
+    }
+
+    @Test
+    @DisplayName("普通用户重试自己的可重试作业后立即重新投递")
+    void shouldDispatchOwnedRetryableJobAfterRetry() throws Exception {
+        when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(11L);
+        when(adminRoleService.isAdmin(11L)).thenReturn(false);
+        when(appJobMapper.selectById(7L)).thenReturn(job(7L, 11L));
+        when(appJobService.retryJob(7L, 11L, false)).thenReturn(true);
+
+        mockMvc.perform(post("/api/jobs/7/retry"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(appJobService).retryJob(7L, 11L, false);
+        verify(appJobRecoveryService).dispatchJob(7L);
     }
 
     private AppJob job(Long id, Long ownerUserId) {

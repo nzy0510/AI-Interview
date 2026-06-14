@@ -152,7 +152,7 @@ question_bank_imports/fixtures/**
 限制：
 
 - 不直接写生产数据库表。
-- 发布题库必须走 Question Bank Admin 或既有服务接口。
+- 发布题库必须走知识库 / 题库工作台、`ADMIN` 角色保护的维护接口，或当前已确认的服务接口。
 - 大型临时导入包、私有题库和原始 PDF 不提交到 Git。
 
 ### 1.6 Docs Agent

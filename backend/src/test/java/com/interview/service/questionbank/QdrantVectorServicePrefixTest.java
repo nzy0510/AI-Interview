@@ -19,6 +19,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 @DisplayName("Qdrant vector embedding prefixes")
@@ -60,6 +61,39 @@ class QdrantVectorServicePrefixTest {
 
         assertThat(embeddingModel.texts).hasSize(1);
         assertThat(embeddingModel.texts.get(0)).startsWith("passage: 考核点: RAG流程");
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("upsert payload includes ownership and publication filters")
+    void shouldIncludeOwnershipPayloadWhenUpserting() {
+        CapturingEmbeddingModel embeddingModel = new CapturingEmbeddingModel();
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        QdrantVectorService service = new QdrantVectorService(embeddingModel, restTemplate);
+        configure(service);
+        KnowledgeAtom atom = publishedAtom();
+        atom.setScope("PRIVATE");
+        atom.setOwnerUserId(7L);
+        atom.setPositionId(12L);
+        atom.setKnowledgeBaseId(22L);
+        atom.setSourceFileId(10L);
+        atom.setPublicationStatus("PUBLISHED");
+        atom.setVectorStatus("PENDING");
+
+        server.expect(requestTo("http://qdrant/collections/test_atoms"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://qdrant/collections/test_atoms/points?wait=true"))
+                .andExpect(jsonPath("$.points[0].payload.scope").value("PRIVATE"))
+                .andExpect(jsonPath("$.points[0].payload.owner_user_id").value(7))
+                .andExpect(jsonPath("$.points[0].payload.position_id").value(12))
+                .andExpect(jsonPath("$.points[0].payload.knowledge_base_id").value(22))
+                .andExpect(jsonPath("$.points[0].payload.source_file_id").value(10))
+                .andExpect(jsonPath("$.points[0].payload.publication_status").value("PUBLISHED"))
+                .andExpect(jsonPath("$.points[0].payload.vector_status").value("PENDING"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        assertThat(service.upsert(atom)).isTrue();
         server.verify();
     }
 

@@ -5,16 +5,16 @@ description: Generate and review AI Interview question-bank import packages from
 
 # Interview Question Bank
 
-Use this skill to prepare import packages for the private developer-owned question bank. The project stores atoms in MySQL and syncs published atoms to Qdrant. Publication is performed only from the developer-only Question Bank Admin panel in the web application.
+Use this skill to prepare reviewable question-bank materials for InterWise. The project stores atoms in MySQL and syncs published atoms to Qdrant. Normal publication happens through the application with user ownership or `ADMIN` role checks; legacy JSON import packages are developer tooling artifacts and must not bypass product authorization.
 
 ## Workflow
 
 1. Inspect the requested source and target category. For a new role or category, also check `backend/src/main/resources/application.yml.example` and the live config for `interview.position-categories`.
 2. Convert source files with `scripts/question_bank_import.py` when inputs are PDF, DOCX, TXT, MD, or JSON.
 3. Review the generated package before handing it to the maintainer. Use `DRAFT` for staged imports and `AUTO_PUBLISH` only when the maintainer intends immediate publication.
-4. In the web application, sign in with a developer account and open `Settings -> Question Bank Admin`.
-5. Enter `APP_ADMIN_TOKEN`, upload the generated JSON package, validate it, perform a dry run, and explicitly publish it.
-6. Verify the published atoms and reindex status from the Question Bank Admin panel.
+4. In the web application, sign in and use the `知识库 / 题库` workspace for normal user-owned imports, review, publication, and indexing.
+5. If a legacy JSON package must be used as a developer tool, first confirm its schema matches the current user-owned question-bank model, then run it through an authenticated `ADMIN`-guarded maintenance path.
+6. Verify the published atoms and reindex status from the knowledge workspace or the relevant administrator maintenance surface.
 
 ## Commands
 
@@ -30,7 +30,7 @@ Normalize existing JSON atoms:
 python scripts/question_bank_import.py --input .\atoms.json --category mysql --mode DRAFT
 ```
 
-Default package filenames use `question_bank_imports/qb-<category>-<mode>-<YYYYMMDD-HHMMSS>-<shortid>.json`. Use `--output` only when the maintainer needs an explicit filename.
+Default package filenames use `question_bank_imports/qb-<category>-<mode>-<YYYYMMDD-HHMMSS>-<shortid>.json`. Use `--output` only when the maintainer needs an explicit filename. Prefer application-native file upload for new user-owned question-bank flows.
 
 ## Mode Choice
 

@@ -238,9 +238,9 @@ AI Mentor 的知识覆盖分析只统计真正进入 Prompt context 的去重 At
 
 题库不再只是后台管理数据，而是直接影响模拟面试流程：
 
-1. 维护者通过 Question Bank Admin 导入、校验、试运行、发布题库。
+1. 用户或管理员在知识库 / 题库工作台上传材料、生成并审查 Knowledge Atom。
 2. 发布后的 Atom 同步到 Qdrant。
-3. 面试时按岗位和阶段召回 Atom。
+3. 面试时按岗位、阶段和题库作用域召回 Atom。
 4. Atom 的标准答案、误区、追问路径进入面试官 Prompt。
 5. 面试完成后，实际使用过的 Atom 进入覆盖分析和 Mentor 复盘。
 
@@ -316,6 +316,7 @@ MySQL 负责题库 CRUD、发布状态、版本、批次、审核、检索日志
 - HTTP Embedding 适配：`backend/src/main/java/com/interview/config/HttpEmbeddingModel.java`
 - 知识原子实体：`backend/src/main/java/com/interview/entity/KnowledgeAtom.java`
 - 检索日志实体：`backend/src/main/java/com/interview/entity/RagRetrievalRequestLog.java`、`backend/src/main/java/com/interview/entity/RagRetrievalLog.java`
-- 题库管理接口：`backend/src/main/java/com/interview/controller/QuestionBankAdminController.java`
+- 知识库 / 题库工作台：`frontend/src/views/KnowledgeWorkspace.vue`
+- 题库维护接口：`backend/src/main/java/com/interview/controller/KnowledgeAtomController.java`、`backend/src/main/java/com/interview/controller/KnowledgeWorkspaceController.java`
 - 配置：`backend/src/main/resources/application.yml`、`.env.prod.example`
-- 题库生命周期 ADR：`docs/adr/0002-question-bank-import-lifecycle.md`
+- 用户自有题库/RAG/报告重构设计：`docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-design.zh.md`
