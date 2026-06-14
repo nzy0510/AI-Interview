@@ -16,6 +16,8 @@
 - 将 120 条 AI 大模型知识原子整理为随仓库发布的内置基础题库，支持本地空库部署时自动导入并参与面试 RAG 检索。
 
 ### 变更
+- 下线旧 LLM 每日额度限制链路，面试、简历解析和 AI Mentor 不再经过应用内 quota 检查。
+- 知识原子 LLM 生成改为按 Markdown 标题、段落、列表和代码块边界分块，再聚合各分块返回的原子，降低切断知识点和单次提示词过长的风险。
 - Settings 管理员区移除旧 Question Bank Admin 导入包面板，题库维护入口收口到知识库 / 题库工作台和 `ADMIN` 角色授权流程。
 - 移除旧 `/api/admin/question-bank/**` 导入包管理路由，避免绕过用户自有题库工作台继续走开发者后台产品路径。
 - 移除未被运行时读取的 `APP_ADMIN_TOKEN` 示例配置和 Compose 透传，部署不再需要配置旧管理令牌。
@@ -42,9 +44,15 @@
 - 修复异步作业启动后不投递 `PENDING` 任务、普通用户可重试公共作业，以及管理员撤销并发下可能删光管理员的风险。
 - 修复普通 API 也接受 URL query token 的问题，仅保留 `/api/interview/chatStream` 对 EventSource 的兼容入口。
 - 修复邮箱验证码可无限次错误尝试的问题，验证码改用 `SecureRandom` 生成并在连续错误后锁定。
-- 修复简历上传在扣减额度和 PDFBox 解析前缺少后端文件类型、大小和 PDF 头校验的问题，并限制 PDFBox 使用临时文件解析。
+- 修复简历上传在进入 LLM 解析和 PDFBox 解析前缺少后端文件类型、大小和 PDF 头校验的问题，并限制 PDFBox 使用临时文件解析。
 - 修复客户端可伪造 `X-Forwarded-For` 绕过 IP 限流的问题，后端优先使用代理写入的真实 IP，前端 Nginx 不再透传客户端伪造链。
 - 修复普通用户可通过资料页绑定开发者白名单邮箱从而自申领开发者身份的问题。
+
+### 移除
+- 删除旧 `/api/analytics/quota/me` 用户额度查询路由、quota service/DTO/mapper/异常类型及前端额度展示。
+- 删除旧 `APP_QUOTA_*`、`APP_DAILY_*` 示例配置和 Docker Compose 环境变量透传。
+- 删除旧题库导入包生成脚本及其 Python 命名测试，题库材料处理收口到应用内知识库 / 题库工作台。
+- 删除仓库内重复的 `interview-question-bank` Codex skill 副本，避免后续维护继续触发旧导入包和 `APP_ADMIN_TOKEN` 流程。
 
 ## v1.2.0 - 2026-06-07
 

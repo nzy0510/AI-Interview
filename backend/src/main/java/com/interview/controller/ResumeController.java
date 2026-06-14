@@ -3,7 +3,6 @@ package com.interview.controller;
 import com.interview.common.Result;
 import com.interview.exception.LlmProviderRequiredException;
 import com.interview.service.ResumeService;
-import com.interview.service.UsageQuotaService;
 import com.interview.service.UserLlmConfigService;
 import com.interview.utils.JwtUtils;
 import io.jsonwebtoken.Claims;
@@ -35,9 +34,6 @@ public class ResumeController {
     private JwtUtils jwtUtils;
 
     @Autowired
-    private UsageQuotaService usageQuotaService;
-
-    @Autowired
     private UserLlmConfigService userLlmConfigService;
 
     /**
@@ -55,7 +51,6 @@ public class ResumeController {
         try {
             Long userId = getUserIdFromRequest(request);
             userLlmConfigService.ensureActiveProvider(userId);
-            usageQuotaService.consume(userId, UsageQuotaService.RESUME_PARSE);
             Map<String, Object> analysisResult = resumeService.parseAndAnalyze(userId, file);
 
             // 持久化到数据库（UPSERT）

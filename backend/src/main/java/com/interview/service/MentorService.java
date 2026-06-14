@@ -52,9 +52,6 @@ public class MentorService {
     private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired(required = false)
-    private UsageQuotaService usageQuotaService;
-
-    @Autowired(required = false)
     private AppEventService appEventService;
 
     /** 内存缓存回退（Redis 不可用时使用，TTL 12小时） */
@@ -191,10 +188,6 @@ public class MentorService {
     }
 
     private String callMentorLLM(Long userId, List<InterviewRecord> history, KnowledgeCoverage coverage) {
-        if (usageQuotaService != null) {
-            usageQuotaService.consume(userId, UsageQuotaService.MENTOR_GENERATE);
-        }
-
         // 构造简洁的面试历史摘要
         StringBuilder historySummary = new StringBuilder();
         for (int i = 0; i < history.size(); i++) {

@@ -3,8 +3,8 @@
     <header class="ops-header">
       <div>
         <p class="eyebrow">Operations</p>
-        <h1 class="page-title">访问统计与成本保护</h1>
-        <p class="page-subtitle">查看内测访问、关键行为、限流命中、用户反馈和今日额度使用。</p>
+        <h1 class="page-title">访问统计与运营反馈</h1>
+        <p class="page-subtitle">查看内测访问、关键行为、限流命中和用户反馈。</p>
       </div>
       <div class="ops-controls">
         <el-select v-model="days" class="days-select" @change="loadSummary">
@@ -50,20 +50,6 @@
             <el-table-column prop="count" label="次数" width="90" />
           </el-table>
         </div>
-      </section>
-
-      <section class="section-block">
-        <div class="section-head">
-          <h2>今日额度使用</h2>
-          <span>最多展示 200 条</span>
-        </div>
-        <el-table :data="summary.todayQuotaUsage || []" size="small">
-          <el-table-column prop="userId" label="用户 ID" width="100" />
-          <el-table-column prop="quotaType" label="额度类型" min-width="180" />
-          <el-table-column prop="usedCount" label="已用" width="90" />
-          <el-table-column prop="limitCount" label="上限" width="90" />
-          <el-table-column prop="updateTime" label="更新时间" min-width="180" />
-        </el-table>
       </section>
 
       <section class="section-block">

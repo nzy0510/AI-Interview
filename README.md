@@ -12,7 +12,7 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 - 多模式训练闭环：支持文字面试、视频面试、简历画像、历史报告、AI Mentor 分析和知识覆盖率复盘。
 - 用户自主管理题库：登录用户可在知识库 / 题库工作台维护私有岗位、上传知识文件、生成和审查知识原子；公共 starter 岗位由 `ADMIN` 角色维护。
 - 可评测的 RAG 链路：内置离线检索评测工具链，固定 AI 大模型岗位评测集，支持比较 embedding、候选集大小和 rerank 效果。
-- 成本与稳定性保护：内置访问事件、每日额度、限流、反馈记录、RAG 请求级日志和 Qdrant 失败降级路径。
+- 稳定性与运营观测：内置访问事件、限流、反馈记录、RAG 请求级日志和 Qdrant 失败降级路径。
 
 ## 效果展示
 
@@ -60,7 +60,6 @@ graph LR
     Embed --> Qdrant
     Workspace["知识库 / 题库工作台"] --> Backend
     Admin["ADMIN 角色"] --> Workspace
-    Script["question_bank_import.py"] --> Package["本地导入包"]
 ```
 
 核心边界：
@@ -119,7 +118,7 @@ graph TD
 ### 题库与 RAG
 
 - 知识库 / 题库工作台：用户可以查看公共 starter 岗位，创建私有岗位，上传 PDF、DOCX、Markdown/MD、TXT，跟踪转换任务并维护知识原子。
-- 题库导入包：`scripts/question_bank_import.py` 仍可作为本地开发工具，将 PDF、DOCX、TXT、MD、JSON 转为可审核 JSON 包；普通产品流程优先使用应用内导入。
+- 知识原子生成：后端直接读取转换后的 Markdown，按标题、段落、列表和代码块边界分块调用用户启用的大模型，并聚合为可审查草稿。
 - 同步状态：Qdrant 写入或删除失败会保留可重试状态，不让数据库事务和外部索引状态悄悄分叉。
 - 离线评测：`scripts/retrieval_eval` 支持导出、构建候选池、预标注、计算指标和 rerank 对比。
 - 内置基础题库：仓库随代码内置可运行公共 starter 题库，覆盖 Java 后端、Web 前端、AI 大模型应用等方向；本地首次空库启动会自动导入 `backend/src/main/resources/knowledge_base/atoms/**/*.json` 并建立 Qdrant 索引。用户私有题库保存在自己的 MySQL/Qdrant 数据中，不会提交到 Git 或同步到其他部署。
@@ -127,8 +126,7 @@ graph TD
 ### 运营保护
 
 - 访问统计：记录页面访问、关键行为、异常、反馈和限流命中。
-- 每日额度：限制 AI 面试、AI Chat、简历解析和 Mentor 生成次数。
-- 开发者豁免：支持按用户 ID、用户名或邮箱配置本地调试/成本保护豁免；管理功能使用登录用户的 `ADMIN` 角色授权。
+- 开发者白名单：支持按用户 ID、用户名或邮箱配置本地调试白名单；管理功能使用登录用户的 `ADMIN` 角色授权。
 - 健康检查：`/api/health` 汇总应用、MySQL、Redis、Qdrant 状态。
 
 ## 技术栈
@@ -177,7 +175,7 @@ graph TD
 - Docker Desktop / Docker Compose
 - JDK 17
 - Node.js 20+
-- Python 3.10+（仅运行题库脚本或检索评测时需要）
+- Python 3.10+（仅运行检索评测工具链时需要）
 - 用户自备 OpenAI-compatible API 账号（如 DeepSeek、Kimi、GLM、Qwen 或自定义兼容供应商）
 - SMTP 邮箱授权码（注册、找回密码需要）
 
@@ -199,7 +197,7 @@ MAIL_USERNAME=your_email@qq.com
 MAIL_PASSWORD=your_smtp_authorization_code
 ```
 
-若本地部署者需要维护自己的题库，先在前端注册/登录账号，进入侧边栏“知识库 / 题库”创建私有岗位并上传知识文件。管理员维护公共 starter 内容时，应使用具备 `ADMIN` 角色的账号；开发者白名单只用于本地调试和成本保护豁免，例如：
+若本地部署者需要维护自己的题库，先在前端注册/登录账号，进入侧边栏“知识库 / 题库”创建私有岗位并上传知识文件。管理员维护公共 starter 内容时，应使用具备 `ADMIN` 角色的账号；开发者白名单只用于本地调试，例如：
 
 ```env
 APP_DEVELOPER_EXEMPT_USERNAMES=your_login_username
@@ -248,7 +246,7 @@ docker compose up -d --build
 
 - 项目不提供系统默认 key，也不应再依赖全局 `DEEPSEEK_API_KEY` 作为普通用户兜底。
 - API Key 明文只允许在用户提交配置和测试连接时经过后端瞬时处理；列表页、状态接口和管理员界面都不应回显明文。
-- 文档中的供应商名称只是 OpenAI-compatible 预设示例，不代表项目代用户提供账号、额度或官方 SDK。
+- 文档中的供应商名称只是 OpenAI-compatible 预设示例，不代表项目代用户提供账号、资源或官方 SDK。
 
 ### 后端
 
@@ -269,37 +267,9 @@ npm run dev
 npm run build
 ```
 
-### 题库导入包
+### 用户自有题库维护
 
-```powershell
-python scripts/question_bank_import.py `
-  --category AI大模型 `
-  --mode DRAFT `
-  --source path\to\source.md `
-  --out question_bank_imports
-```
-
-生成的导入包默认位于 `question_bank_imports/`，该目录用于本地维护，不提交到 Git。旧 JSON 包发布入口不再是普通产品路径；用户自定义题库优先通过知识库 / 题库工作台上传文件、生成原子、人工审查并发布。
-
-### 内置题库维护 Skill
-
-仓库内置了面向开发者的 Agent Skill：
-
-```text
-.agents/skills/interview-question-bank/SKILL.md
-```
-
-开发者在 Codex 或兼容 Agent 中整理题库材料时，可以直接要求使用 `interview-question-bank` skill。该 skill 的职责是把 PDF、DOCX、TXT、MD、JSON 等资料整理为可审核材料或旧导入包，并提醒维护者审核 atom 质量、选择导入模式和确认分类。
-
-推荐流程：
-
-1. 准备原始材料，明确目标分类，例如 `AI大模型`、`java`、`frontend`。
-2. 让 Agent 使用 `interview-question-bank` skill 生成导入包，或直接运行 `scripts/question_bank_import.py`。
-3. 优先使用 `DRAFT` 模式生成可审核包；只有确认要直接发布时才使用 `AUTO_PUBLISH`。
-4. 普通产品流程中，登录账号后进入“知识库 / 题库”，上传源文件并通过应用内流程生成、审查和发布 atom。
-5. 如需继续使用旧 JSON 包作为开发者工具，应先确认其 schema 已适配当前用户自有题库模型，再由具备 `ADMIN` 角色的账号执行维护操作。
-
-这个 skill 只负责“生成和审查材料/导入包”，不绕过后台权限直接写库；题库发布应走当前应用内的 ownership 或 `ADMIN` 角色校验。
+普通产品流程中，登录账号后进入“知识库 / 题库”，上传 PDF、DOCX、Markdown/MD 或 TXT 源文件。后端会先转换为 Markdown，再通过应用内作业生成、二审、人工修订和发布知识原子；所有发布和索引维护都经过 ownership 或 `ADMIN` 角色校验。
 
 ### RAG 离线评测
 
@@ -336,7 +306,6 @@ backend/src/test/resources/retrieval-eval/
 ├── frontend/                        # Vue 3 前端
 │   └── src/views/                   # 工作台、准备页、面试页、历史、Mentor、设置
 ├── embedding-service/               # FastAPI multilingual-e5 向量服务
-├── scripts/question_bank_import.py  # 题库导入包生成
 ├── scripts/retrieval_eval/          # RAG 离线评测工具链
 ├── tests/                           # Python 工具链测试
 ├── docs/adr/                        # 架构决策记录
@@ -403,7 +372,7 @@ python -m unittest discover -s tests
 - [ ] 题库质量与岗位覆盖扩展：继续扩充 Java 后端、前端、AI 大模型、HR 软技能等分类题库。
 - [ ] 产品体验与面试闭环增强：优化准备页、报告、AI Mentor、视频面试和反馈入口。
 - [ ] 部署可靠性与数据保护：完善备份、健康检查、Qdrant 状态校验和本地/云端一致性。
-- [ ] 安全、隐私与成本控制：保持密钥隔离、限流额度、隐私说明和用户数据删除能力建设。
+- [ ] 安全、隐私与运行治理：保持密钥隔离、限流策略、隐私说明和用户数据删除能力建设。
 - [ ] 更换部署平台
 
 ## 相关文档

@@ -4,10 +4,6 @@ export const trackEventAPI = (data) => {
   return request({ url: '/analytics/event', method: 'post', data, silent: true })
 }
 
-export const getMyQuotaAPI = () => {
-  return request({ url: '/analytics/quota/me', method: 'get' })
-}
-
 export const getAnalyticsSummaryAPI = (days) => {
   return request({
     url: '/analytics/summary',

@@ -9,7 +9,6 @@ import com.interview.mapper.InterviewRecordMapper;
 import com.interview.service.InterviewRetrievalService;
 import com.interview.service.InterviewService;
 import com.interview.service.InterviewTurnPlanner;
-import com.interview.service.UsageQuotaService;
 import com.interview.service.UserLlmConfigService;
 import com.interview.service.UserLlmModelFactory;
 import dev.langchain4j.data.message.AiMessage;
@@ -75,9 +74,6 @@ public class InterviewServiceImpl implements InterviewService {
     private InterviewTurnPlanner interviewTurnPlanner;
 
     @Autowired(required = false)
-    private UsageQuotaService usageQuotaService;
-
-    @Autowired(required = false)
     private com.interview.service.AppEventService appEventService;
 
     // ========== 业务方法 ==========
@@ -101,7 +97,6 @@ public class InterviewServiceImpl implements InterviewService {
     public Long startInterview(Long userId, String position, String mode, List<String> resumeQuestions,
                                String difficultyLevel, List<String> focusAreas) {
         userLlmConfigService.ensureActiveProvider(userId);
-        consumeQuota(userId, UsageQuotaService.INTERVIEW_START);
 
         InterviewRecord record = new InterviewRecord();
         record.setUserId(userId);
@@ -126,13 +121,6 @@ public class InterviewServiceImpl implements InterviewService {
     @Override
     public SseEmitter chatStream(Long userId, Long recordId, String message) {
         SseEmitter emitter = new SseEmitter(0L);
-
-        try {
-            consumeQuota(userId, UsageQuotaService.AI_CHAT_TURN);
-        } catch (RuntimeException e) {
-            sendSseError(emitter, e.getMessage());
-            return emitter;
-        }
 
         InterviewRecord record;
         try {
@@ -507,12 +495,6 @@ public class InterviewServiceImpl implements InterviewService {
             emitter.send(JSON.toJSONString(Map.of("error", message)));
             emitter.complete();
         } catch (IOException ignored) {
-        }
-    }
-
-    private void consumeQuota(Long userId, String quotaType) {
-        if (usageQuotaService != null) {
-            usageQuotaService.consume(userId, quotaType);
         }
     }
 

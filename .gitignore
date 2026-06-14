@@ -167,3 +167,6 @@ backend/mvn_result.txt
 
 # Workflow
 /docs/generic-agent-workflow
+
+# Uploaded question bank
+/knowledge_storage/

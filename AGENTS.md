@@ -4,15 +4,6 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 
 默认使用中文回答。除非用户明确要求英文，所有计划、风险、验证结果和总结都用中文说明。
 
-## 先判断工作模式
-
-- 修改代码前，必须先执行 `git status --short --branch`。
-
-如果用户明确提到“多 Agent”或“按工作流开发”：
-
-- 除了当前规范文件，同时也读 `docs/agents/controller-runtime.md`；再输出任务等级、调度模式、任务拆分、ownership、分支/worktree 映射和验证计划。只有需要角色细则、状态机、清理流程或模板细节时，再阅读 `docs/agents/workflow.md`。
-- 多 Agent 提示词模板： `docs/agents/templates/*.md`
-
 ## 项目结构
 
 ```text
@@ -48,12 +39,14 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 
 ## 硬性规则
 
+- 开发优先采用tdd方式进行开发。
 - 保护用户和其他 Agent 的未提交改动；不要回滚不是自己造成的改动。
 - 不提交 `.env`、`application-local.yml`、密钥文件、私有部署文件、私有题库、临时导入包或本地视频产物。
 - 不在日志或文档中暴露完整 API Key、access token、refresh token、密码或敏感请求头。
 - 修改配置文件、认证授权、部署文件、数据库 migration 前，必须说明影响范围。
 - 不使用 `git reset --hard`、`git checkout --` 等破坏性命令，除非用户明确要求。
 - 完成 feature、bugfix、refactor、deployment 或用户可见代码变更后，按 `post-delivery-analysis` skill 自动输出交付后分析和下一步建议；不得自动执行下一步建议，必须等待用户明确指令。
+- 在功能开发基本完善后，在交付或像用户说明汇报前，调度一个或多个subagent进行代码审查、功能自测等等。汇总他们的输出，如果发现有明显bug，修复完善后再交付给用户。如此流程可进行多轮循环，直至无明显bug。
 
 ## 基础工作流
 
@@ -68,6 +61,7 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 - 新增接口时，保持与现有 REST API 风格一致。
 - 不要在 Controller 中写复杂业务逻辑。
 - 不要在 Service 中直接拼接复杂 SQL。
+- Service 中逻辑编写
 - 涉及事务时，优先在 Service 层使用 `@Transactional`。
 - 涉及认证授权时，必须检查 Spring Security / JWT / 拦截器相关逻辑。
 - 不要随意修改 `application.yml`、`SecurityConfig`、`WebMvcConfig` 等全局配置；确需修改时先说明影响范围。

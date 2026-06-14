@@ -114,7 +114,7 @@
           <div>
             <p class="section-kicker">Operations</p>
             <h2 class="section-title">运营入口</h2>
-            <p class="section-desc">仅管理员账号可见，用于查看访问统计、用户反馈、额度保护与管理员角色。</p>
+            <p class="section-desc">仅管理员账号可见，用于查看访问统计、用户反馈与管理员角色。</p>
           </div>
           <el-button type="primary" :icon="DataAnalysis" @click="router.push('/admin/analytics')">
             打开统计

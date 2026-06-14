@@ -1,6 +1,5 @@
 package com.interview.dto;
 
-import com.interview.entity.UserDailyUsage;
 import com.interview.entity.UserFeedback;
 import lombok.Data;
 
@@ -25,6 +24,5 @@ public class AnalyticsSummaryResponse {
     private Double interviewCompletionRate;
     private List<Map<String, Object>> dailyEvents = new ArrayList<>();
     private List<Map<String, Object>> topPaths = new ArrayList<>();
-    private List<UserDailyUsage> todayQuotaUsage = new ArrayList<>();
     private List<UserFeedback> latestFeedback = new ArrayList<>();
 }

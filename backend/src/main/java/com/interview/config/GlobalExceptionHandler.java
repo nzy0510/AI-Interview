@@ -2,7 +2,6 @@ package com.interview.config;
 
 import com.interview.common.Result;
 import com.interview.exception.LlmProviderRequiredException;
-import com.interview.exception.QuotaExceededException;
 import com.interview.exception.RateLimitExceededException;
 import com.interview.service.AppEventService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,14 +28,6 @@ public class GlobalExceptionHandler {
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setHeader("Retry-After", String.valueOf(e.getRetryAfterSeconds()));
         recordException(request, "RATE_LIMIT", e.getMessage());
-        return Result.error(429, e.getMessage());
-    }
-
-    @ExceptionHandler(QuotaExceededException.class)
-    public Result<String> handleQuotaExceeded(QuotaExceededException e, HttpServletResponse response,
-                                              HttpServletRequest request) {
-        response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-        recordException(request, "QUOTA_EXCEEDED", e.getMessage());
         return Result.error(429, e.getMessage());
     }
 

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Interview Question Bank"
-  short_description: "Generate and review AI Interview question-bank import packages."
-  default_prompt: "Prepare and review a question-bank import package from source documents or JSON atoms for publication through the developer admin panel."

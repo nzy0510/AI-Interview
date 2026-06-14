@@ -46,10 +46,6 @@
               <strong>{{ modeLabel }}</strong>
             </div>
             <div class="meta-chip">
-              <span class="meta-label">今日面试额度</span>
-              <strong>{{ interviewQuotaText }}</strong>
-            </div>
-            <div class="meta-chip">
               <span class="meta-label">大模型状态</span>
               <strong>{{ llmStatusText }}</strong>
             </div>
@@ -244,7 +240,6 @@ import { ElMessage } from 'element-plus'
 import { getLlmConfigStatusAPI } from '@/api/llm'
 import { interviewSetupDefaults, buildSetupSnapshot } from '@/mock/setup'
 import { getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
-import { getMyQuotaAPI } from '@/api/analytics'
 import { getToken, userKey, withAuthHeaders } from '@/utils/auth'
 import {
   buildLlmConfigRouteQuery,
@@ -264,7 +259,6 @@ const role = ref('')
 const experienceLevel = ref('mid')
 const focusAreas = ref([])
 const mode = ref('text')
-const quotaItems = ref([])
 const llmStatus = ref(createUnknownLlmConfigStatus())
 
 const clearResumeState = () => {
@@ -300,12 +294,6 @@ const resumeSnapshot = computed(() => buildSetupSnapshot(resumeAnalysis.value, h
 
 const modeLabel = computed(() => {
   return setupDefaults.modeOptions.find((item) => item.value === mode.value)?.title || '文字面试'
-})
-
-const interviewQuotaText = computed(() => {
-  const item = quotaItems.value.find((q) => q.quotaType === 'interview_start')
-  if (!item) return '加载中'
-  return `${item.remaining}/${item.limit}`
 })
 
 const showLlmConfigPrompt = computed(() => llmStatus.value.resolved && !llmStatus.value.hasActiveConfig)
@@ -377,15 +365,6 @@ const loadPreference = async () => {
   } catch { /* preference load optional */ }
 }
 
-const loadQuota = async () => {
-  try {
-    const data = await getMyQuotaAPI()
-    quotaItems.value = data?.items || []
-  } catch {
-    quotaItems.value = []
-  }
-}
-
 const loadLlmStatus = async () => {
   try {
     const data = await getLlmConfigStatusAPI({ silent: true })
@@ -411,7 +390,6 @@ const autoSavePreference = () => {
 onMounted(async () => {
   await loadResumeProfile()
   await loadPreference()
-  await loadQuota()
   await loadLlmStatus()
   syncFromQuery()
 })

@@ -1,7 +1,6 @@
 package com.interview.controller;
 
 import com.interview.service.ResumeService;
-import com.interview.service.UsageQuotaService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -19,13 +18,11 @@ import static org.mockito.Mockito.verify;
 class ResumeControllerSecurityTest {
 
     @Test
-    @DisplayName("拒绝非 PDF 简历上传且不消耗额度")
-    void shouldRejectNonPdfResumeUploadBeforeQuotaAndParsing() throws Exception {
+    @DisplayName("拒绝非 PDF 简历上传且不进入解析")
+    void shouldRejectNonPdfResumeUploadBeforeParsing() throws Exception {
         ResumeController controller = new ResumeController();
         ResumeService resumeService = mock(ResumeService.class);
-        UsageQuotaService usageQuotaService = mock(UsageQuotaService.class);
         ReflectionTestUtils.setField(controller, "resumeService", resumeService);
-        ReflectionTestUtils.setField(controller, "usageQuotaService", usageQuotaService);
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "resume.txt", "text/plain", "not a pdf".getBytes());
@@ -36,18 +33,15 @@ class ResumeControllerSecurityTest {
 
         assertThat(result.getCode()).isEqualTo(400);
         assertThat(result.getMsg()).contains("PDF");
-        verify(usageQuotaService, never()).consume(7L, UsageQuotaService.RESUME_PARSE);
         verify(resumeService, never()).parseAndAnalyze(anyLong(), eq(file));
     }
 
     @Test
-    @DisplayName("拒绝超过大小限制的简历上传且不消耗额度")
-    void shouldRejectOversizedResumeUploadBeforeQuotaAndParsing() throws Exception {
+    @DisplayName("拒绝超过大小限制的简历上传且不进入解析")
+    void shouldRejectOversizedResumeUploadBeforeParsing() throws Exception {
         ResumeController controller = new ResumeController();
         ResumeService resumeService = mock(ResumeService.class);
-        UsageQuotaService usageQuotaService = mock(UsageQuotaService.class);
         ReflectionTestUtils.setField(controller, "resumeService", resumeService);
-        ReflectionTestUtils.setField(controller, "usageQuotaService", usageQuotaService);
 
         byte[] content = new byte[6 * 1024 * 1024];
         content[0] = '%';
@@ -63,7 +57,6 @@ class ResumeControllerSecurityTest {
 
         assertThat(result.getCode()).isEqualTo(400);
         assertThat(result.getMsg()).contains("不能超过");
-        verify(usageQuotaService, never()).consume(7L, UsageQuotaService.RESUME_PARSE);
         verify(resumeService, never()).parseAndAnalyze(anyLong(), eq(file));
     }
 }

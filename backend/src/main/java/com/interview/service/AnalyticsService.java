@@ -2,32 +2,23 @@ package com.interview.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.interview.dto.AnalyticsSummaryResponse;
-import com.interview.entity.UserDailyUsage;
 import com.interview.entity.UserFeedback;
 import com.interview.mapper.AppEventLogMapper;
-import com.interview.mapper.UserDailyUsageMapper;
 import com.interview.mapper.UserFeedbackMapper;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
 @Service
 public class AnalyticsService {
 
-    private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
-
     private final AppEventLogMapper eventLogMapper;
-    private final UserDailyUsageMapper usageMapper;
     private final UserFeedbackMapper feedbackMapper;
 
     public AnalyticsService(AppEventLogMapper eventLogMapper,
-                            UserDailyUsageMapper usageMapper,
                             UserFeedbackMapper feedbackMapper) {
         this.eventLogMapper = eventLogMapper;
-        this.usageMapper = usageMapper;
         this.feedbackMapper = feedbackMapper;
     }
 
@@ -55,7 +46,6 @@ public class AnalyticsService {
 
         response.setDailyEvents(eventLogMapper.selectDailyEventCounts(safeDays));
         response.setTopPaths(eventLogMapper.selectTopPaths(safeDays));
-        response.setTodayQuotaUsage(usageMapper.selectUsageSnapshot(LocalDate.now(ZONE), 200));
         response.setLatestFeedback(latestFeedback());
         return response;
     }
