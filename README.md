@@ -14,6 +14,45 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 - 可评测的 RAG 链路：内置离线检索评测工具链，固定 AI 大模型岗位评测集，支持比较 embedding、候选集大小和 rerank 效果。
 - 稳定性与运营观测：内置访问事件、限流、反馈记录、RAG 请求级日志和 Qdrant 失败降级路径。
 
+## 技术栈
+
+### 后端
+
+| 技术 | 版本 / 说明 |
+| --- | --- |
+| Java | 17 |
+| Spring Boot | 3.2.4 |
+| MyBatis-Plus | 3.5.5 |
+| LangChain4j | 0.29.1 |
+| MySQL | 8.0 |
+| Redis | 7 |
+| Qdrant | 向量检索 |
+| Flyway | 9.22.3 |
+| PDFBox | 简历 PDF 解析 |
+| OpenAI-compatible Chat API | 用户自配 DeepSeek / Kimi / GLM / Qwen / 自定义兼容模型 |
+| multilingual-e5-base | Docker 默认 embedding 模型 |
+
+### 前端
+
+| 技术 | 版本 / 说明 |
+| --- | --- |
+| Vue | 3.5 |
+| Vite | 7 |
+| Element Plus | 2.13 |
+| Axios | HTTP 客户端 |
+| ECharts | 图表与词云 |
+| face-api.js | 视频面试情绪分析辅助 |
+| Web Speech API | 浏览器语音能力 |
+
+
+### 基础设施
+
+| 组件 | 用途 |
+| --- | --- |
+| Docker Compose | 本地与云端多容器编排 |
+| embedding-service | FastAPI 向量服务 |
+| Caddy | 生产 HTTPS 入口 |
+
 ## 效果展示
 
 ### 工作台与准备流程
@@ -35,6 +74,10 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 ![历史报告页](image/展示图/历史报告页.png)
 
 ![AI Mentor 分析页](<image/展示图/ai mentor分析页.png>)
+
+### 岗位/题库维护
+
+![岗位/题库维护页](image/展示图/岗位，题库维护页.png)
 
 ### 偏好设置、大模型配置与题库工作台
 
@@ -69,6 +112,47 @@ graph LR
 - embedding-service 只负责文本向量化，默认输出 768 维 multilingual-e5 向量。
 - 前端不直接访问数据库、Redis 或 Qdrant，所有维护动作走后端 API 与用户 ownership / `ADMIN` 角色校验。
 
+## 项目结构
+
+```text
+.
+├── backend/                         # Spring Boot 后端
+│   ├── src/main/java/com/interview/
+│   │   ├── controller/              # REST API
+│   │   ├── service/                 # 面试、简历、Mentor、RAG、题库服务
+│   │   ├── entity/                  # MySQL 实体
+│   │   └── config/                  # LLM、Redis、Embedding、JWT 等配置
+│   └── src/main/resources/db/migration/
+├── frontend/                        # Vue 3 前端
+│   └── src/views/                   # 工作台、准备页、面试页、历史、Mentor、设置
+├── embedding-service/               # FastAPI multilingual-e5 向量服务
+├── scripts/question_bank_import.py  # 本机题库导入包生成脚本
+├── skills/interview-question-bank/  # 本机题库维护 skill
+├── docs/superpowers/                # 重要实现计划与设计记录
+├── image                            # 系统架构图与 RAG 流程图
+├── docker-compose.example.yml       # 本地 Compose 模板
+├── docker-compose.prod.yml          # 生产 Compose
+├── CONTEXT.md                       # 领域语言与边界
+└── CHANGELOG.md                     # 更新日志
+```
+
+## 当前功能
+
+### 面试训练
+
+- 文字面试：SSE 流式生成，按面试阶段推进，支持技术追问、HR 软技能阶段和结束总结。
+- 视频面试：摄像头与语音交互入口，结合浏览器能力进行更接近真实场景的训练。
+- 大模型配置：用户可以在侧边栏配置自己的大模型 Provider，并用加密保存的 API Key 驱动面试、报告和 AI Mentor 等用户侧 LLM 功能。
+- 岗位/题库维护：用户可以创建私有岗位，导入结构化题库包，并在发布后用于面试 RAG。
+- 面试准备：选择岗位、难度、重点方向和简历信息，为后续追问提供上下文。
+- 历史报告：保存面试记录、评分、反馈和复盘建议。
+
+### 简历与 Mentor
+
+- 简历画像：解析 PDF 简历并生成结构化画像。
+- AI Mentor：基于历史面试、知识覆盖率和风险点给出训练建议。
+- 知识覆盖：以已发布题库 Atom 为分母，以实际进入面试上下文的 Atom 为分子，避免只统计“看似召回”的候选。
+
 ## 动态 RAG 链路
 
 ![InterWise RAG 流程图](image/架构图/InterWise-RAG流程图.png)
@@ -92,23 +176,6 @@ graph TD
 
 召回结果不会直接拼成“参考答案”，而是影响 AI 面试官下一轮追问方式。系统会记录候选 Atom、实际进入上下文的 Atom、零命中、失败原因和检索策略，便于后续人工评测与 rerank 验证。
 
-## 当前功能
-
-### 面试训练
-
-- 文字面试：SSE 流式生成，按面试阶段推进，支持技术追问、HR 软技能阶段和结束总结。
-- 视频面试：摄像头与语音交互入口，结合浏览器能力进行更接近真实场景的训练。
-- 大模型配置：用户可以在侧边栏配置自己的大模型 Provider，并用加密保存的 API Key 驱动面试、报告和 AI Mentor 等用户侧 LLM 功能。
-- 岗位/题库维护：用户可以创建私有岗位，导入结构化题库包，并在发布后用于面试 RAG。
-- 面试准备：选择岗位、难度、重点方向和简历信息，为后续追问提供上下文。
-- 历史报告：保存面试记录、评分、反馈和复盘建议。
-
-### 简历与 Mentor
-
-- 简历画像：解析 PDF 简历并生成结构化画像。
-- AI Mentor：基于历史面试、知识覆盖率和风险点给出训练建议。
-- 知识覆盖：以已发布题库 Atom 为分母，以实际进入面试上下文的 Atom 为分子，避免只统计“看似召回”的候选。
-
 ### 题库与 RAG
 
 - 知识库 / 题库工作台：用户可以查看公共 starter 岗位，创建私有岗位，导入结构化 JSON 题库包，并维护知识原子草稿、发布状态和索引状态。
@@ -117,43 +184,11 @@ graph TD
 - 离线评测：`scripts/retrieval_eval` 支持导出、构建候选池、预标注、计算指标和 rerank 对比。
 - 内置基础题库：仓库随代码内置可运行公共 starter 题库，覆盖 Java 后端、Web 前端、AI 大模型应用等方向；本地首次空库启动会自动导入 `backend/src/main/resources/knowledge_base/atoms/**/*.json` 并建立 Qdrant 索引。用户私有题库保存在自己的 MySQL/Qdrant 数据中，不会提交到 Git 或同步到其他部署。
 
-## 技术栈
+### 题库维护
 
-### 后端
+仓库内置公共 starter 题库，用于空库首次初始化。用户自有题库的主路径是：先在本机使用 `interview-question-bank` skill 或 `scripts/question_bank_import.py` 生成结构化 JSON 导入包，再进入“知识库 / 题库”工作台导入为草稿，人工审查后显式发布并重建索引。
 
-| 技术 | 版本 / 说明 |
-| --- | --- |
-| Java | 17 |
-| Spring Boot | 3.2.4 |
-| MyBatis-Plus | 3.5.5 |
-| LangChain4j | 0.29.1 |
-| MySQL | 8.0 |
-| Redis | 7 |
-| Qdrant | 向量检索 |
-| Flyway | 9.22.3 |
-| PDFBox | 简历 PDF 解析 |
-| OpenAI-compatible Chat API | 用户自配 DeepSeek / Kimi / GLM / Qwen / 自定义兼容模型 |
-| multilingual-e5-base | Docker 默认 embedding 模型 |
-
-### 前端
-
-| 技术 | 版本 / 说明 |
-| --- | --- |
-| Vue | 3.5 |
-| Vite | 7 |
-| Element Plus | 2.13 |
-| Axios | HTTP 客户端 |
-| ECharts | 图表与词云 |
-| face-api.js | 视频面试情绪分析辅助 |
-| Web Speech API | 浏览器语音能力 |
-
-### 基础设施
-
-| 组件 | 用途 |
-| --- | --- |
-| Docker Compose | 本地与云端多容器编排 |
-| embedding-service | FastAPI 向量服务 |
-| Caddy | 生产 HTTPS 入口 |
+用户私有题库只保存在当前部署的 MySQL/Qdrant 数据中，不会提交到 Git，也不会同步到其他部署。
 
 ## 快速启动(本地部署)
 
@@ -209,12 +244,6 @@ docker compose up -d --build
 
 首次构建 embedding-service 会下载 PyTorch、sentence-transformers 和 multilingual-e5 模型，耗时取决于网络质量。若切换过 embedding 模型或 Qdrant collection，启动后需要通过知识库 / 题库维护流程重建索引。
 
-### 题库维护
-
-仓库内置公共 starter 题库，用于空库首次初始化。用户自有题库的主路径是：先在本机使用 `interview-question-bank` skill 或 `scripts/question_bank_import.py` 生成结构化 JSON 导入包，再进入“知识库 / 题库”工作台导入为草稿，人工审查后显式发布并重建索引。
-
-用户私有题库只保存在当前部署的 MySQL/Qdrant 数据中，不会提交到 Git，也不会同步到其他部署。
-
 ### RAG 评测工具
 
 ```powershell
@@ -235,30 +264,6 @@ backend/src/test/resources/retrieval-eval/
 
 原始导出和未审核候选池默认写入 `output/retrieval-eval/`，不提交到 Git。
 
-## 项目结构
-
-```text
-.
-├── backend/                         # Spring Boot 后端
-│   ├── src/main/java/com/interview/
-│   │   ├── controller/              # REST API
-│   │   ├── service/                 # 面试、简历、Mentor、RAG、题库服务
-│   │   ├── entity/                  # MySQL 实体
-│   │   └── config/                  # LLM、Redis、Embedding、JWT 等配置
-│   └── src/main/resources/db/migration/
-├── frontend/                        # Vue 3 前端
-│   └── src/views/                   # 工作台、准备页、面试页、历史、Mentor、设置
-├── embedding-service/               # FastAPI multilingual-e5 向量服务
-├── scripts/question_bank_import.py  # 本机题库导入包生成脚本
-├── skills/interview-question-bank/  # 本机题库维护 skill
-├── docs/superpowers/                # 重要实现计划与设计记录
-├── image                            # 系统架构图与 RAG 流程图
-├── docker-compose.example.yml       # 本地 Compose 模板
-├── docker-compose.prod.yml          # 生产 Compose
-├── CONTEXT.md                       # 领域语言与边界
-└── CHANGELOG.md                     # 更新日志
-```
-
 ## 本地开发验证
 
 ```powershell
@@ -276,15 +281,10 @@ npx vitest run
 python -m unittest discover -s tests
 ```
 
-## 后续计划
-
-后续推进见 [用户自有题库后续优化](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-followups.zh.md)。
-
 ## 相关文档
 
 - [领域上下文](CONTEXT.md)
-- [用户自有题库、RAG 与报告重构设计](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-design.zh.md)
-- [用户自有题库后续优化](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-followups.zh.md)
+- [后续优化计划](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-followups.zh.md)
 - [RAG 检索评测设计](docs/superpowers/specs/2026-06-03-rag-retrieval-evaluation-design.md)
 - [RAG 链路总结](docs/rag-chain-summary.md)
 
