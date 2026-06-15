@@ -13,7 +13,6 @@ public class AppJobResponse {
     private Long ownerUserId;
     private Long positionId;
     private Long knowledgeBaseId;
-    private Long sourceFileId;
     private Long recordId;
     private String status;
     private String stage;
@@ -34,7 +33,6 @@ public class AppJobResponse {
         response.setOwnerUserId(job.getOwnerUserId());
         response.setPositionId(job.getPositionId());
         response.setKnowledgeBaseId(job.getKnowledgeBaseId());
-        response.setSourceFileId(job.getSourceFileId());
         response.setRecordId(job.getRecordId());
         response.setStatus(job.getStatus());
         response.setStage(job.getStage());

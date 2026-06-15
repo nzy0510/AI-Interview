@@ -7,7 +7,6 @@ import com.interview.entity.InterviewPosition;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeAtomVersion;
 import com.interview.entity.KnowledgeBase;
-import com.interview.entity.KnowledgeSourceFile;
 import com.interview.dto.questionbank.QuestionBankAtomListItem;
 import com.interview.dto.questionbank.QuestionBankAtomQueryRequest;
 import com.interview.dto.questionbank.QuestionBankBulkAtomRequest;
@@ -21,7 +20,6 @@ import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeAtomReviewMapper;
 import com.interview.mapper.KnowledgeAtomVersionMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
-import com.interview.mapper.KnowledgeSourceFileMapper;
 import com.interview.service.AdminRoleService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,7 +48,6 @@ public class KnowledgeWorkspaceService {
     private final KnowledgeAtomMapper atomMapper;
     private final KnowledgeAtomVersionMapper versionMapper;
     private final KnowledgeAtomReviewMapper reviewMapper;
-    private final KnowledgeSourceFileMapper sourceFileMapper;
     private final AppJobMapper appJobMapper;
     private final AdminRoleService adminRoleService;
     private final QuestionBankService questionBankService;
@@ -61,7 +58,6 @@ public class KnowledgeWorkspaceService {
                                      KnowledgeAtomMapper atomMapper,
                                      KnowledgeAtomVersionMapper versionMapper,
                                      KnowledgeAtomReviewMapper reviewMapper,
-                                     KnowledgeSourceFileMapper sourceFileMapper,
                                      AppJobMapper appJobMapper,
                                      AdminRoleService adminRoleService,
                                      QuestionBankService questionBankService,
@@ -71,7 +67,6 @@ public class KnowledgeWorkspaceService {
         this.atomMapper = atomMapper;
         this.versionMapper = versionMapper;
         this.reviewMapper = reviewMapper;
-        this.sourceFileMapper = sourceFileMapper;
         this.appJobMapper = appJobMapper;
         this.adminRoleService = adminRoleService;
         this.questionBankService = questionBankService;
@@ -188,7 +183,6 @@ public class KnowledgeWorkspaceService {
             versionMapper.delete(new QueryWrapper<KnowledgeAtomVersion>().in("atom_id", allAtomIds));
             atomMapper.delete(new QueryWrapper<KnowledgeAtom>().eq("position_id", positionId));
         }
-        sourceFileMapper.delete(new QueryWrapper<KnowledgeSourceFile>().eq("position_id", positionId));
         appJobMapper.delete(new QueryWrapper<AppJob>().eq("position_id", positionId));
         knowledgeBaseMapper.delete(new QueryWrapper<KnowledgeBase>().eq("position_id", positionId));
         positionMapper.deleteById(positionId);

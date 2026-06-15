@@ -12,7 +12,6 @@ import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeAtomReviewMapper;
 import com.interview.mapper.KnowledgeAtomVersionMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
-import com.interview.mapper.KnowledgeSourceFileMapper;
 import com.interview.service.AdminRoleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +37,6 @@ class KnowledgeWorkspaceServiceTest {
     private KnowledgeAtomMapper atomMapper;
     private KnowledgeAtomVersionMapper versionMapper;
     private KnowledgeAtomReviewMapper reviewMapper;
-    private KnowledgeSourceFileMapper sourceFileMapper;
     private AppJobMapper appJobMapper;
     private AdminRoleService adminRoleService;
     private QuestionBankService questionBankService;
@@ -52,13 +50,12 @@ class KnowledgeWorkspaceServiceTest {
         atomMapper = mock(KnowledgeAtomMapper.class);
         versionMapper = mock(KnowledgeAtomVersionMapper.class);
         reviewMapper = mock(KnowledgeAtomReviewMapper.class);
-        sourceFileMapper = mock(KnowledgeSourceFileMapper.class);
         appJobMapper = mock(AppJobMapper.class);
         adminRoleService = mock(AdminRoleService.class);
         questionBankService = mock(QuestionBankService.class);
         qdrantVectorService = mock(QdrantVectorService.class);
         service = new KnowledgeWorkspaceService(positionMapper, knowledgeBaseMapper,
-                atomMapper, versionMapper, reviewMapper, sourceFileMapper,
+                atomMapper, versionMapper, reviewMapper,
                 appJobMapper, adminRoleService, questionBankService, qdrantVectorService);
     }
 

@@ -173,8 +173,6 @@ jwt:
 # 访问统计、限流与应用治理
 app:
   upload-dir: ${APP_UPLOAD_DIR:uploads}
-  knowledge-storage:
-    root: ${APP_KNOWLEDGE_STORAGE_ROOT:knowledge-storage}
   analytics:
     hash-salt: ${APP_ANALYTICS_HASH_SALT:interwise-dev-hash-salt}
   rate-limit:

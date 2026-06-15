@@ -33,15 +33,15 @@ class DeploymentConfigurationContractTest {
     }
 
     @Test
-    @DisplayName("keeps Nginx upload body limits compatible with knowledge files")
-    void shouldKeepNginxUploadLimitCompatibleWithKnowledgeFiles() throws IOException {
+    @DisplayName("keeps Nginx upload body limits compatible with application uploads")
+    void shouldKeepNginxUploadLimitCompatibleWithApplicationUploads() throws IOException {
         assertNginxUploadLimit(Path.of("..", "frontend", "nginx.conf"));
         assertNginxUploadLimit(Path.of("..", "frontend", "nginx.local.conf"));
     }
 
     @Test
-    @DisplayName("keeps Spring multipart limits compatible with knowledge files")
-    void shouldKeepSpringMultipartLimitCompatibleWithKnowledgeFiles() throws IOException {
+    @DisplayName("keeps Spring multipart limits compatible with application uploads")
+    void shouldKeepSpringMultipartLimitCompatibleWithApplicationUploads() throws IOException {
         assertSpringMultipartLimit(Path.of("src", "main", "resources", "application.yml"));
         assertSpringMultipartLimit(Path.of("src", "main", "resources", "application.yml.example"));
     }

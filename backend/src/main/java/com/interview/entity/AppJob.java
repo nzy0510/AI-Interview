@@ -18,7 +18,6 @@ public class AppJob {
     private Long ownerUserId;
     private Long positionId;
     private Long knowledgeBaseId;
-    private Long sourceFileId;
     private Long recordId;
     private String status;
     private String stage;

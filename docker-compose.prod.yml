@@ -110,7 +110,6 @@ services:
       APP_EMBEDDING_PASSAGE_PREFIX: "${APP_EMBEDDING_PASSAGE_PREFIX:-passage:}"
       APP_EMBEDDING_CONNECT_TIMEOUT_MS: ${APP_EMBEDDING_CONNECT_TIMEOUT_MS:-3000}
       APP_EMBEDDING_READ_TIMEOUT_MS: ${APP_EMBEDDING_READ_TIMEOUT_MS:-10000}
-      APP_KNOWLEDGE_STORAGE_ROOT: /app/knowledge-storage
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_USERNAME: ${MAIL_USERNAME}
@@ -124,7 +123,6 @@ services:
       APP_DEVELOPER_EXEMPT_EMAILS: ${APP_DEVELOPER_EXEMPT_EMAILS:-}
     volumes:
       - ./uploads:/app/uploads
-      - ./knowledge_storage:/app/knowledge-storage
     networks:
       - interview-network
 

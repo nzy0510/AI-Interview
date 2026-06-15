@@ -117,12 +117,12 @@ _避免_：系统兜底 API Key、管理员代用户配置密钥。
 - 私有岗位没有已发布且索引成功的知识时，应阻止开始面试，而不是 MySQL fallback 或无题库面试。
 - 面试报告应保存快照；后续 atom 修改或归档不能改变历史报告。
 - 第一版不引入 RabbitMQ、Kafka 等外部消息队列；MySQL job 表和本地 `TaskExecutor` 是默认自部署友好的异步基础。
-- 第一版文件存储通过 `FileStorageService` 使用本地挂载路径；对象存储、外部 MQ、多知识库、标签级面试筛选属于后续扩展。
+- 第一版主应用不保存应用内知识源文件；对象存储、外部 MQ、多知识库、标签级面试筛选属于后续扩展。
 - 外部 MCP endpoint、MCP 用户 token、MCP 配额处理和 MCP 部署服务不属于当前 InterWise 产品边界。历史 MCP 表可作为只读归档记录存在。
 
 ## 当前决策来源
 
 - 2026-06-15 受控开放方向：题库生产回到本机题库维护 skill + 导入包，主应用负责私有导入、审查、发布和 RAG 使用；不再把应用内任意文档自动生成高质量原子作为默认路线。
-- [用户自有题库、RAG 与报告重构 Issue 拆分](docs/superpowers/plans/2026-06-13-user-owned-question-bank-rag-report-issues.md)
-- [用户自有题库后续优化](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-followups.md)
+- [用户自有题库、RAG 与报告重构 Issue 拆分](docs/superpowers/plans/2026-06-13-user-owned-question-bank-rag-report-issues.zh.md)
+- [用户自有题库后续优化](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-followups.zh.md)
 - [用户自有题库、RAG 与报告重构设计](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-design.zh.md)
