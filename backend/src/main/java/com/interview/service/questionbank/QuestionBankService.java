@@ -373,6 +373,19 @@ public class QuestionBankService {
                 "synced", synced, "failed", failed, "skipped", skipped);
     }
 
+    public Map<String, Integer> archiveAll(QuestionBankImportScope scope) {
+        List<KnowledgeAtom> activeAtoms = atomMapper.selectList(
+                applyScope(new QueryWrapper<KnowledgeAtom>(), scope)
+                        .ne("status", STATUS_ARCHIVED));
+        if (activeAtoms.isEmpty()) {
+            return resultMap("matched", 0, "archived", 0, "deleted", 0, "skipped", 0);
+        }
+        List<String> atomIds = activeAtoms.stream()
+                .map(KnowledgeAtom::getAtomId)
+                .collect(Collectors.toList());
+        return archiveAtoms(atomIds, scope);
+    }
+
     public Map<String, Integer> archiveBatch(String batchId) {
         return archiveAtoms(batchAtomIds(batchId, true));
     }

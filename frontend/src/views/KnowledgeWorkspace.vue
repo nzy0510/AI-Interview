@@ -190,6 +190,15 @@
               <el-button
                 type="danger"
                 plain
+                :loading="packageAtomActionLoading === 'archiveAll'"
+                :disabled="!canArchivePackageAtoms || !packageAtomPage.total"
+                @click="archiveAllAtoms"
+              >
+                一键归档全部
+              </el-button>
+              <el-button
+                type="danger"
+                plain
                 :loading="packageAtomActionLoading === 'archive'"
                 :disabled="!canArchivePackageAtoms || !selectedPackageAtomIds.length"
                 @click="archiveSelectedPackageAtoms"
@@ -274,6 +283,7 @@ import { useRouter } from 'vue-router'
 import { ArrowLeft, Delete, Plus, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
+  archiveAllAtomsAPI,
   archiveKnowledgeBaseAtomsAPI,
   deletePrivatePositionAPI,
   createPrivatePositionAPI,
@@ -507,6 +517,31 @@ const reindexSelectedPackageAtoms = async () => {
     const result = await reindexKnowledgeBaseAtomsAPI(activeKnowledgeBaseId.value, selectedPackageAtomIds.value)
     ElMessage.success(`重建索引完成：成功 ${result?.synced || 0} 条，失败 ${result?.failed || 0} 条`)
   })
+}
+
+const archiveAllAtoms = async () => {
+  if (!activeKnowledgeBaseId.value) return
+  try {
+    await ElMessageBox.confirm(
+      '确认归档当前知识库内所有原子？已归档的原子将被跳过，已发布的原子会从 Qdrant 中删除。',
+      '一键归档全部',
+      {
+        confirmButtonText: '确认归档',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+  } catch {
+    return
+  }
+  packageAtomActionLoading.value = 'archiveAll'
+  try {
+    const result = await archiveAllAtomsAPI(activeKnowledgeBaseId.value)
+    ElMessage.success(`已归档 ${result?.archived || 0} 条，向量删除 ${result?.deleted || 0} 条`)
+    await loadPackageAtoms()
+  } finally {
+    packageAtomActionLoading.value = ''
+  }
 }
 
 const archiveSelectedPackageAtoms = async () => {

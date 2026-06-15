@@ -137,8 +137,8 @@ import {
   getPreferenceAPI,
   updatePreferenceAPI
 } from '@/api/user'
+import { getKnowledgeWorkspaceAPI } from '@/api/knowledgeWorkspace'
 import { logout, withAuthHeaders } from '@/utils/auth'
-import { interviewSetupDefaults } from '@/mock/setup'
 
 const router = useRouter()
 const savingProfile = ref(false)
@@ -146,7 +146,7 @@ const savingPref = ref(false)
 const changingPwd = ref(false)
 const isAdmin = ref(false)
 
-const roleOptions = interviewSetupDefaults.roleOptions
+const roleOptions = ref([])
 
 const profile = reactive({ username: '', nickname: '', email: '', avatar: '' })
 const passwordForm = reactive({ oldPassword: '', newPassword: '' })
@@ -169,10 +169,17 @@ const loadData = async () => {
     }
   } catch { /* defaults ok */ }
   try {
+    const workspace = await getKnowledgeWorkspaceAPI()
+    const positions = workspace?.positions || []
+    roleOptions.value = positions
+      .filter(p => p.status !== 'ARCHIVED' && p.name)
+      .map(p => p.name)
+  } catch { roleOptions.value = [] }
+  try {
     const p = await getPreferenceAPI()
     if (p) {
       pref.defaultMode = p.defaultMode || 'text'
-      pref.defaultRole = roleOptions.includes(p.defaultRole) ? p.defaultRole : ''
+      pref.defaultRole = roleOptions.value.includes(p.defaultRole) ? p.defaultRole : ''
       pref.difficultyLevel = p.difficultyLevel || 'mid'
     }
   } catch { /* defaults ok */ }

@@ -61,42 +61,43 @@ describe('buildHeatmapVisualMap', () => {
 describe('buildHeatmapData', () => {
   it('parses abilityJson and converts grades to numeric values', () => {
     const records = [
-      { createTime: '2025-01-01', abilityJson: '{"communication": "A", "algorithm": "B"}' },
-      { createTime: '2025-01-02', abilityJson: '{"communication": "C", "algorithm": "D"}' },
+      { createTime: '2025-01-01', abilityJson: '{"expression": "A", "problemSolving": "B"}' },
+      { createTime: '2025-01-02', abilityJson: '{"expression": "C", "problemSolving": "D"}' },
     ]
-    const dimKeys = ['communication', 'algorithm']
-    const dimLabels = ['沟通', '算法']
+    const dimKeys = ['problemSolving', 'expression']
+    const dimLabels = ['解题思路', '表达清晰']
 
     const result = buildHeatmapData(records, dimKeys, dimLabels)
 
     // 4 条数据 (2 records × 2 dimensions)，y 轴已反转
     expect(result.data.length).toBe(4)
-    // record 0: y=algorithm(B), y=communication(A)
-    expect(result.data[0]).toEqual([0, 0, 3, 'B'])
-    expect(result.data[1]).toEqual([0, 1, 4, 'A'])
-    // record 1: y=algorithm(D), y=communication(C)
-    expect(result.data[2]).toEqual([1, 0, 1, 'D'])
-    expect(result.data[3]).toEqual([1, 1, 2, 'C'])
+    // revKeys = ['expression', 'problemSolving']
+    // record 0: y=expression(A), y=problemSolving(B)
+    expect(result.data[0]).toEqual([0, 0, 4, 'A'])
+    expect(result.data[1]).toEqual([0, 1, 3, 'B'])
+    // record 1: y=expression(C), y=problemSolving(D)
+    expect(result.data[2]).toEqual([1, 0, 2, 'C'])
+    expect(result.data[3]).toEqual([1, 1, 1, 'D'])
   })
 
   it('returns empty array for empty records', () => {
-    const result = buildHeatmapData([], ['comm'], ['沟通'])
+    const result = buildHeatmapData([], ['expression'], ['表达清晰'])
     expect(result.data).toEqual([])
-    expect(result.yAxisData).toEqual(['沟通'])
+    expect(result.yAxisData).toEqual(['表达清晰'])
   })
 
   it('defaults to grade E (value 0) for missing abilities', () => {
     const records = [
-      { createTime: '2025-01-01', abilityJson: '{"communication": "A"}' },
+      { createTime: '2025-01-01', abilityJson: '{"expression": "A"}' },
     ]
-    const dimKeys = ['communication', 'algorithm']
-    const dimLabels = ['沟通', '算法']
+    const dimKeys = ['problemSolving', 'expression']
+    const dimLabels = ['解题思路', '表达清晰']
 
     const result = buildHeatmapData(records, dimKeys, dimLabels)
 
-    // revKeys = ['algorithm', 'communication']，先遍历 algorithm(E)，再 communication(A)
-    expect(result.data[0]).toEqual([0, 0, 0, 'E'])
-    expect(result.data[1]).toEqual([0, 1, 4, 'A'])
+    // revKeys = ['expression', 'problemSolving']，先遍历 expression(A)，再 problemSolving(E)
+    expect(result.data[0]).toEqual([0, 0, 4, 'A'])
+    expect(result.data[1]).toEqual([0, 1, 0, 'E'])
   })
 })
 

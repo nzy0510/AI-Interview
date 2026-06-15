@@ -150,6 +150,12 @@ public class KnowledgeWorkspaceService {
         return questionBankService.publishAllDrafts(scope);
     }
 
+    public Map<String, Integer> archiveAllAtoms(Long currentUserId, Long knowledgeBaseId) {
+        requireUser(currentUserId);
+        QuestionBankImportScope scope = importScopeFor(currentUserId, knowledgeBaseId);
+        return questionBankService.archiveAll(scope);
+    }
+
     @Transactional
     public void deletePrivatePosition(Long currentUserId, Long positionId) {
         requireUser(currentUserId);

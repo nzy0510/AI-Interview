@@ -83,6 +83,12 @@ public class KnowledgeWorkspaceController {
         return Result.success(workspaceService.archiveAtoms(currentUserId(request), knowledgeBaseId, body));
     }
 
+    @PostMapping("/knowledge-bases/{knowledgeBaseId}/atoms/archive-all")
+    public Result<Map<String, Integer>> archiveAllAtoms(@PathVariable Long knowledgeBaseId,
+                                                        HttpServletRequest request) {
+        return Result.success(workspaceService.archiveAllAtoms(currentUserId(request), knowledgeBaseId));
+    }
+
     @PostMapping("/knowledge-bases/{knowledgeBaseId}/atoms/publish")
     public Result<Map<String, Integer>> publishAtoms(@PathVariable Long knowledgeBaseId,
                                                      @RequestBody QuestionBankBulkAtomRequest body,

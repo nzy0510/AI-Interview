@@ -48,7 +48,8 @@ export function buildHeatmapData(records, dimKeys, dimLabels) {
   records.forEach((r, xIndex) => {
     const ab = normalizeAbility(r.abilityJson)
     revKeys.forEach((key, yIndex) => {
-      const grade = ab[key] || 'E'
+      const raw = ab[key] || 'E'
+      const grade = /^[A-E]$/.test(raw) ? raw : 'E'
       const val = GRADE_MAP[grade] ?? 0
       data.push([xIndex, yIndex, val, grade])
     })

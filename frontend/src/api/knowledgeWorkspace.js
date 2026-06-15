@@ -70,6 +70,13 @@ export const archiveKnowledgeBaseAtomsAPI = (knowledgeBaseId, atomIds) => {
   })
 }
 
+export const archiveAllAtomsAPI = (knowledgeBaseId) => {
+  return request({
+    url: `/knowledge-workspace/knowledge-bases/${knowledgeBaseId}/atoms/archive-all`,
+    method: 'post'
+  })
+}
+
 export const reindexKnowledgeBaseAtomsAPI = (knowledgeBaseId, atomIds) => {
   return request({
     url: `/knowledge-workspace/knowledge-bases/${knowledgeBaseId}/atoms/reindex`,

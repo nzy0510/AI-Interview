@@ -5,12 +5,17 @@ function formatWpm(wpm) {
 const INTERVIEW_CONTROL_MARKER_PATTERN = /\[(SWITCH_TO_HR|AUTO_FINISH|TERMINATE)\]/g
 
 const ABILITY_ALIASES = {
-  techDepth: ['techDepth', 'technicalDepth', 'tech', 'technical', 'projectDepth'],
-  breadth: ['breadth', 'knowledgeBreadth', 'coverage', 'knowledgeCoverage'],
-  problemSolving: ['problemSolving', 'problem', 'solution', 'algorithm', 'scenarioReasoning'],
-  expression: ['expression', 'communication', 'communicationAbility', 'clarity'],
-  logic: ['logic', 'logicalThinking', 'structure'],
-  adaptability: ['adaptability', 'resilience', 'pressure', 'stressResistance']
+  techDepth: ['techDepth', 'technicalDepth', 'tech', 'technical', 'projectDepth', '技术深度', '技术能力', '项目深挖'],
+  breadth: ['breadth', 'knowledgeBreadth', 'coverage', 'knowledgeCoverage', '知识广度', '知识面'],
+  problemSolving: ['problemSolving', 'problem', 'solution', 'algorithm', 'scenarioReasoning', '解题思路', '解题能力', '问题解决', '场景分析'],
+  expression: ['expression', 'communication', 'communicationAbility', 'clarity', '表达清晰', '沟通能力', '表达能力'],
+  logic: ['logic', 'logicalThinking', 'structure', '逻辑思维', '结构化', '逻辑'],
+  adaptability: ['adaptability', 'resilience', 'pressure', 'stressResistance', '应变能力', '抗压', '适应能力']
+}
+
+/** Normalize a key to lowercase without underscores, hyphens, or spaces for fuzzy matching. */
+function _cleanKey(key) {
+  return String(key).toLowerCase().replace(/[_\-\s]+/g, '')
 }
 
 export function stripInterviewControlMarkers(text) {
@@ -43,16 +48,28 @@ export function normalizeAbility(value) {
   const parsed = parseStructuredField(value, {})
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
 
+  // Build a fuzzy lookup: cleanKey → value for all parsed keys
+  const fuzzy = {}
+  for (const [key, val] of Object.entries(parsed)) {
+    fuzzy[_cleanKey(key)] = val
+  }
+
+  const GRADE_PATTERN = /^[A-E]$/
+
   const normalized = {}
   Object.entries(ABILITY_ALIASES).forEach(([targetKey, aliases]) => {
     for (const alias of aliases) {
-      if (parsed[alias]) {
-        normalized[targetKey] = parsed[alias]
+      const v = fuzzy[_cleanKey(alias)]
+      if (v !== undefined && v !== null) {
+        const cleaned = String(v).trim().toUpperCase()
+        if (GRADE_PATTERN.test(cleaned)) {
+          normalized[targetKey] = cleaned
+        }
         return
       }
     }
   })
-  return { ...parsed, ...normalized }
+  return normalized
 }
 
 function parseRecommendations(value) {
