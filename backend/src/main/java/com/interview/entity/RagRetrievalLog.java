@@ -25,6 +25,8 @@ public class RagRetrievalLog {
 
     private String position;
 
+    private Long positionId;
+
     private String retrievedAtomId;
 
     private String retrievedCategory;

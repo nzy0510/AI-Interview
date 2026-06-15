@@ -4,8 +4,10 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.interview.dto.MentorInsightResponse;
 import com.interview.dto.MentorInsightResponse.*;
+import com.interview.entity.InterviewPosition;
 import com.interview.entity.InterviewRecord;
 import com.interview.exception.LlmProviderRequiredException;
+import com.interview.mapper.InterviewPositionMapper;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
@@ -30,6 +32,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MentorService {
 
+    private static final String SCOPE_PUBLIC = "PUBLIC";
+    private static final String SCOPE_PRIVATE = "PRIVATE";
+    private static final String STATUS_ACTIVE = "ACTIVE";
+
     private static final java.util.regex.Pattern SENSITIVE_ERROR_PATTERN = java.util.regex.Pattern.compile(
             "(?i)(api[_-]?key|token|password|secret|authorization)\\s*([=:])\\s*([^\\s,;]+)|Bearer\\s+[A-Za-z0-9._\\-]+");
 
@@ -41,6 +47,9 @@ public class MentorService {
 
     @Autowired
     private KnowledgeAtomMapper atomMapper;
+
+    @Autowired
+    private InterviewPositionMapper positionMapper;
 
     @Autowired
     private UserLlmConfigService userLlmConfigService;
@@ -84,8 +93,8 @@ public class MentorService {
         // 构建报告
         MentorInsightResponse report = new MentorInsightResponse();
 
-        // 1. 知识领域覆盖（无需 LLM）
-        report.setKnowledgeCoverage(buildKnowledgeCoverage(userId));
+        // 1. 知识领域覆盖（无需 LLM，全局汇总）
+        report.setKnowledgeCoverage(buildKnowledgeCoverage(userId, null));
 
         // 2. 聚合面试历史
         List<InterviewRecord> history = getHistory(userId);
@@ -110,19 +119,30 @@ public class MentorService {
      * 仅获取知识覆盖数据（快速，无 LLM 调用）。
      */
     public MentorInsightResponse getKnowledgeCoverageOnly(Long userId) {
+        return getKnowledgeCoverageOnly(userId, null);
+    }
+
+    /**
+     * 仅获取知识覆盖数据，按 positionId 过滤（null 则不限制岗位）。
+     */
+    public MentorInsightResponse getKnowledgeCoverageOnly(Long userId, Long positionId) {
+        if (positionId != null) {
+            requireVisiblePosition(userId, positionId);
+        }
         MentorInsightResponse report = new MentorInsightResponse();
-        report.setKnowledgeCoverage(buildKnowledgeCoverage(userId));
+        report.setKnowledgeCoverage(buildKnowledgeCoverage(userId, positionId));
         report.setGeneratedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
         return report;
     }
 
-    private KnowledgeCoverage buildKnowledgeCoverage(Long userId) {
+    private KnowledgeCoverage buildKnowledgeCoverage(Long userId, Long positionId) {
         KnowledgeCoverage kc = new KnowledgeCoverage();
 
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.interview.entity.KnowledgeAtom> totalQuery =
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         totalQuery.select("category, COUNT(*) as total")
                 .eq("status", "PUBLISHED")
+                .eq(positionId != null, "position_id", positionId)
                 .groupBy("category");
         List<Map<String, Object>> totalRows = atomMapper.selectMaps(totalQuery);
 
@@ -132,6 +152,7 @@ public class MentorService {
         query.select("retrieved_category, COUNT(DISTINCT retrieved_atom_id) as cnt")
              .eq("user_id", userId)
              .eq("context_selected", true)
+             .eq(positionId != null, "position_id", positionId)
              .groupBy("retrieved_category");
         List<Map<String, Object>> coveredRows = ragLogMapper.selectMaps(query);
         Map<String, Integer> coveredByCategory = new HashMap<>();
@@ -175,6 +196,23 @@ public class MentorService {
 
     private double roundPercent(double value) {
         return Math.round(value * 10.0) / 10.0;
+    }
+
+    private void requireVisiblePosition(Long userId, Long positionId) {
+        if (userId == null) {
+            throw new RuntimeException("未登录：缺少用户身份");
+        }
+        InterviewPosition position = positionMapper.selectById(positionId);
+        boolean publicActive = position != null
+                && SCOPE_PUBLIC.equalsIgnoreCase(position.getScope())
+                && STATUS_ACTIVE.equalsIgnoreCase(position.getStatus());
+        boolean privateOwnerActive = position != null
+                && SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
+                && userId.equals(position.getOwnerUserId())
+                && STATUS_ACTIVE.equalsIgnoreCase(position.getStatus());
+        if (!publicActive && !privateOwnerActive) {
+            throw new RuntimeException("岗位不存在或无权访问");
+        }
     }
 
     private List<InterviewRecord> getHistory(Long userId) {

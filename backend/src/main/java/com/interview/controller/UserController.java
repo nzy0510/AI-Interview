@@ -83,12 +83,14 @@ public class UserController {
     }
 
     /**
-     * 知识覆盖统计（快速，仅查数据库，不调 LLM）
+     * 知识覆盖统计（快速，仅查数据库，不调 LLM）。
+     * 可选 positionId 参数按岗位过滤；不传则返回全局汇总。
      */
     @GetMapping("/knowledge-coverage")
-    public Result<MentorInsightResponse> knowledgeCoverage(HttpServletRequest request) {
+    public Result<MentorInsightResponse> knowledgeCoverage(HttpServletRequest request,
+                                                            @RequestParam(required = false) Long positionId) {
         Long userId = (Long) request.getAttribute("currentUserId");
-        MentorInsightResponse insight = mentorService.getKnowledgeCoverageOnly(userId);
+        MentorInsightResponse insight = mentorService.getKnowledgeCoverageOnly(userId, positionId);
         return Result.success(insight);
     }
 

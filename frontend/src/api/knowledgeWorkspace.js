@@ -84,3 +84,10 @@ export const reindexKnowledgeBaseAtomsAPI = (knowledgeBaseId, atomIds) => {
     data: { atomIds }
   })
 }
+
+export const getPositionCoverageAPI = (positionId) => {
+  return request({
+    url: `/knowledge-workspace/positions/${positionId}/coverage`,
+    method: 'get'
+  })
+}

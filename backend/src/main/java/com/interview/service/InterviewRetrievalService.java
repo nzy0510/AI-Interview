@@ -97,6 +97,7 @@ public class InterviewRetrievalService {
         String position = record.getPosition() != null ? record.getPosition() : "common";
         String query = buildQuery(chatHistory, message);
         SearchScope searchScope = resolveSearchScope(userId, record.getPositionId());
+        Long positionId = searchScope != null ? searchScope.positionId() : null;
         QuestionBankSearchRequest searchRequest = buildSearchRequest(position, query, message, usedAtomIds,
                 searchScope, nextPhase);
         String requestId = UUID.randomUUID().toString();
@@ -108,7 +109,7 @@ public class InterviewRetrievalService {
 
         if (searchRequest == null) {
             candidates = List.of();
-            insertRequestLog(requestId, userId, record.getId(), turnIndex, position, nextPhase,
+            insertRequestLog(requestId, userId, record.getId(), turnIndex, position, positionId, nextPhase,
                     queryText, requestedLimit, 0, "SKIPPED", 0L, "SUCCESS", null);
         } else {
             try {
@@ -116,7 +117,7 @@ public class InterviewRetrievalService {
                 candidates = response.getResults() != null ? response.getResults() : List.of();
                 long latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
                 boolean degraded = "MYSQL_FALLBACK_DEGRADED".equals(response.getStrategy());
-                insertRequestLog(requestId, userId, record.getId(), turnIndex, position, nextPhase,
+                insertRequestLog(requestId, userId, record.getId(), turnIndex, position, positionId, nextPhase,
                         queryText, requestedLimit, candidates.size(), response.getStrategy(), latencyMs,
                         degraded ? "DEGRADED" : "SUCCESS",
                         degraded ? "Qdrant unavailable; MySQL fallback used" : null);
@@ -128,14 +129,14 @@ public class InterviewRetrievalService {
                         Map.of("recordId", record.getId(), "position", position), false, sanitizedError);
                 candidates = List.of();
                 long latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
-                insertRequestLog(requestId, userId, record.getId(), turnIndex, position, nextPhase,
+                insertRequestLog(requestId, userId, record.getId(), turnIndex, position, positionId, nextPhase,
                         queryText, requestedLimit, 0, "FAILED", latencyMs, "FAILED", sanitizedError);
             }
         }
 
         RetrievalDecision decision = decide(message, chatHistory, candidates);
         TurnRetrieval retrieval = selectContext(candidates, decision);
-        insertHitLogs(requestId, userId, record.getId(), turnIndex, queryText, position,
+        insertHitLogs(requestId, userId, record.getId(), turnIndex, queryText, position, positionId,
                 candidates, retrieval.promptAtomIds());
         return retrieval;
     }
@@ -206,7 +207,7 @@ public class InterviewRetrievalService {
     }
 
     private void insertHitLogs(String requestId, Long userId, Long recordId, int turnIndex,
-                               String queryText, String position,
+                               String queryText, String position, Long positionId,
                                List<QuestionBankSearchResult> candidates,
                                List<String> promptAtomIds) {
         Set<String> selected = new LinkedHashSet<>(promptAtomIds);
@@ -221,6 +222,7 @@ public class InterviewRetrievalService {
             logEntry.setTurnIndex(turnIndex);
             logEntry.setQueryText(queryText);
             logEntry.setPosition(position);
+            logEntry.setPositionId(positionId);
             logEntry.setRetrievedAtomId(result.getAtomId());
             logEntry.setRetrievedCategory(result.getCategory());
             logEntry.setSimilarityScore(result.getScore());
@@ -298,7 +300,7 @@ public class InterviewRetrievalService {
     }
 
     private void insertRequestLog(String requestId, Long userId, Long recordId, int turnIndex,
-                                  String position, InterviewPhase phase, String queryText,
+                                  String position, Long positionId, InterviewPhase phase, String queryText,
                                   int requestedLimit, int candidateCount, String strategy,
                                   long latencyMs, String status, String errorMessage) {
         RagRetrievalRequestLog logEntry = new RagRetrievalRequestLog();
@@ -307,6 +309,7 @@ public class InterviewRetrievalService {
         logEntry.setRecordId(recordId);
         logEntry.setTurnIndex(turnIndex);
         logEntry.setPosition(position);
+        logEntry.setPositionId(positionId);
         logEntry.setPhase(phase != null ? phase.name() : null);
         logEntry.setQueryText(queryText);
         logEntry.setRequestedLimit(requestedLimit);

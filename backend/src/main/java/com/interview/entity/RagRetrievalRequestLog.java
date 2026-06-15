@@ -23,6 +23,8 @@ public class RagRetrievalRequestLog {
 
     private String position;
 
+    private Long positionId;
+
     private String phase;
 
     private String queryText;

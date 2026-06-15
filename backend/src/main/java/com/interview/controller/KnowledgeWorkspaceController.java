@@ -109,6 +109,12 @@ public class KnowledgeWorkspaceController {
         return Result.success(workspaceService.reindexAtoms(currentUserId(request), knowledgeBaseId, body));
     }
 
+    @GetMapping("/positions/{positionId}/coverage")
+    public Result<Object> getPositionCoverage(@PathVariable Long positionId,
+                                              HttpServletRequest request) {
+        return Result.success(workspaceService.getPositionCoverage(currentUserId(request), positionId));
+    }
+
     private Long currentUserId(HttpServletRequest request) {
         Long userId = requestUserResolver.resolveUserId(request);
         if (userId == null) {

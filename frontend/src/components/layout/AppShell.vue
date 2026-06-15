@@ -27,7 +27,7 @@ const navItems = [
   { path: '/', label: '工作台', icon: Monitor },
   { path: '/interview/setup', label: '面试准备', icon: MagicStick },
   { path: '/llm-providers', label: '大模型配置', icon: Operation },
-  { path: '/knowledge-workspace', label: '知识库 / 题库', icon: Document },
+  { path: '/knowledge-workspace', label: '岗位 / 题库维护', icon: Document },
   { path: '/mentor', label: 'AI Mentor', icon: DataAnalysis },
   { path: '/resume', label: '简历画像', icon: UserFilled },
   { path: '/history', label: '历史报告', icon: Document },

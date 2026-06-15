@@ -138,6 +138,7 @@ conflicts_render.txt
 !/docs/contracts/
 !/docs/contracts/*.md
 !/docs/superpowers/
+!/docs/specs
 !/docs/superpowers/specs/
 !/docs/superpowers/specs/*.md
 !/docs/superpowers/plans/

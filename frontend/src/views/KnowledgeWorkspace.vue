@@ -5,7 +5,7 @@
         <el-button :icon="ArrowLeft" class="icon-button" circle @click="router.push('/')" />
         <div class="header-copy">
           <p class="eyebrow">Knowledge Bank</p>
-          <h1 class="page-title">知识库 / 题库</h1>
+          <h1 class="page-title">岗位 / 题库维护</h1>
           <p class="page-subtitle">管理当前账号的私有岗位知识库，公共岗位仅作为只读 starter 内容。</p>
         </div>
       </div>
@@ -91,6 +91,29 @@
               <span>维护权限</span>
               <strong>{{ canMaintainPackage ? '可维护' : '只读' }}</strong>
             </div>
+          </div>
+
+          <!-- Coverage dashboard -->
+          <div v-if="canViewCoverage" class="coverage-panel">
+            <div class="section-head compact">
+              <div>
+                <p class="section-kicker">Coverage</p>
+                <h2 class="section-title">知识领域覆盖</h2>
+                <p class="section-desc">当前岗位在面试中的知识领域覆盖与命中情况。</p>
+              </div>
+            </div>
+            <div v-if="coverageLoading" class="coverage-loading">
+              <el-skeleton :rows="3" animated />
+            </div>
+            <template v-else-if="coverageDetails.length">
+              <KnowledgeCoverageChart :details="coverageDetails" />
+            </template>
+            <p v-if="!coverageLoading && coverageDetails.length && !hasCoverageHits" class="coverage-empty-hint">
+              该岗位暂无面试命中记录，当前展示已发布题库分类结构。
+            </p>
+            <p v-else-if="!coverageLoading && !coverageDetails.length" class="coverage-empty-hint">
+              该岗位暂无已发布题库分类
+            </p>
           </div>
 
           <div v-if="canMaintainPackage" class="package-panel">
@@ -278,7 +301,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, Delete, Plus, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -288,6 +311,7 @@ import {
   deletePrivatePositionAPI,
   createPrivatePositionAPI,
   getKnowledgeWorkspaceAPI,
+  getPositionCoverageAPI,
   importKnowledgeBasePackageAPI,
   publishAllDraftAtomsAPI,
   publishKnowledgeBaseAtomsAPI,
@@ -295,6 +319,7 @@ import {
   searchKnowledgeBaseAtomsAPI,
   validateKnowledgeBaseImportAPI
 } from '@/api/knowledgeWorkspace'
+import KnowledgeCoverageChart from '@/components/charts/KnowledgeCoverageChart.vue'
 import {
   canArchiveQuestionBankAtoms,
   canMaintainQuestionBank,
@@ -338,16 +363,48 @@ const packageAtomPage = reactive({
   total: 0
 })
 
+// Coverage state
+const coverageDetails = ref([])
+const coverageLoading = ref(false)
+const coverageLoaded = ref(false)
+const hasCoverageHits = computed(() => coverageDetails.value.some(d => (Number(d.covered) || 0) > 0))
+
+const fetchCoverage = async (positionId) => {
+  coverageLoading.value = true
+  coverageLoaded.value = false
+  try {
+    const data = await getPositionCoverageAPI(positionId)
+    coverageDetails.value = data?.details || []
+    coverageLoaded.value = true
+  } catch {
+    coverageDetails.value = []
+    coverageLoaded.value = true
+  } finally {
+    coverageLoading.value = false
+  }
+}
+
 const activePosition = computed(() => positions.value.find((item) => item.id === activePositionId.value) || positions.value[0] || null)
 const activeKnowledgeBaseId = computed(() => activePosition.value?.knowledgeBase?.id || null)
 const canMaintainPackage = computed(() => canMaintainQuestionBank(activePosition.value))
 const canPublishPackageAtoms = computed(() => canPublishQuestionBankAtoms(activePosition.value))
 const canReindexPackageAtoms = computed(() => canReindexQuestionBankAtoms(activePosition.value))
 const canArchivePackageAtoms = computed(() => canArchiveQuestionBankAtoms(activePosition.value))
+const canViewCoverage = computed(() => canMaintainPackage.value)
 const packageErrors = computed(() => [
   ...((importPreview.value?.errors) || []),
   ...((importResult.value?.errors) || [])
 ])
+
+watch(activePositionId, (newId) => {
+  if (newId && canViewCoverage.value) {
+    fetchCoverage(newId)
+  } else {
+    coverageDetails.value = []
+    coverageLoaded.value = false
+    coverageLoading.value = false
+  }
+})
 
 const selectPosition = (position) => {
   activePositionId.value = position.id
@@ -821,6 +878,23 @@ onMounted(loadWorkspace)
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.coverage-panel {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--app-border);
+}
+
+.coverage-empty-hint {
+  color: var(--app-text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.coverage-loading {
+  padding: 16px 0;
 }
 
 .package-panel {

@@ -7,6 +7,7 @@ import com.interview.entity.InterviewPosition;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeAtomVersion;
 import com.interview.entity.KnowledgeBase;
+import com.interview.entity.RagRetrievalLog;
 import com.interview.dto.questionbank.QuestionBankAtomListItem;
 import com.interview.dto.questionbank.QuestionBankAtomQueryRequest;
 import com.interview.dto.questionbank.QuestionBankBulkAtomRequest;
@@ -14,12 +15,15 @@ import com.interview.dto.questionbank.QuestionBankImportPreviewResponse;
 import com.interview.dto.questionbank.QuestionBankImportRequest;
 import com.interview.dto.questionbank.QuestionBankImportResult;
 import com.interview.dto.questionbank.QuestionBankPageResponse;
+import com.interview.dto.MentorInsightResponse.KnowledgeCoverage;
+import com.interview.dto.MentorInsightResponse.KnowledgeCoverage.CategoryDetail;
 import com.interview.mapper.AppJobMapper;
 import com.interview.mapper.InterviewPositionMapper;
 import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeAtomReviewMapper;
 import com.interview.mapper.KnowledgeAtomVersionMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
+import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.service.AdminRoleService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -52,6 +56,7 @@ public class KnowledgeWorkspaceService {
     private final AdminRoleService adminRoleService;
     private final QuestionBankService questionBankService;
     private final QdrantVectorService qdrantVectorService;
+    private final RagRetrievalLogMapper ragLogMapper;
 
     public KnowledgeWorkspaceService(InterviewPositionMapper positionMapper,
                                      KnowledgeBaseMapper knowledgeBaseMapper,
@@ -61,7 +66,8 @@ public class KnowledgeWorkspaceService {
                                      AppJobMapper appJobMapper,
                                      AdminRoleService adminRoleService,
                                      QuestionBankService questionBankService,
-                                     QdrantVectorService qdrantVectorService) {
+                                     QdrantVectorService qdrantVectorService,
+                                     RagRetrievalLogMapper ragLogMapper) {
         this.positionMapper = positionMapper;
         this.knowledgeBaseMapper = knowledgeBaseMapper;
         this.atomMapper = atomMapper;
@@ -71,6 +77,7 @@ public class KnowledgeWorkspaceService {
         this.adminRoleService = adminRoleService;
         this.questionBankService = questionBankService;
         this.qdrantVectorService = qdrantVectorService;
+        this.ragLogMapper = ragLogMapper;
     }
 
     public KnowledgeWorkspaceResponse listWorkspace(Long currentUserId) {
@@ -149,6 +156,69 @@ public class KnowledgeWorkspaceService {
         requireUser(currentUserId);
         QuestionBankImportScope scope = importScopeFor(currentUserId, knowledgeBaseId);
         return questionBankService.archiveAll(scope);
+    }
+
+    public KnowledgeCoverage getPositionCoverage(Long currentUserId, Long positionId) {
+        requireUser(currentUserId);
+        InterviewPosition position = positionMapper.selectById(positionId);
+        if (position == null) {
+            throw new RuntimeException("岗位不存在");
+        }
+        boolean privateOwner = SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
+                && currentUserId.equals(position.getOwnerUserId());
+        boolean publicAdmin = SCOPE_PUBLIC.equalsIgnoreCase(position.getScope())
+                && adminRoleService.isAdmin(currentUserId);
+        if (!privateOwner && !publicAdmin) {
+            throw new RuntimeException("无权查看该岗位的覆盖数据");
+        }
+
+        KnowledgeCoverage kc = new KnowledgeCoverage();
+        List<Map<String, Object>> totalRows = atomMapper.selectMaps(
+                new QueryWrapper<KnowledgeAtom>()
+                        .select("category, COUNT(*) as total")
+                        .eq("status", "PUBLISHED")
+                        .eq("position_id", positionId)
+                        .groupBy("category"));
+        List<Map<String, Object>> coveredRows = ragLogMapper.selectMaps(
+                new QueryWrapper<RagRetrievalLog>()
+                        .select("retrieved_category, COUNT(DISTINCT retrieved_atom_id) as cnt")
+                        .eq("user_id", currentUserId)
+                        .eq("position_id", positionId)
+                        .eq("context_selected", true)
+                        .groupBy("retrieved_category"));
+        java.util.Map<String, Integer> coveredByCategory = new java.util.HashMap<>();
+        for (Map<String, Object> row : coveredRows) {
+            String cat = (String) row.get("retrieved_category");
+            Number cnt = (Number) row.get("cnt");
+            if (cat != null && cnt != null) coveredByCategory.put(cat, cnt.intValue());
+        }
+
+        int coveredCats = 0;
+        int coveredTotal = 0;
+        int publishedTotal = 0;
+        List<CategoryDetail> details = new ArrayList<>();
+        for (Map<String, Object> row : totalRows) {
+            String cat = (String) row.get("category");
+            Number total = (Number) row.get("total");
+            if (cat == null || total == null) continue;
+            int categoryTotal = total.intValue();
+            int covered = Math.min(coveredByCategory.getOrDefault(cat, 0), categoryTotal);
+            CategoryDetail detail = new CategoryDetail();
+            detail.setCategory(cat);
+            detail.setCovered(covered);
+            detail.setTotal(categoryTotal);
+            detail.setPercent(categoryTotal > 0 ? Math.round((double) covered / categoryTotal * 1000) / 10.0 : 0.0);
+            details.add(detail);
+            if (covered > 0) coveredCats++;
+            coveredTotal += covered;
+            publishedTotal += categoryTotal;
+        }
+        kc.setTotalCategories(details.size());
+        kc.setCoveredCategories(coveredCats);
+        kc.setCoveragePercent(publishedTotal > 0
+                ? Math.round((double) coveredTotal / publishedTotal * 1000) / 10.0 : 0.0);
+        kc.setDetails(details);
+        return kc;
     }
 
     @Transactional

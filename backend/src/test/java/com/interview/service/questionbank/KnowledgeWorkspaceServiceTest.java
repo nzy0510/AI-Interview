@@ -1,6 +1,7 @@
 package com.interview.service.questionbank;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.interview.dto.MentorInsightResponse.KnowledgeCoverage.CategoryDetail;
 import com.interview.entity.InterviewPosition;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeBase;
@@ -12,13 +13,16 @@ import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeAtomReviewMapper;
 import com.interview.mapper.KnowledgeAtomVersionMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
+import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.service.AdminRoleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -41,6 +45,7 @@ class KnowledgeWorkspaceServiceTest {
     private AdminRoleService adminRoleService;
     private QuestionBankService questionBankService;
     private QdrantVectorService qdrantVectorService;
+    private RagRetrievalLogMapper ragLogMapper;
     private KnowledgeWorkspaceService service;
 
     @BeforeEach
@@ -54,9 +59,11 @@ class KnowledgeWorkspaceServiceTest {
         adminRoleService = mock(AdminRoleService.class);
         questionBankService = mock(QuestionBankService.class);
         qdrantVectorService = mock(QdrantVectorService.class);
+        ragLogMapper = mock(RagRetrievalLogMapper.class);
         service = new KnowledgeWorkspaceService(positionMapper, knowledgeBaseMapper,
                 atomMapper, versionMapper, reviewMapper,
-                appJobMapper, adminRoleService, questionBankService, qdrantVectorService);
+                appJobMapper, adminRoleService, questionBankService, qdrantVectorService,
+                ragLogMapper);
     }
 
     @Test
@@ -209,6 +216,40 @@ class KnowledgeWorkspaceServiceTest {
         verify(questionBankService, never()).importBatch(any(), any());
     }
 
+    @Test
+    @DisplayName("当前用户可查看自己私有岗位的覆盖结构，未命中分类保留 covered 为 0")
+    void shouldReturnCoverageForOwnedPrivatePositionWithZeroHits() {
+        when(positionMapper.selectById(20L)).thenReturn(position(20L, "PRIVATE", 7L, "我的岗位", "ACTIVE", 30L));
+        when(atomMapper.selectMaps(any(QueryWrapper.class))).thenReturn(List.of(
+                totalRow("Java", 4),
+                totalRow("数据库", 2)
+        ));
+        when(ragLogMapper.selectMaps(any(QueryWrapper.class))).thenReturn(List.of());
+
+        var coverage = service.getPositionCoverage(7L, 20L);
+
+        assertThat(coverage.getTotalCategories()).isEqualTo(2);
+        assertThat(coverage.getCoveredCategories()).isZero();
+        assertThat(coverage.getCoveragePercent()).isEqualTo(0.0);
+        assertThat(coverage.getDetails())
+                .extracting(CategoryDetail::getCovered)
+                .containsExactly(0, 0);
+    }
+
+    @Test
+    @DisplayName("普通用户不能通过工作台 coverage 端点查看公共岗位")
+    void shouldRejectPublicCoverageForNormalUser() {
+        when(positionMapper.selectById(1L)).thenReturn(position(1L, "PUBLIC", null, "Java 后端开发", "ACTIVE", 11L));
+        when(adminRoleService.isAdmin(7L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.getPositionCoverage(7L, 1L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("无权查看");
+
+        verify(atomMapper, never()).selectMaps(any());
+        verify(ragLogMapper, never()).selectMaps(any());
+    }
+
     private InterviewPosition position(Long id, String scope, Long ownerUserId, String name, String status, Long defaultKnowledgeBaseId) {
         InterviewPosition position = new InterviewPosition();
         position.setId(id);
@@ -229,6 +270,13 @@ class KnowledgeWorkspaceServiceTest {
         knowledgeBase.setName("默认知识库");
         knowledgeBase.setStatus("ACTIVE");
         return knowledgeBase;
+    }
+
+    private Map<String, Object> totalRow(String category, int total) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("category", category);
+        row.put("total", total);
+        return row;
     }
 
 }

@@ -48,8 +48,8 @@ export const refreshMentorInsightAPI = () => {
     return request({ url: '/user/mentor-insight/refresh', method: 'post' });
 };
 
-export const getKnowledgeCoverageAPI = () => {
-    return request({ url: '/user/knowledge-coverage', method: 'get' });
+export const getKnowledgeCoverageAPI = (params) => {
+    return request({ url: '/user/knowledge-coverage', method: 'get', params });
 };
 
 export const getCurrentUserAPI = () => {

@@ -70,7 +70,7 @@ const routes = [
     path: '/knowledge-workspace',
     name: 'KnowledgeWorkspace',
     component: loadView('KnowledgeWorkspace'),
-    meta: { title: '知识库 / 题库' }
+    meta: { title: '岗位 / 题库维护' }
   },
   {
     path: '/settings',

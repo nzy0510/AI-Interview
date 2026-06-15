@@ -153,16 +153,38 @@
           <el-empty v-else :description="reportCenter.emptyStates.all" />
         </section>
 
-        <section v-if="knowledgeCoverage?.details?.length" class="surface-card section-shell coverage-section">
+        <section v-if="positions.length" class="surface-card section-shell coverage-section">
           <div class="section-head">
             <div>
               <p class="section-kicker">知识覆盖</p>
               <h2 class="section-title">知识领域覆盖</h2>
-              <p class="section-desc">基于所有历史面试中 RAG 真实命中的知识原子，按分类统计覆盖度。</p>
+              <p class="section-desc">选择岗位查看该岗位下 RAG 真实命中的知识原子覆盖度。</p>
             </div>
-            <el-tag effect="plain" type="info">{{ knowledgeCoverage.details.length }} 个领域</el-tag>
+            <div class="coverage-actions">
+              <el-select
+                v-model="selectedPositionId"
+                placeholder="选择岗位"
+                size="default"
+                :loading="coverageLoading"
+                @change="fetchCoverage"
+              >
+                <el-option label="全部岗位" :value="null" />
+                <el-option
+                  v-for="pos in positions"
+                  :key="pos.id"
+                  :label="pos.name"
+                  :value="pos.id"
+                />
+              </el-select>
+              <el-tag v-if="knowledgeCoverage?.details?.length" effect="plain" type="info">
+                {{ knowledgeCoverage.details.length }} 个领域
+              </el-tag>
+            </div>
           </div>
-          <KnowledgeCoverageChart :details="knowledgeCoverage.details" />
+          <div v-loading="coverageLoading" class="coverage-chart-wrap">
+            <KnowledgeCoverageChart v-if="knowledgeCoverage?.details?.length" :details="knowledgeCoverage.details" />
+            <el-empty v-else-if="!coverageLoading" description="暂无该岗位的知识覆盖数据" :image-size="60" />
+          </div>
         </section>
 
         <section class="surface-card section-shell list-shell">
@@ -432,6 +454,7 @@ import { useRouter } from 'vue-router'
 import { ArrowLeft, RefreshRight, Search } from '@element-plus/icons-vue'
 import { getHistoryListAPI, getInterviewReportAPI } from '@/api/interview'
 import { getKnowledgeCoverageAPI } from '@/api/user'
+import { getKnowledgeWorkspaceAPI } from '@/api/knowledgeWorkspace'
 import { reportCenterConfig } from '@/mock/reports'
 import * as echarts from 'echarts'
 import KnowledgeCoverageChart from '@/components/charts/KnowledgeCoverageChart.vue'
@@ -448,6 +471,9 @@ const modeFilter = ref('all')
 const growthChartRef = ref(null)
 const miniRadarRef = ref(null)
 const knowledgeCoverage = ref(null)
+const positions = ref([])
+const selectedPositionId = ref(null)
+const coverageLoading = ref(false)
 let growthChartInstance = null
 let miniRadarInstance = null
 const drawerOpen = ref(false)
@@ -620,6 +646,30 @@ const strongestAbility = computed(() => {
   }
 })
 
+// ─── Knowledge Coverage ───────────────────────────────────────────────────────
+const fetchPositions = async () => {
+  try {
+    const data = await getKnowledgeWorkspaceAPI()
+    positions.value = data?.positions || []
+  } catch {
+    positions.value = []
+  }
+}
+
+const fetchCoverage = async () => {
+  coverageLoading.value = true
+  try {
+    const params = selectedPositionId.value ? { positionId: selectedPositionId.value } : undefined
+    const insight = await getKnowledgeCoverageAPI(params)
+    if (insight?.knowledgeCoverage) knowledgeCoverage.value = insight.knowledgeCoverage
+    else knowledgeCoverage.value = null
+  } catch {
+    knowledgeCoverage.value = null
+  } finally {
+    coverageLoading.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     historyList.value = await getHistoryListAPI()
@@ -628,11 +678,26 @@ onMounted(async () => {
     loading.value = false
     nextTick(() => { drawGrowthChart() })
   }
-  // 知识覆盖异步加载，不阻塞页面渲染
-  try {
-    const insight = await getKnowledgeCoverageAPI()
-    if (insight?.knowledgeCoverage) knowledgeCoverage.value = insight.knowledgeCoverage
-  } catch { /* optional */ }
+
+  // 获取岗位列表
+  await fetchPositions()
+
+  // 设置默认岗位：优先使用最近面试记录的岗位，否则使用第一个岗位
+  if (positions.value.length) {
+    if (latestRecord.value?.positionId || latestRecord.value?.position) {
+      const matched = positions.value.find(p => p.id === latestRecord.value.positionId)
+        || positions.value.find(p => p.name === latestRecord.value.position)
+      selectedPositionId.value = matched ? matched.id : positions.value[0].id
+    } else {
+      selectedPositionId.value = positions.value[0].id
+    }
+  }
+
+  // 获取知识覆盖数据
+  if (selectedPositionId.value) {
+    await fetchCoverage()
+  }
+
   window.addEventListener('resize', handleResize)
 })
 
@@ -1176,6 +1241,17 @@ const drawMiniRadar = () => {
   gap: 12px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.coverage-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.coverage-chart-wrap {
+  min-height: 120px;
 }
 
 .chart-wrap {
