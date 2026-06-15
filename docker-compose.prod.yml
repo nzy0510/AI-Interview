@@ -68,20 +68,6 @@ services:
     networks:
       - interview-network
 
-  document-converter:
-    build:
-      context: ./document-converter
-    container_name: interview-document-converter
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health', timeout=5).read()\""]
-      interval: 15s
-      timeout: 10s
-      retries: 20
-      start_period: 60s
-    networks:
-      - interview-network
-
   backend:
     build:
       context: ./backend
@@ -95,8 +81,6 @@ services:
       qdrant:
         condition: service_started
       embedding-service:
-        condition: service_healthy
-      document-converter:
         condition: service_healthy
     environment:
       DB_URL: jdbc:mysql://db:3306/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
@@ -127,7 +111,6 @@ services:
       APP_EMBEDDING_CONNECT_TIMEOUT_MS: ${APP_EMBEDDING_CONNECT_TIMEOUT_MS:-3000}
       APP_EMBEDDING_READ_TIMEOUT_MS: ${APP_EMBEDDING_READ_TIMEOUT_MS:-10000}
       APP_KNOWLEDGE_STORAGE_ROOT: /app/knowledge-storage
-      APP_DOCUMENT_CONVERTER_URL: ${APP_DOCUMENT_CONVERTER_URL:-http://document-converter:8010}
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_USERNAME: ${MAIL_USERNAME}

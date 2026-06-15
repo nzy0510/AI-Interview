@@ -1,16 +1,7 @@
 package com.interview.controller;
 
 import com.interview.common.Result;
-import com.interview.service.RequestUserResolver;
-import com.interview.service.questionbank.KnowledgeFileDownload;
-import com.interview.service.questionbank.KnowledgeFileImportService;
-import com.interview.service.questionbank.KnowledgeFileReadService;
-import com.interview.service.questionbank.KnowledgeFileUploadResponse;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.core.io.Resource;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,56 +11,29 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.charset.StandardCharsets;
-
 @RestController
 @RequestMapping("/api")
 public class KnowledgeFileController {
-
-    private final KnowledgeFileImportService importService;
-    private final KnowledgeFileReadService readService;
-    private final RequestUserResolver requestUserResolver;
-
-    public KnowledgeFileController(KnowledgeFileImportService importService,
-                                   KnowledgeFileReadService readService,
-                                   RequestUserResolver requestUserResolver) {
-        this.importService = importService;
-        this.readService = readService;
-        this.requestUserResolver = requestUserResolver;
-    }
+    private static final String UPLOAD_DISABLED_MESSAGE =
+            "当前版本不支持应用内文档上传，请使用本机题库维护 skill 生成 JSON 导入包";
+    private static final String CONVERSION_DISABLED_MESSAGE =
+            "当前版本不支持应用内文档转换，请使用 JSON 导入包";
 
     @PostMapping("/knowledge-bases/{knowledgeBaseId}/files")
-    public Result<KnowledgeFileUploadResponse> upload(@PathVariable Long knowledgeBaseId,
-                                                      @RequestParam("file") MultipartFile file,
-                                                      HttpServletRequest request) {
-        return Result.success(importService.upload(knowledgeBaseId, currentUserId(request), file));
+    public ResponseEntity<Result<String>> upload(@PathVariable Long knowledgeBaseId,
+                                                 @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body(Result.error(HttpStatus.GONE.value(), UPLOAD_DISABLED_MESSAGE));
     }
 
     @GetMapping(value = "/knowledge-files/{sourceFileId}/markdown", produces = "text/markdown;charset=UTF-8")
-    public ResponseEntity<String> readMarkdown(@PathVariable Long sourceFileId,
-                                               HttpServletRequest request) {
-        return ResponseEntity.ok(readService.readMarkdown(sourceFileId, currentUserId(request)));
+    public ResponseEntity<String> readMarkdown(@PathVariable Long sourceFileId) {
+        return ResponseEntity.status(HttpStatus.GONE).body(CONVERSION_DISABLED_MESSAGE);
     }
 
     @GetMapping("/knowledge-files/{sourceFileId}/original")
-    public ResponseEntity<Resource> downloadOriginal(@PathVariable Long sourceFileId,
-                                                     HttpServletRequest request) {
-        KnowledgeFileDownload download = readService.originalFile(sourceFileId, currentUserId(request));
-        String contentType = download.contentType() != null ? download.contentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                        .filename(download.filename(), StandardCharsets.UTF_8)
-                        .build()
-                        .toString())
-                .body(download.resource());
-    }
-
-    private Long currentUserId(HttpServletRequest request) {
-        Long userId = requestUserResolver.resolveUserId(request);
-        if (userId == null) {
-            throw new RuntimeException("未登录：缺少用户身份");
-        }
-        return userId;
+    public ResponseEntity<Result<String>> downloadOriginal(@PathVariable Long sourceFileId) {
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body(Result.error(HttpStatus.GONE.value(), UPLOAD_DISABLED_MESSAGE));
     }
 }

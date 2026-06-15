@@ -264,6 +264,76 @@
           <div class="feedback-box"><pre class="feedback-text">{{ selectedFeedback }}</pre></div>
         </section>
 
+        <section class="drawer-panel">
+          <div class="section-head compact">
+            <div>
+              <p class="section-kicker">详细报告</p>
+              <h2 class="section-title">逐轮问答复盘</h2>
+            </div>
+            <el-tag size="small" effect="plain" :type="detailStatusType">{{ detailStatusText }}</el-tag>
+          </div>
+          <div v-if="detailLoading" class="detail-state">
+            <el-skeleton :rows="4" animated />
+          </div>
+          <el-alert
+            v-else-if="detailError"
+            class="detail-alert"
+            :title="detailError"
+            type="info"
+            show-icon
+            :closable="false"
+          />
+          <el-alert
+            v-else-if="detailFailureMessage"
+            class="detail-alert"
+            :title="detailFailureMessage"
+            type="error"
+            show-icon
+            :closable="false"
+          />
+          <div v-else-if="selectedDetailedReport && detailedReportItems.length" class="detail-turn-list">
+            <div class="detail-summary">
+              <span>详细报告总分</span>
+              <strong>{{ selectedDetailedReport.overallScore ?? selected.score ?? '--' }} / 100</strong>
+            </div>
+            <article v-for="item in detailedReportItems" :key="item.id || item.itemIndex" class="detail-turn">
+              <div class="detail-turn-head">
+                <div>
+                  <span class="detail-turn-index">第 {{ item.itemIndex }} 轮</span>
+                  <el-tag size="small" effect="plain">{{ phaseLabel(item.phase) }}</el-tag>
+                </div>
+                <strong>{{ formatItemScore(item.score) }}</strong>
+              </div>
+              <dl class="detail-turn-body">
+                <div>
+                  <dt>提问</dt>
+                  <dd>{{ item.question || '暂无问题记录' }}</dd>
+                </div>
+                <div>
+                  <dt>回答</dt>
+                  <dd>{{ item.userAnswer || '暂无回答记录' }}</dd>
+                </div>
+                <div>
+                  <dt>参考答案</dt>
+                  <dd>{{ formatReferenceAnswer(item.referenceAnswer) }}</dd>
+                </div>
+                <div v-if="item.improvementSuggestion">
+                  <dt>评分依据与改进建议</dt>
+                  <dd>{{ item.improvementSuggestion }}</dd>
+                </div>
+                <div>
+                  <dt>来源</dt>
+                  <dd>
+                    <span>{{ formatAnswerSource(item.answerSource) }}</span>
+                    <pre v-if="formatSnapshot(item.matchedAtomSnapshotJson)" class="source-snapshot">{{ formatSnapshot(item.matchedAtomSnapshotJson) }}</pre>
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+          <el-empty v-else description="详细报告正在生成或尚无逐轮明细" :image-size="60" />
+        </section>
+
         <template v-if="selectedEmotion && Object.keys(selectedEmotion).length > 0">
           <section class="drawer-panel">
             <div class="section-head compact">
@@ -360,7 +430,7 @@
 import { ref, computed, onMounted, nextTick, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, RefreshRight, Search } from '@element-plus/icons-vue'
-import { getHistoryListAPI } from '@/api/interview'
+import { getHistoryListAPI, getInterviewReportAPI } from '@/api/interview'
 import { getKnowledgeCoverageAPI } from '@/api/user'
 import { reportCenterConfig } from '@/mock/reports'
 import * as echarts from 'echarts'
@@ -382,6 +452,10 @@ let growthChartInstance = null
 let miniRadarInstance = null
 const drawerOpen = ref(false)
 const selected = ref(null)
+const selectedDetailedReport = ref(null)
+const detailLoading = ref(false)
+const detailError = ref('')
+let detailRequestSeq = 0
 const reportCenter = reportCenterConfig
 
 const abilityDimensions = {
@@ -409,6 +483,29 @@ const selectedEmotion = computed(() => {
   return emotion && typeof emotion === 'object' ? emotion : null
 })
 const selectedFeedback = computed(() => stripInterviewControlMarkers(selected.value?.feedback || ''))
+const detailedReportItems = computed(() => {
+  return Array.isArray(selectedDetailedReport.value?.items) ? selectedDetailedReport.value.items : []
+})
+const detailStatusText = computed(() => {
+  if (detailLoading.value) return '加载中'
+  if (detailError.value) return '未完成'
+  const status = selectedDetailedReport.value?.status
+  if (status === 'COMPLETED') return '已生成'
+  if (status === 'FAILED') return '生成失败'
+  if (status === 'RUNNING') return '生成中'
+  if (status === 'PENDING') return '排队中'
+  return '未生成'
+})
+const detailStatusType = computed(() => {
+  if (selectedDetailedReport.value?.status === 'COMPLETED') return 'success'
+  if (selectedDetailedReport.value?.status === 'FAILED') return 'danger'
+  if (detailLoading.value || selectedDetailedReport.value?.status === 'RUNNING') return 'primary'
+  return 'info'
+})
+const detailFailureMessage = computed(() => {
+  if (selectedDetailedReport.value?.status !== 'FAILED') return ''
+  return selectedDetailedReport.value?.errorMessage || '详细报告生成失败，请稍后重试'
+})
 
 const EMOTION_LABELS = { neutral: '平静', happy: '积极', sad: '低落', angry: '紧张', fearful: '焦虑', disgusted: '不适', surprised: '惊讶' }
 const emotionLabel = (key) => EMOTION_LABELS[key] || key
@@ -565,9 +662,64 @@ const excerpt = (t) => {
   return cleaned ? (cleaned.length > 60 ? cleaned.slice(0, 60) + '...' : cleaned) : ''
 }
 
-const openDetail = (row) => {
+const openDetail = async (row) => {
   selected.value = row
+  selectedDetailedReport.value = null
+  detailError.value = ''
   drawerOpen.value = true
+  const requestSeq = ++detailRequestSeq
+  detailLoading.value = true
+  try {
+    const report = await getInterviewReportAPI(row.id, { silent: true })
+    if (requestSeq === detailRequestSeq) {
+      selectedDetailedReport.value = report
+    }
+  } catch (err) {
+    if (requestSeq === detailRequestSeq) {
+      detailError.value = err?.message || '详细报告尚未生成，请稍后刷新查看'
+    }
+  } finally {
+    if (requestSeq === detailRequestSeq) {
+      detailLoading.value = false
+    }
+  }
+}
+
+const phaseLabel = (phase) => ({
+  TECHNICAL: '技术轮',
+  HR: 'HR 轮',
+  OPENING: '开场',
+  FINISHED: '结束'
+}[phase] || phase || '未知轮次')
+
+const formatAnswerSource = (source) => ({
+  KNOWLEDGE_BASE: '知识库命中',
+  AI_GENERATED: 'AI 生成'
+}[source] || source || '暂无来源')
+
+const formatItemScore = (score) => {
+  const numeric = Number(score)
+  return Number.isFinite(numeric) ? `${numeric.toFixed(1)} / 10` : '-- / 10'
+}
+
+const formatSnapshot = (snapshotJson) => {
+  if (!snapshotJson) return ''
+  try {
+    const parsed = JSON.parse(snapshotJson)
+    return parsed.promptContext || ''
+  } catch {
+    return ''
+  }
+}
+
+const formatReferenceAnswer = (referenceAnswer) => {
+  if (!referenceAnswer) return '暂无参考答案'
+  try {
+    const parsed = JSON.parse(referenceAnswer)
+    return parsed.promptContext || referenceAnswer
+  } catch {
+    return referenceAnswer
+  }
 }
 
 const clearFilters = () => {
@@ -1228,6 +1380,112 @@ const drawMiniRadar = () => {
   line-height: 1.8;
   color: #191c1e;
   font-family: inherit;
+}
+
+.detail-state,
+.detail-alert {
+  margin-top: 4px;
+}
+
+.detail-turn-list {
+  display: grid;
+  gap: 14px;
+}
+
+.detail-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f4f3ff;
+  color: #3a388b;
+}
+
+.detail-summary span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.detail-summary strong {
+  font-size: 18px;
+}
+
+.detail-turn {
+  padding: 16px;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+  border-radius: 8px;
+  background: #faf9f5;
+}
+
+.detail-turn-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.detail-turn-head > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.detail-turn-head strong {
+  color: #3a388b;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.detail-turn-index {
+  color: #191c1e;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.detail-turn-body {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.detail-turn-body div {
+  display: grid;
+  gap: 5px;
+}
+
+.detail-turn-body dt {
+  color: #87867f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.detail-turn-body dd {
+  min-width: 0;
+  margin: 0;
+  color: #191c1e;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.source-snapshot {
+  margin: 8px 0 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+  color: #454652;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
 }
 
 .rec-action {

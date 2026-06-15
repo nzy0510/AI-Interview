@@ -16,86 +16,64 @@ export const createPrivatePositionAPI = (data) => {
   })
 }
 
-export const archivePrivatePositionAPI = (positionId) => {
+export const deletePrivatePositionAPI = (positionId) => {
   return request({
-    url: `/knowledge-workspace/positions/${positionId}/archive`,
-    method: 'post'
+    url: `/knowledge-workspace/positions/${positionId}`,
+    method: 'delete'
   })
 }
 
-export const uploadKnowledgeFileAPI = (knowledgeBaseId, file) => {
-  const formData = new FormData()
-  formData.append('file', file)
+export const validateKnowledgeBaseImportAPI = (knowledgeBaseId, data) => {
   return request({
-    url: `/knowledge-bases/${knowledgeBaseId}/files`,
-    method: 'post',
-    data: formData
-  })
-}
-
-export const getAppJobsAPI = (options = {}) => {
-  return request({
-    url: '/jobs',
-    method: 'get',
-    ...options
-  })
-}
-
-export const retryAppJobAPI = (jobId) => {
-  return request({
-    url: `/jobs/${jobId}/retry`,
-    method: 'post'
-  })
-}
-
-export const getKnowledgeFileAtomsAPI = (sourceFileId, options = {}) => {
-  return request({
-    url: `/knowledge-files/${sourceFileId}/atoms`,
-    method: 'get',
-    ...options
-  })
-}
-
-export const generateKnowledgeAtomsAPI = (sourceFileId) => {
-  return request({
-    url: `/knowledge-files/${sourceFileId}/atoms/generate`,
-    method: 'post'
-  })
-}
-
-export const createManualKnowledgeAtomAPI = (sourceFileId, data) => {
-  return request({
-    url: `/knowledge-files/${sourceFileId}/atoms`,
+    url: `/knowledge-workspace/knowledge-bases/${knowledgeBaseId}/import/validate`,
     method: 'post',
     data
   })
 }
 
-export const acceptKnowledgeAtomPatchAPI = (atomId) => {
+export const importKnowledgeBasePackageAPI = (knowledgeBaseId, data) => {
   return request({
-    url: `/knowledge-atoms/${atomId}/accept-patch`,
-    method: 'post'
-  })
-}
-
-export const updateKnowledgeAtomAPI = (atomId, data) => {
-  return request({
-    url: `/knowledge-atoms/${atomId}`,
-    method: 'put',
+    url: `/knowledge-workspace/knowledge-bases/${knowledgeBaseId}/import`,
+    method: 'post',
     data
   })
 }
 
-export const publishKnowledgeAtomAPI = (atomId) => {
+export const searchKnowledgeBaseAtomsAPI = (knowledgeBaseId, data) => {
   return request({
-    url: `/knowledge-atoms/${atomId}/publish`,
+    url: `/knowledge-workspace/knowledge-bases/${knowledgeBaseId}/atoms/search`,
+    method: 'post',
+    data
+  })
+}
+
+export const publishKnowledgeBaseAtomsAPI = (knowledgeBaseId, atomIds) => {
+  return request({
+    url: `/knowledge-workspace/knowledge-bases/${knowledgeBaseId}/atoms/publish`,
+    method: 'post',
+    data: { atomIds }
+  })
+}
+
+export const publishAllDraftAtomsAPI = (knowledgeBaseId) => {
+  return request({
+    url: `/knowledge-workspace/knowledge-bases/${knowledgeBaseId}/atoms/publish-drafts`,
     method: 'post'
   })
 }
 
-export const publishKnowledgeFileAtomsAPI = (sourceFileId) => {
+export const archiveKnowledgeBaseAtomsAPI = (knowledgeBaseId, atomIds) => {
   return request({
-    url: `/knowledge-files/${sourceFileId}/atoms/publish`,
-    method: 'post'
+    url: `/knowledge-workspace/knowledge-bases/${knowledgeBaseId}/atoms/archive`,
+    method: 'post',
+    data: { atomIds }
+  })
+}
+
+export const reindexKnowledgeBaseAtomsAPI = (knowledgeBaseId, atomIds) => {
+  return request({
+    url: `/knowledge-workspace/knowledge-bases/${knowledgeBaseId}/atoms/reindex`,
+    method: 'post',
+    data: { atomIds }
   })
 }

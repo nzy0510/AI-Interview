@@ -62,6 +62,7 @@ interview:
     前端: [React, Vue, Flutter, HTML, CSS, JavaScript, NodeJS, Webpack, 浏览器, 前端工程化, 网络, 设计模式, 系统设计, TypeScript, 性能优化]
     AI大模型: [AI大模型]
     大模型: [AI大模型]
+    系统运维: [linux, windows, docker, kubernetes, shell, 监控, 自动化运维, 网络, 安全]
 
   # AI 提示词模板（集中管理，无需重新编译即可调整）
   prompts:
@@ -174,10 +175,6 @@ app:
   upload-dir: ${APP_UPLOAD_DIR:uploads}
   knowledge-storage:
     root: ${APP_KNOWLEDGE_STORAGE_ROOT:knowledge-storage}
-  document-converter:
-    url: ${APP_DOCUMENT_CONVERTER_URL:http://localhost:8010}
-    connect-timeout-ms: ${APP_DOCUMENT_CONVERTER_CONNECT_TIMEOUT_MS:3000}
-    read-timeout-ms: ${APP_DOCUMENT_CONVERTER_READ_TIMEOUT_MS:30000}
   analytics:
     hash-salt: ${APP_ANALYTICS_HASH_SALT:interwise-dev-hash-salt}
   rate-limit:

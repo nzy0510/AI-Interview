@@ -93,13 +93,14 @@ public class QuestionBankService {
         List<QdrantVectorService.VectorHit> hits;
         boolean degraded = false;
         try {
-            hits = qdrantVectorService.search(query, categories, exclude, limit);
+            hits = qdrantVectorService.search(query, categories, exclude, limit,
+                    request.getScope(), request.getOwnerUserId(), request.getPositionId(), request.getKnowledgeBaseId());
         } catch (RuntimeException e) {
             log.warn("Qdrant unavailable, using MySQL fallback: {}", e.getMessage());
             hits = List.of();
             degraded = true;
         }
-        List<QuestionBankSearchResult> results = loadHits(hits);
+        List<QuestionBankSearchResult> results = loadHits(hits, request);
         if (!results.isEmpty()) {
             return QuestionBankSearchResponse.builder()
                     .results(results.stream().limit(limit).collect(Collectors.toList()))
@@ -107,7 +108,7 @@ public class QuestionBankService {
                     .build();
         }
         return QuestionBankSearchResponse.builder()
-                .results(fallbackSearch(query, categories, exclude, limit))
+                .results(fallbackSearch(query, categories, exclude, limit, request))
                 .strategy(degraded ? "MYSQL_FALLBACK_DEGRADED" : "MYSQL_FALLBACK")
                 .build();
     }
@@ -144,10 +145,14 @@ public class QuestionBankService {
     }
 
     public QuestionBankImportPreviewResponse previewImport(QuestionBankImportRequest request) {
+        return previewImport(request, null);
+    }
+
+    public QuestionBankImportPreviewResponse previewImport(QuestionBankImportRequest request, QuestionBankImportScope scope) {
         QuestionBankImportPreviewResponse response = new QuestionBankImportPreviewResponse();
         String batchId = nonBlank(request.getBatchId(), "qb-" + UUID.randomUUID());
         response.setBatchId(batchId);
-        response.setMode(normalizeMode(request.getMode()));
+        response.setMode(normalizeMode(request.getMode(), scope));
         response.setTargetCategory(request.getTargetCategory());
         response.setSourceRef(request.getSourceRef());
         response.setReceived(request.getAtoms() != null ? request.getAtoms().size() : 0);
@@ -158,7 +163,7 @@ public class QuestionBankService {
         if (request.getAtoms() != null) {
             for (KnowledgeAtomPayload atom : request.getAtoms()) {
                 if (!isBlank(atom.getId())) {
-                    seen.merge(atom.getId().trim(), 1, Integer::sum);
+                    seen.merge(scopedAtomId(atom.getId(), scope), 1, Integer::sum);
                 }
             }
         }
@@ -210,6 +215,30 @@ public class QuestionBankService {
         return QuestionBankPageResponse.of(total, page, size, items);
     }
 
+    public QuestionBankPageResponse<QuestionBankAtomListItem> listAtoms(QuestionBankAtomQueryRequest request,
+                                                                        QuestionBankImportScope scope) {
+        int page = Math.max(1, request.getPage());
+        int size = Math.min(Math.max(1, request.getSize()), 100);
+        List<String> batchAtomIds = !isBlank(request.getBatchId())
+                ? batchAtomIds(request.getBatchId(), false)
+                : List.of();
+
+        QueryWrapper<KnowledgeAtom> countWrapper = buildAtomQuery(request, batchAtomIds, scope);
+        long total = safeLong(atomMapper.selectCount(countWrapper));
+        if (total == 0) {
+            return QuestionBankPageResponse.of(0, page, size, List.of());
+        }
+
+        int offset = (page - 1) * size;
+        QueryWrapper<KnowledgeAtom> listWrapper = buildAtomQuery(request, batchAtomIds, scope)
+                .orderByDesc("update_time")
+                .last("LIMIT " + offset + ", " + size);
+        List<QuestionBankAtomListItem> items = atomMapper.selectList(listWrapper).stream()
+                .map(this::toListItem)
+                .collect(Collectors.toList());
+        return QuestionBankPageResponse.of(total, page, size, items);
+    }
+
     public QuestionBankPageResponse<QuestionBankBatchListItem> listBatches(int pageValue, int sizeValue) {
         int page = Math.max(1, pageValue);
         int size = Math.min(Math.max(1, sizeValue), 100);
@@ -253,10 +282,14 @@ public class QuestionBankService {
     }
 
     public Map<String, Integer> archiveAtoms(List<String> atomIds) {
+        return archiveAtoms(atomIds, null);
+    }
+
+    public Map<String, Integer> archiveAtoms(List<String> atomIds, QuestionBankImportScope scope) {
         List<String> ids = cleanAtomIds(atomIds);
         if (ids.isEmpty()) return resultMap("matched", 0, "archived", 0, "deleted", 0, "skipped", 0);
 
-        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids));
+        List<KnowledgeAtom> atoms = atomMapper.selectList(applyScope(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids), scope));
         int archived = 0;
         int deleted = 0;
         int skipped = 0;
@@ -279,18 +312,24 @@ public class QuestionBankService {
     }
 
     public Map<String, Integer> publishAtoms(List<String> atomIds) {
+        return publishAtoms(atomIds, null);
+    }
+
+    public Map<String, Integer> publishAtoms(List<String> atomIds, QuestionBankImportScope scope) {
         List<String> ids = cleanAtomIds(atomIds);
         if (ids.isEmpty()) return resultMap("matched", 0, "published", 0, "synced", 0, "failed", 0);
-
-        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids));
+        List<KnowledgeAtom> atoms = atomMapper.selectList(applyScope(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids), scope));
         int published = 0;
         int synced = 0;
         int failed = 0;
         for (KnowledgeAtom atom : atoms) {
             atom.setStatus(STATUS_PUBLISHED);
+            atom.setPublicationStatus(STATUS_PUBLISHED);
+            atom.setPublishedBy(scope == null ? null : scope.currentUserId());
+            atom.setPublishedAt(LocalDateTime.now());
             atom.setVectorStatus("PENDING");
             atomMapper.updateById(atom);
-            recordVersion(atom, "publish:admin");
+            recordVersion(atom, scope == null ? "publish:admin" : "publish:workspace");
             published++;
             if (syncAtom(atom)) {
                 synced++;
@@ -301,15 +340,51 @@ public class QuestionBankService {
         return resultMap("matched", atoms.size(), "published", published, "synced", synced, "failed", failed);
     }
 
+    public Map<String, Integer> publishAllDrafts(QuestionBankImportScope scope) {
+        List<KnowledgeAtom> draftAtoms = atomMapper.selectList(
+                applyScope(new QueryWrapper<KnowledgeAtom>(), scope).eq("status", STATUS_DRAFT));
+        if (draftAtoms.isEmpty()) {
+            return resultMap("matched", 0, "published", 0, "synced", 0, "failed", 0, "skipped", 0);
+        }
+        int published = 0;
+        int synced = 0;
+        int failed = 0;
+        int skipped = 0;
+        for (KnowledgeAtom atom : draftAtoms) {
+            if (STATUS_ARCHIVED.equalsIgnoreCase(atom.getStatus())) {
+                skipped++;
+                continue;
+            }
+            atom.setStatus(STATUS_PUBLISHED);
+            atom.setPublicationStatus(STATUS_PUBLISHED);
+            atom.setPublishedBy(scope.currentUserId());
+            atom.setPublishedAt(LocalDateTime.now());
+            atom.setVectorStatus("PENDING");
+            atomMapper.updateById(atom);
+            recordVersion(atom, "publish:workspace-all-drafts");
+            published++;
+            if (syncAtom(atom)) {
+                synced++;
+            } else {
+                failed++;
+            }
+        }
+        return resultMap("matched", draftAtoms.size(), "published", published,
+                "synced", synced, "failed", failed, "skipped", skipped);
+    }
+
     public Map<String, Integer> archiveBatch(String batchId) {
         return archiveAtoms(batchAtomIds(batchId, true));
     }
 
     public Map<String, Integer> reindexAtoms(List<String> atomIds) {
+        return reindexAtoms(atomIds, null);
+    }
+
+    public Map<String, Integer> reindexAtoms(List<String> atomIds, QuestionBankImportScope scope) {
         List<String> ids = cleanAtomIds(atomIds);
         if (ids.isEmpty()) return resultMap("matched", 0, "synced", 0, "failed", 0, "skipped", 0);
-
-        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids));
+        List<KnowledgeAtom> atoms = atomMapper.selectList(applyScope(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids), scope));
         int synced = 0;
         int failed = 0;
         int skipped = 0;
@@ -365,7 +440,11 @@ public class QuestionBankService {
     }
 
     public QuestionBankImportResult importBatch(QuestionBankImportRequest request) {
-        String mode = normalizeMode(request.getMode());
+        return importBatch(request, null);
+    }
+
+    public QuestionBankImportResult importBatch(QuestionBankImportRequest request, QuestionBankImportScope scope) {
+        String mode = normalizeMode(request.getMode(), scope);
         List<String> errors = validateImport(request);
         String batchId = request.getBatchId();
         if (batchId == null || batchId.isBlank()) {
@@ -410,8 +489,8 @@ public class QuestionBankService {
         int failed = 0;
         for (KnowledgeAtomPayload payload : request.getAtoms()) {
             try {
-                KnowledgeAtom atom = toAtom(payload, request.getTargetCategory(), request.getSourceRef(), mode);
-                upsertAtom(atom, "import:" + batchId);
+                KnowledgeAtom atom = toAtom(payload, request.getTargetCategory(), request.getSourceRef(), mode, scope);
+                upsertAtom(atom, "import:" + batchId, scope);
                 imported++;
                 if (STATUS_PUBLISHED.equals(atom.getStatus())) {
                     if (syncAtom(atom)) published++;
@@ -459,6 +538,12 @@ public class QuestionBankService {
     }
 
     private QueryWrapper<KnowledgeAtom> buildAtomQuery(QuestionBankAtomQueryRequest request, List<String> batchAtomIds) {
+        return buildAtomQuery(request, batchAtomIds, null);
+    }
+
+    private QueryWrapper<KnowledgeAtom> buildAtomQuery(QuestionBankAtomQueryRequest request,
+                                                       List<String> batchAtomIds,
+                                                       QuestionBankImportScope scope) {
         QueryWrapper<KnowledgeAtom> wrapper = new QueryWrapper<>();
         if (!isBlank(request.getKeyword())) {
             String keyword = request.getKeyword().trim();
@@ -479,6 +564,7 @@ public class QuestionBankService {
                 wrapper.in("atom_id", batchAtomIds);
             }
         }
+        applyScope(wrapper, scope);
         return wrapper;
     }
 
@@ -569,8 +655,15 @@ public class QuestionBankService {
     }
 
     private void upsertAtom(KnowledgeAtom atom, String reason) {
+        upsertAtom(atom, reason, null);
+    }
+
+    private void upsertAtom(KnowledgeAtom atom, String reason, QuestionBankImportScope scope) {
         KnowledgeAtom existing = getByAtomId(atom.getAtomId());
         if (existing != null) {
+            if (scope != null && !matchesScope(existing, scope)) {
+                throw new IllegalStateException("atom id conflicts outside current knowledge base: " + atom.getAtomId());
+            }
             atom.setId(existing.getId());
             atom.setCreateTime(existing.getCreateTime());
             atomMapper.updateById(atom);
@@ -601,8 +694,16 @@ public class QuestionBankService {
     }
 
     private KnowledgeAtom toAtom(KnowledgeAtomPayload payload, String defaultCategory, String sourceRef, String mode) {
+        return toAtom(payload, defaultCategory, sourceRef, mode, null);
+    }
+
+    private KnowledgeAtom toAtom(KnowledgeAtomPayload payload,
+                                 String defaultCategory,
+                                 String sourceRef,
+                                 String mode,
+                                 QuestionBankImportScope scope) {
         KnowledgeAtom atom = new KnowledgeAtom();
-        atom.setAtomId(payload.getId().trim());
+        atom.setAtomId(scopedAtomId(payload.getId(), scope));
         atom.setSubject(payload.getSubject().trim());
         atom.setCategory(nonBlank(payload.getCategory(), defaultCategory));
         atom.setDifficulty(payload.getDifficulty());
@@ -615,14 +716,105 @@ public class QuestionBankService {
         atom.setSourceRef(nonBlank(payload.getSourceRef(), sourceRef));
         atom.setChecksum(checksum(atom));
         atom.setVectorStatus(STATUS_PUBLISHED.equals(atom.getStatus()) ? "PENDING" : "SKIPPED");
+        if (scope != null) {
+            atom.setScope(scope.scope());
+            atom.setOwnerUserId(scope.ownerUserId());
+            atom.setPositionId(scope.positionId());
+            atom.setKnowledgeBaseId(scope.knowledgeBaseId());
+            atom.setReviewStatus("PASS");
+            atom.setReviewReason("导入包人工维护");
+            atom.setReviewConfidence(1.0);
+            atom.setReviewedBy(scope.currentUserId());
+            atom.setReviewedAt(LocalDateTime.now());
+            atom.setPublicationStatus(STATUS_PUBLISHED.equals(atom.getStatus()) ? STATUS_PUBLISHED : STATUS_DRAFT);
+            if (STATUS_PUBLISHED.equals(atom.getStatus())) {
+                atom.setPublishedBy(scope.currentUserId());
+                atom.setPublishedAt(LocalDateTime.now());
+            }
+        }
         return atom;
     }
 
     private String normalizeMode(String value) {
+        return normalizeMode(value, null);
+    }
+
+    private String normalizeMode(String value, QuestionBankImportScope scope) {
         if (value == null || value.isBlank()) return "DRAFT";
         String mode = value.trim().toUpperCase();
+        if (scope != null && "AUTO_PUBLISH".equals(mode) && !scope.allowAutoPublish()) {
+            return "DRAFT";
+        }
         if (List.of("DRY_RUN", "DRAFT", "AUTO_PUBLISH").contains(mode)) return mode;
         return "DRAFT";
+    }
+
+    private QueryWrapper<KnowledgeAtom> applyScope(QueryWrapper<KnowledgeAtom> wrapper, QuestionBankImportScope scope) {
+        if (scope == null) {
+            return wrapper;
+        }
+        wrapper.eq("scope", scope.scope())
+                .eq(scope.ownerUserId() != null, "owner_user_id", scope.ownerUserId())
+                .eq("position_id", scope.positionId())
+                .eq("knowledge_base_id", scope.knowledgeBaseId());
+        return wrapper;
+    }
+
+    private boolean isPrivateScope(QuestionBankImportScope scope) {
+        return scope != null && "PRIVATE".equalsIgnoreCase(scope.scope());
+    }
+
+    private boolean matchesScope(KnowledgeAtom atom, QuestionBankImportScope scope) {
+        if (atom == null || scope == null) {
+            return false;
+        }
+        return equalsIgnoreCase(atom.getScope(), scope.scope())
+                && equalsLong(atom.getOwnerUserId(), scope.ownerUserId())
+                && equalsLong(atom.getPositionId(), scope.positionId())
+                && equalsLong(atom.getKnowledgeBaseId(), scope.knowledgeBaseId());
+    }
+
+    private String scopedAtomId(String atomId, QuestionBankImportScope scope) {
+        String cleaned = atomId == null ? "" : atomId.trim();
+        if (!isPrivateScope(scope)) {
+            return cleaned;
+        }
+        String prefix = "kb" + scope.knowledgeBaseId() + "-";
+        String candidate = prefix + cleaned;
+        if (candidate.length() <= 128) {
+            return candidate;
+        }
+        String suffix = "-" + shortHash(cleaned);
+        int maxBaseLength = Math.max(1, 128 - prefix.length() - suffix.length());
+        return prefix + cleaned.substring(0, Math.min(cleaned.length(), maxBaseLength)) + suffix;
+    }
+
+    private String shortHash(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 6 && i < hash.length; i++) {
+                sb.append(String.format("%02x", hash[i]));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return Integer.toHexString(value.hashCode());
+        }
+    }
+
+    private boolean equalsIgnoreCase(String first, String second) {
+        if (first == null || second == null) {
+            return first == second;
+        }
+        return first.equalsIgnoreCase(second);
+    }
+
+    private boolean equalsLong(Long first, Long second) {
+        if (first == null || second == null) {
+            return first == second;
+        }
+        return first.equals(second);
     }
 
     private List<String> validateImport(QuestionBankImportRequest request) {
@@ -652,18 +844,30 @@ public class QuestionBankService {
         if (request.getCategories() != null && !request.getCategories().isEmpty()) {
             return request.getCategories();
         }
+        if (hasStructuredScope(request)) {
+            return List.of();
+        }
         if (!isBlank(request.getPosition())) {
             return categoryConfig.getCategoriesFor(request.getPosition());
         }
         return List.of();
     }
 
-    private List<QuestionBankSearchResult> loadHits(List<QdrantVectorService.VectorHit> hits) {
+    private boolean hasStructuredScope(QuestionBankSearchRequest request) {
+        return !isBlank(request.getScope())
+                || request.getOwnerUserId() != null
+                || request.getPositionId() != null
+                || request.getKnowledgeBaseId() != null;
+    }
+
+    private List<QuestionBankSearchResult> loadHits(List<QdrantVectorService.VectorHit> hits, QuestionBankSearchRequest request) {
         if (hits == null || hits.isEmpty()) return List.of();
         List<String> atomIds = hits.stream().map(QdrantVectorService.VectorHit::getAtomId).collect(Collectors.toList());
-        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
+        QueryWrapper<KnowledgeAtom> wrapper = new QueryWrapper<KnowledgeAtom>()
                 .in("atom_id", atomIds)
-                .eq("status", STATUS_PUBLISHED));
+                .eq("status", STATUS_PUBLISHED);
+        applySearchScope(wrapper, request);
+        List<KnowledgeAtom> atoms = atomMapper.selectList(wrapper);
         Map<String, KnowledgeAtom> byId = atoms.stream().collect(Collectors.toMap(KnowledgeAtom::getAtomId, a -> a));
         return hits.stream()
                 .filter(hit -> byId.containsKey(hit.getAtomId()))
@@ -671,12 +875,17 @@ public class QuestionBankService {
                 .collect(Collectors.toList());
     }
 
-    private List<QuestionBankSearchResult> fallbackSearch(String query, List<String> categories, List<String> exclude, int limit) {
+    private List<QuestionBankSearchResult> fallbackSearch(String query,
+                                                          List<String> categories,
+                                                          List<String> exclude,
+                                                          int limit,
+                                                          QuestionBankSearchRequest request) {
         List<String> terms = fallbackTerms.from(query);
         QueryWrapper<KnowledgeAtom> wrapper = new QueryWrapper<>();
         wrapper.eq("status", STATUS_PUBLISHED)
                 .in(categories != null && !categories.isEmpty(), "category", categories)
                 .notIn(exclude != null && !exclude.isEmpty(), "atom_id", exclude);
+        applySearchScope(wrapper, request);
         wrapper.and(w -> {
                     for (int i = 0; i < terms.size(); i++) {
                         if (i > 0) w.or();
@@ -692,6 +901,24 @@ public class QuestionBankService {
                 .sorted(Comparator.comparing(KnowledgeAtom::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(atom -> toResult(atom, 0.0))
                 .collect(Collectors.toList());
+    }
+
+    private void applySearchScope(QueryWrapper<KnowledgeAtom> wrapper, QuestionBankSearchRequest request) {
+        if (request == null) {
+            return;
+        }
+        if (!isBlank(request.getScope())) {
+            wrapper.eq("scope", request.getScope().trim().toUpperCase());
+        }
+        if (request.getOwnerUserId() != null) {
+            wrapper.eq("owner_user_id", request.getOwnerUserId());
+        }
+        if (request.getPositionId() != null) {
+            wrapper.eq("position_id", request.getPositionId());
+        }
+        if (request.getKnowledgeBaseId() != null) {
+            wrapper.eq("knowledge_base_id", request.getKnowledgeBaseId());
+        }
     }
 
     private QuestionBankSearchResult toResult(KnowledgeAtom atom, double score) {

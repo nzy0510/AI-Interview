@@ -160,6 +160,18 @@ public class QdrantVectorService {
 
     @SuppressWarnings("unchecked")
     public List<VectorHit> search(String query, List<String> categories, List<String> excludeAtomIds, int limit) {
+        return search(query, categories, excludeAtomIds, limit, null, null, null, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<VectorHit> search(String query,
+                                  List<String> categories,
+                                  List<String> excludeAtomIds,
+                                  int limit,
+                                  String scope,
+                                  Long ownerUserId,
+                                  Long positionId,
+                                  Long knowledgeBaseId) {
         if (!enabled || query == null || query.isBlank()) return List.of();
         if (!ensureCollection()) {
             throw new IllegalStateException("Qdrant collection is unavailable");
@@ -169,7 +181,7 @@ public class QdrantVectorService {
             body.put("vector", embed(withPrefix(queryPrefix, query)));
             body.put("limit", Math.max(1, limit));
             body.put("with_payload", true);
-            Map<String, Object> filter = buildFilter(categories, excludeAtomIds);
+            Map<String, Object> filter = buildFilter(categories, excludeAtomIds, scope, ownerUserId, positionId, knowledgeBaseId);
             if (!filter.isEmpty()) body.put("filter", filter);
 
             Map<String, Object> response = restTemplate.postForObject(
@@ -198,9 +210,26 @@ public class QdrantVectorService {
         }
     }
 
-    private Map<String, Object> buildFilter(List<String> categories, List<String> excludeAtomIds) {
+    private Map<String, Object> buildFilter(List<String> categories,
+                                            List<String> excludeAtomIds,
+                                            String scope,
+                                            Long ownerUserId,
+                                            Long positionId,
+                                            Long knowledgeBaseId) {
         List<Object> must = new ArrayList<>();
         must.add(Map.of("key", "status", "match", Map.of("value", "PUBLISHED")));
+        if (scope != null && !scope.isBlank()) {
+            must.add(Map.of("key", "scope", "match", Map.of("value", scope.trim().toUpperCase())));
+        }
+        if (ownerUserId != null) {
+            must.add(Map.of("key", "owner_user_id", "match", Map.of("value", ownerUserId)));
+        }
+        if (positionId != null) {
+            must.add(Map.of("key", "position_id", "match", Map.of("value", positionId)));
+        }
+        if (knowledgeBaseId != null) {
+            must.add(Map.of("key", "knowledge_base_id", "match", Map.of("value", knowledgeBaseId)));
+        }
         if (categories != null && !categories.isEmpty()) {
             must.add(Map.of("key", "category", "match", Map.of("any", categories)));
         }

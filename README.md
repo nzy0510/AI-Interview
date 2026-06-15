@@ -1,325 +1,168 @@
 # InterWise AI 模拟面试系统
 
-InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把简历画像、文字面试、视频面试、数据库题库、动态 RAG 追问、面试复盘和 AI Mentor 打通到同一条学习闭环中，重点解决“只会单轮问答、题库与模拟面试割裂、追问缺少依据、训练结果难以复盘”的问题。
+InterWise 是一个本地可部署的 AI 模拟面试平台。当前版本的核心方向是受控开放：仓库提供公共 starter 题库，登录用户可以维护自己的私有岗位题库，公共题库由 `ADMIN` 角色维护。
 
-后端基于 `Spring Boot 3 + MyBatis-Plus + LangChain4j + MySQL + Redis + Qdrant`，前端基于 `Vue 3 + Vite + Element Plus`。Docker 部署默认使用独立 `embedding-service` 加载 `intfloat/multilingual-e5-base`，通过 Qdrant 为面试追问提供可重建的语义索引。
+后端使用 `Spring Boot 3 + MyBatis-Plus + LangChain4j + MySQL + Redis + Qdrant`，前端使用 `Vue 3 + Vite + Element Plus`。Docker 默认启动独立 `embedding-service`，使用 `intfloat/multilingual-e5-base` 生成题库向量。
 
-## 项目亮点
+## 当前能力
 
-- 动态面试 RAG：不是传统知识库问答式“用户问题 -> 检索 -> 摘要回答”，而是在每一轮面试中把候选人回答、岗位、阶段、历史已问知识点和题库召回结果转成“下一问决策信号”。
-- 模拟面试与题库打通：MySQL 保存可审核、可发布、可归档的知识原子，Qdrant 只作为可重建的语义索引；已发布 Atom 才能进入面试追问链路。
-- 追问路径更贴近真实面试：技术阶段按岗位和难度召回，结合低信息回答、弱召回、连续回避、已用 Atom 排除等信号，决定补救追问、切换知识点或继续深挖。
-- 多模式训练闭环：支持文字面试、视频面试、简历画像、历史报告、AI Mentor 分析和知识覆盖率复盘。
-- 用户自主管理题库：登录用户可在知识库 / 题库工作台维护私有岗位、上传知识文件、生成和审查知识原子；公共 starter 岗位由 `ADMIN` 角色维护。
-- 可评测的 RAG 链路：内置离线检索评测工具链，固定 AI 大模型岗位评测集，支持比较 embedding、候选集大小和 rerank 效果。
-- 稳定性与运营观测：内置访问事件、限流、反馈记录、RAG 请求级日志和 Qdrant 失败降级路径。
+- 文字面试和视频面试：按岗位、难度、阶段推进，技术轮会结合已发布题库原子做 RAG 追问。
+- 用户自配大模型：用户登录后在“大模型配置”中保存 OpenAI-compatible Provider。项目不提供系统兜底 API Key。
+- 知识库 / 题库工作台：普通用户维护自己的私有岗位题库；管理员维护公共 starter 题库。
+- 受控题库导入：本机 Agent 使用 `interview-question-bank` skill 和 `scripts/question_bank_import.py` 生成 JSON 导入包，应用内导入为草稿，经人工审查后发布并同步 Qdrant。
+- 历史报告：面试结束立即展示初步报告，后台生成可在历史记录查看的逐轮详细报告。
+- 简历画像和 AI Mentor：基于简历、历史面试和知识覆盖情况生成训练建议。
 
-## 效果展示
+## 系统边界
 
-### 工作台与准备流程
+- MySQL 是业务真相，保存用户、面试、报告、题库原子、导入批次和发布状态。
+- Qdrant 是可重建的语义索引，只索引已发布原子。
+- embedding-service 只负责向量化，不保存业务状态。
+- 应用内不再支持任意文档上传后自动切分生成原子；题库生产主路径是本机生成导入包，再到工作台人工导入、审查、发布。
+- 私有题库只存在于当前部署的 MySQL/Qdrant 数据中，不会提交到 Git，也不会同步到其他部署。
 
-![工作台主页面](image/展示图/工作台主页面.png)
+## 本机 Docker 部署
 
-![面试准备页](image/展示图/面试准备页.png)
+### 1. 准备环境
 
-### 文字面试与视频面试
+- Docker Desktop 或 Docker Engine + Docker Compose
+- 可访问 Hugging Face / PyPI / Maven / npm 的网络环境
+- 一个 OpenAI-compatible 模型账号，用于用户登录后在前端配置
+- SMTP 授权码，用于注册和找回密码
 
-![文字面试页](image/展示图/文字面试页.png)
+仅做后端或前端裸跑开发时再安装 JDK 17、Node.js 20+、Python 3.10+。
 
-![视频面试页](image/展示图/视频面试页.png)
-
-### 简历画像、历史报告与 AI Mentor
-
-![简历画像页](image/展示图/简历画像页.png)
-
-![历史报告页](image/展示图/历史报告页.png)
-
-![AI Mentor 分析页](<image/展示图/ai mentor分析页.png>)
-
-### 偏好设置、大模型配置与题库工作台
-
-![偏好设置页](image/展示图/偏好设置页.png)
-
-![大模型配置页](image/展示图/llm配置界面.png)
-
-![题库维护页](image/展示图/题库维护.png)
-
-## 系统架构
-
-![InterWise 系统架构图](image/架构图/InterWise-系统架构图.png)
-
-```mermaid
-graph LR
-    User["候选人 / 训练用户"] --> Frontend["Vue 3 前端"]
-    Frontend -->|"HTTP / SSE"| Backend["Spring Boot 后端"]
-    Backend --> LLM["用户启用的 OpenAI-compatible 模型"]
-    Backend --> MySQL[("MySQL: 业务真相")]
-    Backend --> Redis[("Redis: 会话缓存 / 限流 / Mentor 缓存")]
-    Backend --> Qdrant[("Qdrant: 语义索引")]
-    Backend --> Embed["embedding-service: multilingual-e5-base"]
-    Embed --> Qdrant
-    Workspace["知识库 / 题库工作台"] --> Backend
-    Admin["ADMIN 角色"] --> Workspace
-```
-
-核心边界：
-
-- MySQL 是用户、面试、报告、题库、导入批次和同步状态的业务真相。
-- Qdrant 是可重建的向量索引，不直接承载题库发布状态。
-- embedding-service 只负责文本向量化，默认输出 768 维 multilingual-e5 向量。
-- 前端不直接访问数据库、Redis 或 Qdrant，所有维护动作走后端 API 与用户 ownership / `ADMIN` 角色校验。
-
-## 动态 RAG 链路
-
-![InterWise RAG 流程图](image/架构图/InterWise-RAG流程图.png)
-
-InterWise 的 RAG 不是独立知识库问答模块，而是嵌入模拟面试流程中的“追问决策层”。
-
-```mermaid
-graph TD
-    Answer["候选人当前回答"] --> Query["结合上一问、岗位、阶段构造检索 query"]
-    Query --> Route["岗位 / 阶段分类路由"]
-    Route --> Search["Qdrant 召回已发布 Atom"]
-    Search --> Signals["低信息回答、弱召回、连续回避、已用 Atom 排除"]
-    Signals --> Decision{"下一问策略"}
-    Decision -->|"召回可靠"| Deepen["注入 Top-N Atom 深挖"]
-    Decision -->|"回答空泛"| Remedy["补救追问"]
-    Decision -->|"召回弱或连续低信息"| Switch["切换知识点"]
-    Deepen --> Prompt["面试官 Prompt"]
-    Remedy --> Prompt
-    Switch --> Prompt
-```
-
-默认策略：
-
-- `APP_RAG_RETRIEVAL_LIMIT=20`：默认召回候选集。
-- `APP_RAG_RETRIEVAL_LIMIT_MAX=30`：短技术回答或多技术点混杂时可动态扩展。
-- `APP_RAG_CONTEXT_LIMIT=10`：最终进入提示词的上下文 Atom 上限。
-- `APP_RAG_HIGH_CONFIDENCE_SCORE=0.70`：高置信召回阈值。
-- `APP_RAG_MIN_CONTEXT_SCORE=0.55`：低于该分数不注入题库上下文。
-
-这一设计和传统 RAG 的差异在于：召回结果不直接拼成答案，而是影响 AI 面试官下一轮追问方式；系统还会记录候选 Atom、实际进入上下文的 Atom、零命中、失败原因和检索策略，便于后续人工评测与 rerank 验证。
-
-## 当前功能
-
-### 面试训练
-
-- 文字面试：SSE 流式生成，按面试阶段推进，支持技术追问、HR 软技能阶段和结束总结。
-- 视频面试：摄像头与语音交互入口，结合浏览器能力进行更接近真实场景的训练。
-- 面试准备：选择岗位、难度、重点方向和简历信息，为后续追问提供上下文。
-- 历史报告：保存面试记录、评分、反馈和复盘建议。
-
-### 简历与 Mentor
-
-- 简历画像：解析 PDF 简历并生成结构化画像。
-- AI Mentor：基于历史面试、知识覆盖率和风险点给出训练建议。
-- 知识覆盖：以已发布题库 Atom 为分母，以实际进入面试上下文的 Atom 为分子，避免只统计“看似召回”的候选。
-
-### 题库与 RAG
-
-- 知识库 / 题库工作台：用户可以查看公共 starter 岗位，创建私有岗位，上传 PDF、DOCX、Markdown/MD、TXT，跟踪转换任务并维护知识原子。
-- 知识原子生成：后端直接读取转换后的 Markdown，按标题、段落、列表和代码块边界分块调用用户启用的大模型，并聚合为可审查草稿。
-- 同步状态：Qdrant 写入或删除失败会保留可重试状态，不让数据库事务和外部索引状态悄悄分叉。
-- 离线评测：`scripts/retrieval_eval` 支持导出、构建候选池、预标注、计算指标和 rerank 对比。
-- 内置基础题库：仓库随代码内置可运行公共 starter 题库，覆盖 Java 后端、Web 前端、AI 大模型应用等方向；本地首次空库启动会自动导入 `backend/src/main/resources/knowledge_base/atoms/**/*.json` 并建立 Qdrant 索引。用户私有题库保存在自己的 MySQL/Qdrant 数据中，不会提交到 Git 或同步到其他部署。
-
-### 运营保护
-
-- 访问统计：记录页面访问、关键行为、异常、反馈和限流命中。
-- 开发者白名单：支持按用户 ID、用户名或邮箱配置本地调试白名单；管理功能使用登录用户的 `ADMIN` 角色授权。
-- 健康检查：`/api/health` 汇总应用、MySQL、Redis、Qdrant 状态。
-
-## 技术栈
-
-### 后端
-
-| 技术 | 版本 / 说明 |
-| --- | --- |
-| Java | 17 |
-| Spring Boot | 3.2.4 |
-| MyBatis-Plus | 3.5.5 |
-| LangChain4j | 0.29.1 |
-| MySQL | 8.0 |
-| Redis | 7 |
-| Qdrant | 向量检索 |
-| Flyway | 9.22.3 |
-| PDFBox | 简历 PDF 解析 |
-| OpenAI-compatible Chat API | 用户自配 DeepSeek / Kimi / GLM / Qwen / 自定义兼容模型 |
-| multilingual-e5-base | Docker 默认 embedding 模型 |
-
-### 前端
-
-| 技术 | 版本 / 说明 |
-| --- | --- |
-| Vue | 3.5 |
-| Vite | 7 |
-| Element Plus | 2.13 |
-| Axios | HTTP 客户端 |
-| ECharts | 图表与词云 |
-| face-api.js | 视频面试情绪分析辅助 |
-| Web Speech API | 浏览器语音能力 |
-
-### 基础设施
-
-| 组件 | 用途 |
-| --- | --- |
-| Docker Compose | 本地与云端多容器编排 |
-| embedding-service | FastAPI 向量服务 |
-| Caddy | 生产 HTTPS 入口 |
-| Azure VM | 当前云端部署形态 |
-
-## 快速启动
-
-### 环境要求
-
-- Docker Desktop / Docker Compose
-- JDK 17
-- Node.js 20+
-- Python 3.10+（仅运行检索评测工具链时需要）
-- 用户自备 OpenAI-compatible API 账号（如 DeepSeek、Kimi、GLM、Qwen 或自定义兼容供应商）
-- SMTP 邮箱授权码（注册、找回密码需要）
-
-### 创建配置
+### 2. 创建本地配置
 
 ```powershell
 Copy-Item .env.example .env
 Copy-Item docker-compose.example.yml docker-compose.yml
 ```
 
-至少配置：
+至少修改 `.env`：
 
 ```env
-DB_PASSWORD=your_mysql_password
-APP_LLM_CONFIG_ENCRYPTION_KEY=your_base64_or_high_entropy_encryption_key
-JWT_SIGN_KEY=your_jwt_signing_key_at_least_32_characters
-APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
+DB_PASSWORD=replace_with_mysql_password
+MYSQL_ROOT_PASSWORD=replace_with_root_password
+JWT_SIGN_KEY=replace_with_at_least_32_random_chars
+APP_LLM_CONFIG_ENCRYPTION_KEY=replace_with_strong_random_secret
+APP_ANALYTICS_HASH_SALT=replace_with_random_salt
+MAIL_HOST=smtp.qq.com
+MAIL_PORT=587
 MAIL_USERNAME=your_email@qq.com
 MAIL_PASSWORD=your_smtp_authorization_code
 ```
 
-若本地部署者需要维护自己的题库，先在前端注册/登录账号，进入侧边栏“知识库 / 题库”创建私有岗位并上传知识文件。管理员维护公共 starter 内容时，应使用具备 `ADMIN` 角色的账号；开发者白名单只用于本地调试，例如：
+说明：
 
-```env
-APP_DEVELOPER_EXEMPT_USERNAMES=your_login_username
-# 或使用邮箱：APP_DEVELOPER_EXEMPT_EMAILS=you@example.com
-```
+- `APP_LLM_CONFIG_ENCRYPTION_KEY` 用于加密保存用户在前端填写的模型 API Key。
+- Docker Compose 内部会把后端的 `QDRANT_URL` 指向 `http://qdrant:6333`，通常不需要手动改。
+- 如果不使用 Docker 跑后端，才需要把本机 Qdrant 地址设为 `http://localhost:6333`。
 
-仓库内置题库只负责空库首次初始化，后续自定义题库以本地 MySQL 和 Qdrant 数据为准，不需要提交到 Git。
-
-与用户自定义大模型配置相关的边界：
-
-- 项目不提供系统兜底 API Key；普通用户若没有有效的启用配置，文字面试、视频面试、报告生成和 AI Mentor 等用户侧 LLM 功能应先引导其到侧边栏“大模型配置”完成配置。
-- V1 只支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 和自定义。
-- 服务端只需要 `APP_LLM_CONFIG_ENCRYPTION_KEY` 这类加密密钥来加密保存用户 API Key；不要在 `.env`、示例配置、日志或文档里写入任何真实供应商密钥。
-- 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置；管理员不能查看用户 API Key 明文。
-
-不要提交 `.env`、真实 API Key、JWT Secret、邮箱授权码或数据库密码。
-
-### Docker 启动
+### 3. 启动
 
 ```powershell
 docker compose up -d --build
 ```
 
-默认访问：
+查看状态：
 
-- 前端：`http://localhost`
-- 后端：`http://localhost:8080`
-- Qdrant：`http://localhost:6333`
-- MySQL：`localhost:13307`
-- Redis：`localhost:6379`
+```powershell
+docker compose ps
+docker logs -f interview-backend
+```
 
-首次构建 embedding-service 会下载 PyTorch、sentence-transformers 和 multilingual-e5 模型，耗时取决于网络质量。若切换过 embedding 模型或 Qdrant collection，启动后需要通过知识库 / 题库维护流程重建索引。
+默认端口：
 
-### 本地测试用户自定义大模型配置
+| 服务 | 地址 |
+| --- | --- |
+| 前端 | `http://localhost` |
+| 后端 | `http://localhost:8080` |
+| Qdrant | `http://localhost:6333` |
+| MySQL | `localhost:13307` |
+| Redis | `localhost:6379` |
 
-本轮只做本地可测试实现，不连接云端服务器。开发者或测试者可以按下面路径验证：
+首次启动会构建前后端镜像、下载 embedding 模型、初始化公共 starter 题库并写入 Qdrant。模型下载和 900+ 条公共原子索引重建可能需要数分钟。
 
-1. 在后端环境变量中配置 `APP_LLM_CONFIG_ENCRYPTION_KEY`，确保服务端具备加密保存用户 API Key 的能力；缺失时不应明文降级。
-2. 启动前后端后，注册并登录一个普通测试账号。
-3. 进入侧边栏“大模型配置”，从 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 或自定义 OpenAI-compatible 预设中选择一个，填写 `Base URL`、模型名和 API Key。
-4. 先执行“测试连接”，确认成功后再保存；失败时只应看到脱敏错误，不应看到完整 API Key、Bearer Token 或密文。
-5. 如需切换供应商，可继续新增多个配置，但同一时间只启用一个 active 配置。
-6. 在未配置或未启用有效 provider 的情况下，面试、报告、Mentor 等用户侧 LLM 功能应被阻断并提示先完成配置。
+### 4. 首次使用
 
-本地测试注意事项：
+1. 打开 `http://localhost` 注册并登录。
+2. 进入“大模型配置”，添加并启用自己的 OpenAI-compatible Provider。
+3. 进入“面试准备”，选择有已发布原子的岗位开始训练。
+4. 面试结束后先看初步报告；详细报告稍后在“历史报告”中查看。
 
-- 项目不提供系统默认 key，也不应再依赖全局 `DEEPSEEK_API_KEY` 作为普通用户兜底。
-- API Key 明文只允许在用户提交配置和测试连接时经过后端瞬时处理；列表页、状态接口和管理员界面都不应回显明文。
-- 文档中的供应商名称只是 OpenAI-compatible 预设示例，不代表项目代用户提供账号、资源或官方 SDK。
+### 5. 设置管理员
 
-### 后端
+私有题库维护不需要管理员。维护公共 starter 题库需要 `ADMIN` 角色。
+
+本机部署后可先注册一个账号，再执行一次 SQL 授权：
+
+```powershell
+docker exec -it interview-db mysql -uroot -p ai_interview_ds
+```
+
+```sql
+UPDATE `user`
+SET role = 'ADMIN', admin_granted_at = CURRENT_TIMESTAMP
+WHERE username = 'your_username';
+```
+
+后续可以在应用设置页的管理员区域授予或撤销其他管理员。
+
+## 题库维护
+
+### 私有题库
+
+1. 登录应用，进入“知识库 / 题库”。
+2. 创建私有岗位，或选择已有私有岗位。
+3. 在本机使用题库维护 skill 生成 JSON 导入包。
+4. 回到工作台上传导入包，校验后导入为草稿。
+5. 人工审查和修订原子。
+6. 发布原子或一键发布全部草稿，发布后才会进入面试 RAG。
+
+生成导入包示例：
+
+```powershell
+$env:DEEPSEEK_API_KEY="your_deepseek_key"
+python scripts/question_bank_import.py --input .\materials\java --category java --mode DRAFT
+```
+
+脚本默认使用：
+
+- `DEEPSEEK_BASE_URL=https://api.deepseek.com/v1`
+- `DEEPSEEK_MODEL=deepseek-chat`
+- `DEEPSEEK_API_KEY`
+
+处理 PDF 或 DOCX 时需要额外依赖：
+
+```powershell
+pip install PyPDF2 python-docx
+```
+
+### 公共题库
+
+- 公共 starter 内容位于 `backend/src/main/resources/knowledge_base/atoms/**/*.json`。
+- 空库首次启动会自动导入公共题库；已有旧公共原子缺少岗位归属时，启动会补齐 `position_id`、`knowledge_base_id` 并重建 Qdrant payload。
+- 管理公共题库必须使用 `ADMIN` 账号，在同一个“知识库 / 题库”工作台操作。
+
+## 本地开发
+
+后端：
 
 ```powershell
 cd backend
-mvn test
 mvn spring-boot:run
 ```
 
-普通 Java 本地运行可以使用内置 AllMiniLmL6V2 embedding 便于调试；Docker 和生产部署默认走 HTTP embedding-service。
-
-### 前端
+前端：
 
 ```powershell
 cd frontend
 npm install
 npm run dev
-npm run build
 ```
 
-### 用户自有题库维护
-
-普通产品流程中，登录账号后进入“知识库 / 题库”，上传 PDF、DOCX、Markdown/MD 或 TXT 源文件。后端会先转换为 Markdown，再通过应用内作业生成、二审、人工修订和发布知识原子；所有发布和索引维护都经过 ownership 或 `ADMIN` 角色校验。
-
-### RAG 离线评测
-
-```powershell
-python -m pip install -r scripts/retrieval_eval/requirements.txt
-python -m scripts.retrieval_eval.validate_dataset --help
-python -m scripts.retrieval_eval.calculate_metrics --help
-python -m scripts.retrieval_eval.rerank_candidates --help
-```
-
-固定评测集位于：
-
-```text
-backend/src/test/resources/retrieval-eval/
-  ai-model-v1-atoms.jsonl
-  ai-model-v1.jsonl
-  ai-model-v1-metadata.json
-```
-
-原始导出和未审核候选池默认写入 `output/retrieval-eval/`，不提交到 Git。
-
-## 项目结构
-
-```text
-.
-├── backend/                         # Spring Boot 后端
-│   ├── src/main/java/com/interview/
-│   │   ├── controller/              # REST API
-│   │   ├── service/                 # 面试、简历、Mentor、RAG、题库服务
-│   │   ├── service/questionbank/    # 题库发布、检索、Qdrant 同步
-│   │   ├── entity/                  # MySQL 实体
-│   │   └── config/                  # LLM、Redis、Embedding、JWT 等配置
-│   └── src/main/resources/db/migration/
-├── frontend/                        # Vue 3 前端
-│   └── src/views/                   # 工作台、准备页、面试页、历史、Mentor、设置
-├── embedding-service/               # FastAPI multilingual-e5 向量服务
-├── scripts/retrieval_eval/          # RAG 离线评测工具链
-├── tests/                           # Python 工具链测试
-├── docs/adr/                        # 架构决策记录
-├── docs/superpowers/                # 重要实现计划与设计记录
-├── image/架构图/                    # 系统架构图与 RAG 流程图
-├── image/展示图/                    # 项目页面截图
-├── docker-compose.example.yml       # 本地 Compose 模板
-├── docker-compose.prod.yml          # 生产 Compose
-├── CONTEXT.md                       # 领域语言与边界
-├── PLAN.md                          # 后续推进计划
-└── CHANGELOG.md                     # 更新日志
-```
-
-## 验证命令
+常用验证：
 
 ```powershell
 cd backend
@@ -328,61 +171,67 @@ mvn test
 
 ```powershell
 cd frontend
-npm run build
 npx vitest run
+npm run build
 ```
 
 ```powershell
 python -m unittest discover -s tests
 ```
 
-发布前建议至少完成后端测试、前端构建、前端单元测试和 Python 工具链测试。涉及 embedding-service 或 Qdrant 的变更，还应在 Docker 环境验证 collection 维度、points 数量和全量 reindex 结果。
+## 生产 Compose
 
-## 部署
+生产部署可基于 `docker-compose.prod.yml`：
 
-当前生产形态是单台 Azure Ubuntu VM + Docker Compose：
+```powershell
+Copy-Item .env.example .env
+docker compose -f docker-compose.prod.yml up -d --build
+```
 
-- `frontend`
-- `backend`
-- `embedding-service`
-- `mysql`
-- `redis`
-- `qdrant`
-- `caddy`（HTTPS profile）
+生产环境需要额外确认：
 
-当前线上体验地址：
+- 使用强随机 `MYSQL_ROOT_PASSWORD`、`DB_PASSWORD`、`JWT_SIGN_KEY`、`APP_LLM_CONFIG_ENCRYPTION_KEY`、`APP_ANALYTICS_HASH_SALT`。
+- 如果 `.env` 来自 `.env.example`，将 `QDRANT_URL` 改为 `http://qdrant:6333`，或删除该变量使用 Compose 默认值。
+- 配置 `APP_CORS_ALLOWED_ORIGINS` 为实际域名。
+- 配置 `FRONTEND_HTTP_BIND`，避免端口冲突。
+- 如启用 HTTPS profile，配置 `DOMAIN_NAME` 并准备 `Caddyfile`。
+- 备份 `mysql_data/`、`qdrant_data/`、`redis_data/`、`uploads/`、`knowledge_storage/`、`embedding_model_cache/`。
 
-- [https://interwise.japaneast.cloudapp.azure.com](https://interwise.japaneast.cloudapp.azure.com)
-- 目前处于关闭状态,后续将更换部署平台
+## 排错
 
-生产环境重点检查：
+| 现象 | 处理 |
+| --- | --- |
+| 首次启动很慢 | 查看 `docker logs -f interview-embedding-service` 和 `docker logs -f interview-backend`，通常是模型下载或公共题库索引重建。 |
+| 面试提示没有可用题库 | 确认岗位下存在 `PUBLISHED` 且 `SYNCED` 的原子；在“知识库 / 题库”中发布并重建索引。 |
+| 用户侧 LLM 功能不可用 | 登录后到“大模型配置”添加并启用 Provider；项目没有系统兜底 key。 |
+| 注册邮件失败 | 检查 `MAIL_HOST`、`MAIL_PORT`、`MAIL_USERNAME`、`MAIL_PASSWORD` 是否为 SMTP 授权码。 |
+| 切换 embedding 模型后检索异常 | 确认 `QDRANT_VECTOR_SIZE` 与模型输出维度一致，并重建题库索引。 |
 
-- `GET /api/health` 返回 200，且 app、mysql、redis、qdrant 都为 `UP`。
-- `embedding-service` 健康检查通过。
-- Qdrant collection 使用 `interview_atoms_e5_base`，向量维度为 768。
-- Qdrant points 数量与已发布题库 Atom 数量一致。
-- 切换模型、collection 或题库内容后执行全量 reindex，失败数为 0。
+## 项目结构
 
-## Todo
-
-后续推进计划详见 [PLAN.md](PLAN.md)，当前优先级：
-
-- [ ] 公开展示与项目可信度：持续优化 README、Release Notes、展示图和公开文档边界。
-- [ ] 动态 RAG 质量评测与 rerank 决策：用固定评测集验证 embedding、候选集、阈值和 rerank 收益。
-- [ ] 题库质量与岗位覆盖扩展：继续扩充 Java 后端、前端、AI 大模型、HR 软技能等分类题库。
-- [ ] 产品体验与面试闭环增强：优化准备页、报告、AI Mentor、视频面试和反馈入口。
-- [ ] 部署可靠性与数据保护：完善备份、健康检查、Qdrant 状态校验和本地/云端一致性。
-- [ ] 安全、隐私与运行治理：保持密钥隔离、限流策略、隐私说明和用户数据删除能力建设。
-- [ ] 更换部署平台
+```text
+.
+├── backend/                         # Spring Boot 后端
+├── frontend/                        # Vue 3 前端
+├── embedding-service/               # FastAPI embedding 服务
+├── scripts/question_bank_import.py  # 本机题库导入包生成脚本
+├── skills/interview-question-bank/  # Codex 题库维护 skill
+├── scripts/retrieval_eval/          # RAG 离线评测工具链
+├── docs/                            # 架构、计划与设计文档
+├── image/                           # 架构图和页面截图
+├── docker-compose.example.yml       # 本机 Compose 模板
+├── docker-compose.prod.yml          # 生产 Compose 模板
+├── CONTEXT.md                       # 领域上下文
+└── CHANGELOG.md                     # 更新日志
+```
 
 ## 相关文档
 
 - [领域上下文](CONTEXT.md)
-- [题库导入生命周期 ADR](docs/adr/0002-question-bank-import-lifecycle.md)
-- [移除 MCP 功能 ADR](docs/adr/0004-remove-mcp-feature.md)
-- [RAG 检索评测设计](docs/superpowers/specs/2026-06-03-rag-retrieval-evaluation-design.md)
-- [RAG 链路总结](docs/rag-chain-summary.md)
+- [当前设计文档](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-design.zh.md)
+- [后续事项](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-followups.zh.md)
+- [更新日志](CHANGELOG.md)
 
-## 版本
+## 题库来源
 
-当前稳定版本以 GitHub Releases 为准。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
+内置题库包含自整理内容，部分知识点参考公开面试资料与 mianshiya.com。使用前请按自己的部署、岗位和授权边界复核内容。

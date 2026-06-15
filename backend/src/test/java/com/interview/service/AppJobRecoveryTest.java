@@ -92,7 +92,7 @@ class AppJobRecoveryTest {
         AppJobHandler handler = new AppJobHandler() {
             @Override
             public String jobType() {
-                return "GENERATE_ATOMS";
+                return "TEST_JOB";
             }
 
             @Override
@@ -101,7 +101,7 @@ class AppJobRecoveryTest {
             }
         };
         AppJobDispatcher dispatcher = new AppJobDispatcher(appJobService, List.of(handler));
-        AppJob job = job("GENERATE_ATOMS");
+        AppJob job = job("TEST_JOB");
 
         dispatcher.dispatch(job);
 

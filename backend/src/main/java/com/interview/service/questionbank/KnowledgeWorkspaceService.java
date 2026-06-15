@@ -2,12 +2,28 @@ package com.interview.service.questionbank;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.interview.entity.AppJob;
 import com.interview.entity.InterviewPosition;
+import com.interview.entity.KnowledgeAtom;
+import com.interview.entity.KnowledgeAtomVersion;
 import com.interview.entity.KnowledgeBase;
 import com.interview.entity.KnowledgeSourceFile;
+import com.interview.dto.questionbank.QuestionBankAtomListItem;
+import com.interview.dto.questionbank.QuestionBankAtomQueryRequest;
+import com.interview.dto.questionbank.QuestionBankBulkAtomRequest;
+import com.interview.dto.questionbank.QuestionBankImportPreviewResponse;
+import com.interview.dto.questionbank.QuestionBankImportRequest;
+import com.interview.dto.questionbank.QuestionBankImportResult;
+import com.interview.dto.questionbank.QuestionBankPageResponse;
+import com.interview.mapper.AppJobMapper;
 import com.interview.mapper.InterviewPositionMapper;
+import com.interview.mapper.KnowledgeAtomMapper;
+import com.interview.mapper.KnowledgeAtomReviewMapper;
+import com.interview.mapper.KnowledgeAtomVersionMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.KnowledgeSourceFileMapper;
+import com.interview.service.AdminRoleService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,9 +33,9 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class KnowledgeWorkspaceService {
 
@@ -31,14 +47,35 @@ public class KnowledgeWorkspaceService {
 
     private final InterviewPositionMapper positionMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
+    private final KnowledgeAtomMapper atomMapper;
+    private final KnowledgeAtomVersionMapper versionMapper;
+    private final KnowledgeAtomReviewMapper reviewMapper;
     private final KnowledgeSourceFileMapper sourceFileMapper;
+    private final AppJobMapper appJobMapper;
+    private final AdminRoleService adminRoleService;
+    private final QuestionBankService questionBankService;
+    private final QdrantVectorService qdrantVectorService;
 
     public KnowledgeWorkspaceService(InterviewPositionMapper positionMapper,
                                      KnowledgeBaseMapper knowledgeBaseMapper,
-                                     KnowledgeSourceFileMapper sourceFileMapper) {
+                                     KnowledgeAtomMapper atomMapper,
+                                     KnowledgeAtomVersionMapper versionMapper,
+                                     KnowledgeAtomReviewMapper reviewMapper,
+                                     KnowledgeSourceFileMapper sourceFileMapper,
+                                     AppJobMapper appJobMapper,
+                                     AdminRoleService adminRoleService,
+                                     QuestionBankService questionBankService,
+                                     QdrantVectorService qdrantVectorService) {
         this.positionMapper = positionMapper;
         this.knowledgeBaseMapper = knowledgeBaseMapper;
+        this.atomMapper = atomMapper;
+        this.versionMapper = versionMapper;
+        this.reviewMapper = reviewMapper;
         this.sourceFileMapper = sourceFileMapper;
+        this.appJobMapper = appJobMapper;
+        this.adminRoleService = adminRoleService;
+        this.questionBankService = questionBankService;
+        this.qdrantVectorService = qdrantVectorService;
     }
 
     public KnowledgeWorkspaceResponse listWorkspace(Long currentUserId) {
@@ -62,28 +99,10 @@ public class KnowledgeWorkspaceService {
                 .filter(item -> isVisibleScoped(item.getScope(), item.getOwnerUserId(), currentUserId))
                 .collect(Collectors.toMap(KnowledgeBase::getPositionId, item -> item, (left, right) -> left, LinkedHashMap::new));
 
-        List<Long> knowledgeBaseIds = basesByPosition.values().stream()
-                .map(KnowledgeBase::getId)
-                .filter(Objects::nonNull)
-                .toList();
-        Map<Long, List<KnowledgeSourceFile>> filesByKnowledgeBase = knowledgeBaseIds.isEmpty()
-                ? Map.of()
-                : sourceFileMapper.selectList(new QueryWrapper<KnowledgeSourceFile>()
-                        .in("knowledge_base_id", knowledgeBaseIds)
-                        .and(wrapper -> wrapper
-                                .eq("scope", SCOPE_PUBLIC)
-                                .or(nested -> nested.eq("scope", SCOPE_PRIVATE).eq("owner_user_id", currentUserId)))
-                        .orderByDesc("create_time", "id"))
-                .stream()
-                .filter(item -> isVisibleScoped(item.getScope(), item.getOwnerUserId(), currentUserId))
-                .collect(Collectors.groupingBy(KnowledgeSourceFile::getKnowledgeBaseId, LinkedHashMap::new, Collectors.toList()));
-
         List<KnowledgePositionResponse> responseItems = new ArrayList<>();
         for (InterviewPosition position : positions) {
             KnowledgeBase knowledgeBase = basesByPosition.get(position.getId());
-            responseItems.add(toPositionResponse(position, knowledgeBase,
-                    knowledgeBase == null ? List.of() : filesByKnowledgeBase.getOrDefault(knowledgeBase.getId(), List.of()),
-                    currentUserId));
+            responseItems.add(toPositionResponse(position, knowledgeBase, currentUserId));
         }
         responseItems.sort(Comparator
                 .comparing((KnowledgePositionResponse item) -> !SCOPE_PUBLIC.equalsIgnoreCase(item.scope()))
@@ -122,11 +141,17 @@ public class KnowledgeWorkspaceService {
 
         position.setDefaultKnowledgeBaseId(knowledgeBase.getId());
         positionMapper.updateById(position);
-        return toPositionResponse(position, knowledgeBase, List.of(), currentUserId);
+        return toPositionResponse(position, knowledgeBase, currentUserId);
+    }
+
+    public Map<String, Integer> publishAllDrafts(Long currentUserId, Long knowledgeBaseId) {
+        requireUser(currentUserId);
+        QuestionBankImportScope scope = importScopeFor(currentUserId, knowledgeBaseId);
+        return questionBankService.publishAllDrafts(scope);
     }
 
     @Transactional
-    public void archivePrivatePosition(Long currentUserId, Long positionId) {
+    public void deletePrivatePosition(Long currentUserId, Long positionId) {
         requireUser(currentUserId);
         InterviewPosition position = positionMapper.selectById(positionId);
         if (position == null
@@ -134,30 +159,103 @@ public class KnowledgeWorkspaceService {
                 || !currentUserId.equals(position.getOwnerUserId())) {
             throw new RuntimeException("无权访问岗位");
         }
-        position.setStatus(STATUS_ARCHIVED);
-        positionMapper.updateById(position);
-        knowledgeBaseMapper.update(null, new UpdateWrapper<KnowledgeBase>()
-                .eq("position_id", positionId)
-                .eq("scope", SCOPE_PRIVATE)
-                .eq("owner_user_id", currentUserId)
-                .set("status", STATUS_ARCHIVED));
+        List<KnowledgeAtom> publishedAtoms = atomMapper.selectList(
+                new QueryWrapper<KnowledgeAtom>()
+                        .eq("position_id", positionId)
+                        .eq("status", "PUBLISHED"));
+        List<String> publishedAtomIds = publishedAtoms.stream()
+                .map(KnowledgeAtom::getAtomId)
+                .collect(Collectors.toList());
+        for (String atomId : publishedAtomIds) {
+            try {
+                qdrantVectorService.delete(atomId);
+            } catch (Exception e) {
+                log.warn("Qdrant delete failed for atom {} during position delete: {}", atomId, e.getMessage());
+            }
+        }
+        List<KnowledgeAtom> allAtoms = atomMapper.selectList(
+                new QueryWrapper<KnowledgeAtom>().eq("position_id", positionId));
+        List<String> allAtomIds = allAtoms.stream()
+                .map(KnowledgeAtom::getAtomId)
+                .collect(Collectors.toList());
+        if (!allAtomIds.isEmpty()) {
+            versionMapper.delete(new QueryWrapper<KnowledgeAtomVersion>().in("atom_id", allAtomIds));
+            atomMapper.delete(new QueryWrapper<KnowledgeAtom>().eq("position_id", positionId));
+        }
+        sourceFileMapper.delete(new QueryWrapper<KnowledgeSourceFile>().eq("position_id", positionId));
+        appJobMapper.delete(new QueryWrapper<AppJob>().eq("position_id", positionId));
+        knowledgeBaseMapper.delete(new QueryWrapper<KnowledgeBase>().eq("position_id", positionId));
+        positionMapper.deleteById(positionId);
+    }
+
+    public QuestionBankImportPreviewResponse previewImportPackage(Long currentUserId,
+                                                                  Long knowledgeBaseId,
+                                                                  QuestionBankImportRequest request) {
+        QuestionBankImportScope scope = importScopeFor(currentUserId, knowledgeBaseId);
+        QuestionBankImportRequest safeRequest = forceDraft(request);
+        return questionBankService.previewImport(safeRequest, scope);
+    }
+
+    public QuestionBankImportResult importPackage(Long currentUserId,
+                                                  Long knowledgeBaseId,
+                                                  QuestionBankImportRequest request) {
+        QuestionBankImportScope scope = importScopeFor(currentUserId, knowledgeBaseId);
+        QuestionBankImportRequest safeRequest = forceDraft(request);
+        return questionBankService.importBatch(safeRequest, scope);
+    }
+
+    public QuestionBankPageResponse<QuestionBankAtomListItem> listAtoms(Long currentUserId,
+                                                                        Long knowledgeBaseId,
+                                                                        QuestionBankAtomQueryRequest request) {
+        return questionBankService.listAtoms(request, importScopeFor(currentUserId, knowledgeBaseId));
+    }
+
+    public java.util.Map<String, Integer> archiveAtoms(Long currentUserId,
+                                                       Long knowledgeBaseId,
+                                                       QuestionBankBulkAtomRequest request) {
+        return questionBankService.archiveAtoms(request == null ? List.of() : request.getAtomIds(),
+                importScopeFor(currentUserId, knowledgeBaseId));
+    }
+
+    public java.util.Map<String, Integer> publishAtoms(Long currentUserId,
+                                                       Long knowledgeBaseId,
+                                                       QuestionBankBulkAtomRequest request) {
+        return questionBankService.publishAtoms(request == null ? List.of() : request.getAtomIds(),
+                importScopeFor(currentUserId, knowledgeBaseId));
+    }
+
+    public java.util.Map<String, Integer> reindexAtoms(Long currentUserId,
+                                                       Long knowledgeBaseId,
+                                                       QuestionBankBulkAtomRequest request) {
+        return questionBankService.reindexAtoms(request == null ? List.of() : request.getAtomIds(),
+                importScopeFor(currentUserId, knowledgeBaseId));
     }
 
     private KnowledgePositionResponse toPositionResponse(InterviewPosition position,
                                                          KnowledgeBase knowledgeBase,
-                                                         List<KnowledgeSourceFile> sourceFiles,
                                                          Long currentUserId) {
         boolean editable = SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
                 && currentUserId.equals(position.getOwnerUserId())
                 && !STATUS_ARCHIVED.equalsIgnoreCase(position.getStatus());
+        boolean active = STATUS_ACTIVE.equalsIgnoreCase(position.getStatus())
+                && knowledgeBase != null
+                && STATUS_ACTIVE.equalsIgnoreCase(knowledgeBase.getStatus());
+        boolean privateOwner = active
+                && SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
+                && currentUserId.equals(position.getOwnerUserId());
+        boolean publicAdmin = active
+                && SCOPE_PUBLIC.equalsIgnoreCase(position.getScope())
+                && adminRoleService.isAdmin(currentUserId);
+        boolean canMaintain = privateOwner || publicAdmin;
+        boolean canPublish = privateOwner || publicAdmin;
+        boolean canReindex = privateOwner || publicAdmin;
         KnowledgeBaseResponse knowledgeBaseResponse = knowledgeBase == null ? null : new KnowledgeBaseResponse(
                 knowledgeBase.getId(),
                 knowledgeBase.getScope(),
                 knowledgeBase.getOwnerUserId(),
                 knowledgeBase.getPositionId(),
                 knowledgeBase.getName(),
-                knowledgeBase.getStatus(),
-                sourceFiles.stream().map(KnowledgeSourceFileResponse::from).toList()
+                knowledgeBase.getStatus()
         );
         return new KnowledgePositionResponse(
                 position.getId(),
@@ -167,6 +265,11 @@ public class KnowledgeWorkspaceService {
                 position.getDescription(),
                 position.getStatus(),
                 editable,
+                canMaintain,
+                canMaintain,
+                canPublish,
+                canReindex,
+                canMaintain,
                 knowledgeBaseResponse
         );
     }
@@ -175,6 +278,39 @@ public class KnowledgeWorkspaceService {
         if (currentUserId == null) {
             throw new RuntimeException("未登录：缺少用户身份");
         }
+    }
+
+    private QuestionBankImportScope importScopeFor(Long currentUserId, Long knowledgeBaseId) {
+        requireUser(currentUserId);
+        KnowledgeBase knowledgeBase = knowledgeBaseMapper.selectById(knowledgeBaseId);
+        if (knowledgeBase == null || !canManageKnowledgeBase(knowledgeBase, currentUserId)) {
+            throw new RuntimeException("无权访问知识库");
+        }
+        return new QuestionBankImportScope(
+                knowledgeBase.getScope(),
+                SCOPE_PUBLIC.equalsIgnoreCase(knowledgeBase.getScope()) ? null : knowledgeBase.getOwnerUserId(),
+                knowledgeBase.getPositionId(),
+                knowledgeBase.getId(),
+                currentUserId,
+                false
+        );
+    }
+
+    private boolean canManageKnowledgeBase(KnowledgeBase knowledgeBase, Long currentUserId) {
+        if (knowledgeBase == null || STATUS_ARCHIVED.equalsIgnoreCase(knowledgeBase.getStatus())) {
+            return false;
+        }
+        if (SCOPE_PRIVATE.equalsIgnoreCase(knowledgeBase.getScope())
+                && currentUserId.equals(knowledgeBase.getOwnerUserId())) {
+            return true;
+        }
+        return SCOPE_PUBLIC.equalsIgnoreCase(knowledgeBase.getScope()) && adminRoleService.isAdmin(currentUserId);
+    }
+
+    private QuestionBankImportRequest forceDraft(QuestionBankImportRequest request) {
+        QuestionBankImportRequest safe = request == null ? new QuestionBankImportRequest() : request;
+        safe.setMode("DRAFT");
+        return safe;
     }
 
     private String cleanName(String name) {

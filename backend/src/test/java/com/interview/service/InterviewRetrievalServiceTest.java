@@ -4,8 +4,11 @@ import com.interview.dto.questionbank.QuestionBankSearchRequest;
 import com.interview.dto.questionbank.QuestionBankSearchResponse;
 import com.interview.dto.questionbank.QuestionBankSearchResult;
 import com.interview.entity.InterviewPhase;
+import com.interview.entity.InterviewPosition;
 import com.interview.entity.InterviewRecord;
 import com.interview.entity.RagRetrievalLog;
+import com.interview.mapper.InterviewPositionMapper;
+import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.mapper.RagRetrievalRequestLogMapper;
 import com.interview.service.questionbank.QuestionBankService;
@@ -24,7 +27,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @DisplayName("InterviewRetrievalService — answer and retrieval quality guardrails")
@@ -33,6 +38,12 @@ class InterviewRetrievalServiceTest {
 
     @Mock
     private QuestionBankService questionBankService;
+
+    @Mock
+    private InterviewPositionMapper positionMapper;
+
+    @Mock
+    private KnowledgeBaseMapper knowledgeBaseMapper;
 
     @Mock
     private RagRetrievalLogMapper hitLogMapper;
@@ -143,17 +154,44 @@ class InterviewRetrievalServiceTest {
         ArgumentCaptor<QuestionBankSearchRequest> requestCaptor = ArgumentCaptor.forClass(QuestionBankSearchRequest.class);
         verify(questionBankService).searchWithMetadata(requestCaptor.capture());
         assertThat(requestCaptor.getValue().getLimit()).isEqualTo(30);
+        assertThat(requestCaptor.getValue().getPositionId()).isEqualTo(101L);
+        assertThat(requestCaptor.getValue().getScope()).isEqualTo("PUBLIC");
+        assertThat(requestCaptor.getValue().getKnowledgeBaseId()).isEqualTo(201L);
+        assertThat(requestCaptor.getValue().getOwnerUserId()).isNull();
+    }
+
+    @Test
+    @DisplayName("technical retrieval is skipped when interview record has no structured position")
+    void shouldSkipTechnicalRetrievalWithoutPositionId() {
+        InterviewRecord record = record();
+        record.setPositionId(null);
+        InterviewRetrievalService service = service();
+
+        InterviewRetrievalService.TurnRetrieval retrieval = service.retrieve(
+                1L, record, history("LoRA 为什么可以减少参数量？"), "低秩矩阵",
+                InterviewPhase.TECHNICAL, List.of());
+
+        assertThat(retrieval.contextAtomIds()).isEmpty();
+        verifyNoInteractions(questionBankService);
     }
 
     private InterviewRetrievalService service() {
+        InterviewPosition position = new InterviewPosition();
+        position.setId(101L);
+        position.setName("AI 大模型应用开发");
+        position.setScope("PUBLIC");
+        position.setStatus("ACTIVE");
+        position.setDefaultKnowledgeBaseId(201L);
+        lenient().when(positionMapper.selectById(101L)).thenReturn(position);
         return new InterviewRetrievalService(
-                questionBankService, hitLogMapper, requestLogMapper, appEventService);
+                questionBankService, positionMapper, knowledgeBaseMapper, hitLogMapper, requestLogMapper, appEventService);
     }
 
     private InterviewRecord record() {
         InterviewRecord record = new InterviewRecord();
         record.setId(10L);
         record.setPosition("AI大模型");
+        record.setPositionId(101L);
         return record;
     }
 

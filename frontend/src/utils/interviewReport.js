@@ -133,9 +133,10 @@ export function buildVideoInterviewReportMetrics({
 }
 
 export function parseInterviewFinishPayload(response) {
+  const source = response?.record || response || {}
   return {
-    ability: normalizeAbility(response?.abilityJson),
-    recommendations: parseRecommendations(response?.recommendations),
-    emotion: parseEmotion(response?.emotionJson)
+    ability: normalizeAbility(source.abilityJson),
+    recommendations: parseRecommendations(source.recommendations),
+    emotion: parseEmotion(source.emotionJson)
   }
 }

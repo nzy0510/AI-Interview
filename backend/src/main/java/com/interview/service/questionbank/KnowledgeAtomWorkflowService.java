@@ -2,17 +2,11 @@ package com.interview.service.questionbank;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.interview.entity.AppJob;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeAtomVersion;
-import com.interview.entity.KnowledgeSourceFile;
 import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeAtomVersionMapper;
-import com.interview.mapper.KnowledgeSourceFileMapper;
 import com.interview.service.AdminRoleService;
-import com.interview.service.UserLlmConfigService;
-import com.interview.service.UserLlmRuntimeConfig;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,122 +17,23 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 public class KnowledgeAtomWorkflowService {
 
-    public static final String JOB_TYPE_GENERATE_ATOMS = "GENERATE_ATOMS";
-    private static final int MAX_DRAFTS_PER_IMPORT = 100;
-    private static final Pattern SENSITIVE_PATTERN = Pattern.compile(
-            "(?i)(Authorization\\s*[:=]\\s*\\S+|Bearer\\s+\\S+|api_key\\s*[:=]\\s*\\S+|sk-[A-Za-z0-9_-]+)"
-    );
-
-    private final KnowledgeSourceFileMapper sourceFileMapper;
     private final KnowledgeAtomMapper atomMapper;
     private final KnowledgeAtomVersionMapper versionMapper;
-    private final FileStorageService fileStorageService;
-    private final UserLlmConfigService userLlmConfigService;
     private final AdminRoleService adminRoleService;
-    private final KnowledgeAtomAiClient aiClient;
     private final QuestionBankService questionBankService;
 
-    public KnowledgeAtomWorkflowService(KnowledgeSourceFileMapper sourceFileMapper,
-                                        KnowledgeAtomMapper atomMapper,
+    public KnowledgeAtomWorkflowService(KnowledgeAtomMapper atomMapper,
                                         KnowledgeAtomVersionMapper versionMapper,
-                                        FileStorageService fileStorageService,
-                                        UserLlmConfigService userLlmConfigService,
                                         AdminRoleService adminRoleService,
-                                        KnowledgeAtomAiClient aiClient,
                                         QuestionBankService questionBankService) {
-        this.sourceFileMapper = sourceFileMapper;
         this.atomMapper = atomMapper;
         this.versionMapper = versionMapper;
-        this.fileStorageService = fileStorageService;
-        this.userLlmConfigService = userLlmConfigService;
         this.adminRoleService = adminRoleService;
-        this.aiClient = aiClient;
         this.questionBankService = questionBankService;
-    }
-
-    public List<KnowledgeAtomResponse> listAtomsForSourceFile(Long sourceFileId, Long currentUserId) {
-        requireVisibleSourceFile(sourceFileId, currentUserId);
-        return atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
-                        .eq("source_file_id", sourceFileId)
-                        .orderByDesc("id"))
-                .stream()
-                .filter(atom -> isVisible(atom, currentUserId))
-                .map(KnowledgeAtomResponse::from)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional
-    public KnowledgeAtomResponse createManualAtom(Long sourceFileId, Long currentUserId, KnowledgeAtomPatch patch) {
-        KnowledgeSourceFile sourceFile = requireManageableSourceFile(sourceFileId, currentUserId);
-        KnowledgeAtom atom = new KnowledgeAtom();
-        atom.setAtomId("manual-" + sourceFile.getId() + "-" + UUID.randomUUID());
-        atom.setSubject("未命名考点");
-        atom.setCategory("通用");
-        atom.setDifficulty("MEDIUM");
-        atom.setTagsJson("[]");
-        atom.setPrinciples("待补充");
-        atom.setFollowUpPathsJson("[]");
-        atom.setStatus("DRAFT");
-        atom.setVectorStatus("SKIPPED");
-        atom.setScope(sourceFile.getScope());
-        atom.setOwnerUserId(sourceFile.getOwnerUserId());
-        atom.setPositionId(sourceFile.getPositionId());
-        atom.setKnowledgeBaseId(sourceFile.getKnowledgeBaseId());
-        atom.setSourceFileId(sourceFile.getId());
-        atom.setSourceRef(sourceFile.getOriginalFilename());
-        atom.setCurrentVersionNo(1);
-        atom.setReviewStatus("PASS");
-        atom.setReviewReason("人工创建");
-        atom.setPublicationStatus("DRAFT");
-        applyPatch(atom, patch);
-        atomMapper.insert(atom);
-        recordVersion(atom, "manual:create");
-        return KnowledgeAtomResponse.from(atom);
-    }
-
-    @Transactional
-    public KnowledgeAtomGenerationResult generateAtomsForJob(AppJob job) {
-        if (job == null || job.getSourceFileId() == null) {
-            throw new RuntimeException("原子生成作业缺少源文件");
-        }
-        KnowledgeSourceFile sourceFile = sourceFileMapper.selectById(job.getSourceFileId());
-        if (sourceFile == null) {
-            throw new RuntimeException("源文件不存在");
-        }
-        try {
-            if (sourceFile.getMarkdownStorageKey() == null || sourceFile.getMarkdownStorageKey().isBlank()) {
-                throw new IllegalArgumentException("文件尚未完成 Markdown 转换");
-            }
-            Long runtimeUserId = job.getCreatedBy() != null ? job.getCreatedBy() : sourceFile.getCreatedBy();
-            UserLlmRuntimeConfig runtimeConfig = userLlmConfigService.requireActiveRuntimeConfig(runtimeUserId);
-            String markdown = fileStorageService.readText(sourceFile.getMarkdownStorageKey());
-            KnowledgeAtomDraftBundle bundle = aiClient.generateReviewedAtoms(runtimeConfig, markdown);
-            List<KnowledgeAtomDraft> drafts = bundle.atoms() == null ? List.of() : bundle.atoms();
-            int imported = 0;
-            for (KnowledgeAtomDraft draft : drafts.stream().limit(MAX_DRAFTS_PER_IMPORT).toList()) {
-                KnowledgeAtom atom = toDraftAtom(draft, sourceFile);
-                atomMapper.insert(atom);
-                recordVersion(atom, "generate:" + sourceFile.getId());
-                imported++;
-            }
-            sourceFile.setStatus("ATOMS_GENERATED");
-            sourceFile.setErrorMessage(null);
-            sourceFileMapper.updateById(sourceFile);
-            return new KnowledgeAtomGenerationResult(sourceFile.getId(), drafts.size(), imported,
-                    bundle.atomLimitReached() || drafts.size() > MAX_DRAFTS_PER_IMPORT);
-        } catch (Exception e) {
-            String sanitized = sanitize(e.getMessage());
-            sourceFile.setStatus("FAILED");
-            sourceFile.setErrorMessage(sanitized);
-            sourceFileMapper.updateById(sourceFile);
-            throw new RuntimeException("知识原子生成失败：" + sanitized, e);
-        }
     }
 
     @Transactional
@@ -191,64 +86,6 @@ public class KnowledgeAtomWorkflowService {
         return KnowledgeAtomResponse.from(atom);
     }
 
-    @Transactional
-    public KnowledgeAtomBulkPublishResult publishAtomsForSourceFile(Long sourceFileId, Long currentUserId) {
-        KnowledgeSourceFile sourceFile = requireManageableSourceFile(sourceFileId, currentUserId);
-        List<KnowledgeAtom> atoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
-                .eq("source_file_id", sourceFile.getId()));
-        int published = 0;
-        int synced = 0;
-        int failed = 0;
-        int skipped = 0;
-        for (KnowledgeAtom atom : atoms) {
-            if (!isPublishableDraft(atom)) {
-                skipped++;
-                continue;
-            }
-            boolean syncOk = publishDraftAtom(atom, currentUserId, "publish:source-file");
-            published++;
-            if (syncOk) {
-                synced++;
-            } else {
-                failed++;
-            }
-        }
-        return new KnowledgeAtomBulkPublishResult(sourceFile.getId(), atoms.size(), published, synced, failed, skipped);
-    }
-
-    private KnowledgeSourceFile requireVisibleConvertedSourceFile(Long sourceFileId, Long currentUserId) {
-        KnowledgeSourceFile sourceFile = requireVisibleSourceFile(sourceFileId, currentUserId);
-        if (sourceFile.getMarkdownStorageKey() == null || sourceFile.getMarkdownStorageKey().isBlank()) {
-            throw new IllegalArgumentException("文件尚未完成 Markdown 转换");
-        }
-        return sourceFile;
-    }
-
-    private KnowledgeSourceFile requireVisibleSourceFile(Long sourceFileId, Long currentUserId) {
-        if (currentUserId == null) {
-            throw new RuntimeException("未登录：缺少用户身份");
-        }
-        KnowledgeSourceFile sourceFile = sourceFileMapper.selectById(sourceFileId);
-        if (sourceFile == null || !isVisible(sourceFile, currentUserId)) {
-            throw new RuntimeException("无权访问文件");
-        }
-        return sourceFile;
-    }
-
-    private KnowledgeSourceFile requireManageableSourceFile(Long sourceFileId, Long currentUserId) {
-        KnowledgeSourceFile sourceFile = requireVisibleSourceFile(sourceFileId, currentUserId);
-        if (!canManage(sourceFile, currentUserId)) {
-            throw new RuntimeException("无权访问文件");
-        }
-        return sourceFile;
-    }
-
-    private boolean isVisible(KnowledgeSourceFile sourceFile, Long currentUserId) {
-        return "PUBLIC".equalsIgnoreCase(sourceFile.getScope())
-                || currentUserId.equals(sourceFile.getOwnerUserId())
-                || currentUserId.equals(sourceFile.getCreatedBy());
-    }
-
     private KnowledgeAtom requireVisibleAtom(Long atomId, Long currentUserId) {
         if (currentUserId == null) {
             throw new RuntimeException("未登录：缺少用户身份");
@@ -274,14 +111,6 @@ public class KnowledgeAtomWorkflowService {
                 || currentUserId.equals(atom.getPublishedBy());
     }
 
-    private boolean canManage(KnowledgeSourceFile sourceFile, Long currentUserId) {
-        if ("PRIVATE".equalsIgnoreCase(sourceFile.getScope())
-                && currentUserId.equals(sourceFile.getOwnerUserId())) {
-            return true;
-        }
-        return adminRoleService.isAdmin(currentUserId);
-    }
-
     private boolean canManage(KnowledgeAtom atom, Long currentUserId) {
         if ("PRIVATE".equalsIgnoreCase(atom.getScope())
                 && currentUserId.equals(atom.getOwnerUserId())) {
@@ -295,12 +124,6 @@ public class KnowledgeAtomWorkflowService {
         int draftMarker = atomId.indexOf("-draft-");
         if (draftMarker <= 0) return;
         questionBankService.archiveAtoms(List.of(atomId.substring(0, draftMarker)));
-    }
-
-    private boolean isPublishableDraft(KnowledgeAtom atom) {
-        return "PASS".equals(normalizeReviewStatus(atom.getReviewStatus()))
-                && !"PUBLISHED".equalsIgnoreCase(atom.getPublicationStatus())
-                && !"PUBLISHED".equalsIgnoreCase(atom.getStatus());
     }
 
     private boolean publishDraftAtom(KnowledgeAtom atom, Long currentUserId, String reason) {
@@ -318,37 +141,6 @@ public class KnowledgeAtomWorkflowService {
             archivePreviousDraftBase(atom.getAtomId());
         }
         return synced;
-    }
-
-    private KnowledgeAtom toDraftAtom(KnowledgeAtomDraft draft, KnowledgeSourceFile sourceFile) {
-        KnowledgeAtom atom = new KnowledgeAtom();
-        atom.setAtomId("atom-" + sourceFile.getId() + "-" + UUID.randomUUID());
-        atom.setSubject(nonBlank(draft.subject(), "未命名考点"));
-        atom.setCategory(nonBlank(draft.category(), "通用"));
-        atom.setDifficulty(nonBlank(draft.difficulty(), "MEDIUM").toUpperCase(Locale.ROOT));
-        atom.setTagsJson(JSON.toJSONString(draft.tags() == null ? List.of() : draft.tags()));
-        atom.setPrinciples(nonBlank(draft.principles(), "待补充"));
-        atom.setPitfalls(draft.pitfalls());
-        atom.setFollowUpPathsJson(JSON.toJSONString(draft.followUpPaths() == null ? List.of() : draft.followUpPaths()));
-        atom.setStatus("DRAFT");
-        atom.setSourceRef(sourceFile.getOriginalFilename());
-        atom.setChecksum(checksum(atom));
-        atom.setVectorStatus("SKIPPED");
-        atom.setScope(sourceFile.getScope());
-        atom.setOwnerUserId(sourceFile.getOwnerUserId());
-        atom.setPositionId(sourceFile.getPositionId());
-        atom.setKnowledgeBaseId(sourceFile.getKnowledgeBaseId());
-        atom.setSourceFileId(sourceFile.getId());
-        atom.setCurrentVersionNo(1);
-        KnowledgeAtomReviewResult review = draft.review();
-        atom.setReviewStatus(normalizeReviewStatus(review == null ? null : review.status()));
-        atom.setReviewReason(review == null ? "模型未返回二审结果" : review.reason());
-        atom.setReviewConfidence(review == null ? null : review.confidence());
-        atom.setSuggestedPatchJson(review == null || review.suggestedPatch() == null ? null : JSON.toJSONString(review.suggestedPatch()));
-        atom.setPublicationStatus("DRAFT");
-        atom.setReviewedAt(LocalDateTime.now());
-        atom.setReviewedBy(sourceFile.getCreatedBy());
-        return atom;
     }
 
     private void recordVersion(KnowledgeAtom atom, String reason) {
@@ -431,16 +223,5 @@ public class KnowledgeAtomWorkflowService {
         } catch (Exception e) {
             return Integer.toHexString(raw.hashCode());
         }
-    }
-
-    private String sanitize(String message) {
-        if (message == null || message.isBlank()) {
-            return "知识原子生成失败";
-        }
-        return SENSITIVE_PATTERN.matcher(message).replaceAll("[REDACTED]");
-    }
-
-    private String nonBlank(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value.trim();
     }
 }

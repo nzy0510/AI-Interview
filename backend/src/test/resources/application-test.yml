@@ -2,3 +2,4 @@ interview:
   position-categories:
     java: [hot200, mysql, redis, spring, springboot, 并发, 操作系统]
     frontend: [hot200, Vue]
+    系统运维: [linux, windows, docker, kubernetes, shell, 监控, 自动化运维, 网络, 安全]

@@ -7,13 +7,6 @@
         <strong>{{ totalCovered }}</strong>
         <span class="summary-unit">个知识原子</span>
       </div>
-      <div class="summary-list">
-        <div v-for="item in sortedDetails" :key="item.category" class="summary-row">
-          <span class="summary-dot" :style="{ background: item.color }"></span>
-          <span class="summary-name">{{ item.category || '未分类' }}</span>
-          <strong>{{ item.covered }}</strong>
-        </div>
-      </div>
     </div>
   </div>
 </template>

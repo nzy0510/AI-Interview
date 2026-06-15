@@ -3,6 +3,7 @@ package com.interview.controller;
 import com.interview.common.Result;
 import com.interview.dto.DiscardInterviewRequest;
 import com.interview.dto.FinishInterviewRequest;
+import com.interview.dto.FinishInterviewResponse;
 import com.interview.dto.StartInterviewRequest;
 import com.interview.service.InterviewService;
 import jakarta.validation.Valid;
@@ -26,7 +27,7 @@ public class InterviewController {
                                       HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("currentUserId");
         Long recordId = interviewService.startInterview(userId, req.getPosition(),
-                req.getMode(), req.getResumeQuestions(), req.getDifficultyLevel(), req.getFocusAreas());
+                req.getMode(), req.getResumeQuestions(), req.getDifficultyLevel(), req.getFocusAreas(), req.getPositionId());
         return Result.success(recordId);
     }
 
@@ -44,9 +45,9 @@ public class InterviewController {
                                      HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("currentUserId");
         int wpm = req.getWpm() != null ? req.getWpm() : 0;
-        com.interview.entity.InterviewRecord record = interviewService.endInterview(
+        FinishInterviewResponse response = interviewService.finishInterview(
                 userId, req.getRecordId(), wpm, req.getEmotionJson());
-        return Result.success(record);
+        return Result.success(response);
     }
 
     @PostMapping("/discard")

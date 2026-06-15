@@ -1,16 +1,10 @@
 package com.interview.service.questionbank;
 
-import com.interview.entity.AppJob;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeAtomVersion;
-import com.interview.entity.KnowledgeSourceFile;
-import com.interview.exception.LlmProviderRequiredException;
 import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeAtomVersionMapper;
-import com.interview.mapper.KnowledgeSourceFileMapper;
 import com.interview.service.AdminRoleService;
-import com.interview.service.UserLlmConfigService;
-import com.interview.service.UserLlmRuntimeConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,7 +13,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,25 +27,13 @@ import static org.mockito.Mockito.when;
 class KnowledgeAtomWorkflowServiceTest {
 
     @Mock
-    private KnowledgeSourceFileMapper sourceFileMapper;
-
-    @Mock
     private KnowledgeAtomMapper atomMapper;
 
     @Mock
     private KnowledgeAtomVersionMapper versionMapper;
 
     @Mock
-    private FileStorageService fileStorageService;
-
-    @Mock
-    private UserLlmConfigService userLlmConfigService;
-
-    @Mock
     private AdminRoleService adminRoleService;
-
-    @Mock
-    private KnowledgeAtomAiClient aiClient;
 
     @Mock
     private QuestionBankService questionBankService;
@@ -62,69 +43,33 @@ class KnowledgeAtomWorkflowServiceTest {
     @BeforeEach
     void setUp() {
         service = new KnowledgeAtomWorkflowService(
-                sourceFileMapper,
                 atomMapper,
                 versionMapper,
-                fileStorageService,
-                userLlmConfigService,
                 adminRoleService,
-                aiClient,
                 questionBankService
         );
     }
 
     @Test
-    @DisplayName("生成作业最多落库 100 条二审后的草稿原子")
-    void shouldPersistAtMostOneHundredReviewedDraftAtoms() throws Exception {
-        KnowledgeSourceFile sourceFile = convertedPrivateSourceFile();
-        when(sourceFileMapper.selectById(10L)).thenReturn(sourceFile);
-        when(fileStorageService.readText("markdown/10.md")).thenReturn("# Java HashMap");
-        when(userLlmConfigService.requireActiveRuntimeConfig(7L)).thenReturn(runtimeConfig());
-        when(aiClient.generateReviewedAtoms(any(), any())).thenReturn(new KnowledgeAtomDraftBundle(manyDrafts(101), true));
+    @DisplayName("私有题库 owner 可以在作用域 RAG 接入后发布自己的原子")
+    void shouldPublishPrivateAtomForOwnerAfterScopedRag() {
+        KnowledgeAtom atom = draftAtom("PASS");
+        when(atomMapper.selectById(5L)).thenReturn(atom);
+        when(questionBankService.syncAtom(atom)).thenReturn(true);
 
-        KnowledgeAtomGenerationResult result = service.generateAtomsForJob(generationJob());
+        KnowledgeAtomResponse response = service.publishAtom(5L, 7L);
 
-        assertThat(result.imported()).isEqualTo(100);
-        assertThat(result.atomLimitReached()).isTrue();
-        ArgumentCaptor<KnowledgeAtom> atomCaptor = ArgumentCaptor.forClass(KnowledgeAtom.class);
-        verify(atomMapper, org.mockito.Mockito.times(100)).insert(atomCaptor.capture());
-        assertThat(atomCaptor.getAllValues())
-                .allSatisfy(atom -> {
-                    assertThat(atom.getScope()).isEqualTo("PRIVATE");
-                    assertThat(atom.getOwnerUserId()).isEqualTo(7L);
-                    assertThat(atom.getPositionId()).isEqualTo(12L);
-                    assertThat(atom.getKnowledgeBaseId()).isEqualTo(22L);
-                    assertThat(atom.getSourceFileId()).isEqualTo(10L);
-                    assertThat(atom.getStatus()).isEqualTo("DRAFT");
-                    assertThat(atom.getPublicationStatus()).isEqualTo("DRAFT");
-                    assertThat(atom.getVectorStatus()).isEqualTo("SKIPPED");
-                    assertThat(atom.getReviewStatus()).isIn("PASS", "NEEDS_REVIEW", "REJECT");
-                });
-    }
-
-    @Test
-    @DisplayName("LLM 生成失败时不泄露 Bearer/API Key 到文件错误")
-    void shouldSanitizeLlmFailureMessage() throws Exception {
-        KnowledgeSourceFile sourceFile = convertedPrivateSourceFile();
-        when(sourceFileMapper.selectById(10L)).thenReturn(sourceFile);
-        when(fileStorageService.readText("markdown/10.md")).thenReturn("# Java HashMap");
-        when(userLlmConfigService.requireActiveRuntimeConfig(7L)).thenReturn(runtimeConfig());
-        when(aiClient.generateReviewedAtoms(any(), any()))
-                .thenThrow(new RuntimeException("provider failed: Bearer sk-secret-token"));
-
-        assertThatThrownBy(() -> service.generateAtomsForJob(generationJob()))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("[REDACTED]")
-                .hasMessageNotContaining("sk-secret-token");
-        assertThat(sourceFile.getErrorMessage()).doesNotContain("sk-secret-token");
-        verify(sourceFileMapper).updateById(sourceFile);
+        assertThat(response.publicationStatus()).isEqualTo("PUBLISHED");
+        assertThat(response.status()).isEqualTo("PUBLISHED");
+        verify(questionBankService).syncAtom(atom);
     }
 
     @Test
     @DisplayName("REJECT 二审结果不可发布")
     void shouldRejectPublishingRejectedAtom() {
-        KnowledgeAtom atom = draftAtom("REJECT");
+        KnowledgeAtom atom = publicAtom("REJECT");
         when(atomMapper.selectById(5L)).thenReturn(atom);
+        when(adminRoleService.isAdmin(7L)).thenReturn(true);
 
         assertThatThrownBy(() -> service.publishAtom(5L, 7L))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -195,8 +140,9 @@ class KnowledgeAtomWorkflowServiceTest {
     @Test
     @DisplayName("PASS 草稿发布后替换为当前可搜索版本并同步向量，失败保留重试状态")
     void shouldPublishPassDraftAndKeepFailedVectorRetryable() {
-        KnowledgeAtom atom = draftAtom("PASS");
+        KnowledgeAtom atom = publicAtom("PASS");
         when(atomMapper.selectById(5L)).thenReturn(atom);
+        when(adminRoleService.isAdmin(7L)).thenReturn(true);
         when(questionBankService.syncAtom(atom)).thenAnswer(invocation -> {
             atom.setVectorStatus("FAILED");
             return false;
@@ -216,9 +162,10 @@ class KnowledgeAtomWorkflowServiceTest {
     @Test
     @DisplayName("发布已生成草稿时写入下一版本，避免与生成版本冲突")
     void shouldRecordPublishAsNextVersionAfterGeneratedDraftVersion() {
-        KnowledgeAtom atom = draftAtom("PASS");
+        KnowledgeAtom atom = publicAtom("PASS");
         atom.setCurrentVersionNo(1);
         when(atomMapper.selectById(5L)).thenReturn(atom);
+        when(adminRoleService.isAdmin(7L)).thenReturn(true);
         when(questionBankService.syncAtom(atom)).thenReturn(true);
 
         KnowledgeAtomResponse response = service.publishAtom(5L, 7L);
@@ -233,9 +180,10 @@ class KnowledgeAtomWorkflowServiceTest {
     @Test
     @DisplayName("发布草稿修订且向量同步成功后归档旧发布版本")
     void shouldArchivePreviousPublishedRevisionAfterDraftRevisionPublished() {
-        KnowledgeAtom atom = draftAtom("PASS");
+        KnowledgeAtom atom = publicAtom("PASS");
         atom.setAtomId("atom-published-draft-abc");
         when(atomMapper.selectById(5L)).thenReturn(atom);
+        when(adminRoleService.isAdmin(7L)).thenReturn(true);
         when(questionBankService.syncAtom(atom)).thenAnswer(invocation -> {
             atom.setVectorStatus("SYNCED");
             return true;
@@ -247,69 +195,6 @@ class KnowledgeAtomWorkflowServiceTest {
         verify(questionBankService).archiveAtoms(List.of("atom-published"));
     }
 
-    @Test
-    @DisplayName("批量发布当前文件下 PASS 草稿并跳过不可发布原子")
-    void shouldBulkPublishOnlyPublishableAtomsForSourceFile() {
-        KnowledgeSourceFile sourceFile = convertedPrivateSourceFile();
-        KnowledgeAtom passDraft = draftAtom("PASS");
-        passDraft.setId(1L);
-        KnowledgeAtom needsReview = draftAtom("NEEDS_REVIEW");
-        needsReview.setId(2L);
-        KnowledgeAtom published = draftAtom("PASS");
-        published.setId(3L);
-        published.setPublicationStatus("PUBLISHED");
-        published.setStatus("PUBLISHED");
-
-        when(sourceFileMapper.selectById(10L)).thenReturn(sourceFile);
-        when(atomMapper.selectList(any())).thenReturn(List.of(passDraft, needsReview, published));
-        when(questionBankService.syncAtom(passDraft)).thenAnswer(invocation -> {
-            passDraft.setVectorStatus("SYNCED");
-            return true;
-        });
-
-        KnowledgeAtomBulkPublishResult result = service.publishAtomsForSourceFile(10L, 7L);
-
-        assertThat(result.matched()).isEqualTo(3);
-        assertThat(result.published()).isEqualTo(1);
-        assertThat(result.synced()).isEqualTo(1);
-        assertThat(result.failed()).isZero();
-        assertThat(result.skipped()).isEqualTo(2);
-        assertThat(passDraft.getPublicationStatus()).isEqualTo("PUBLISHED");
-        assertThat(passDraft.getStatus()).isEqualTo("PUBLISHED");
-        verify(atomMapper).updateById(passDraft);
-        verify(questionBankService).syncAtom(passDraft);
-        verify(questionBankService, never()).syncAtom(needsReview);
-        verify(questionBankService, never()).syncAtom(published);
-    }
-
-    private KnowledgeSourceFile convertedPrivateSourceFile() {
-        KnowledgeSourceFile sourceFile = new KnowledgeSourceFile();
-        sourceFile.setId(10L);
-        sourceFile.setScope("PRIVATE");
-        sourceFile.setOwnerUserId(7L);
-        sourceFile.setPositionId(12L);
-        sourceFile.setKnowledgeBaseId(22L);
-        sourceFile.setOriginalFilename("java.md");
-        sourceFile.setMarkdownStorageKey("markdown/10.md");
-        sourceFile.setStatus("CONVERTED");
-        sourceFile.setCreatedBy(7L);
-        return sourceFile;
-    }
-
-    private AppJob generationJob() {
-        AppJob job = new AppJob();
-        job.setId(99L);
-        job.setJobType("GENERATE_ATOMS");
-        job.setSourceFileId(10L);
-        job.setCreatedBy(7L);
-        job.setClaimedBy("worker-1");
-        return job;
-    }
-
-    private UserLlmRuntimeConfig runtimeConfig() {
-        return new UserLlmRuntimeConfig(1L, 7L, "custom", "Custom", "https://llm.example/v1",
-                "test-model", "sk-test", 0.1);
-    }
 
     private KnowledgeAtom draftAtom(String reviewStatus) {
         KnowledgeAtom atom = new KnowledgeAtom();
@@ -335,25 +220,10 @@ class KnowledgeAtomWorkflowServiceTest {
         return atom;
     }
 
-    private List<KnowledgeAtomDraft> manyDrafts(int count) {
-        List<KnowledgeAtomDraft> drafts = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            drafts.add(new KnowledgeAtomDraft(
-                    "subject " + i,
-                    "Java",
-                    "MEDIUM",
-                    List.of("hashmap"),
-                    "principles " + i,
-                    "pitfalls " + i,
-                    List.of("follow up " + i),
-                    new KnowledgeAtomReviewResult(
-                            i % 3 == 0 ? "PASS" : i % 3 == 1 ? "NEEDS_REVIEW" : "REJECT",
-                            "reason " + i,
-                            0.82,
-                            i % 3 == 1 ? new KnowledgeAtomPatch("patched " + i, null, null, null, null, null, null) : null
-                    )
-            ));
-        }
-        return drafts;
+    private KnowledgeAtom publicAtom(String reviewStatus) {
+        KnowledgeAtom atom = draftAtom(reviewStatus);
+        atom.setScope("PUBLIC");
+        atom.setOwnerUserId(null);
+        return atom;
     }
 }

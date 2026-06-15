@@ -32,6 +32,16 @@ public class AppJobService {
     }
 
     @Transactional
+    public AppJob createPendingJob(AppJob job) {
+        job.setStatus(STATUS_PENDING);
+        job.setStage(job.getStage() == null ? "PENDING" : job.getStage());
+        job.setProgress(job.getProgress() == null ? 0 : job.getProgress());
+        job.setRetryable(false);
+        appJobMapper.insert(job);
+        return job;
+    }
+
+    @Transactional
     public AppJob claimPendingJob(Long jobId, String workerId, Duration lockTtl) {
         int updated = appJobMapper.update(null, new UpdateWrapper<AppJob>()
                 .eq("id", jobId)

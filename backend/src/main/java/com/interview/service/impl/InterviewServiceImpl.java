@@ -2,10 +2,23 @@ package com.interview.service.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.interview.dto.FinishInterviewResponse;
+import com.interview.entity.AppJob;
 import com.interview.entity.InterviewPhase;
+import com.interview.entity.InterviewPosition;
 import com.interview.entity.InterviewRecord;
+import com.interview.entity.InterviewTurn;
+import com.interview.entity.KnowledgeAtom;
+import com.interview.entity.KnowledgeBase;
 import com.interview.exception.LlmProviderRequiredException;
+import com.interview.mapper.InterviewPositionMapper;
 import com.interview.mapper.InterviewRecordMapper;
+import com.interview.mapper.InterviewTurnMapper;
+import com.interview.mapper.KnowledgeAtomMapper;
+import com.interview.mapper.KnowledgeBaseMapper;
+import com.interview.mapper.AppJobMapper;
+import com.interview.service.AppJobRecoveryService;
+import com.interview.service.AppJobService;
 import com.interview.service.InterviewRetrievalService;
 import com.interview.service.InterviewService;
 import com.interview.service.InterviewTurnPlanner;
@@ -49,6 +62,18 @@ public class InterviewServiceImpl implements InterviewService {
     private InterviewRecordMapper interviewRecordMapper;
 
     @Autowired
+    private InterviewTurnMapper interviewTurnMapper;
+
+    @Autowired
+    private InterviewPositionMapper interviewPositionMapper;
+
+    @Autowired
+    private KnowledgeAtomMapper knowledgeAtomMapper;
+
+    @Autowired
+    private KnowledgeBaseMapper knowledgeBaseMapper;
+
+    @Autowired
     private UserLlmConfigService userLlmConfigService;
 
     @Autowired
@@ -73,6 +98,15 @@ public class InterviewServiceImpl implements InterviewService {
     @Autowired
     private InterviewTurnPlanner interviewTurnPlanner;
 
+    @Autowired
+    private AppJobService appJobService;
+
+    @Autowired
+    private AppJobRecoveryService appJobRecoveryService;
+
+    @Autowired
+    private AppJobMapper appJobMapper;
+
     @Autowired(required = false)
     private com.interview.service.AppEventService appEventService;
 
@@ -96,11 +130,20 @@ public class InterviewServiceImpl implements InterviewService {
     @Override
     public Long startInterview(Long userId, String position, String mode, List<String> resumeQuestions,
                                String difficultyLevel, List<String> focusAreas) {
+        return startInterview(userId, position, mode, resumeQuestions, difficultyLevel, focusAreas, null);
+    }
+
+    @Override
+    public Long startInterview(Long userId, String position, String mode, List<String> resumeQuestions,
+                               String difficultyLevel, List<String> focusAreas, Long positionId) {
         userLlmConfigService.ensureActiveProvider(userId);
+        InterviewPosition resolvedPosition = resolveInterviewPosition(userId, positionId, position);
+        requireSearchableAtoms(resolvedPosition);
 
         InterviewRecord record = new InterviewRecord();
         record.setUserId(userId);
-        record.setPosition(position);
+        record.setPosition(resolvedPosition.getName());
+        record.setPositionId(resolvedPosition.getId());
         record.setPhase(InterviewPhase.OPENING.name());
         record.setInterviewMode(normalizeMode(mode));
         record.setDifficultyLevel(normalizeDifficulty(difficultyLevel));
@@ -116,6 +159,57 @@ public class InterviewServiceImpl implements InterviewService {
         }
 
         return record.getId();
+    }
+
+    private InterviewPosition resolveInterviewPosition(Long userId, Long positionId, String fallbackName) {
+        if (userId == null) {
+            throw new RuntimeException("未登录：缺少用户身份");
+        }
+        LambdaQueryWrapper<InterviewPosition> query = new LambdaQueryWrapper<InterviewPosition>()
+                .eq(InterviewPosition::getStatus, "ACTIVE")
+                .and(wrapper -> wrapper
+                        .eq(InterviewPosition::getScope, "PUBLIC")
+                        .or(nested -> nested
+                                .eq(InterviewPosition::getScope, "PRIVATE")
+                                .eq(InterviewPosition::getOwnerUserId, userId)));
+        if (positionId == null) {
+            throw new IllegalArgumentException("岗位 ID 不能为空");
+        }
+        query.eq(InterviewPosition::getId, positionId);
+        InterviewPosition position = interviewPositionMapper.selectOne(query.last("LIMIT 1"));
+        if (position == null) {
+            throw new RuntimeException("岗位不存在或无权访问");
+        }
+        return position;
+    }
+
+    private void requireSearchableAtoms(InterviewPosition position) {
+        Long knowledgeBaseId = resolveKnowledgeBaseId(position);
+        LambdaQueryWrapper<KnowledgeAtom> wrapper = new LambdaQueryWrapper<KnowledgeAtom>()
+                .eq(KnowledgeAtom::getPositionId, position.getId())
+                .eq(KnowledgeAtom::getKnowledgeBaseId, knowledgeBaseId)
+                .eq(KnowledgeAtom::getScope, position.getScope())
+                .eq(position.getOwnerUserId() != null, KnowledgeAtom::getOwnerUserId, position.getOwnerUserId())
+                .eq(KnowledgeAtom::getStatus, "PUBLISHED")
+                .eq(KnowledgeAtom::getVectorStatus, "SYNCED");
+        Long count = knowledgeAtomMapper.selectCount(wrapper);
+        if (count == null || count <= 0) {
+            throw new IllegalStateException("当前岗位暂无已发布且已同步的题库原子，暂不能开始面试");
+        }
+    }
+
+    private Long resolveKnowledgeBaseId(InterviewPosition position) {
+        if (position.getDefaultKnowledgeBaseId() != null) {
+            return position.getDefaultKnowledgeBaseId();
+        }
+        KnowledgeBase knowledgeBase = knowledgeBaseMapper.selectOne(new LambdaQueryWrapper<KnowledgeBase>()
+                .eq(KnowledgeBase::getPositionId, position.getId())
+                .eq(KnowledgeBase::getStatus, "ACTIVE")
+                .last("LIMIT 1"));
+        if (knowledgeBase == null) {
+            throw new IllegalStateException("当前岗位暂无可用知识库，暂不能开始面试");
+        }
+        return knowledgeBase.getId();
     }
 
     @Override
@@ -181,6 +275,10 @@ public class InterviewServiceImpl implements InterviewService {
 
             // 4. SSE 流式输出
             final List<ChatMessage> currentHistory = chatHistory;
+            final int turnIndex = currentHistory.size() / 2 + 1;
+            final InterviewPhase persistedPhase = turnPlan.phase();
+            final List<String> promptAtomIds = retrieval.promptAtomIds();
+            final String contextSnapshot = retrieval.promptContext();
             StringBuilder aiResponseBuilder = new StringBuilder();
             streamingChatModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
                 @Override
@@ -201,6 +299,8 @@ public class InterviewServiceImpl implements InterviewService {
                         sessionStore.save(recordId, currentHistory);
                         persistChatHistory(recordId, currentHistory);
                         sessionStore.addUsedAtoms(recordId, contextAtomIds);
+                        persistInterviewTurn(record, userId, turnIndex, persistedPhase, message,
+                                aiResponseBuilder.toString(), promptAtomIds, contextSnapshot);
 
                         emitter.send(JSON.toJSONString(Map.of("done", "true")));
                         emitter.complete();
@@ -270,11 +370,17 @@ public class InterviewServiceImpl implements InterviewService {
             log.error("面试记录不存在: recordId={}", recordId);
             return null;
         }
-        return completeInterview(record, wpm, emotionJson);
+        return completeInterview(record, wpm, emotionJson).getRecord();
     }
 
     @Override
     public InterviewRecord endInterview(Long userId, Long recordId, Integer wpm, String emotionJson) {
+        InterviewRecord record = loadOwnedRecord(userId, recordId);
+        return completeInterview(record, wpm, emotionJson).getRecord();
+    }
+
+    @Override
+    public FinishInterviewResponse finishInterview(Long userId, Long recordId, Integer wpm, String emotionJson) {
         InterviewRecord record = loadOwnedRecord(userId, recordId);
         return completeInterview(record, wpm, emotionJson);
     }
@@ -301,11 +407,14 @@ public class InterviewServiceImpl implements InterviewService {
         activeInterviewTurns.remove(recordId);
     }
 
-    private InterviewRecord completeInterview(InterviewRecord record, Integer wpm, String emotionJson) {
+    private FinishInterviewResponse completeInterview(InterviewRecord record, Integer wpm, String emotionJson) {
         Long recordId = record.getId();
-        if (InterviewPhase.FINISHED.name().equals(record.getPhase()) && record.getScore() != null) {
-            log.info("面试已完成，跳过重复评估生成 recordId={}", recordId);
-            return record;
+        if (InterviewPhase.FINISHED.name().equals(record.getPhase())) {
+            log.info("面试已完成，跳过重复结束 recordId={}", recordId);
+            AppJob reportJob = ensureReportJob(record);
+            return FinishInterviewResponse.of(record,
+                    reportJob == null ? null : reportJob.getId(),
+                    reportJob == null ? (record.getScore() == null ? "PENDING" : "COMPLETED") : reportJob.getStatus());
         }
 
         List<ChatMessage> historyMessages = sessionStore.load(recordId);
@@ -341,13 +450,12 @@ public class InterviewServiceImpl implements InterviewService {
             record.setScore(0);
             record.setFeedback("面试对话为空，无法生成评估报告。请确保面试过程中有完整的对话记录。");
             interviewRecordMapper.updateById(record);
-            return record;
+            return FinishInterviewResponse.of(record, null, "COMPLETED");
         }
 
-        // ========== AI 评估 ==========
-        evaluationGenerator.generate(record, historyMessages, wpm);
-
+        evaluationGenerator.generate(record, historyMessages, record.getVoiceWpm() == null ? 0 : record.getVoiceWpm());
         interviewRecordMapper.updateById(record);
+        AppJob reportJob = createReportJob(record);
 
         // 后台预计算 AI Mentor 缓存，避免 Dashboard 首次访问触发 LLM 阻塞
         final Long uid = record.getUserId();
@@ -364,7 +472,68 @@ public class InterviewServiceImpl implements InterviewService {
             log.warn("AI Mentor 缓存任务提交失败 userId={}: {}", uid, e.getMessage());
         }
 
-        return record;
+        return FinishInterviewResponse.of(record, reportJob.getId(), "PENDING");
+    }
+
+    private AppJob ensureReportJob(InterviewRecord record) {
+        if (record.getScore() == null) {
+            return null;
+        }
+        AppJob existing = appJobMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<AppJob>()
+                .eq("job_type", "GENERATE_REPORT")
+                .eq("record_id", record.getId())
+                .orderByDesc("id")
+                .last("LIMIT 1"));
+        if (existing != null) {
+            if ("PENDING".equals(existing.getStatus())) {
+                appJobRecoveryService.dispatchJob(existing.getId());
+            }
+            return existing;
+        }
+        return createReportJob(record);
+    }
+
+    private AppJob createReportJob(InterviewRecord record) {
+        AppJob job = new AppJob();
+        job.setJobType("GENERATE_REPORT");
+        job.setScope("PRIVATE");
+        job.setOwnerUserId(record.getUserId());
+        job.setPositionId(record.getPositionId());
+        job.setRecordId(record.getId());
+        job.setStage("PENDING");
+        job.setCreatedBy(record.getUserId());
+        AppJob created = appJobService.createPendingJob(job);
+        appJobRecoveryService.dispatchJob(created.getId());
+        return created;
+    }
+
+    private void persistInterviewTurn(InterviewRecord record,
+                                      Long userId,
+                                      int turnIndex,
+                                      InterviewPhase phase,
+                                      String userAnswer,
+                                      String aiQuestion,
+                                      List<String> promptAtomIds,
+                                      String contextSnapshot) {
+        InterviewTurn turn = new InterviewTurn();
+        turn.setRecordId(record.getId());
+        turn.setUserId(userId);
+        turn.setPositionId(record.getPositionId());
+        turn.setTurnIndex(turnIndex);
+        turn.setPhase(phase.name());
+        turn.setUserAnswer(userAnswer);
+        turn.setAiQuestion(aiQuestion);
+        turn.setRetrievedAtomIds(promptAtomIds == null || promptAtomIds.isEmpty() ? null : JSON.toJSONString(promptAtomIds));
+        turn.setContextSnapshotJson(contextSnapshot == null || contextSnapshot.isBlank()
+                ? null
+                : JSON.toJSONString(Map.of("promptContext", contextSnapshot)));
+        turn.setRetrievalStrategy("SCOPED_RAG");
+        try {
+            interviewTurnMapper.insert(turn);
+        } catch (Exception e) {
+            log.warn("结构化面试轮次写入失败: recordId={}, turnIndex={}, error={}",
+                    record.getId(), turnIndex, sanitizeErrorMessage(e.getMessage()));
+        }
     }
 
     @Override

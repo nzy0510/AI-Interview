@@ -1,13 +1,19 @@
 package com.interview.service.questionbank;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.interview.entity.InterviewPosition;
+import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeBase;
-import com.interview.entity.KnowledgeSourceFile;
+import com.interview.dto.questionbank.QuestionBankImportRequest;
+import com.interview.dto.questionbank.QuestionBankImportResult;
+import com.interview.mapper.AppJobMapper;
 import com.interview.mapper.InterviewPositionMapper;
+import com.interview.mapper.KnowledgeAtomMapper;
+import com.interview.mapper.KnowledgeAtomReviewMapper;
+import com.interview.mapper.KnowledgeAtomVersionMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.KnowledgeSourceFileMapper;
+import com.interview.service.AdminRoleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,7 +24,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -30,20 +35,36 @@ class KnowledgeWorkspaceServiceTest {
 
     private InterviewPositionMapper positionMapper;
     private KnowledgeBaseMapper knowledgeBaseMapper;
+    private KnowledgeAtomMapper atomMapper;
+    private KnowledgeAtomVersionMapper versionMapper;
+    private KnowledgeAtomReviewMapper reviewMapper;
     private KnowledgeSourceFileMapper sourceFileMapper;
+    private AppJobMapper appJobMapper;
+    private AdminRoleService adminRoleService;
+    private QuestionBankService questionBankService;
+    private QdrantVectorService qdrantVectorService;
     private KnowledgeWorkspaceService service;
 
     @BeforeEach
     void setUp() {
         positionMapper = mock(InterviewPositionMapper.class);
         knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
+        atomMapper = mock(KnowledgeAtomMapper.class);
+        versionMapper = mock(KnowledgeAtomVersionMapper.class);
+        reviewMapper = mock(KnowledgeAtomReviewMapper.class);
         sourceFileMapper = mock(KnowledgeSourceFileMapper.class);
-        service = new KnowledgeWorkspaceService(positionMapper, knowledgeBaseMapper, sourceFileMapper);
+        appJobMapper = mock(AppJobMapper.class);
+        adminRoleService = mock(AdminRoleService.class);
+        questionBankService = mock(QuestionBankService.class);
+        qdrantVectorService = mock(QdrantVectorService.class);
+        service = new KnowledgeWorkspaceService(positionMapper, knowledgeBaseMapper,
+                atomMapper, versionMapper, reviewMapper, sourceFileMapper,
+                appJobMapper, adminRoleService, questionBankService, qdrantVectorService);
     }
 
     @Test
-    @DisplayName("岗位列表包含公开岗位和当前用户私有岗位，并带默认知识库文件")
-    void shouldListPublicAndOwnedPrivatePositionsWithFiles() {
+    @DisplayName("岗位列表包含公开岗位和当前用户私有岗位，并带默认知识库和维护能力")
+    void shouldListPublicAndOwnedPrivatePositionsWithKnowledgeBaseCapabilities() {
         InterviewPosition publicPosition = position(1L, "PUBLIC", null, "Java 后端开发", "ACTIVE", 11L);
         InterviewPosition privatePosition = position(2L, "PRIVATE", 7L, "我的后端岗", "ACTIVE", 12L);
         when(positionMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(publicPosition, privatePosition));
@@ -51,20 +72,43 @@ class KnowledgeWorkspaceServiceTest {
                 knowledgeBase(11L, 1L, "PUBLIC", null),
                 knowledgeBase(12L, 2L, "PRIVATE", 7L)
         ));
-        when(sourceFileMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(
-                sourceFile(101L, 12L, "PRIVATE", 7L, "guide.md"),
-                sourceFile(102L, 12L, "PRIVATE", 8L, "other-user.md")
-        ));
 
         KnowledgeWorkspaceResponse response = service.listWorkspace(7L);
 
         assertThat(response.positions()).hasSize(2);
         assertThat(response.positions().get(0).scope()).isEqualTo("PUBLIC");
         assertThat(response.positions().get(0).editable()).isFalse();
+        assertThat(response.positions().get(0).canImportPackage()).isFalse();
+        assertThat(response.positions().get(0).canManageAtoms()).isFalse();
         assertThat(response.positions().get(1).scope()).isEqualTo("PRIVATE");
         assertThat(response.positions().get(1).editable()).isTrue();
-        assertThat(response.positions().get(1).knowledgeBase().sourceFiles()).hasSize(1);
-        assertThat(response.positions().get(1).knowledgeBase().sourceFiles().get(0).originalFilename()).isEqualTo("guide.md");
+        assertThat(response.positions().get(1).canImportPackage()).isTrue();
+        assertThat(response.positions().get(1).canManageAtoms()).isTrue();
+        assertThat(response.positions().get(1).canArchiveAtoms()).isTrue();
+        assertThat(response.positions().get(1).canPublishAtoms()).isTrue();
+        assertThat(response.positions().get(1).canReindexAtoms()).isTrue();
+        assertThat(response.positions().get(1).knowledgeBase().id()).isEqualTo(12L);
+    }
+
+    @Test
+    @DisplayName("管理员可通过同一工作台维护公共题库")
+    void shouldExposePublicQuestionBankMaintenanceCapabilitiesForAdmin() {
+        InterviewPosition publicPosition = position(1L, "PUBLIC", null, "Java 后端开发", "ACTIVE", 11L);
+        when(positionMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(publicPosition));
+        when(knowledgeBaseMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(
+                knowledgeBase(11L, 1L, "PUBLIC", null)
+        ));
+        when(adminRoleService.isAdmin(7L)).thenReturn(true);
+
+        KnowledgePositionResponse position = service.listWorkspace(7L).positions().get(0);
+
+        assertThat(position.scope()).isEqualTo("PUBLIC");
+        assertThat(position.editable()).isFalse();
+        assertThat(position.canImportPackage()).isTrue();
+        assertThat(position.canManageAtoms()).isTrue();
+        assertThat(position.canArchiveAtoms()).isTrue();
+        assertThat(position.canPublishAtoms()).isTrue();
+        assertThat(position.canReindexAtoms()).isTrue();
     }
 
     @Test
@@ -105,28 +149,67 @@ class KnowledgeWorkspaceServiceTest {
     }
 
     @Test
-    @DisplayName("普通用户只能归档自己的私有岗位")
-    void shouldArchiveOwnedPrivatePositionOnly() {
+    @DisplayName("普通用户只能删除自己的私有岗位")
+    void shouldDeleteOwnedPrivatePositionOnly() {
         InterviewPosition position = position(20L, "PRIVATE", 7L, "我的岗位", "ACTIVE", 30L);
         when(positionMapper.selectById(20L)).thenReturn(position);
+        when(atomMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of());
 
-        service.archivePrivatePosition(7L, 20L);
+        service.deletePrivatePosition(7L, 20L);
 
-        assertThat(position.getStatus()).isEqualTo("ARCHIVED");
-        verify(positionMapper).updateById(position);
-        verify(knowledgeBaseMapper).update(isNull(), any(UpdateWrapper.class));
+        verify(positionMapper).deleteById(20L);
     }
 
     @Test
-    @DisplayName("不能归档公开岗位或他人的私有岗位")
-    void shouldRejectArchivingPublicOrOtherUsersPosition() {
+    @DisplayName("不能删除公开岗位或他人的私有岗位")
+    void shouldRejectDeletingPublicOrOtherUsersPosition() {
         when(positionMapper.selectById(1L)).thenReturn(position(1L, "PUBLIC", null, "Java 后端开发", "ACTIVE", 11L));
 
-        assertThatThrownBy(() -> service.archivePrivatePosition(7L, 1L))
+        assertThatThrownBy(() -> service.deletePrivatePosition(7L, 1L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("无权访问");
 
-        verify(positionMapper, never()).updateById(any());
+        verify(positionMapper, never()).deleteById(any(Long.class));
+    }
+
+    @Test
+    @DisplayName("当前用户可将导入包导入自己的私有知识库草稿")
+    void shouldImportPackageIntoOwnedPrivateKnowledgeBaseAsDraft() {
+        KnowledgeBase knowledgeBase = knowledgeBase(30L, 20L, "PRIVATE", 7L);
+        when(knowledgeBaseMapper.selectById(30L)).thenReturn(knowledgeBase);
+        QuestionBankImportRequest request = new QuestionBankImportRequest();
+        request.setMode("AUTO_PUBLISH");
+        when(questionBankService.importBatch(any(), any())).thenReturn(QuestionBankImportResult.builder()
+                .batchId("qb-private")
+                .mode("DRAFT")
+                .received(1)
+                .imported(1)
+                .build());
+
+        QuestionBankImportResult result = service.importPackage(7L, 30L, request);
+
+        assertThat(result.getMode()).isEqualTo("DRAFT");
+        ArgumentCaptor<QuestionBankImportScope> scopeCaptor = ArgumentCaptor.forClass(QuestionBankImportScope.class);
+        verify(questionBankService).importBatch(any(QuestionBankImportRequest.class), scopeCaptor.capture());
+        assertThat(scopeCaptor.getValue().scope()).isEqualTo("PRIVATE");
+        assertThat(scopeCaptor.getValue().ownerUserId()).isEqualTo(7L);
+        assertThat(scopeCaptor.getValue().positionId()).isEqualTo(20L);
+        assertThat(scopeCaptor.getValue().knowledgeBaseId()).isEqualTo(30L);
+        assertThat(scopeCaptor.getValue().allowAutoPublish()).isFalse();
+    }
+
+    @Test
+    @DisplayName("普通用户不能向公共知识库导入题库包")
+    void shouldRejectPackageImportIntoPublicKnowledgeBaseForNormalUser() {
+        KnowledgeBase knowledgeBase = knowledgeBase(11L, 1L, "PUBLIC", null);
+        when(knowledgeBaseMapper.selectById(11L)).thenReturn(knowledgeBase);
+        when(adminRoleService.isAdmin(7L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.importPackage(7L, 11L, new QuestionBankImportRequest()))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("无权访问知识库");
+
+        verify(questionBankService, never()).importBatch(any(), any());
     }
 
     private InterviewPosition position(Long id, String scope, Long ownerUserId, String name, String status, Long defaultKnowledgeBaseId) {
@@ -151,14 +234,4 @@ class KnowledgeWorkspaceServiceTest {
         return knowledgeBase;
     }
 
-    private KnowledgeSourceFile sourceFile(Long id, Long knowledgeBaseId, String scope, Long ownerUserId, String filename) {
-        KnowledgeSourceFile sourceFile = new KnowledgeSourceFile();
-        sourceFile.setId(id);
-        sourceFile.setKnowledgeBaseId(knowledgeBaseId);
-        sourceFile.setScope(scope);
-        sourceFile.setOwnerUserId(ownerUserId);
-        sourceFile.setOriginalFilename(filename);
-        sourceFile.setStatus("CONVERTED");
-        return sourceFile;
-    }
 }

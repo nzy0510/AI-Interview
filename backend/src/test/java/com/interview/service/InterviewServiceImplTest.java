@@ -1,13 +1,20 @@
 package com.interview.service;
 
 import com.interview.entity.InterviewPhase;
+import com.interview.entity.InterviewPosition;
 import com.interview.entity.InterviewRecord;
 import com.interview.entity.RagRetrievalLog;
 import com.interview.entity.RagRetrievalRequestLog;
+import com.interview.dto.FinishInterviewResponse;
 import com.interview.dto.questionbank.QuestionBankSearchRequest;
 import com.interview.dto.questionbank.QuestionBankSearchResponse;
 import com.interview.dto.questionbank.QuestionBankSearchResult;
+import com.interview.mapper.InterviewPositionMapper;
 import com.interview.mapper.InterviewRecordMapper;
+import com.interview.mapper.InterviewTurnMapper;
+import com.interview.mapper.KnowledgeAtomMapper;
+import com.interview.mapper.KnowledgeBaseMapper;
+import com.interview.mapper.AppJobMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.mapper.RagRetrievalRequestLogMapper;
 import com.interview.service.impl.InterviewServiceImpl;
@@ -54,6 +61,18 @@ class InterviewServiceImplTest {
     private InterviewRecordMapper interviewRecordMapper;
 
     @Mock
+    private InterviewTurnMapper interviewTurnMapper;
+
+    @Mock
+    private InterviewPositionMapper interviewPositionMapper;
+
+    @Mock
+    private KnowledgeAtomMapper knowledgeAtomMapper;
+
+    @Mock
+    private KnowledgeBaseMapper knowledgeBaseMapper;
+
+    @Mock
     private SessionStore sessionStore;
 
     @Mock
@@ -89,19 +108,39 @@ class InterviewServiceImplTest {
     @Mock
     private UserLlmModelFactory userLlmModelFactory;
 
+    @Mock
+    private AppJobService appJobService;
+
+    @Mock
+    private AppJobRecoveryService appJobRecoveryService;
+
+    @Mock
+    private AppJobMapper appJobMapper;
+
     @InjectMocks
     private InterviewServiceImpl interviewService;
 
     @BeforeEach
     void setUpRetrievalModule() {
         InterviewRetrievalService retrievalService = new InterviewRetrievalService(
-                questionBankService, ragRetrievalLogMapper, ragRetrievalRequestLogMapper, appEventService);
+                questionBankService, interviewPositionMapper, knowledgeBaseMapper,
+                ragRetrievalLogMapper, ragRetrievalRequestLogMapper, appEventService);
         ReflectionTestUtils.setField(interviewService, "interviewRetrievalService", retrievalService);
         UserLlmRuntimeConfig runtimeConfig = new UserLlmRuntimeConfig(
                 1L, 1L, "deepseek", "DeepSeek", "https://api.deepseek.com/v1",
                 "deepseek-chat", "sk-test", 0.7);
         lenient().when(userLlmConfigService.requireActiveRuntimeConfig(any())).thenReturn(runtimeConfig);
         lenient().when(userLlmModelFactory.createStreamingChatModel(any())).thenReturn(streamingChatModel);
+        InterviewPosition publicPosition = position(101L, "Java 后端开发", "PUBLIC", null);
+        lenient().when(interviewPositionMapper.selectOne(any())).thenReturn(publicPosition);
+        lenient().when(interviewPositionMapper.selectById(101L)).thenReturn(publicPosition);
+        lenient().when(knowledgeAtomMapper.selectCount(any())).thenReturn(3L);
+        lenient().when(appJobService.createPendingJob(any())).thenAnswer(invocation -> {
+            com.interview.entity.AppJob job = invocation.getArgument(0);
+            job.setId(900L);
+            job.setStatus("PENDING");
+            return job;
+        });
     }
 
     @Test
@@ -152,6 +191,22 @@ class InterviewServiceImplTest {
     }
 
     @Test
+    @DisplayName("开始面试必须提供结构化岗位 ID")
+    void shouldRejectStartingInterviewWithoutPositionId() {
+        assertThatThrownBy(() -> interviewService.startInterview(
+                1L,
+                "Java 后端开发",
+                "text",
+                null,
+                "mid",
+                List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("岗位 ID");
+
+        verify(interviewRecordMapper, never()).insert(any());
+    }
+
+    @Test
     @DisplayName("退出面试只删除当前用户未完成记录且不生成评估报告")
     void shouldDiscardOwnedUnfinishedInterviewWithoutGeneratingReport() {
         InterviewRecord record = new InterviewRecord();
@@ -189,6 +244,63 @@ class InterviewServiceImplTest {
     }
 
     @Test
+    @DisplayName("finish 返回已生成的初步报告并后台创建详细报告任务")
+    void shouldReturnPreliminaryReportAndCreateDetailedReportJobWhenFinishing() {
+        InterviewRecord record = new InterviewRecord();
+        record.setId(13L);
+        record.setUserId(1L);
+        record.setPosition("系统运维");
+        record.setPhase(InterviewPhase.TECHNICAL.name());
+        when(interviewRecordMapper.selectOne(any())).thenReturn(record);
+        when(sessionStore.load(13L)).thenReturn(new ArrayList<>(List.of(
+                new UserMessage("我会先检查负载、磁盘和最近变更"),
+                new AiMessage("如果线上服务延迟升高你怎么处理"))));
+        when(sessionStore.loadUsedAtoms(13L)).thenReturn(List.of("ops-atom"));
+        doAnswer(invocation -> {
+            InterviewRecord target = invocation.getArgument(0);
+            target.setScore(78);
+            target.setFeedback("初步报告：排障思路较清晰，但需要补充回滚策略。");
+            target.setAbilityJson("{\"problemSolving\":\"B\"}");
+            target.setRecommendations("[{\"action\":\"补充 SRE 复盘模板\"}]");
+            return null;
+        }).when(evaluationGenerator).generate(any(), anyList(), anyInt());
+
+        FinishInterviewResponse response = interviewService.finishInterview(1L, 13L, 126, null);
+
+        assertThat(response.getRecord().getScore()).isEqualTo(78);
+        assertThat(response.getRecord().getFeedback()).contains("初步报告");
+        assertThat(response.getReportJobId()).isEqualTo(900L);
+        assertThat(response.getReportStatus()).isEqualTo("PENDING");
+        verify(evaluationGenerator).generate(any(), anyList(), anyInt());
+        verify(appJobService).createPendingJob(any());
+        verify(appJobRecoveryService).dispatchJob(900L);
+    }
+
+    @Test
+    @DisplayName("已完成面试重试结束时补建缺失的详细报告任务")
+    void shouldCreateMissingDetailedReportJobWhenFinishedRecordHasNoJob() {
+        InterviewRecord record = new InterviewRecord();
+        record.setId(14L);
+        record.setUserId(1L);
+        record.setPosition("系统运维");
+        record.setPositionId(101L);
+        record.setPhase(InterviewPhase.FINISHED.name());
+        record.setScore(82);
+        record.setFeedback("初步报告已生成");
+        when(interviewRecordMapper.selectOne(any())).thenReturn(record);
+        when(appJobMapper.selectOne(any())).thenReturn(null);
+
+        FinishInterviewResponse response = interviewService.finishInterview(1L, 14L, 0, null);
+
+        assertThat(response.getRecord()).isSameAs(record);
+        assertThat(response.getReportJobId()).isEqualTo(900L);
+        assertThat(response.getReportStatus()).isEqualTo("PENDING");
+        verify(evaluationGenerator, never()).generate(any(), anyList(), anyInt());
+        verify(appJobService).createPendingJob(any());
+        verify(appJobRecoveryService).dispatchJob(900L);
+    }
+
+    @Test
     @DisplayName("开始面试时持久化准备页难度和重点能力")
     void shouldPersistSetupSelectionsWhenStartingInterview() {
         interviewService.startInterview(
@@ -197,16 +309,37 @@ class InterviewServiceImplTest {
                 "video",
                 null,
                 "senior",
-                List.of("projects", "systemDesign"));
+                List.of("projects", "systemDesign"),
+                101L);
 
         ArgumentCaptor<InterviewRecord> captor = ArgumentCaptor.forClass(InterviewRecord.class);
         verify(interviewRecordMapper).insert(captor.capture());
         InterviewRecord saved = captor.getValue();
         assertThat(saved.getUserId()).isEqualTo(1L);
         assertThat(saved.getPosition()).isEqualTo("Java 后端开发");
+        assertThat(saved.getPositionId()).isEqualTo(101L);
         assertThat(saved.getInterviewMode()).isEqualTo("video");
         assertThat(saved.getDifficultyLevel()).isEqualTo("senior");
         assertThat(saved.getFocusAreas()).contains("projects", "systemDesign");
+    }
+
+    @Test
+    @DisplayName("岗位没有已发布且已同步原子时拒绝开始面试")
+    void shouldRejectStartingInterviewWithoutSearchableAtoms() {
+        when(knowledgeAtomMapper.selectCount(any())).thenReturn(0L);
+
+        assertThatThrownBy(() -> interviewService.startInterview(
+                1L,
+                "Java 后端开发",
+                "text",
+                null,
+                "mid",
+                List.of(),
+                101L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("暂无已发布且已同步");
+
+        verify(interviewRecordMapper, never()).insert(any());
     }
 
     @Test
@@ -216,6 +349,7 @@ class InterviewServiceImplTest {
         record.setId(20L);
         record.setUserId(1L);
         record.setPosition("测试开发");
+        record.setPositionId(101L);
         record.setPhase(InterviewPhase.OPENING.name());
 
         when(interviewRecordMapper.selectOne(any())).thenReturn(record);
@@ -270,6 +404,7 @@ class InterviewServiceImplTest {
         record.setId(21L);
         record.setUserId(1L);
         record.setPosition("Java 后端开发");
+        record.setPositionId(101L);
         record.setPhase(InterviewPhase.TECHNICAL.name());
 
         when(interviewRecordMapper.selectOne(any())).thenReturn(record);
@@ -297,6 +432,10 @@ class InterviewServiceImplTest {
         verify(questionBankService).searchWithMetadata(captor.capture());
         QuestionBankSearchRequest request = captor.getValue();
         assertThat(request.getPosition()).isEqualTo("Java 后端开发");
+        assertThat(request.getScope()).isEqualTo("PUBLIC");
+        assertThat(request.getPositionId()).isEqualTo(101L);
+        assertThat(request.getKnowledgeBaseId()).isEqualTo(201L);
+        assertThat(request.getOwnerUserId()).isNull();
         assertThat(request.getCategories()).containsExactly("HR软技能");
         assertThat(request.getExcludeAtomIds()).containsExactly("used-atom");
         assertThat(request.getLimit()).isEqualTo(20);
@@ -511,6 +650,7 @@ class InterviewServiceImplTest {
         record.setId(27L);
         record.setUserId(1L);
         record.setPosition("AI 大模型工程师");
+        record.setPositionId(101L);
         record.setPhase(InterviewPhase.TECHNICAL.name());
         record.setChatHistory("""
                 [
@@ -566,6 +706,7 @@ class InterviewServiceImplTest {
         record.setId(recordId);
         record.setUserId(1L);
         record.setPosition("Java 后端开发");
+        record.setPositionId(101L);
         record.setPhase(InterviewPhase.OPENING.name());
 
         when(interviewRecordMapper.selectOne(any())).thenReturn(record);
@@ -576,5 +717,16 @@ class InterviewServiceImplTest {
         when(interviewTurnPlanner.plan(any(), anyList(), any(), any()))
                 .thenReturn(new InterviewTurnPlanner.InterviewTurnPlan(nextPhase, "coordinator"));
         return record;
+    }
+
+    private InterviewPosition position(Long id, String name, String scope, Long ownerUserId) {
+        InterviewPosition position = new InterviewPosition();
+        position.setId(id);
+        position.setName(name);
+        position.setScope(scope);
+        position.setOwnerUserId(ownerUserId);
+        position.setStatus("ACTIVE");
+        position.setDefaultKnowledgeBaseId(201L);
+        return position;
     }
 }

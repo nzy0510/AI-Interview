@@ -119,14 +119,14 @@
                 </div>
                 <div class="target-presets">
                   <button
-                    v-for="option in setupDefaults.roleOptions"
-                    :key="option"
+                    v-for="option in roleOptions"
+                    :key="option.id || option.name"
                     type="button"
                     class="preset-chip"
-                    :class="{ active: role === option }"
-                    @click="role = option"
+                    :class="{ active: selectedPositionId === option.id || (!selectedPositionId && role === option.name) }"
+                    @click="selectRoleOption(option)"
                   >
-                    {{ option }}
+                    {{ option.name }}
                   </button>
                 </div>
               </div>
@@ -238,6 +238,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getLlmConfigStatusAPI } from '@/api/llm'
+import { getKnowledgeWorkspaceAPI } from '@/api/knowledgeWorkspace'
 import { interviewSetupDefaults, buildSetupSnapshot } from '@/mock/setup'
 import { getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
 import { getToken, userKey, withAuthHeaders } from '@/utils/auth'
@@ -256,6 +257,8 @@ const resumeReady = ref(false)
 const resumeAnalysis = ref(null)
 
 const role = ref('')
+const selectedPositionId = ref(null)
+const workspacePositions = ref([])
 const experienceLevel = ref('mid')
 const focusAreas = ref([])
 const mode = ref('text')
@@ -306,7 +309,24 @@ const llmStatusText = computed(() => {
 })
 
 const normalizeSupportedRole = (value) => {
+  if (workspacePositions.value.some((item) => item.name === value)) return value
   return setupDefaults.roleOptions.includes(value) ? value : setupDefaults.roleOptions[0]
+}
+
+const roleOptions = computed(() => {
+  if (workspacePositions.value.length) {
+    return workspacePositions.value.map((item) => ({
+      id: item.id,
+      name: item.name,
+      scope: item.scope
+    }))
+  }
+  return setupDefaults.roleOptions.map((name) => ({ id: null, name, scope: 'PUBLIC' }))
+})
+
+const selectRoleOption = (option) => {
+  role.value = option.name
+  selectedPositionId.value = option.id || null
 }
 
 const resumeSummary = computed(() => {
@@ -329,12 +349,20 @@ const resumeSummary = computed(() => {
 })
 
 const syncFromQuery = () => {
-  const { role: routeRole, focus, mode: routeMode } = route.query
+  const { role: routeRole, positionId, focus, mode: routeMode } = route.query
 
   if (typeof routeRole === 'string' && routeRole.trim()) {
     role.value = routeRole.trim()
   } else if (!role.value) {
     role.value = setupDefaults.roleOptions[0]
+  }
+
+  const numericPositionId = Number(positionId)
+  if (Number.isFinite(numericPositionId) && numericPositionId > 0) {
+    selectedPositionId.value = numericPositionId
+  } else {
+    const matched = workspacePositions.value.find((item) => item.name === role.value)
+    selectedPositionId.value = matched?.id || null
   }
 
   if (typeof routeMode === 'string' && ['text', 'video'].includes(routeMode)) {
@@ -365,6 +393,26 @@ const loadPreference = async () => {
   } catch { /* preference load optional */ }
 }
 
+const loadWorkspacePositions = async () => {
+  try {
+    const data = await getKnowledgeWorkspaceAPI({ silent: true })
+    workspacePositions.value = (data?.positions || [])
+      .filter((item) => item.status === 'ACTIVE' && item.knowledgeBase?.id)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        scope: item.scope
+      }))
+    if (!selectedPositionId.value) {
+      const matched = workspacePositions.value.find((item) => item.name === role.value)
+      selectedPositionId.value = matched?.id || workspacePositions.value[0]?.id || null
+      if (!role.value && workspacePositions.value[0]) role.value = workspacePositions.value[0].name
+    }
+  } catch {
+    workspacePositions.value = []
+  }
+}
+
 const loadLlmStatus = async () => {
   try {
     const data = await getLlmConfigStatusAPI({ silent: true })
@@ -389,6 +437,7 @@ const autoSavePreference = () => {
 
 onMounted(async () => {
   await loadResumeProfile()
+  await loadWorkspacePositions()
   await loadPreference()
   await loadLlmStatus()
   syncFromQuery()
@@ -418,6 +467,9 @@ const startInterview = (preferredMode) => {
     focus: focusAreas.value.join(','),
     mode: nextMode,
     difficulty: experienceLevel.value
+  }
+  if (selectedPositionId.value) {
+    query.positionId = selectedPositionId.value
   }
 
   const path = nextMode === 'video' ? '/video-interview' : '/interview'

@@ -135,6 +135,10 @@ const route = useRoute()
 const router = useRouter()
 
 const position = ref(route.query.role || '未指定岗位')
+const positionId = computed(() => {
+  const parsed = Number(route.query.positionId)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+})
 const difficultyLevel = ref(route.query.difficulty || 'mid')
 const focusAreas = computed(() => parseFocusAreas(route.query.focus))
 const effectiveFocusAreas = ref([])
@@ -442,6 +446,7 @@ const startNewInterview = async (resumeQuestions) => {
   try {
     const id = await startInterviewAPI({
       position: position.value,
+      positionId: positionId.value,
       mode: 'text',
       difficultyLevel: difficultyLevel.value,
       focusAreas: effectiveFocusAreas.value.length ? effectiveFocusAreas.value : focusAreas.value,
@@ -486,6 +491,7 @@ const saveActiveInterview = () => {
   localStorage.setItem(activeInterviewKey.value, JSON.stringify({
     recordId: recordId.value,
     position: position.value,
+    positionId: positionId.value,
     mode: 'text',
     difficultyLevel: difficultyLevel.value,
     focusAreas: effectiveFocusAreas.value.length ? effectiveFocusAreas.value : focusAreas.value,
@@ -635,7 +641,7 @@ const streamAiResponse = (msg) => {
 const endInterview = async () => {
   if (totalUserRounds.value < 1) { ElMessage.warning('请至少完成一轮对话'); return }
   try {
-    await ElMessageBox.confirm('确定结束面试？AI 将综合分析并生成详细报告（约30秒）。', '结束面试', {
+    await ElMessageBox.confirm('确定结束面试？AI 将先生成初步报告，详细报告会在后台生成并可稍后到历史记录查看。', '结束面试', {
       confirmButtonText: '确认结束', cancelButtonText: '继续面试', type: 'warning'
     })
   } catch { return }
@@ -687,11 +693,11 @@ const performEndInterview = async (endType = 'manual') => {
   const isAutoNormal = endType === 'normal'
  
   const loadingMsg = ElMessage({ 
-    message: isAutoAbnormal
-      ? '🚨 检测到异常中断，正在生成报告...'
+      message: isAutoAbnormal
+      ? '检测到异常中断，正在生成初步报告...'
       : isAutoNormal
-        ? '✅ 面试已完成，正在生成报告...'
-        : '🤖 正在深度分析，请稍候...',
+        ? '面试已完成，正在生成初步报告...'
+        : '正在生成初步报告，请稍候...',
     type: isAutoAbnormal ? 'warning' : 'info', 
     duration: 0 
   })
@@ -699,30 +705,35 @@ const performEndInterview = async (endType = 'manual') => {
   try {
     const res = await finishInterviewAPI({ recordId: recordId.value, wpm, voiceRounds: voiceRoundCount })
     trackEvent('INTERVIEW_FINISH_CLIENT', { mode: 'text', recordId: recordId.value })
-    loadingMsg.close()
 
-    if (res) {
-      clearActiveInterview()
-      const parsedPayload = parseInterviewFinishPayload(res)
-      reportData.score = res.score || 0
-      reportData.feedback = res.feedback || ''
-      reportData.wpm = wpm
-      reportData.voiceRounds = voiceRoundCount
-      reportData.ability = parsedPayload.ability
-      reportData.recommendations = parsedPayload.recommendations
-      reportData.emotion = parsedPayload.emotion
-
-      showReport.value = true
-      // Trigger animations
-      nextTick(() => {
-        animateScore(reportData.score)
-        animateRadar()
-      })
+    if (!res) {
+      throw new Error('报告接口返回空结果')
     }
+
+    const parsedPayload = parseInterviewFinishPayload(res)
+    const preliminaryRecord = res.record || res
+    reportData.score = preliminaryRecord.score ?? res.score ?? 0
+    reportData.feedback = preliminaryRecord.feedback ?? res.feedback ?? ''
+    reportData.wpm = wpm
+    reportData.voiceRounds = voiceRoundCount
+    reportData.ability = parsedPayload.ability
+    reportData.recommendations = parsedPayload.recommendations
+    reportData.emotion = parsedPayload.emotion
+
+    showReport.value = true
+    if (res.reportJobId) {
+      ElMessage.info('详细报告正在后台生成，稍后可在历史记录中查看')
+    }
+    clearActiveInterview()
+    // Trigger animations
+    nextTick(() => {
+      animateScore(reportData.score)
+      animateRadar()
+    })
   } catch (err) {
-    loadingMsg.close()
-    ElMessage.error('报告生成失败: ' + (err.message || '请检查后端连接'))
+    ElMessage.error('初步报告生成失败: ' + (err.message || '请检查后端连接'))
   } finally {
+    loadingMsg.close()
     isFinishing.value = false
   }
 }

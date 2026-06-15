@@ -45,6 +45,34 @@ class QdrantVectorServicePrefixTest {
     }
 
     @Test
+    @DisplayName("search filter includes ownership scope fields")
+    void shouldIncludeOwnershipFilterWhenSearching() {
+        CapturingEmbeddingModel embeddingModel = new CapturingEmbeddingModel();
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        QdrantVectorService service = new QdrantVectorService(embeddingModel, restTemplate);
+        configure(service);
+        server.expect(requestTo("http://qdrant/collections/test_atoms"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://qdrant/collections/test_atoms/points/search"))
+                .andExpect(jsonPath("$.filter.must[0].key").value("status"))
+                .andExpect(jsonPath("$.filter.must[1].key").value("scope"))
+                .andExpect(jsonPath("$.filter.must[1].match.value").value("PRIVATE"))
+                .andExpect(jsonPath("$.filter.must[2].key").value("owner_user_id"))
+                .andExpect(jsonPath("$.filter.must[2].match.value").value(7))
+                .andExpect(jsonPath("$.filter.must[3].key").value("position_id"))
+                .andExpect(jsonPath("$.filter.must[3].match.value").value(20))
+                .andExpect(jsonPath("$.filter.must[4].key").value("knowledge_base_id"))
+                .andExpect(jsonPath("$.filter.must[4].match.value").value(30))
+                .andRespond(withSuccess("{\"result\":[]}", MediaType.APPLICATION_JSON));
+
+        service.search("候选人提到了 RAG", List.of(), List.of(), 20,
+                "PRIVATE", 7L, 20L, 30L);
+
+        server.verify();
+    }
+
+    @Test
     @DisplayName("adds passage prefix when embedding atom text")
     void shouldAddPassagePrefixWhenUpserting() {
         CapturingEmbeddingModel embeddingModel = new CapturingEmbeddingModel();

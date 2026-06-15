@@ -1,0 +1,4 @@
+interface:
+  display_name: "Interview Question Bank"
+  short_description: "Generate and review InterWise question-bank import packages."
+  default_prompt: "Prepare and review a question-bank import package from source documents or JSON atoms for import into a private position knowledge base."

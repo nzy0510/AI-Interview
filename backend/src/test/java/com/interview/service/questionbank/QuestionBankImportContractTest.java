@@ -122,6 +122,75 @@ class QuestionBankImportContractTest {
     }
 
     @Test
+    @DisplayName("知识库作用域导入会写入当前用户私有题库归属字段")
+    void shouldImportDraftAtomWithKnowledgeBaseScope() throws Exception {
+        when(atomMapper.selectOne(any())).thenReturn(null);
+        when(versionMapper.selectCount(any())).thenReturn(0L);
+        QuestionBankImportScope scope = new QuestionBankImportScope("PRIVATE", 7L, 20L, 30L, 7L, false);
+
+        QuestionBankImportResult result = service.importBatch(fixtureRequest("valid-draft.json"), scope);
+
+        assertThat(result.getImported()).isEqualTo(1);
+        ArgumentCaptor<KnowledgeAtom> atomCaptor = ArgumentCaptor.forClass(KnowledgeAtom.class);
+        verify(atomMapper).insert(atomCaptor.capture());
+        KnowledgeAtom atom = atomCaptor.getValue();
+        assertThat(atom.getAtomId()).isEqualTo("kb30-contract-java-hashmap");
+        assertThat(atom.getScope()).isEqualTo("PRIVATE");
+        assertThat(atom.getOwnerUserId()).isEqualTo(7L);
+        assertThat(atom.getPositionId()).isEqualTo(20L);
+        assertThat(atom.getKnowledgeBaseId()).isEqualTo(30L);
+        assertThat(atom.getPublicationStatus()).isEqualTo("DRAFT");
+        assertThat(atom.getReviewStatus()).isEqualTo("PASS");
+    }
+
+    @Test
+    @DisplayName("普通知识库导入即使包声明 AUTO_PUBLISH 也只落为草稿")
+    void shouldForceDraftModeWhenScopedImportCannotAutoPublish() throws Exception {
+        when(atomMapper.selectOne(any())).thenReturn(null);
+        when(versionMapper.selectCount(any())).thenReturn(0L);
+        QuestionBankImportScope scope = new QuestionBankImportScope("PRIVATE", 7L, 20L, 30L, 7L, false);
+        QuestionBankImportRequest request = fixtureRequest("valid-auto-publish.json");
+
+        QuestionBankImportResult result = service.importBatch(request, scope);
+
+        assertThat(result.getMode()).isEqualTo("DRAFT");
+        assertThat(result.getPublished()).isZero();
+        ArgumentCaptor<KnowledgeAtom> atomCaptor = ArgumentCaptor.forClass(KnowledgeAtom.class);
+        verify(atomMapper).insert(atomCaptor.capture());
+        assertThat(atomCaptor.getValue().getStatus()).isEqualTo("DRAFT");
+        verify(qdrantVectorService, never()).upsert(any());
+    }
+
+    @Test
+    @DisplayName("私有知识库发布和重建索引会限定在当前作用域")
+    void shouldPublishAndReindexPrivateAtomsWithinScope() {
+        QuestionBankImportScope scope = new QuestionBankImportScope("PRIVATE", 7L, 20L, 30L, 7L, false);
+        KnowledgeAtom atom = publishedAtom("kb30-contract-java-hashmap");
+        atom.setStatus("DRAFT");
+        atom.setScope("PRIVATE");
+        atom.setOwnerUserId(7L);
+        atom.setPositionId(20L);
+        atom.setKnowledgeBaseId(30L);
+        when(atomMapper.selectList(any())).thenReturn(List.of(atom), List.of(atom));
+        when(qdrantVectorService.upsert(atom)).thenReturn(true);
+
+        Map<String, Integer> publishResult = service.publishAtoms(List.of("kb30-contract-java-hashmap"), scope);
+        Map<String, Integer> reindexResult = service.reindexAtoms(List.of("kb30-contract-java-hashmap"), scope);
+
+        assertThat(publishResult)
+                .containsEntry("matched", 1)
+                .containsEntry("published", 1)
+                .containsEntry("synced", 1);
+        assertThat(reindexResult)
+                .containsEntry("matched", 1)
+                .containsEntry("synced", 1)
+                .containsEntry("skipped", 0);
+        assertThat(atom.getPublishedBy()).isEqualTo(7L);
+        verify(atomMapper, times(2)).selectList(any());
+        verify(qdrantVectorService, times(2)).upsert(atom);
+    }
+
+    @Test
     @DisplayName("AUTO_PUBLISH 导入会发布 atom 并同步 Qdrant")
     void shouldPublishAndSyncAutoPublishedAtom() throws Exception {
         when(atomMapper.selectOne(any())).thenReturn(null);

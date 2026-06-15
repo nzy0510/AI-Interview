@@ -4,9 +4,13 @@ import com.interview.dto.questionbank.QuestionBankSearchRequest;
 import com.interview.dto.questionbank.QuestionBankSearchResponse;
 import com.interview.dto.questionbank.QuestionBankSearchResult;
 import com.interview.entity.InterviewPhase;
+import com.interview.entity.InterviewPosition;
 import com.interview.entity.InterviewRecord;
+import com.interview.entity.KnowledgeBase;
 import com.interview.entity.RagRetrievalLog;
 import com.interview.entity.RagRetrievalRequestLog;
+import com.interview.mapper.InterviewPositionMapper;
+import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.mapper.RagRetrievalRequestLogMapper;
 import com.interview.service.questionbank.QuestionBankService;
@@ -48,6 +52,8 @@ public class InterviewRetrievalService {
             """;
 
     private final QuestionBankService questionBankService;
+    private final InterviewPositionMapper positionMapper;
+    private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final RagRetrievalLogMapper hitLogMapper;
     private final RagRetrievalRequestLogMapper requestLogMapper;
     private final AppEventService appEventService;
@@ -69,10 +75,14 @@ public class InterviewRetrievalService {
     private double minContextScore = 0.55;
 
     public InterviewRetrievalService(QuestionBankService questionBankService,
+                                     InterviewPositionMapper positionMapper,
+                                     KnowledgeBaseMapper knowledgeBaseMapper,
                                      RagRetrievalLogMapper hitLogMapper,
                                      RagRetrievalRequestLogMapper requestLogMapper,
                                      AppEventService appEventService) {
         this.questionBankService = questionBankService;
+        this.positionMapper = positionMapper;
+        this.knowledgeBaseMapper = knowledgeBaseMapper;
         this.hitLogMapper = hitLogMapper;
         this.requestLogMapper = requestLogMapper;
         this.appEventService = appEventService;
@@ -86,7 +96,9 @@ public class InterviewRetrievalService {
                                   List<String> usedAtomIds) {
         String position = record.getPosition() != null ? record.getPosition() : "common";
         String query = buildQuery(chatHistory, message);
-        QuestionBankSearchRequest searchRequest = buildSearchRequest(position, query, message, usedAtomIds, nextPhase);
+        SearchScope searchScope = resolveSearchScope(userId, record.getPositionId());
+        QuestionBankSearchRequest searchRequest = buildSearchRequest(position, query, message, usedAtomIds,
+                searchScope, nextPhase);
         String requestId = UUID.randomUUID().toString();
         int turnIndex = chatHistory.size() / 2 + 1;
         String queryText = truncate(query, 500);
@@ -146,15 +158,51 @@ public class InterviewRetrievalService {
 
     private QuestionBankSearchRequest buildSearchRequest(String position, String query, String message,
                                                          List<String> usedAtomIds,
+                                                         SearchScope searchScope,
                                                          InterviewPhase nextPhase) {
         if (nextPhase != InterviewPhase.TECHNICAL && nextPhase != InterviewPhase.HR) return null;
+        if (searchScope == null) return null;
         QuestionBankSearchRequest request = new QuestionBankSearchRequest();
         request.setPosition(position);
+        request.setScope(searchScope.scope());
+        request.setOwnerUserId(searchScope.ownerUserId());
+        request.setPositionId(searchScope.positionId());
+        request.setKnowledgeBaseId(searchScope.knowledgeBaseId());
         request.setQuery(query);
         request.setExcludeAtomIds(usedAtomIds != null ? usedAtomIds : List.of());
         request.setLimit(answerSignals.effectiveRetrievalLimit(message, retrievalLimit, maxRetrievalLimit));
         if (nextPhase == InterviewPhase.HR) request.setCategories(HR_SOFT_SKILL_CATEGORIES);
         return request;
+    }
+
+    private SearchScope resolveSearchScope(Long userId, Long positionId) {
+        if (positionId == null) {
+            return null;
+        }
+        InterviewPosition position = positionMapper.selectById(positionId);
+        if (position == null || !"ACTIVE".equalsIgnoreCase(position.getStatus())) {
+            return null;
+        }
+        boolean privateOwner = "PRIVATE".equalsIgnoreCase(position.getScope())
+                && userId != null
+                && userId.equals(position.getOwnerUserId());
+        boolean publicPosition = "PUBLIC".equalsIgnoreCase(position.getScope());
+        if (!publicPosition && !privateOwner) {
+            return null;
+        }
+        Long knowledgeBaseId = position.getDefaultKnowledgeBaseId();
+        if (knowledgeBaseId == null) {
+            KnowledgeBase knowledgeBase = knowledgeBaseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnowledgeBase>()
+                    .eq(KnowledgeBase::getPositionId, position.getId())
+                    .eq(KnowledgeBase::getStatus, "ACTIVE")
+                    .last("LIMIT 1"));
+            knowledgeBaseId = knowledgeBase == null ? null : knowledgeBase.getId();
+        }
+        if (knowledgeBaseId == null) {
+            return null;
+        }
+        return new SearchScope(position.getScope(), privateOwner ? position.getOwnerUserId() : null,
+                position.getId(), knowledgeBaseId);
     }
 
     private void insertHitLogs(String requestId, Long userId, Long recordId, int turnIndex,
@@ -305,5 +353,8 @@ public class InterviewRetrievalService {
         public static TurnRetrieval empty() {
             return new TurnRetrieval("", List.of(), List.of());
         }
+    }
+
+    private record SearchScope(String scope, Long ownerUserId, Long positionId, Long knowledgeBaseId) {
     }
 }

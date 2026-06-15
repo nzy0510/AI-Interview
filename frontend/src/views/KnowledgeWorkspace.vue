@@ -65,10 +65,10 @@
                 type="danger"
                 plain
                 :icon="Delete"
-                :loading="archiving"
-                @click="archivePosition"
+                :loading="deleting"
+                @click="deletePosition"
               >
-                归档岗位
+                删除岗位
               </el-button>
               <el-tag v-else type="info" effect="plain">只读</el-tag>
             </div>
@@ -84,177 +84,153 @@
               <strong>{{ activePosition.knowledgeBase?.name || '未创建' }}</strong>
             </div>
             <div class="summary-item">
-              <span>文件数</span>
-              <strong>{{ sourceFiles.length }}</strong>
+              <span>导入原子</span>
+              <strong>{{ packageAtomPage.total }}</strong>
             </div>
             <div class="summary-item">
-              <span>上传权限</span>
-              <strong>{{ canUpload ? '可上传' : '不可上传' }}</strong>
+              <span>维护权限</span>
+              <strong>{{ canMaintainPackage ? '可维护' : '只读' }}</strong>
             </div>
           </div>
 
-          <div class="upload-zone" :class="{ 'is-disabled': !canUpload }">
-            <el-upload
-              drag
-              :disabled="!canUpload"
-              :show-file-list="false"
-              :http-request="uploadFile"
-              :before-upload="beforeUpload"
-              accept=".pdf,.docx,.md,.markdown,.txt"
-            >
-              <el-icon class="upload-icon"><UploadFilled /></el-icon>
-              <div class="upload-title">上传知识文件</div>
-              <div class="upload-hint">支持 PDF、DOCX、Markdown/MD、TXT，单个文件不超过 20MB</div>
-            </el-upload>
-            <p v-if="!canUpload" class="readonly-note">公共岗位为只读内容，只有自己的私有岗位可以上传文件。</p>
-          </div>
-
-          <div class="file-toolbar">
-            <div>
-              <h3>文件与转换状态</h3>
-              <p>上传后会创建后台转换作业，可在列表中查看进度和失败原因。</p>
-            </div>
-            <el-button :icon="RefreshRight" :loading="loadingJobs" @click="loadJobs">刷新作业</el-button>
-          </div>
-
-          <el-table :data="sourceFiles" class="file-table" empty-text="当前知识库还没有上传文件">
-            <el-table-column prop="originalFilename" label="文件名" min-width="220" />
-            <el-table-column label="文件状态" width="130">
-              <template #default="{ row }">
-                <el-tag :type="getFileStatusType(row.status)" effect="plain">
-                  {{ getFileStatusLabel(row.status) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="作业进度" min-width="180">
-              <template #default="{ row }">
-                <div v-if="jobFor(row)" class="job-progress">
-                  <el-progress :percentage="jobFor(row).progress || 0" :stroke-width="8" />
-                  <span>{{ jobFor(row).status }} / {{ jobFor(row).stage || '等待调度' }}</span>
-                </div>
-                <span v-else class="muted-text">暂无作业</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="Markdown" width="120">
-              <template #default="{ row }">
-                <el-button
-                  size="small"
-                  :disabled="!row.hasMarkdown"
-                  @click="openMarkdown(row)"
-                >
-                  查看
-                </el-button>
-              </template>
-            </el-table-column>
-            <el-table-column label="原子" width="120">
-              <template #default="{ row }">
-                <el-button
-                  size="small"
-                  :type="activeSourceFile?.id === row.id ? 'primary' : 'default'"
-                  @click="selectSourceFile(row)"
-                >
-                  查看
-                </el-button>
-              </template>
-            </el-table-column>
-            <el-table-column label="作业操作" width="120">
-              <template #default="{ row }">
-                <el-button
-                  size="small"
-                  :icon="RefreshRight"
-                  :loading="retryingJobId === jobFor(row)?.id"
-                  :disabled="!canManageAtoms || !canRetryJob(jobFor(row))"
-                  @click="retryJob(row)"
-                >
-                  重试
-                </el-button>
-              </template>
-            </el-table-column>
-            <el-table-column label="错误" min-width="180">
-              <template #default="{ row }">
-                <span class="error-text">{{ row.errorMessage || jobFor(row)?.errorMessage || '-' }}</span>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <div v-if="activeSourceFile" class="atom-panel">
-            <div class="file-toolbar atom-toolbar">
+          <div v-if="canMaintainPackage" class="package-panel">
+            <div class="file-toolbar package-toolbar">
               <div>
-                <h3>原子审查与发布</h3>
-                <p>{{ activeSourceFile.originalFilename }} · {{ atoms.length }} 条原子</p>
+                <h3>导入包维护</h3>
+                <p>使用本地 skill 生成的 JSON 导入包维护当前岗位题库，导入后先进入草稿。</p>
               </div>
               <div class="atom-toolbar__actions">
-                <el-button :icon="RefreshRight" :loading="loadingAtoms" @click="loadAtoms">刷新原子</el-button>
-                <el-button
-                  :loading="generatingAtoms"
-                  :disabled="!canManageAtoms || !activeSourceFile.hasMarkdown"
-                  @click="generateAtoms"
+                <input
+                  ref="packageFileInput"
+                  class="visually-hidden"
+                  type="file"
+                  accept=".json,application/json"
+                  @change="handleImportPackageFile"
                 >
-                  {{ generateAtomButtonLabel }}
-                </el-button>
-                <el-button
-                  type="success"
-                  :loading="publishingAtoms"
-                  :disabled="!canManageAtoms || publishableAtomCount === 0"
-                  @click="publishAllAtoms"
-                >
-                  一键发布 {{ publishableAtomCount || '' }}
+                <el-button :disabled="!canMaintainPackage" @click="packageFileInput?.click()">选择导入包</el-button>
+                <el-button :loading="importLoading" :disabled="!canMaintainPackage || !importPackage" @click="validateImportPackage">
+                  校验导入包
                 </el-button>
                 <el-button
                   type="primary"
-                  :disabled="!canManageAtoms"
-                  @click="openCreateAtom"
+                  :loading="importingPackage"
+                  :disabled="!canMaintainPackage || !importPackage"
+                  @click="importPackageDraft"
                 >
-                  新建原子
+                  导入为草稿
                 </el-button>
               </div>
             </div>
 
-            <el-table :data="atoms" class="atom-table" empty-text="当前文件还没有知识原子">
+            <p v-if="importFileName" class="package-file-name">已选择：{{ importFileName }}</p>
+
+            <div v-if="importPreview || importResult" class="package-result">
+              <div v-if="importPreview" class="package-result__summary">
+                <span>批次 {{ importPreview.batchId || '-' }}</span>
+                <span>接收 {{ importPreview.received || 0 }}</span>
+                <span>新增 {{ importPreview.newCount || 0 }}</span>
+                <span>更新 {{ importPreview.updateCount || 0 }}</span>
+                <span v-if="importPreview.batchIdExists">批次已存在</span>
+              </div>
+              <div v-if="importResult" class="package-result__summary">
+                <span>导入 {{ importResult.imported || 0 }}</span>
+                <span>发布 {{ importResult.published || 0 }}</span>
+                <span>失败 {{ importResult.failed || 0 }}</span>
+              </div>
+              <ul v-if="packageErrors.length" class="package-errors">
+                <li v-for="error in packageErrors" :key="error">{{ error }}</li>
+              </ul>
+            </div>
+
+            <div class="package-filters">
+              <el-input v-model="packageAtomFilters.keyword" clearable placeholder="关键词 / atomId / 内容" />
+              <el-input v-model="packageAtomFilters.category" clearable placeholder="分类" />
+              <el-input v-model="packageAtomFilters.batchId" clearable placeholder="批次 ID" />
+              <el-select v-model="packageAtomFilters.difficulty" clearable placeholder="难度">
+                <el-option label="junior" value="junior" />
+                <el-option label="mid" value="mid" />
+                <el-option label="senior" value="senior" />
+                <el-option label="principal" value="principal" />
+              </el-select>
+              <el-select v-model="packageAtomFilters.status" clearable placeholder="状态">
+                <el-option label="草稿" value="DRAFT" />
+                <el-option label="已发布" value="PUBLISHED" />
+                <el-option label="归档" value="ARCHIVED" />
+              </el-select>
+              <el-button :icon="RefreshRight" :loading="packageAtomsLoading" :disabled="!canMaintainPackage" @click="loadPackageAtoms">
+                查询
+              </el-button>
+            </div>
+
+            <div class="package-bulk-actions">
+              <span class="muted-text">已选 {{ selectedPackageAtomIds.length }} 条</span>
+              <el-button
+                type="success"
+                :loading="packageAtomActionLoading === 'publishAllDrafts'"
+                :disabled="!canPublishPackageAtoms"
+                @click="publishAllDraftAtoms"
+              >
+                一键发布全部草稿
+              </el-button>
+              <el-button
+                type="success"
+                :loading="packageAtomActionLoading === 'publish'"
+                :disabled="!canPublishPackageAtoms || !selectedPackageAtomIds.length"
+                @click="publishSelectedPackageAtoms"
+              >
+                发布所选
+              </el-button>
+              <el-button
+                :loading="packageAtomActionLoading === 'reindex'"
+                :disabled="!canReindexPackageAtoms || !selectedPackageAtomIds.length"
+                @click="reindexSelectedPackageAtoms"
+              >
+                重建索引
+              </el-button>
+              <el-button
+                type="danger"
+                plain
+                :loading="packageAtomActionLoading === 'archive'"
+                :disabled="!canArchivePackageAtoms || !selectedPackageAtomIds.length"
+                @click="archiveSelectedPackageAtoms"
+              >
+                归档所选
+              </el-button>
+            </div>
+
+            <el-table
+              :data="packageAtoms"
+              class="atom-table"
+              empty-text="当前知识库还没有导入包原子"
+              @selection-change="handlePackageAtomSelectionChange"
+            >
+              <el-table-column type="selection" width="44" />
+              <el-table-column prop="atomId" label="Atom ID" min-width="180" />
               <el-table-column prop="subject" label="考点" min-width="180" />
-              <el-table-column label="二审" width="110">
+              <el-table-column prop="category" label="分类" min-width="120" />
+              <el-table-column prop="difficulty" label="难度" width="90" />
+              <el-table-column label="状态" width="100">
                 <template #default="{ row }">
-                  <el-tag :type="getAtomReviewType(row.reviewStatus)" effect="plain">
-                    {{ getAtomReviewLabel(row.reviewStatus) }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="发布" width="110">
-                <template #default="{ row }">
-                  <el-tag :type="getPublicationStatusType(row.publicationStatus)" effect="plain">
-                    {{ getPublicationStatusLabel(row.publicationStatus) }}
+                  <el-tag :type="row.status === 'ARCHIVED' ? 'info' : 'success'" effect="plain">
+                    {{ row.status || '-' }}
                   </el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="vectorStatus" label="向量" width="100" />
-              <el-table-column label="审查原因" min-width="180">
-                <template #default="{ row }">
-                  <span class="muted-text">{{ row.reviewReason || '-' }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="260" fixed="right">
-                <template #default="{ row }">
-                  <div class="atom-actions">
-                    <el-button
-                      size="small"
-                      :disabled="!canManageAtoms || !canApplySuggestedPatch(row)"
-                      @click="acceptPatch(row)"
-                    >
-                      应用补丁
-                    </el-button>
-                    <el-button size="small" :disabled="!canManageAtoms" @click="openEditAtom(row)">编辑</el-button>
-                    <el-button
-                      size="small"
-                      type="primary"
-                      :disabled="!canManageAtoms || !canPublishAtom(row)"
-                      @click="publishAtom(row)"
-                    >
-                      发布
-                    </el-button>
-                  </div>
-                </template>
-              </el-table-column>
+              <el-table-column prop="sourceRef" label="来源" min-width="160" />
             </el-table>
+
+            <el-pagination
+              v-if="packageAtomPage.total > packageAtomPage.size"
+              v-model:current-page="packageAtomPage.page"
+              v-model:page-size="packageAtomPage.size"
+              class="package-pagination"
+              layout="total, sizes, prev, pager, next"
+              :page-sizes="[10, 20, 50]"
+              :total="packageAtomPage.total"
+              @current-change="loadPackageAtoms"
+              @size-change="loadPackageAtoms"
+            />
           </div>
         </template>
 
@@ -289,145 +265,87 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="markdownDialogVisible" title="Markdown 预览" width="min(92vw, 820px)">
-      <pre class="markdown-preview">{{ markdownPreview }}</pre>
-    </el-dialog>
-
-    <el-dialog
-      v-model="atomDialogVisible"
-      :title="editingAtom ? '编辑知识原子' : '新建知识原子'"
-      width="min(94vw, 720px)"
-      :close-on-click-modal="false"
-    >
-      <el-form label-position="top" class="atom-form">
-        <el-form-item label="考点">
-          <el-input v-model="atomForm.subject" maxlength="160" />
-        </el-form-item>
-        <div class="atom-form-grid">
-          <el-form-item label="分类">
-            <el-input v-model="atomForm.category" maxlength="80" />
-          </el-form-item>
-          <el-form-item label="难度">
-            <el-select v-model="atomForm.difficulty">
-              <el-option label="简单" value="EASY" />
-              <el-option label="中等" value="MEDIUM" />
-              <el-option label="困难" value="HARD" />
-            </el-select>
-          </el-form-item>
-        </div>
-        <el-form-item label="标签">
-          <el-input v-model="atomForm.tagsText" placeholder="用逗号分隔，例如 Java,集合,HashMap" />
-        </el-form-item>
-        <el-form-item label="核心原理与标准答案">
-          <el-input v-model="atomForm.principles" type="textarea" :rows="5" />
-        </el-form-item>
-        <el-form-item label="常见陷阱">
-          <el-input v-model="atomForm.pitfalls" type="textarea" :rows="3" />
-        </el-form-item>
-        <el-form-item label="追问路径">
-          <el-input v-model="atomForm.followUpText" type="textarea" :rows="3" placeholder="每行一个追问方向" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="atomDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="savingAtom" @click="saveAtom">保存</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, Delete, Plus, RefreshRight, UploadFilled } from '@element-plus/icons-vue'
+import { ArrowLeft, Delete, Plus, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  acceptKnowledgeAtomPatchAPI,
-  archivePrivatePositionAPI,
-  createManualKnowledgeAtomAPI,
+  archiveKnowledgeBaseAtomsAPI,
+  deletePrivatePositionAPI,
   createPrivatePositionAPI,
-  generateKnowledgeAtomsAPI,
-  getAppJobsAPI,
-  getKnowledgeFileAtomsAPI,
   getKnowledgeWorkspaceAPI,
-  publishKnowledgeFileAtomsAPI,
-  publishKnowledgeAtomAPI,
-  retryAppJobAPI,
-  updateKnowledgeAtomAPI,
-  uploadKnowledgeFileAPI
+  importKnowledgeBasePackageAPI,
+  publishAllDraftAtomsAPI,
+  publishKnowledgeBaseAtomsAPI,
+  reindexKnowledgeBaseAtomsAPI,
+  searchKnowledgeBaseAtomsAPI,
+  validateKnowledgeBaseImportAPI
 } from '@/api/knowledgeWorkspace'
 import {
-  canApplySuggestedPatch,
-  canPublishAtom,
-  canRetryJob,
-  canUploadToPosition,
-  countPublishableAtoms,
-  findLatestJobForSourceFile,
-  generationCompletionMessage,
-  getAtomReviewLabel,
-  getAtomReviewType,
-  getFileStatusLabel,
-  getFileStatusType,
-  getPublicationStatusLabel,
-  getPublicationStatusType,
+  canArchiveQuestionBankAtoms,
+  canMaintainQuestionBank,
+  canPublishQuestionBankAtoms,
+  canReindexQuestionBankAtoms,
   getPositionScopeLabel,
   getPositionStatusType,
-  isPositionEditable
+  isPositionEditable,
+  parseImportPackageText
 } from '@/utils/knowledgeWorkspace'
-import { withAuthHeaders } from '@/utils/auth'
 
 const router = useRouter()
 const loading = ref(false)
-const loadingJobs = ref(false)
-const loadingAtoms = ref(false)
 const creating = ref(false)
-const archiving = ref(false)
-const generatingAtoms = ref(false)
-const publishingAtoms = ref(false)
-const retryingJobId = ref(null)
-const savingAtom = ref(false)
+const deleting = ref(false)
 const positions = ref([])
-const jobs = ref([])
-const atoms = ref([])
 const activePositionId = ref(null)
-const activeSourceFileId = ref(null)
 const createDialogVisible = ref(false)
-const markdownDialogVisible = ref(false)
-const atomDialogVisible = ref(false)
-const markdownPreview = ref('')
+const packageFileInput = ref(null)
+const importPackage = ref(null)
+const importFileName = ref('')
+const importPreview = ref(null)
+const importResult = ref(null)
+const importLoading = ref(false)
+const importingPackage = ref(false)
+const packageAtomsLoading = ref(false)
+const packageAtomActionLoading = ref('')
+const packageAtoms = ref([])
+const selectedPackageAtomIds = ref([])
 const createForm = reactive({ name: '', description: '' })
-const editingAtom = ref(null)
-const atomForm = reactive({
-  subject: '',
+const packageAtomFilters = reactive({
+  keyword: '',
   category: '',
-  difficulty: 'MEDIUM',
-  tagsText: '',
-  principles: '',
-  pitfalls: '',
-  followUpText: ''
+  batchId: '',
+  difficulty: '',
+  status: ''
 })
-let pollTimer = null
+const packageAtomPage = reactive({
+  page: 1,
+  size: 20,
+  total: 0
+})
 
 const activePosition = computed(() => positions.value.find((item) => item.id === activePositionId.value) || positions.value[0] || null)
-const sourceFiles = computed(() => activePosition.value?.knowledgeBase?.sourceFiles || [])
-const canUpload = computed(() => canUploadToPosition(activePosition.value))
-const canManageAtoms = computed(() => canUpload.value)
-const activeSourceFile = computed(() => sourceFiles.value.find((item) => item.id === activeSourceFileId.value) || sourceFiles.value[0] || null)
-const publishableAtomCount = computed(() => countPublishableAtoms(atoms.value))
-const generateAtomButtonLabel = computed(() => atoms.value.length > 0 ? '追加生成 / 二审' : '生成 / 二审')
+const activeKnowledgeBaseId = computed(() => activePosition.value?.knowledgeBase?.id || null)
+const canMaintainPackage = computed(() => canMaintainQuestionBank(activePosition.value))
+const canPublishPackageAtoms = computed(() => canPublishQuestionBankAtoms(activePosition.value))
+const canReindexPackageAtoms = computed(() => canReindexQuestionBankAtoms(activePosition.value))
+const canArchivePackageAtoms = computed(() => canArchiveQuestionBankAtoms(activePosition.value))
+const packageErrors = computed(() => [
+  ...((importPreview.value?.errors) || []),
+  ...((importResult.value?.errors) || [])
+])
 
 const selectPosition = (position) => {
   activePositionId.value = position.id
-  activeSourceFileId.value = null
-  atoms.value = []
+  resetImportPackageState()
+  resetPackageAtoms()
 }
 
-const selectSourceFile = async (file) => {
-  activeSourceFileId.value = file.id
-  await loadAtoms()
-}
-
-const loadWorkspace = async (options = {}) => {
+const loadWorkspace = async () => {
   loading.value = true
   try {
     const data = await getKnowledgeWorkspaceAPI()
@@ -435,39 +353,9 @@ const loadWorkspace = async (options = {}) => {
     if (!positions.value.some((item) => item.id === activePositionId.value)) {
       activePositionId.value = positions.value[0]?.id || null
     }
-    if (!sourceFiles.value.some((item) => item.id === activeSourceFileId.value)) {
-      activeSourceFileId.value = sourceFiles.value[0]?.id || null
-    }
-    await loadJobs({ silent: true, notifyGenerationCompletion: options.notifyGenerationCompletion })
-    await loadAtoms({ silent: true })
+    await loadPackageAtoms({ silent: true })
   } finally {
     loading.value = false
-  }
-}
-
-const loadJobs = async (options = {}) => {
-  loadingJobs.value = !options.silent
-  try {
-    const previousJobs = jobs.value
-    jobs.value = await getAppJobsAPI({ silent: true })
-    if (options.notifyGenerationCompletion) {
-      notifyCompletedGenerationJobs(previousJobs, jobs.value)
-    }
-  } finally {
-    loadingJobs.value = false
-  }
-}
-
-const loadAtoms = async (options = {}) => {
-  if (!activeSourceFile.value?.id) {
-    atoms.value = []
-    return
-  }
-  loadingAtoms.value = !options.silent
-  try {
-    atoms.value = await getKnowledgeFileAtomsAPI(activeSourceFile.value.id, { silent: true })
-  } finally {
-    loadingAtoms.value = false
   }
 }
 
@@ -494,123 +382,14 @@ const createPosition = async () => {
   }
 }
 
-const archivePosition = async () => {
+const deletePosition = async () => {
   if (!activePosition.value || !isPositionEditable(activePosition.value)) return
   try {
-    await ElMessageBox.confirm(`确认归档「${activePosition.value.name}」？归档后不能继续上传文件。`, '归档岗位', {
-      confirmButtonText: '归档',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-  } catch {
-    return
-  }
-  archiving.value = true
-  try {
-    await archivePrivatePositionAPI(activePosition.value.id)
-    ElMessage.success('岗位已归档')
-    await loadWorkspace()
-  } finally {
-    archiving.value = false
-  }
-}
-
-const beforeUpload = (file) => {
-  const allowed = ['pdf', 'docx', 'md', 'markdown', 'txt']
-  const extension = file.name.split('.').pop()?.toLowerCase()
-  if (!allowed.includes(extension)) {
-    ElMessage.error('仅支持 PDF、DOCX、Markdown/MD 和 TXT 文件')
-    return false
-  }
-  if (file.size > 20 * 1024 * 1024) {
-    ElMessage.error('知识库文件不能超过 20MB')
-    return false
-  }
-  return true
-}
-
-const uploadFile = async ({ file, onSuccess, onError }) => {
-  if (!activePosition.value?.knowledgeBase?.id) {
-    const error = new Error('当前岗位没有可上传的知识库')
-    ElMessage.error(error.message)
-    onError?.(error)
-    return
-  }
-  try {
-    const result = await uploadKnowledgeFileAPI(activePosition.value.knowledgeBase.id, file)
-    ElMessage.success('文件已上传，正在转换')
-    onSuccess?.(result)
-    await loadWorkspace()
-    startPolling()
-  } catch (error) {
-    onError?.(error)
-  }
-}
-
-const jobFor = (file) => findLatestJobForSourceFile(jobs.value, file.id)
-
-const generateAtoms = async () => {
-  if (!activeSourceFile.value?.id) return
-  if (atoms.value.length > 0) {
-    try {
-      await ElMessageBox.confirm(
-        `当前文件已有 ${atoms.value.length} 条原子。继续后会追加生成并二审，不会覆盖或清空已有原子。`,
-        '追加生成 / 二审',
-        {
-          confirmButtonText: '继续追加',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-      )
-    } catch {
-      return
-    }
-  }
-  generatingAtoms.value = true
-  try {
-    await generateKnowledgeAtomsAPI(activeSourceFile.value.id)
-    ElMessage.success('原子生成作业已创建，完成后会提示本次生成结果')
-    await loadJobs({ silent: true })
-    startPolling()
-  } finally {
-    generatingAtoms.value = false
-  }
-}
-
-const retryJob = async (file) => {
-  const job = jobFor(file)
-  if (!canRetryJob(job)) return
-  retryingJobId.value = job.id
-  try {
-    await retryAppJobAPI(job.id)
-    ElMessage.success('作业已重新投递')
-    await loadJobs({ silent: true })
-    startPolling()
-  } finally {
-    retryingJobId.value = null
-  }
-}
-
-const acceptPatch = async (atom) => {
-  await acceptKnowledgeAtomPatchAPI(atom.id)
-  ElMessage.success('建议补丁已应用')
-  await loadAtoms()
-}
-
-const publishAtom = async (atom) => {
-  await publishKnowledgeAtomAPI(atom.id)
-  ElMessage.success('原子已发布，向量同步状态已更新')
-  await loadAtoms()
-}
-
-const publishAllAtoms = async () => {
-  if (!activeSourceFile.value?.id || publishableAtomCount.value === 0) return
-  try {
     await ElMessageBox.confirm(
-      `确认发布当前文件下 ${publishableAtomCount.value} 条二审通过的草稿原子？发布后会同步到向量索引。`,
-      '一键发布',
+      `确认删除「${activePosition.value.name}」？该操作将永久删除岗位及其所有知识库、原子和相关数据，不可恢复。`,
+      '删除岗位',
       {
-        confirmButtonText: '发布',
+        confirmButtonText: '确认删除',
         cancelButtonText: '取消',
         type: 'warning'
       }
@@ -618,146 +397,186 @@ const publishAllAtoms = async () => {
   } catch {
     return
   }
-  publishingAtoms.value = true
+  deleting.value = true
   try {
-    const result = await publishKnowledgeFileAtomsAPI(activeSourceFile.value.id)
-    ElMessage.success(`已发布 ${result.published} 条，向量同步成功 ${result.synced} 条，跳过 ${result.skipped} 条`)
-    await loadAtoms()
+    await deletePrivatePositionAPI(activePosition.value.id)
+    ElMessage.success('岗位已删除')
+    await loadWorkspace()
   } finally {
-    publishingAtoms.value = false
+    deleting.value = false
   }
 }
 
-const openCreateAtom = () => {
-  editingAtom.value = null
-  resetAtomForm()
-  atomDialogVisible.value = true
+const handleImportPackageFile = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  importPreview.value = null
+  importResult.value = null
+  try {
+    const text = await file.text()
+    importPackage.value = parseImportPackageText(text)
+    importFileName.value = file.name
+    ElMessage.success('导入包已读取')
+  } catch (error) {
+    importPackage.value = null
+    importFileName.value = ''
+    ElMessage.error(error.message || '读取导入包失败')
+  } finally {
+    event.target.value = ''
+  }
 }
 
-const openEditAtom = (atom) => {
-  editingAtom.value = atom
-  atomForm.subject = atom.subject || ''
-  atomForm.category = atom.category || ''
-  atomForm.difficulty = atom.difficulty || 'MEDIUM'
-  atomForm.tagsText = parseJsonArray(atom.tagsJson).join(', ')
-  atomForm.principles = atom.principles || ''
-  atomForm.pitfalls = atom.pitfalls || ''
-  atomForm.followUpText = parseJsonArray(atom.followUpPathsJson).join('\n')
-  atomDialogVisible.value = true
+const validateImportPackage = async () => {
+  if (!activeKnowledgeBaseId.value || !importPackage.value) return
+  importLoading.value = true
+  try {
+    importPreview.value = await validateKnowledgeBaseImportAPI(activeKnowledgeBaseId.value, importPackage.value)
+    importResult.value = null
+    if (packageErrors.value.length) {
+      ElMessage.warning('导入包校验完成，但存在错误')
+    } else {
+      ElMessage.success('导入包校验通过')
+    }
+  } finally {
+    importLoading.value = false
+  }
 }
 
-const saveAtom = async () => {
-  if (!atomForm.subject.trim() || !atomForm.principles.trim()) {
-    ElMessage.warning('请填写考点和核心原理')
+const importPackageDraft = async () => {
+  if (!activeKnowledgeBaseId.value || !importPackage.value) return
+  importingPackage.value = true
+  try {
+    importResult.value = await importKnowledgeBasePackageAPI(activeKnowledgeBaseId.value, importPackage.value)
+    importPreview.value = null
+    if (importResult.value.failed > 0 || importResult.value.errors?.length) {
+      ElMessage.warning(`导入完成，失败 ${importResult.value.failed || 0} 条`)
+    } else {
+      ElMessage.success(`已导入 ${importResult.value.imported || 0} 条草稿原子`)
+    }
+    packageAtomFilters.batchId = importResult.value.batchId || importPackage.value.batchId || packageAtomFilters.batchId
+    packageAtomPage.page = 1
+    await loadPackageAtoms()
+  } finally {
+    importingPackage.value = false
+  }
+}
+
+const loadPackageAtoms = async (options = {}) => {
+  if (!activeKnowledgeBaseId.value || !canMaintainPackage.value) {
+    resetPackageAtoms()
     return
   }
-  const payload = atomFormPayload()
-  savingAtom.value = true
+  packageAtomsLoading.value = !options.silent
   try {
-    if (editingAtom.value) {
-      await updateKnowledgeAtomAPI(editingAtom.value.id, payload)
-      ElMessage.success('原子已保存')
-    } else {
-      await createManualKnowledgeAtomAPI(activeSourceFile.value.id, payload)
-      ElMessage.success('原子已创建')
-    }
-    atomDialogVisible.value = false
-    await loadAtoms()
-  } finally {
-    savingAtom.value = false
-  }
-}
-
-const openMarkdown = async (file) => {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/knowledge-files/${file.id}/markdown`, {
-      headers: withAuthHeaders()
+    const response = await searchKnowledgeBaseAtomsAPI(activeKnowledgeBaseId.value, {
+      ...cleanPackageFilters(),
+      page: packageAtomPage.page,
+      size: packageAtomPage.size
     })
-    if (!response.ok) {
-      throw new Error('读取 Markdown 失败')
-    }
-    markdownPreview.value = await response.text()
-    markdownDialogVisible.value = true
-  } catch (error) {
-    ElMessage.error(error.message || '读取 Markdown 失败')
+    packageAtoms.value = response?.items || []
+    packageAtomPage.total = response?.total || 0
+    packageAtomPage.page = response?.page || packageAtomPage.page
+    packageAtomPage.size = response?.size || packageAtomPage.size
+    selectedPackageAtomIds.value = []
+  } finally {
+    packageAtomsLoading.value = false
   }
 }
 
-const startPolling = () => {
-  if (pollTimer) return
-  pollTimer = window.setInterval(async () => {
-    await loadWorkspace({ notifyGenerationCompletion: true })
-    await loadAtoms({ silent: true })
-    const visibleSourceFileIds = new Set(sourceFiles.value.map((file) => file.id))
-    const activeJobs = jobs.value.some((job) =>
-      visibleSourceFileIds.has(job.sourceFileId) && ['PENDING', 'RUNNING'].includes(job.status)
-    )
-    if (!activeJobs) {
-      window.clearInterval(pollTimer)
-      pollTimer = null
-    }
-  }, 3000)
+const cleanPackageFilters = () => Object.fromEntries(
+  Object.entries(packageAtomFilters)
+    .map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
+    .filter(([, value]) => value)
+)
+
+const handlePackageAtomSelectionChange = (selection) => {
+  selectedPackageAtomIds.value = (selection || [])
+    .map((item) => item.atomId)
+    .filter(Boolean)
 }
 
-const notifyCompletedGenerationJobs = (previousJobs, nextJobs) => {
-  const previousById = new Map((previousJobs || []).map((job) => [job.id, job]))
-  for (const job of nextJobs || []) {
-    const previous = previousById.get(job.id)
-    if (
-      job.jobType === 'GENERATE_ATOMS'
-      && job.status === 'COMPLETED'
-      && previous
-      && previous.status !== 'COMPLETED'
-    ) {
-      ElMessage.success(generationCompletionMessage(job))
-    }
-  }
+const publishSelectedPackageAtoms = async () => {
+  await runPackageAtomAction('publish', async () => {
+    const result = await publishKnowledgeBaseAtomsAPI(activeKnowledgeBaseId.value, selectedPackageAtomIds.value)
+    ElMessage.success(`已发布 ${result?.published || 0} 条，向量同步成功 ${result?.synced || 0} 条`)
+  })
 }
 
-const resetAtomForm = () => {
-  atomForm.subject = ''
-  atomForm.category = activePosition.value?.name || ''
-  atomForm.difficulty = 'MEDIUM'
-  atomForm.tagsText = ''
-  atomForm.principles = ''
-  atomForm.pitfalls = ''
-  atomForm.followUpText = ''
+const reindexSelectedPackageAtoms = async () => {
+  await runPackageAtomAction('reindex', async () => {
+    const result = await reindexKnowledgeBaseAtomsAPI(activeKnowledgeBaseId.value, selectedPackageAtomIds.value)
+    ElMessage.success(`重建索引完成：成功 ${result?.synced || 0} 条，失败 ${result?.failed || 0} 条`)
+  })
 }
 
-const atomFormPayload = () => ({
-  subject: atomForm.subject.trim(),
-  category: atomForm.category.trim(),
-  difficulty: atomForm.difficulty,
-  tags: atomForm.tagsText.split(/[,，]/).map((item) => item.trim()).filter(Boolean),
-  principles: atomForm.principles.trim(),
-  pitfalls: atomForm.pitfalls.trim(),
-  followUpPaths: atomForm.followUpText.split('\n').map((item) => item.trim()).filter(Boolean)
-})
-
-const parseJsonArray = (value) => {
-  if (!value) return []
+const archiveSelectedPackageAtoms = async () => {
+  if (!selectedPackageAtomIds.value.length) return
   try {
-    const parsed = JSON.parse(value)
-    return Array.isArray(parsed) ? parsed : []
+    await ElMessageBox.confirm(`确认归档所选 ${selectedPackageAtomIds.value.length} 条原子？`, '归档原子', {
+      confirmButtonText: '归档',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
   } catch {
-    return []
+    return
+  }
+  await runPackageAtomAction('archive', async () => {
+    const result = await archiveKnowledgeBaseAtomsAPI(activeKnowledgeBaseId.value, selectedPackageAtomIds.value)
+    ElMessage.success(`已归档 ${result?.archived || 0} 条`)
+  })
+}
+
+const publishAllDraftAtoms = async () => {
+  if (!activeKnowledgeBaseId.value || !canPublishPackageAtoms.value) return
+  try {
+    await ElMessageBox.confirm(
+      '确认将当前知识库内所有草稿原子一键发布？已发布的原子将被跳过。',
+      '一键发布全部草稿',
+      {
+        confirmButtonText: '确认发布',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+  } catch {
+    return
+  }
+  packageAtomActionLoading.value = 'publishAllDrafts'
+  try {
+    const result = await publishAllDraftAtomsAPI(activeKnowledgeBaseId.value)
+    ElMessage.success(`已发布 ${result?.published || 0} 条，向量同步成功 ${result?.synced || 0} 条，失败 ${result?.failed || 0} 条`)
+    await loadPackageAtoms()
+  } finally {
+    packageAtomActionLoading.value = ''
   }
 }
 
-watch(activeSourceFile, async (file, previous) => {
-  if (file?.id && file.id !== previous?.id) {
-    activeSourceFileId.value = file.id
-    await loadAtoms({ silent: true })
+const runPackageAtomAction = async (action, callback) => {
+  if (!activeKnowledgeBaseId.value || !selectedPackageAtomIds.value.length) return
+  packageAtomActionLoading.value = action
+  try {
+    await callback()
+    await loadPackageAtoms()
+  } finally {
+    packageAtomActionLoading.value = ''
   }
-})
+}
+
+const resetImportPackageState = () => {
+  importPackage.value = null
+  importFileName.value = ''
+  importPreview.value = null
+  importResult.value = null
+}
+
+const resetPackageAtoms = () => {
+  packageAtoms.value = []
+  selectedPackageAtomIds.value = []
+  packageAtomPage.page = 1
+  packageAtomPage.total = 0
+}
 
 onMounted(loadWorkspace)
-
-onBeforeUnmount(() => {
-  if (pollTimer) {
-    window.clearInterval(pollTimer)
-  }
-})
 </script>
 
 <style scoped>
@@ -958,6 +777,85 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.package-panel {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--app-border);
+}
+
+.package-panel.is-disabled {
+  opacity: 0.76;
+}
+
+.package-toolbar {
+  margin-top: 0;
+}
+
+.package-file-name {
+  margin: 0 0 12px;
+  color: var(--app-text);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.package-result {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-surface-2);
+}
+
+.package-result__summary,
+.package-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.package-result__summary span {
+  color: var(--app-text);
+  font-size: 0.9rem;
+}
+
+.package-errors {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--app-danger);
+  font-size: 0.9rem;
+}
+
+.package-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.3fr) repeat(4, minmax(120px, 0.8fr)) auto;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.package-bulk-actions {
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.package-pagination {
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
 .atom-panel {
   margin-top: 20px;
   padding-top: 18px;
@@ -1064,6 +962,18 @@ onBeforeUnmount(() => {
 
   .atom-toolbar__actions {
     justify-content: stretch;
+  }
+
+  .package-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .package-bulk-actions {
+    justify-content: stretch;
+  }
+
+  .package-bulk-actions .el-button {
+    flex: 1;
   }
 
   .atom-toolbar__actions .el-button {

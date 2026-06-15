@@ -3,9 +3,6 @@ package com.interview.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interview.config.GlobalExceptionHandler;
 import com.interview.service.RequestUserResolver;
-import com.interview.service.questionbank.KnowledgeAtomGenerationResult;
-import com.interview.service.questionbank.KnowledgeAtomBulkPublishResult;
-import com.interview.service.questionbank.KnowledgeAtomJobService;
 import com.interview.service.questionbank.KnowledgeAtomPatch;
 import com.interview.service.questionbank.KnowledgeAtomResponse;
 import com.interview.service.questionbank.KnowledgeAtomWorkflowService;
@@ -24,6 +21,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("KnowledgeAtomController — 文件原子生成与发布接口")
+@DisplayName("KnowledgeAtomController — 知识原子维护接口")
 class KnowledgeAtomControllerTest {
 
     private MockMvc mockMvc;
@@ -41,45 +39,33 @@ class KnowledgeAtomControllerTest {
     private KnowledgeAtomWorkflowService workflowService;
 
     @Mock
-    private KnowledgeAtomJobService jobService;
-
-    @Mock
     private RequestUserResolver requestUserResolver;
 
     @BeforeEach
     void setUp() {
-        KnowledgeAtomController controller = new KnowledgeAtomController(workflowService, jobService, requestUserResolver);
+        KnowledgeAtomController controller = new KnowledgeAtomController(workflowService, requestUserResolver);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
 
     @Test
-    @DisplayName("触发文件原子生成作业时使用当前登录用户")
-    void shouldCreateGenerationJobForCurrentUser() throws Exception {
-        when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
-        when(jobService.createGenerationJob(10L, 7L))
-                .thenReturn(new KnowledgeAtomGenerationResult(10L, 0, 0, false));
-
+    @DisplayName("应用内 LLM 原子生成入口已禁用")
+    void shouldRejectSourceFileAtomGenerationInMvp() throws Exception {
         mockMvc.perform(post("/api/knowledge-files/10/atoms/generate"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.sourceFileId").value(10));
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.code").value(410));
 
-        verify(jobService).createGenerationJob(10L, 7L);
     }
 
     @Test
-    @DisplayName("列出文件下原子草稿")
-    void shouldListAtomsForSourceFile() throws Exception {
-        when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
-        when(workflowService.listAtomsForSourceFile(10L, 7L)).thenReturn(List.of(atomResponse()));
-
+    @DisplayName("源文件原子列表入口已退出 MVP 主流程")
+    void shouldRejectSourceFileAtomListingInMvp() throws Exception {
         mockMvc.perform(get("/api/knowledge-files/10/atoms"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].id").value(5))
-                .andExpect(jsonPath("$.data[0].reviewStatus").value("PASS"));
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.code").value(410));
 
-        verify(workflowService).listAtomsForSourceFile(10L, 7L);
+        verifyNoInteractions(workflowService);
     }
 
     @Test
@@ -111,20 +97,13 @@ class KnowledgeAtomControllerTest {
     }
 
     @Test
-    @DisplayName("批量发布文件下可发布原子时使用当前登录用户")
-    void shouldBulkPublishSourceFileAtomsForCurrentUser() throws Exception {
-        when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
-        when(workflowService.publishAtomsForSourceFile(10L, 7L))
-                .thenReturn(new KnowledgeAtomBulkPublishResult(10L, 4, 2, 2, 0, 2));
-
+    @DisplayName("源文件批量发布入口已退出 MVP 主流程")
+    void shouldRejectSourceFileAtomBulkPublishInMvp() throws Exception {
         mockMvc.perform(post("/api/knowledge-files/10/atoms/publish"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.sourceFileId").value(10))
-                .andExpect(jsonPath("$.data.matched").value(4))
-                .andExpect(jsonPath("$.data.published").value(2))
-                .andExpect(jsonPath("$.data.skipped").value(2));
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.code").value(410));
 
-        verify(workflowService).publishAtomsForSourceFile(10L, 7L);
+        verifyNoInteractions(workflowService);
     }
 
     private KnowledgeAtomResponse atomResponse() {
