@@ -1,17 +1,13 @@
 package com.interview.service.questionbank;
 
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONArray;
-import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.interview.dto.questionbank.KnowledgeAtomPayload;
 import com.interview.dto.questionbank.QuestionBankImportRequest;
 import com.interview.entity.InterviewPosition;
-import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeBase;
+import com.interview.entity.KnowledgeAtomImportBatch;
 import com.interview.mapper.InterviewPositionMapper;
-import com.interview.mapper.KnowledgeAtomMapper;
+import com.interview.mapper.KnowledgeAtomImportBatchMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -22,10 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -33,20 +26,11 @@ public class QuestionBankBootstrapService {
 
     private static final String SCOPE_PUBLIC = "PUBLIC";
     private static final String STATUS_ACTIVE = "ACTIVE";
-    private static final String STATUS_PUBLISHED = "PUBLISHED";
-    private static final List<String> WEB_PUBLIC_CATEGORIES = List.of(
-            "React", "Vue", "Flutter", "HTML", "CSS", "JavaScript", "NodeJS", "Webpack",
-            "浏览器", "前端工程化", "TypeScript", "性能优化"
-    );
-    private static final List<String> AI_PUBLIC_CATEGORIES = List.of("AI大模型", "AI 大模型", "大模型", "LLM", "RAG");
-    private static final List<String> NON_JAVA_PUBLIC_CATEGORIES = java.util.stream.Stream
-            .concat(WEB_PUBLIC_CATEGORIES.stream(), AI_PUBLIC_CATEGORIES.stream())
-            .toList();
 
-    private final KnowledgeAtomMapper atomMapper;
     private final QuestionBankService questionBankService;
     private final InterviewPositionMapper positionMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
+    private final KnowledgeAtomImportBatchMapper batchMapper;
 
     @Value("${question-bank.bootstrap.seed-from-json:true}")
     private boolean seedFromJson;
@@ -54,26 +38,27 @@ public class QuestionBankBootstrapService {
     @Value("${question-bank.bootstrap.reindex-unsynced-on-startup:true}")
     private boolean reindexUnsyncedOnStartup;
 
-    public QuestionBankBootstrapService(KnowledgeAtomMapper atomMapper,
-                                        QuestionBankService questionBankService,
+    public QuestionBankBootstrapService(QuestionBankService questionBankService,
                                         InterviewPositionMapper positionMapper,
-                                        KnowledgeBaseMapper knowledgeBaseMapper) {
-        this.atomMapper = atomMapper;
+                                        KnowledgeBaseMapper knowledgeBaseMapper,
+                                        KnowledgeAtomImportBatchMapper batchMapper) {
         this.questionBankService = questionBankService;
         this.positionMapper = positionMapper;
         this.knowledgeBaseMapper = knowledgeBaseMapper;
+        this.batchMapper = batchMapper;
     }
 
     @PostConstruct
     public void init() {
         try {
-            Long count = atomMapper.selectCount(new QueryWrapper<>());
-            if (seedFromJson && count == 0) {
-                seedLegacyJsonAtoms();
-            } else if (count != null && count > 0) {
-                int backfilled = backfillLegacyPublicAtomScope();
-                if (backfilled > 0) {
-                    log.info("Question bank legacy public atom scope backfilled: {}", backfilled);
+            if (seedFromJson) {
+                int imported = seedBuiltInPublicImportPackages();
+                if (imported > 0) {
+                    log.info("Question bank built-in public packages imported: {}", imported);
+                }
+                int retired = retireLegacyBuiltInAtoms();
+                if (retired > 0) {
+                    log.info("Question bank retired legacy built-in atoms: {}", retired);
                 }
             }
             if (reindexUnsyncedOnStartup) {
@@ -85,101 +70,58 @@ public class QuestionBankBootstrapService {
         }
     }
 
-    private void seedLegacyJsonAtoms() throws Exception {
+    private int seedBuiltInPublicImportPackages() throws Exception {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-        Resource[] resources = resolver.getResources("classpath*:knowledge_base/atoms/**/*.json");
-        Map<String, KnowledgeAtomPayload> atomsById = new LinkedHashMap<>();
+        Resource[] resources = resolver.getResources("classpath*:knowledge_base/imports/public/**/*.json");
+        int imported = 0;
         for (Resource resource : resources) {
             try (InputStream inputStream = resource.getInputStream()) {
                 String content = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-                JSONObject raw = JSON.parseObject(content);
-                KnowledgeAtomPayload payload = new KnowledgeAtomPayload();
-                payload.setId(raw.getString("id"));
-                payload.setSubject(raw.getString("subject"));
-                payload.setCategory(raw.getString("category"));
-                payload.setDifficulty(raw.getString("difficulty"));
-                payload.setTags(readStringArray(raw.get("tags")));
-                payload.setSourceRef(resource.getFilename());
-
-                JSONObject contentObj = raw.getJSONObject("content");
-                KnowledgeAtomPayload.Content atomContent = new KnowledgeAtomPayload.Content();
-                if (contentObj != null) {
-                    atomContent.setPrinciples(contentObj.getString("principles"));
-                    atomContent.setPitfalls(readFlexibleText(contentObj.get("pitfalls")));
-                    atomContent.setFollowUpPaths(readStringArray(contentObj.get("follow_up_paths")));
+                QuestionBankImportRequest request = JSON.parseObject(content, QuestionBankImportRequest.class);
+                String batchId = request.getBatchId();
+                if (batchId == null || batchId.isBlank()) {
+                    log.warn("Built-in question-bank package skipped without batchId: {}", resource.getFilename());
+                    continue;
                 }
-                payload.setContent(atomContent);
-                if (payload.getId() != null && payload.getSubject() != null && atomContent.getPrinciples() != null) {
-                    KnowledgeAtomPayload previous = atomsById.putIfAbsent(payload.getId(), payload);
-                    if (previous != null) {
-                        log.warn("Legacy atom seed duplicate id skipped: {} from {}", payload.getId(), resource.getFilename());
-                    }
+                if (batchImportedOrReset(batchId)) {
+                    continue;
                 }
+                ScopedPublicTarget target = loadPublicTarget(publicPositionNameFor(resource));
+                if (target == null) {
+                    log.warn("Built-in question-bank package skipped for missing public target: {}", resource.getFilename());
+                    continue;
+                }
+                request.setMode("AUTO_PUBLISH");
+                request.setTargetCategory(publicPositionNameFor(resource));
+                questionBankService.importBatch(request,
+                        new QuestionBankImportScope("PUBLIC", null, target.positionId(), target.knowledgeBaseId(), null, true));
+                imported++;
             } catch (Exception e) {
-                log.warn("Legacy atom seed skipped for {}: {}", resource.getFilename(), e.getMessage());
+                log.warn("Built-in question-bank package skipped for {}: {}", resource.getFilename(), e.getMessage());
             }
         }
-        Map<String, List<KnowledgeAtomPayload>> atomsByPosition = new LinkedHashMap<>();
-        for (KnowledgeAtomPayload payload : atomsById.values()) {
-            atomsByPosition.computeIfAbsent(publicPositionNameFor(payload.getCategory()), ignored -> new ArrayList<>())
-                    .add(payload);
-        }
-        if (atomsByPosition.isEmpty()) {
-            log.warn("No legacy JSON atoms found for question bank bootstrap");
-            return;
-        }
-        int seeded = 0;
-        for (Map.Entry<String, List<KnowledgeAtomPayload>> entry : atomsByPosition.entrySet()) {
-            ScopedPublicTarget target = loadPublicTarget(entry.getKey());
-            if (target == null) {
-                log.warn("Legacy atom seed skipped for missing public position: {}", entry.getKey());
-                continue;
-            }
-            QuestionBankImportRequest request = new QuestionBankImportRequest();
-            request.setBatchId("seed-legacy-json-atoms-" + target.positionId() + "-" + System.currentTimeMillis());
-            request.setSourceRef("classpath:knowledge_base/atoms");
-            request.setMode("AUTO_PUBLISH");
-            request.setAtoms(entry.getValue());
-            questionBankService.importBatch(request,
-                    new QuestionBankImportScope("PUBLIC", null, target.positionId(), target.knowledgeBaseId(), null, true));
-            seeded += entry.getValue().size();
-        }
-        log.info("Question bank seeded from legacy JSON atoms: {}", seeded);
+        return imported;
     }
 
-    private int backfillLegacyPublicAtomScope() {
-        int updated = 0;
-        updated += backfillLegacyPublicAtoms(loadPublicTarget("Web 前端开发"), WEB_PUBLIC_CATEGORIES, false);
-        updated += backfillLegacyPublicAtoms(loadPublicTarget("AI 大模型应用开发"), AI_PUBLIC_CATEGORIES, false);
-        updated += backfillLegacyPublicAtoms(loadPublicTarget("Java 后端开发"), NON_JAVA_PUBLIC_CATEGORIES, true);
-        return updated;
-    }
-
-    private int backfillLegacyPublicAtoms(ScopedPublicTarget target, List<String> categories, boolean defaultTarget) {
-        if (target == null) {
+    private int retireLegacyBuiltInAtoms() throws Exception {
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        Resource resource = resolver.getResource("classpath:knowledge_base/imports/retired-built-in-atom-ids.txt");
+        if (!resource.exists()) {
             return 0;
         }
-        UpdateWrapper<KnowledgeAtom> wrapper = new UpdateWrapper<KnowledgeAtom>()
-                .set("scope", SCOPE_PUBLIC)
-                .set("owner_user_id", null)
-                .set("position_id", target.positionId())
-                .set("knowledge_base_id", target.knowledgeBaseId())
-                .set("publication_status", STATUS_PUBLISHED)
-                .set("review_status", "PASS")
-                .set("vector_status", "PENDING")
-                .setSql("published_at = COALESCE(published_at, last_indexed_at, update_time, create_time)")
-                .eq("scope", SCOPE_PUBLIC)
-                .eq("status", STATUS_PUBLISHED)
-                .and(scope -> scope.isNull("position_id")
-                        .or().isNull("knowledge_base_id")
-                        .or().isNull("publication_status")
-                        .or().ne("publication_status", STATUS_PUBLISHED));
-        if (defaultTarget) {
-            wrapper.and(category -> category.isNull("category").or().notIn("category", categories));
-        } else {
-            wrapper.in("category", categories);
+        try (InputStream inputStream = resource.getInputStream()) {
+            String content = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            List<String> atomIds = content.lines()
+                    .map(String::trim)
+                    .filter(line -> !line.isBlank())
+                    .filter(line -> !line.startsWith("#"))
+                    .distinct()
+                    .toList();
+            if (atomIds.isEmpty()) {
+                return 0;
+            }
+            return questionBankService.archiveAtoms(atomIds).getOrDefault("archived", 0);
         }
-        return atomMapper.update(null, wrapper);
     }
 
     private ScopedPublicTarget loadPublicTarget(String positionName) {
@@ -203,36 +145,37 @@ public class QuestionBankBootstrapService {
         return knowledgeBaseId == null ? null : new ScopedPublicTarget(position.getId(), knowledgeBaseId);
     }
 
-    private String publicPositionNameFor(String category) {
-        if (category != null) {
-            String normalized = category.trim();
-            if (WEB_PUBLIC_CATEGORIES.contains(normalized)) {
-                return "Web 前端开发";
-            }
-            if (AI_PUBLIC_CATEGORIES.contains(normalized)) {
-                return "AI 大模型应用开发";
-            }
+    private boolean batchImportedOrReset(String batchId) {
+        KnowledgeAtomImportBatch batch = batchMapper.selectOne(new QueryWrapper<KnowledgeAtomImportBatch>()
+                .eq("batch_id", batchId)
+                .last("LIMIT 1"));
+        if (batch == null) {
+            return false;
         }
+        if ("IMPORTED".equalsIgnoreCase(batch.getStatus())) {
+            return true;
+        }
+        log.warn("Retrying incomplete built-in question-bank package: batchId={}, status={}",
+                batchId, batch.getStatus());
+        batchMapper.delete(new QueryWrapper<KnowledgeAtomImportBatch>().eq("batch_id", batchId));
+        return false;
+    }
+
+    private String publicPositionNameFor(Resource resource) throws Exception {
+        String url = resource.getURL().toString();
+        if (url.contains("/frontend/") || url.contains("\\frontend\\")) {
+            return "Web 前端开发";
+        }
+        if (url.contains("/ai-model/") || url.contains("\\ai-model\\")) {
+            return "AI 大模型应用开发";
+        }
+        if (url.contains("/java-backend/") || url.contains("\\java-backend\\")) {
+            return "Java 后端开发";
+        }
+        log.warn("Unknown built-in package target, defaulting to Java backend: {}", url);
         return "Java 后端开发";
     }
 
     private record ScopedPublicTarget(Long positionId, Long knowledgeBaseId) {
-    }
-
-    private List<String> readStringArray(Object value) {
-        if (value instanceof JSONArray arr) {
-            return arr.toList(String.class);
-        }
-        if (value instanceof String s && !s.isBlank()) {
-            return List.of(s);
-        }
-        return List.of();
-    }
-
-    private String readFlexibleText(Object value) {
-        if (value instanceof JSONArray arr) {
-            return String.join("\n", arr.toList(String.class));
-        }
-        return value != null ? String.valueOf(value) : null;
     }
 }

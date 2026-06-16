@@ -1,10 +1,10 @@
 package com.interview.service.questionbank;
 
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.interview.dto.questionbank.QuestionBankImportRequest;
 import com.interview.entity.InterviewPosition;
-import com.interview.entity.KnowledgeAtom;
+import com.interview.entity.KnowledgeAtomImportBatch;
+import com.interview.mapper.KnowledgeAtomImportBatchMapper;
 import com.interview.mapper.InterviewPositionMapper;
-import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,17 +18,14 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @DisplayName("QuestionBankBootstrapService — scoped public seed")
 @ExtendWith(MockitoExtension.class)
 class QuestionBankBootstrapServiceTest {
-
-    @Mock
-    private KnowledgeAtomMapper atomMapper;
 
     @Mock
     private QuestionBankService questionBankService;
@@ -39,20 +36,29 @@ class QuestionBankBootstrapServiceTest {
     @Mock
     private KnowledgeBaseMapper knowledgeBaseMapper;
 
+    @Mock
+    private KnowledgeAtomImportBatchMapper batchMapper;
+
     @Test
-    @DisplayName("空库 legacy JSON seed 会使用公共岗位作用域导入")
-    void shouldSeedLegacyAtomsWithPublicScope() {
-        when(atomMapper.selectCount(any())).thenReturn(0L);
+    @DisplayName("内置公共导入包会使用公共岗位作用域并自动发布")
+    void shouldSeedBuiltInPackagesWithPublicScope() {
+        when(batchMapper.selectOne(any())).thenReturn(null);
         when(positionMapper.selectOne(any())).thenReturn(publicPosition());
         QuestionBankBootstrapService service = new QuestionBankBootstrapService(
-                atomMapper, questionBankService, positionMapper, knowledgeBaseMapper);
+                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper);
         ReflectionTestUtils.setField(service, "seedFromJson", true);
         ReflectionTestUtils.setField(service, "reindexUnsyncedOnStartup", false);
 
         service.init();
 
+        ArgumentCaptor<QuestionBankImportRequest> requestCaptor = ArgumentCaptor.forClass(QuestionBankImportRequest.class);
         ArgumentCaptor<QuestionBankImportScope> scopeCaptor = ArgumentCaptor.forClass(QuestionBankImportScope.class);
-        verify(questionBankService, atLeastOnce()).importBatch(any(), scopeCaptor.capture());
+        verify(questionBankService, atLeastOnce()).importBatch(requestCaptor.capture(), scopeCaptor.capture());
+        assertThat(requestCaptor.getAllValues())
+                .allSatisfy(request -> assertThat(request.getTargetCategory()).isIn(
+                        "Java 后端开发",
+                        "Web 前端开发",
+                        "AI 大模型应用开发"));
         List<QuestionBankImportScope> scopes = scopeCaptor.getAllValues();
         assertThat(scopes).isNotEmpty();
         assertThat(scopes)
@@ -65,32 +71,53 @@ class QuestionBankBootstrapServiceTest {
     }
 
     @Test
-    @DisplayName("已有旧公共原子时启动会补齐公共岗位归属并标记向量重建")
-    void shouldBackfillExistingLegacyPublicAtomsIntoPublicPositions() {
-        when(atomMapper.selectCount(any())).thenReturn(953L);
-        when(positionMapper.selectOne(any())).thenReturn(
-                publicPosition(101L, "Java 后端开发", 201L),
-                publicPosition(102L, "Web 前端开发", 202L),
-                publicPosition(103L, "AI 大模型应用开发", 203L)
-        );
-        when(atomMapper.update(isNull(), any(UpdateWrapper.class))).thenReturn(100, 200, 300);
+    @DisplayName("已导入的内置公共导入包不会重复导入")
+    void shouldSkipAlreadyImportedBuiltInPackages() {
+        when(batchMapper.selectOne(any())).thenReturn(importedBatch());
         QuestionBankBootstrapService service = new QuestionBankBootstrapService(
-                atomMapper, questionBankService, positionMapper, knowledgeBaseMapper);
+                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper);
         ReflectionTestUtils.setField(service, "seedFromJson", true);
         ReflectionTestUtils.setField(service, "reindexUnsyncedOnStartup", false);
 
         service.init();
 
-        ArgumentCaptor<UpdateWrapper<KnowledgeAtom>> updateCaptor = ArgumentCaptor.forClass((Class) UpdateWrapper.class);
-        verify(atomMapper, atLeastOnce()).update(isNull(), updateCaptor.capture());
-        assertThat(updateCaptor.getAllValues())
-                .anySatisfy(wrapper -> {
-                    String sqlSet = wrapper.getSqlSet();
-                    assertThat(sqlSet).contains("position_id");
-                    assertThat(sqlSet).contains("knowledge_base_id");
-                    assertThat(sqlSet).contains("publication_status");
-                    assertThat(sqlSet).contains("vector_status");
-                });
+        verify(questionBankService, never()).importBatch(any(), any());
+    }
+
+    @Test
+    @DisplayName("未完成的内置公共导入批次会清理后重试")
+    void shouldRetryIncompleteBuiltInPackageBatch() {
+        when(batchMapper.selectOne(any()))
+                .thenReturn(failedBatch())
+                .thenReturn(null);
+        when(positionMapper.selectOne(any())).thenReturn(publicPosition());
+        QuestionBankBootstrapService service = new QuestionBankBootstrapService(
+                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper);
+        ReflectionTestUtils.setField(service, "seedFromJson", true);
+        ReflectionTestUtils.setField(service, "reindexUnsyncedOnStartup", false);
+
+        service.init();
+
+        verify(batchMapper, atLeastOnce()).delete(any());
+        verify(questionBankService, atLeastOnce()).importBatch(any(), any());
+    }
+
+    @Test
+    @DisplayName("启动时会归档被内置包替换或移除的旧公共原子")
+    void shouldRetireLegacyBuiltInAtoms() {
+        when(batchMapper.selectOne(any())).thenReturn(importedBatch());
+        when(questionBankService.archiveAtoms(any())).thenReturn(java.util.Map.of("archived", 3));
+        QuestionBankBootstrapService service = new QuestionBankBootstrapService(
+                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper);
+        ReflectionTestUtils.setField(service, "seedFromJson", true);
+        ReflectionTestUtils.setField(service, "reindexUnsyncedOnStartup", false);
+
+        service.init();
+
+        ArgumentCaptor<List<String>> idsCaptor = ArgumentCaptor.forClass((Class) List.class);
+        verify(questionBankService).archiveAtoms(idsCaptor.capture());
+        assertThat(idsCaptor.getValue())
+                .contains("common-001", "common-002", "common-003", "agent-dead-loop-resolution");
     }
 
     private InterviewPosition publicPosition() {
@@ -105,5 +132,19 @@ class QuestionBankBootstrapServiceTest {
         position.setStatus("ACTIVE");
         position.setDefaultKnowledgeBaseId(defaultKnowledgeBaseId);
         return position;
+    }
+
+    private KnowledgeAtomImportBatch importedBatch() {
+        KnowledgeAtomImportBatch batch = new KnowledgeAtomImportBatch();
+        batch.setBatchId("seed-public-java-backend-20260616");
+        batch.setStatus("IMPORTED");
+        return batch;
+    }
+
+    private KnowledgeAtomImportBatch failedBatch() {
+        KnowledgeAtomImportBatch batch = new KnowledgeAtomImportBatch();
+        batch.setBatchId("seed-public-java-backend-20260616");
+        batch.setStatus("FAILED");
+        return batch;
     }
 }

@@ -37,7 +37,19 @@ public class PositionCategoryConfig {
             if (pattern.matcher(position).find()) {
                 return entry.getValue();
             }
+            if (containsCjk(key) && compact(position).toLowerCase().contains(compact(key).toLowerCase())) {
+                return entry.getValue();
+            }
         }
         throw new IllegalArgumentException("未配置岗位对应的知识库分类: " + position);
+    }
+
+    private boolean containsCjk(String value) {
+        return value != null && value.codePoints()
+                .anyMatch(codePoint -> Character.UnicodeScript.of(codePoint) == Character.UnicodeScript.HAN);
+    }
+
+    private String compact(String value) {
+        return value == null ? "" : value.replaceAll("\\s+", "");
     }
 }

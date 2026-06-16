@@ -5,14 +5,14 @@ description: Generate and review InterWise question-bank import packages from Co
 
 # Interview Question Bank
 
-Use this skill to prepare local JSON import packages for a user-owned position knowledge base. The application imports packages from the `知识库 / 题库` panel into the selected private position as draft atoms; publication and Qdrant sync are performed explicitly from that panel after review.
+Use this skill to prepare local JSON import packages for a user-owned position knowledge base. The application imports packages from the `岗位 / 题库维护` panel into the selected private position as draft atoms; publication and Qdrant sync are performed explicitly from that panel after review.
 
 ## Workflow
 
 1. Inspect the requested source and target role/category. Read `backend/src/main/resources/application.yml`'s `interview.position-categories` to find the valid category list for the target position. Confirm which private position knowledge base the package is for.
 2. Convert source files with `scripts/question_bank_import.py` when inputs are PDF, DOCX, TXT, MD, or JSON.
 3. Review the generated package before handing it to the user. Use `DRAFT` for normal imports. Do not rely on package-level auto publication for user-owned knowledge bases.
-4. In the web application, sign in as the owning user and open `知识库 / 题库`.
+4. In the web application, sign in as the owning user and open `岗位 / 题库维护`.
 5. Select the private position, upload the generated JSON package in `导入包维护`, validate it, then import it as draft.
 6. Review the imported atoms in the same panel, then publish, archive, or rebuild vector indexes explicitly.
 

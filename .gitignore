@@ -125,6 +125,7 @@ conflicts_render.txt
 /docs/*
 !/docs/
 !/docs/rag-chain-summary.md
+!/docs/贡献指南.md
 !/docs/adr/
 !/docs/adr/*.md
 !/docs/agents/

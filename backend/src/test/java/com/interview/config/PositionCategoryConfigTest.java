@@ -22,8 +22,8 @@ class PositionCategoryConfigTest {
         Map<String, List<String>> categories = new LinkedHashMap<>();
         categories.put("java", List.of("hot200", "mysql", "redis", "spring", "springboot", "并发", "操作系统"));
         categories.put("前端", List.of("hot200", "Vue"));
-        categories.put("AI大模型", List.of("AI大模型"));
-        categories.put("大模型", List.of("AI大模型"));
+        categories.put("AI大模型", List.of("大模型基础", "模型微调", "RAG", "向量数据库", "Agent", "开发框架",
+                "MCP协议", "A2A协议", "Prompt工程", "推理部署", "应用实践"));
         config.setPositionCategories(categories);
     }
 
@@ -76,6 +76,7 @@ class PositionCategoryConfigTest {
         List<String> categories = config.getCategoriesFor("AI 大模型工程师");
 
         assertThat(categories)
-                .containsExactly("AI大模型");
+                .containsExactly("大模型基础", "模型微调", "RAG", "向量数据库", "Agent", "开发框架",
+                        "MCP协议", "A2A协议", "Prompt工程", "推理部署", "应用实践");
     }
 }

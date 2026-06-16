@@ -182,7 +182,7 @@ graph TD
 - 题库导入包生成：用户在本机使用 `interview-question-bank` skill 或 `scripts/question_bank_import.py` 处理结构化资料，主应用只负责导入、审查、显式发布和重建索引。
 - 同步状态：Qdrant 写入或删除失败会保留可重试状态，不让数据库事务和外部索引状态悄悄分叉。
 - 离线评测：`scripts/retrieval_eval` 支持导出、构建候选池、预标注、计算指标和 rerank 对比。
-- 内置基础题库：仓库随代码内置可运行公共 starter 题库，覆盖 Java 后端、Web 前端、AI 大模型应用等方向；本地首次空库启动会自动导入 `backend/src/main/resources/knowledge_base/atoms/**/*.json` 并建立 Qdrant 索引。用户私有题库保存在自己的 MySQL/Qdrant 数据中，不会提交到 Git 或同步到其他部署。
+- 内置基础题库：仓库随代码内置可运行公共 starter 题库，覆盖 Java 后端、Web 前端、AI 大模型应用等方向；本地启动会幂等导入 `backend/src/main/resources/knowledge_base/imports/public/**/*.json` 公共导入包并建立 Qdrant 索引。用户私有题库保存在自己的 MySQL/Qdrant 数据中，不会提交到 Git 或同步到其他部署。
 
 ### 题库维护
 
@@ -295,3 +295,8 @@ python -m unittest discover -s tests
 ## 题库来源
 
 内置题库内容来自 mianshiya.com，使用前请按自己的部署、岗位和授权边界复核。
+
+## 贡献说明
+
+欢迎为本项目贡献代码、文档或提出改进建议！你可以通过 Issue 或 Pull Request 参与项目建设。
+详见 [贡献指南](docs/贡献指南.md)

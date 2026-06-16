@@ -60,8 +60,7 @@ interview:
   position-categories:
     java: [mysql, redis, spring, springboot, 并发, 操作系统, jvm, kafka, rabbitmq, rocketmq, 消息队列, MyBatis, 网络, 分布式, 微服务, 系统设计, 设计模式, 数据结构, netty, 后端场景题]
     前端: [React, Vue, Flutter, HTML, CSS, JavaScript, NodeJS, Webpack, 浏览器, 前端工程化, 网络, 设计模式, 系统设计, TypeScript, 性能优化]
-    AI大模型: [AI大模型]
-    大模型: [AI大模型]
+    AI大模型: [大模型基础, 模型微调, RAG, 向量数据库, Agent, 开发框架, MCP协议, A2A协议, Prompt工程, 推理部署, 应用实践]
     系统运维: [linux, windows, docker, kubernetes, shell, 监控, 自动化运维, 网络, 安全]
 
   # AI 提示词模板（集中管理，无需重新编译即可调整）
@@ -161,7 +160,7 @@ question-bank:
     connect-timeout-ms: ${QDRANT_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${QDRANT_READ_TIMEOUT_MS:5000}
   bootstrap:
-    # 首次启动时把旧 JSON 题库导入 MySQL，之后以数据库为准
+    # 启动时幂等导入内置公共题库 JSON 包，之后以 batchId 判重
     seed-from-json: ${QUESTION_BANK_SEED_FROM_JSON:true}
     # 启动时补建未同步的 Qdrant 向量
     reindex-unsynced-on-startup: ${QUESTION_BANK_REINDEX_ON_STARTUP:true}

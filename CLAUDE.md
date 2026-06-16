@@ -32,19 +32,16 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 └── CHANGELOG.md                     # 更新日志
 ```
 
-- .codegraph/ 下的内容能让agent快速理解项目代码结构、调用链和影响范围
-- `.codegraph/`、`.understand-anything/`、`.worktrees/` 属于本地 Agent / 代码智能工具产物，不应提交到 Git。
+## 基础规则
 
-
-## 硬性规则
-
-- 开发优先采用tdd方式进行开发。
+- 开发优先采用tdd方式进行开发，并且开发前应先创建功能分支。
 - 保护用户和其他 Agent 的未提交改动；不要回滚不是自己造成的改动。
 - 不提交 `.env`、`application-local.yml`、密钥文件、私有部署文件、私有题库、临时导入包或本地视频产物。
 - 不在日志或文档中暴露完整 API Key、access token、refresh token、密码或敏感请求头。
 - 修改配置文件、认证授权、部署文件、数据库 migration 前，必须说明影响范围。
 - 不使用 `git reset --hard`、`git checkout --` 等破坏性命令，除非用户明确要求。
 - 完成 feature、bugfix、refactor、deployment 或用户可见代码变更后，按 `post-delivery-analysis` skill 自动输出交付后分析和下一步建议；不得自动执行下一步建议，必须等待用户明确指令。
+- 在需要探索代码库时，优先读取`.codegraph/`下的内容了解结构，若需要详细了解，应派发子agent探索。
 - 在功能开发基本完善后，在交付或像用户说明汇报前，调度一个或多个subagent进行代码审查、功能自测等等。汇总他们的输出，如果发现有明显bug，修复完善后再交付给用户。如此流程可进行多轮循环，直至无明显bug。
 
 ## 基础工作流
@@ -93,6 +90,7 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 - 提交前展示修改文件、commit message 和测试结果。
 - commit message 使用 Conventional Commits，例如 `feat:`、`fix:`、`docs:`、`refactor:`、`test:`、`chore:`。
 - 不使用 `git reset --hard`、`git checkout --` 等破坏性命令，除非用户明确要求。
+- `.codegraph/`、`.understand-anything/`、`.worktrees/` 属于本地 Agent / 代码智能工具产物，不应提交到 Git。
 
 ## 文档与交付
 
