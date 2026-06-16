@@ -506,7 +506,11 @@ public class QuestionBankService {
                 upsertAtom(atom, "import:" + batchId, scope);
                 imported++;
                 if (STATUS_PUBLISHED.equals(atom.getStatus())) {
-                    if (syncAtom(atom)) published++;
+                    if (shouldSyncOnPublish(scope)) {
+                        if (syncAtom(atom)) published++;
+                    } else {
+                        published++;
+                    }
                 }
             } catch (Exception e) {
                 failed++;
@@ -548,6 +552,10 @@ public class QuestionBankService {
         atom.setLastIndexedAt(ok ? LocalDateTime.now() : atom.getLastIndexedAt());
         atomMapper.updateById(atom);
         return ok;
+    }
+
+    private boolean shouldSyncOnPublish(QuestionBankImportScope scope) {
+        return scope == null || scope.syncOnPublish();
     }
 
     private QueryWrapper<KnowledgeAtom> buildAtomQuery(QuestionBankAtomQueryRequest request, List<String> batchAtomIds) {

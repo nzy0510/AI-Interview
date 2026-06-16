@@ -150,30 +150,10 @@ interview:
         "evaluation": "用仅仅三句话极其精练地总结该候选人的技术亮点和可能的短板。"
       }
 
-# 题库 / Qdrant 配置
-question-bank:
-  qdrant:
-    enabled: ${QDRANT_ENABLED:true}
-    url: ${QDRANT_URL:http://localhost:6333}
-    collection: ${QDRANT_COLLECTION:interview_atoms}
-    vector-size: ${QDRANT_VECTOR_SIZE:384}
-    connect-timeout-ms: ${QDRANT_CONNECT_TIMEOUT_MS:3000}
-    read-timeout-ms: ${QDRANT_READ_TIMEOUT_MS:5000}
-  bootstrap:
-    # 启动时幂等导入内置公共题库 JSON 包，之后以 batchId 判重
-    seed-from-json: ${QUESTION_BANK_SEED_FROM_JSON:true}
-    # 启动时补建未同步的 Qdrant 向量
-    reindex-unsynced-on-startup: ${QUESTION_BANK_REINDEX_ON_STARTUP:true}
-# JWT 签名密钥 签名密钥（生产环境必须通过环境变量注入，无默认值）
-jwt:
-  sign-key: ${JWT_SIGN_KEY}
-  expire-ms: ${JWT_EXPIRE_MS:86400000}
-
-# 访问统计、限流与应用治理
+# 应用治理与用户自定义题库配置
 app:
-  upload-dir: ${APP_UPLOAD_DIR:uploads}
   analytics:
-    hash-salt: ${APP_ANALYTICS_HASH_SALT:interwise-dev-hash-salt}
+    hash-salt: ${APP_ANALYTICS_HASH_SALT:}
   rate-limit:
     enabled: ${APP_RATE_LIMIT_ENABLED:true}
   developer:
@@ -193,3 +173,22 @@ app:
     passage-prefix: ${APP_EMBEDDING_PASSAGE_PREFIX:}
     connect-timeout-ms: ${APP_EMBEDDING_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${APP_EMBEDDING_READ_TIMEOUT_MS:10000}
+
+# 题库 / Qdrant 配置
+question-bank:
+  qdrant:
+    enabled: ${QDRANT_ENABLED:true}
+    url: ${QDRANT_URL:http://localhost:6333}
+    collection: ${QDRANT_COLLECTION:interview_atoms}
+    vector-size: ${QDRANT_VECTOR_SIZE:384}
+    connect-timeout-ms: ${QDRANT_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${QDRANT_READ_TIMEOUT_MS:5000}
+  bootstrap:
+    # 启动时幂等导入内置公共题库 JSON 包，之后以 batchId 判重
+    seed-from-json: ${QUESTION_BANK_SEED_FROM_JSON:true}
+    # 启动时补建未同步的 Qdrant 向量
+    reindex-unsynced-on-startup: ${QUESTION_BANK_REINDEX_ON_STARTUP:true}
+# JWT 签名密钥 签名密钥（生产环境必须通过环境变量注入，无默认值）
+jwt:
+  sign-key: ${JWT_SIGN_KEY}
+  expire-ms: ${JWT_EXPIRE_MS:86400000}

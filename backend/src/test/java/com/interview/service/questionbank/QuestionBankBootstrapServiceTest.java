@@ -12,9 +12,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,13 +41,16 @@ class QuestionBankBootstrapServiceTest {
     @Mock
     private KnowledgeAtomImportBatchMapper batchMapper;
 
+    @Mock
+    private TaskExecutor questionBankSyncTaskExecutor;
+
     @Test
     @DisplayName("内置公共导入包会使用公共岗位作用域并自动发布")
     void shouldSeedBuiltInPackagesWithPublicScope() {
         when(batchMapper.selectOne(any())).thenReturn(null);
         when(positionMapper.selectOne(any())).thenReturn(publicPosition());
         QuestionBankBootstrapService service = new QuestionBankBootstrapService(
-                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper);
+                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper, questionBankSyncTaskExecutor);
         ReflectionTestUtils.setField(service, "seedFromJson", true);
         ReflectionTestUtils.setField(service, "reindexUnsyncedOnStartup", false);
 
@@ -67,6 +72,7 @@ class QuestionBankBootstrapServiceTest {
                     assertThat(scope.positionId()).isEqualTo(101L);
                     assertThat(scope.knowledgeBaseId()).isEqualTo(201L);
                     assertThat(scope.allowAutoPublish()).isTrue();
+                    assertThat(scope.syncOnPublish()).isFalse();
                 });
     }
 
@@ -75,7 +81,7 @@ class QuestionBankBootstrapServiceTest {
     void shouldSkipAlreadyImportedBuiltInPackages() {
         when(batchMapper.selectOne(any())).thenReturn(importedBatch());
         QuestionBankBootstrapService service = new QuestionBankBootstrapService(
-                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper);
+                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper, questionBankSyncTaskExecutor);
         ReflectionTestUtils.setField(service, "seedFromJson", true);
         ReflectionTestUtils.setField(service, "reindexUnsyncedOnStartup", false);
 
@@ -92,7 +98,7 @@ class QuestionBankBootstrapServiceTest {
                 .thenReturn(null);
         when(positionMapper.selectOne(any())).thenReturn(publicPosition());
         QuestionBankBootstrapService service = new QuestionBankBootstrapService(
-                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper);
+                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper, questionBankSyncTaskExecutor);
         ReflectionTestUtils.setField(service, "seedFromJson", true);
         ReflectionTestUtils.setField(service, "reindexUnsyncedOnStartup", false);
 
@@ -108,7 +114,7 @@ class QuestionBankBootstrapServiceTest {
         when(batchMapper.selectOne(any())).thenReturn(importedBatch());
         when(questionBankService.archiveAtoms(any())).thenReturn(java.util.Map.of("archived", 3));
         QuestionBankBootstrapService service = new QuestionBankBootstrapService(
-                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper);
+                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper, questionBankSyncTaskExecutor);
         ReflectionTestUtils.setField(service, "seedFromJson", true);
         ReflectionTestUtils.setField(service, "reindexUnsyncedOnStartup", false);
 
@@ -118,6 +124,40 @@ class QuestionBankBootstrapServiceTest {
         verify(questionBankService).archiveAtoms(idsCaptor.capture());
         assertThat(idsCaptor.getValue())
                 .contains("common-001", "common-002", "common-003", "agent-dead-loop-resolution");
+    }
+
+    @Test
+    @DisplayName("启动时不会在主线程直接同步未完成的向量")
+    void shouldNotSynchronizeVectorsOnStartupThread() {
+        when(batchMapper.selectOne(any())).thenReturn(importedBatch());
+        QuestionBankBootstrapService service = new QuestionBankBootstrapService(
+                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper, questionBankSyncTaskExecutor);
+        ReflectionTestUtils.setField(service, "seedFromJson", true);
+        ReflectionTestUtils.setField(service, "reindexUnsyncedOnStartup", true);
+
+        service.init();
+
+        verify(questionBankService, never()).reindexUnsyncedPublishedAtoms();
+        verify(questionBankSyncTaskExecutor).execute(any(Runnable.class));
+    }
+
+    @Test
+    @DisplayName("后台向量同步任务会读取同步结果以便记录和重试")
+    void shouldSynchronizeVectorsWithResultInBackgroundTask() {
+        when(batchMapper.selectOne(any())).thenReturn(importedBatch());
+        when(questionBankService.reindexUnsyncedPublishedAtomResult())
+                .thenReturn(Map.of("matched", 2, "synced", 1, "deleted", 0, "failed", 0));
+        QuestionBankBootstrapService service = new QuestionBankBootstrapService(
+                questionBankService, positionMapper, knowledgeBaseMapper, batchMapper, questionBankSyncTaskExecutor);
+        ReflectionTestUtils.setField(service, "seedFromJson", true);
+        ReflectionTestUtils.setField(service, "reindexUnsyncedOnStartup", true);
+
+        service.init();
+
+        ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
+        verify(questionBankSyncTaskExecutor).execute(runnableCaptor.capture());
+        runnableCaptor.getValue().run();
+        verify(questionBankService).reindexUnsyncedPublishedAtomResult();
     }
 
     private InterviewPosition publicPosition() {

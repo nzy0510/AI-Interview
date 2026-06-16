@@ -343,6 +343,44 @@ class InterviewServiceImplTest {
     }
 
     @Test
+    @DisplayName("岗位题库仍在同步向量时提示稍后开始面试")
+    void shouldRejectStartingInterviewWhileQuestionBankVectorsAreSyncing() {
+        when(knowledgeAtomMapper.selectCount(any())).thenReturn(0L, 2L);
+
+        assertThatThrownBy(() -> interviewService.startInterview(
+                1L,
+                "Java 后端开发",
+                "text",
+                null,
+                "mid",
+                List.of(),
+                101L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("正在同步中");
+
+        verify(interviewRecordMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("岗位题库向量同步失败时提示重试或重建索引")
+    void shouldRejectStartingInterviewWhenQuestionBankVectorSyncFailed() {
+        when(knowledgeAtomMapper.selectCount(any())).thenReturn(0L, 0L, 2L);
+
+        assertThatThrownBy(() -> interviewService.startInterview(
+                1L,
+                "Java 后端开发",
+                "text",
+                null,
+                "mid",
+                List.of(),
+                101L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("题库向量同步失败");
+
+        verify(interviewRecordMapper, never()).insert(any());
+    }
+
+    @Test
     @DisplayName("题库检索失败时仍继续请求 AI 输出")
     void shouldContinueStreamingWhenQuestionBankSearchFails() {
         InterviewRecord record = new InterviewRecord();

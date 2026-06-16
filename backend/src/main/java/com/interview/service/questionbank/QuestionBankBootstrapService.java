@@ -11,7 +11,9 @@ import com.interview.mapper.KnowledgeAtomImportBatchMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -26,11 +29,14 @@ public class QuestionBankBootstrapService {
 
     private static final String SCOPE_PUBLIC = "PUBLIC";
     private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final int VECTOR_SYNC_MAX_ATTEMPTS = 20;
+    private static final long VECTOR_SYNC_RETRY_DELAY_MS = 15_000L;
 
     private final QuestionBankService questionBankService;
     private final InterviewPositionMapper positionMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final KnowledgeAtomImportBatchMapper batchMapper;
+    private final TaskExecutor questionBankSyncTaskExecutor;
 
     @Value("${question-bank.bootstrap.seed-from-json:true}")
     private boolean seedFromJson;
@@ -41,11 +47,13 @@ public class QuestionBankBootstrapService {
     public QuestionBankBootstrapService(QuestionBankService questionBankService,
                                         InterviewPositionMapper positionMapper,
                                         KnowledgeBaseMapper knowledgeBaseMapper,
-                                        KnowledgeAtomImportBatchMapper batchMapper) {
+                                        KnowledgeAtomImportBatchMapper batchMapper,
+                                        @Qualifier("questionBankSyncTaskExecutor") TaskExecutor questionBankSyncTaskExecutor) {
         this.questionBankService = questionBankService;
         this.positionMapper = positionMapper;
         this.knowledgeBaseMapper = knowledgeBaseMapper;
         this.batchMapper = batchMapper;
+        this.questionBankSyncTaskExecutor = questionBankSyncTaskExecutor;
     }
 
     @PostConstruct
@@ -62,11 +70,51 @@ public class QuestionBankBootstrapService {
                 }
             }
             if (reindexUnsyncedOnStartup) {
-                int synced = questionBankService.reindexUnsyncedPublishedAtoms();
-                if (synced > 0) log.info("Question bank unsynced Qdrant vectors rebuilt: {}", synced);
+                questionBankSyncTaskExecutor.execute(this::reindexUnsyncedPublishedAtomsInBackground);
             }
         } catch (Exception e) {
             log.warn("Question bank bootstrap skipped: {}", e.getMessage());
+        }
+    }
+
+    private void reindexUnsyncedPublishedAtomsInBackground() {
+        for (int attempt = 1; attempt <= VECTOR_SYNC_MAX_ATTEMPTS; attempt++) {
+            try {
+                Map<String, Integer> result = questionBankService.reindexUnsyncedPublishedAtomResult();
+                int matched = result.getOrDefault("matched", 0);
+                int synced = result.getOrDefault("synced", 0);
+                int deleted = result.getOrDefault("deleted", 0);
+                int failed = result.getOrDefault("failed", 0);
+                if (matched == 0) {
+                    return;
+                }
+                if (failed == 0) {
+                    log.info("Question bank unsynced Qdrant vectors rebuilt: matched={}, synced={}, deleted={}",
+                            matched, synced, deleted);
+                    return;
+                }
+                log.warn("Question bank background vector sync attempt {}/{} incomplete: matched={}, synced={}, deleted={}, failed={}",
+                        attempt, VECTOR_SYNC_MAX_ATTEMPTS, matched, synced, deleted, failed);
+            } catch (Exception e) {
+                log.warn("Question bank background vector sync attempt {}/{} failed: {}",
+                        attempt, VECTOR_SYNC_MAX_ATTEMPTS, e.getMessage());
+            }
+            if (attempt < VECTOR_SYNC_MAX_ATTEMPTS && !sleepBeforeNextVectorSyncAttempt()) {
+                return;
+            }
+        }
+        log.warn("Question bank background vector sync stopped after {} attempts; remaining failed vectors can be retried by rebuilding indexes",
+                VECTOR_SYNC_MAX_ATTEMPTS);
+    }
+
+    private boolean sleepBeforeNextVectorSyncAttempt() {
+        try {
+            Thread.sleep(VECTOR_SYNC_RETRY_DELAY_MS);
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Question bank background vector sync interrupted");
+            return false;
         }
     }
 
@@ -94,7 +142,7 @@ public class QuestionBankBootstrapService {
                 request.setMode("AUTO_PUBLISH");
                 request.setTargetCategory(publicPositionNameFor(resource));
                 questionBankService.importBatch(request,
-                        new QuestionBankImportScope("PUBLIC", null, target.positionId(), target.knowledgeBaseId(), null, true));
+                        new QuestionBankImportScope("PUBLIC", null, target.positionId(), target.knowledgeBaseId(), null, true, false));
                 imported++;
             } catch (Exception e) {
                 log.warn("Built-in question-bank package skipped for {}: {}", resource.getFilename(), e.getMessage());

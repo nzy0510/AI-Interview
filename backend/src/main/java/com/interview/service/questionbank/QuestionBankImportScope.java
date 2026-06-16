@@ -6,6 +6,15 @@ public record QuestionBankImportScope(
         Long positionId,
         Long knowledgeBaseId,
         Long currentUserId,
-        boolean allowAutoPublish
+        boolean allowAutoPublish,
+        boolean syncOnPublish
 ) {
+    public QuestionBankImportScope(String scope,
+                                   Long ownerUserId,
+                                   Long positionId,
+                                   Long knowledgeBaseId,
+                                   Long currentUserId,
+                                   boolean allowAutoPublish) {
+        this(scope, ownerUserId, positionId, knowledgeBaseId, currentUserId, allowAutoPublish, true);
+    }
 }

@@ -185,17 +185,30 @@ public class InterviewServiceImpl implements InterviewService {
 
     private void requireSearchableAtoms(InterviewPosition position) {
         Long knowledgeBaseId = resolveKnowledgeBaseId(position);
-        LambdaQueryWrapper<KnowledgeAtom> wrapper = new LambdaQueryWrapper<KnowledgeAtom>()
+        Long count = knowledgeAtomMapper.selectCount(publishedAtomQuery(position, knowledgeBaseId)
+                .eq(KnowledgeAtom::getVectorStatus, "SYNCED"));
+        if (count == null || count <= 0) {
+            Long pendingCount = knowledgeAtomMapper.selectCount(publishedAtomQuery(position, knowledgeBaseId)
+                    .eq(KnowledgeAtom::getVectorStatus, "PENDING"));
+            if (pendingCount != null && pendingCount > 0) {
+                throw new IllegalStateException("当前岗位题库正在同步中，请稍后再开始面试");
+            }
+            Long failedCount = knowledgeAtomMapper.selectCount(publishedAtomQuery(position, knowledgeBaseId)
+                    .eq(KnowledgeAtom::getVectorStatus, "FAILED"));
+            if (failedCount != null && failedCount > 0) {
+                throw new IllegalStateException("当前岗位题库向量同步失败，请稍后重试或联系管理员重建索引");
+            }
+            throw new IllegalStateException("当前岗位暂无已发布且已同步的题库原子，暂不能开始面试");
+        }
+    }
+
+    private LambdaQueryWrapper<KnowledgeAtom> publishedAtomQuery(InterviewPosition position, Long knowledgeBaseId) {
+        return new LambdaQueryWrapper<KnowledgeAtom>()
                 .eq(KnowledgeAtom::getPositionId, position.getId())
                 .eq(KnowledgeAtom::getKnowledgeBaseId, knowledgeBaseId)
                 .eq(KnowledgeAtom::getScope, position.getScope())
                 .eq(position.getOwnerUserId() != null, KnowledgeAtom::getOwnerUserId, position.getOwnerUserId())
-                .eq(KnowledgeAtom::getStatus, "PUBLISHED")
-                .eq(KnowledgeAtom::getVectorStatus, "SYNCED");
-        Long count = knowledgeAtomMapper.selectCount(wrapper);
-        if (count == null || count <= 0) {
-            throw new IllegalStateException("当前岗位暂无已发布且已同步的题库原子，暂不能开始面试");
-        }
+                .eq(KnowledgeAtom::getStatus, "PUBLISHED");
     }
 
     private Long resolveKnowledgeBaseId(InterviewPosition position) {

@@ -28,4 +28,15 @@ public class AsyncTaskConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean("questionBankSyncTaskExecutor")
+    public ThreadPoolTaskExecutor questionBankSyncTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(10);
+        executor.setThreadNamePrefix("question-bank-sync-");
+        executor.initialize();
+        return executor;
+    }
 }

@@ -462,7 +462,9 @@ const startNewInterview = async (resumeQuestions) => {
       router.replace({ path: '/llm-providers', query: buildLlmConfigRouteQuery('interview') })
       return
     }
-    ElMessage.error('连接失败，请确认后端已启动')
+    if (!error?.message || error.message === 'Network Error') {
+      ElMessage.error('连接失败，请确认后端已启动')
+    }
     router.back()
   }
 }

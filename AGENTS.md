@@ -42,7 +42,7 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 - 不使用 `git reset --hard`、`git checkout --` 等破坏性命令，除非用户明确要求。
 - 完成 feature、bugfix、refactor、deployment 或用户可见代码变更后，按 `post-delivery-analysis` skill 自动输出交付后分析和下一步建议；不得自动执行下一步建议，必须等待用户明确指令。
 - 在需要探索代码库时，优先读取`.codegraph/`下的内容了解结构，若需要详细了解，应派发子agent探索。
-- 在功能开发基本完善后，在交付或像用户说明汇报前，调度一个或多个subagent进行代码审查、功能自测等等。汇总他们的输出，如果发现有明显bug，修复完善后再交付给用户。如此流程可进行多轮循环，直至无明显bug。
+- 在功能开发基本完善后，在交付或向用户说明汇报前，调度一个或多个subagent进行代码审查、功能自测等等。汇总他们的输出，如果发现有明显bug，修复完善后再交付给用户。如此流程可进行多轮循环，直至无明显bug。
 
 ## 基础工作流
 
