@@ -166,6 +166,9 @@ app:
     context-limit: ${APP_RAG_CONTEXT_LIMIT:10}
     high-confidence-score: ${APP_RAG_HIGH_CONFIDENCE_SCORE:0.70}
     min-context-score: ${APP_RAG_MIN_CONTEXT_SCORE:0.55}
+  llm:
+    report-timeout-seconds: ${APP_LLM_REPORT_TIMEOUT_SECONDS:180}
+    report-batch-size: ${APP_LLM_REPORT_BATCH_SIZE:3}
   embedding:
     provider: ${APP_EMBEDDING_PROVIDER:all-minilm}
     endpoint: ${APP_EMBEDDING_ENDPOINT:}

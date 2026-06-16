@@ -72,6 +72,10 @@ export function normalizeAbility(value) {
   return normalized
 }
 
+export function canRetryDetailedReport(report) {
+  return report?.status === 'FAILED' && report?.jobId != null
+}
+
 function parseRecommendations(value) {
   const parsed = parseStructuredField(value, [])
   return Array.isArray(parsed) ? parsed : []

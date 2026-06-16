@@ -20,10 +20,12 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,6 +48,12 @@ public class GenerateReportJobHandler implements AppJobHandler {
     private final InterviewTurnMapper turnMapper;
     private final UserLlmConfigService userLlmConfigService;
     private final UserLlmModelFactory userLlmModelFactory;
+
+    @Value("${app.llm.report-timeout-seconds:180}")
+    private long reportTimeoutSeconds = 180;
+
+    @Value("${app.llm.report-batch-size:3}")
+    private int reportBatchSize = 3;
 
     public GenerateReportJobHandler(AppJobService appJobService,
                                     InterviewRecordMapper recordMapper,
@@ -158,20 +166,39 @@ public class GenerateReportJobHandler implements AppJobHandler {
             throw new IllegalStateException("缺少逐轮问答，无法生成详细报告");
         }
         UserLlmRuntimeConfig runtimeConfig = userLlmConfigService.requireActiveRuntimeConfig(record.getUserId());
-        OpenAiChatModel model = userLlmModelFactory.createChatModel(runtimeConfig);
-        Response<AiMessage> response = model.generate(List.of(
-                new SystemMessage(detailedReportSystemPrompt()),
-                new UserMessage(buildDetailedReportUserPrompt(record, turns))
-        ));
-        String raw = response.content().text();
-        JSONObject parsed = parseJsonObject(raw);
-        Map<Long, DetailedReportItemResult> itemsByTurnId = parseDetailedItems(parsed.getJSONArray("items"));
+        OpenAiChatModel model = userLlmModelFactory.createChatModel(
+                runtimeConfig,
+                Duration.ofSeconds(Math.max(60, reportTimeoutSeconds))
+        );
+        int batchSize = Math.max(1, reportBatchSize);
+        Map<Long, DetailedReportItemResult> itemsByTurnId = new HashMap<>();
+        List<String> summaries = new ArrayList<>();
+        for (int start = 0; start < turns.size(); start += batchSize) {
+            int end = Math.min(start + batchSize, turns.size());
+            List<InterviewTurn> batchTurns = turns.subList(start, end);
+            Response<AiMessage> response = model.generate(List.of(
+                    new SystemMessage(detailedReportSystemPrompt()),
+                    new UserMessage(buildDetailedReportUserPrompt(record, batchTurns))
+            ));
+            String raw = response.content().text();
+            JSONObject parsed = parseJsonObject(raw);
+            Map<Long, DetailedReportItemResult> batchItems = parseDetailedItems(parsed.getJSONArray("items"));
+            if (batchItems.isEmpty()) {
+                throw new IllegalStateException("详细报告第 " + ((start / batchSize) + 1) + " 批未返回逐题评分");
+            }
+            validateDetailedItemsComplete(batchTurns, batchItems);
+            itemsByTurnId.putAll(batchItems);
+            String batchSummary = parsed.getString("summary");
+            if (batchSummary != null && !batchSummary.isBlank()) {
+                summaries.add(batchSummary.trim());
+            }
+        }
         if (itemsByTurnId.isEmpty()) {
             throw new IllegalStateException("详细报告未返回逐题评分");
         }
         validateDetailedItemsComplete(turns, itemsByTurnId);
         int overallScore = calculateOverallScore(turns, itemsByTurnId);
-        String summary = parsed.getString("summary");
+        String summary = summaries.isEmpty() ? null : String.join("\n", summaries);
         return new DetailedReportResult(overallScore, summary, itemsByTurnId, runtimeConfig);
     }
 
@@ -229,6 +256,7 @@ public class GenerateReportJobHandler implements AppJobHandler {
         StringBuilder builder = new StringBuilder();
         builder.append("初步总分：").append(record.getScore()).append("/100\n");
         builder.append("初步反馈：").append(record.getFeedback()).append("\n\n");
+        builder.append("只评价本批逐轮材料中的 turnId，不要补充或编造其他 turnId。\n");
         builder.append("请按如下 JSON 结构返回：\n");
         builder.append("""
                 {

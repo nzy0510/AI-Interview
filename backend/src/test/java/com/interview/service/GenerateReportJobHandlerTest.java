@@ -20,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -78,7 +79,7 @@ class GenerateReportJobHandlerTest {
         UserLlmRuntimeConfig runtimeConfig = new UserLlmRuntimeConfig(
                 1L, 1L, "deepseek", "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "sk-test", 0.7);
         when(userLlmConfigService.requireActiveRuntimeConfig(1L)).thenReturn(runtimeConfig);
-        when(userLlmModelFactory.createChatModel(runtimeConfig)).thenReturn(chatModel);
+        when(userLlmModelFactory.createChatModel(runtimeConfig, Duration.ofSeconds(180))).thenReturn(chatModel);
         when(chatModel.generate(anyList())).thenReturn(Response.from(new AiMessage("""
                 {
                   "summary": "详细报告总结",
@@ -130,6 +131,61 @@ class GenerateReportJobHandlerTest {
         assertThat(itemCaptor.getValue().getAnswerSource()).isEqualTo("KNOWLEDGE_BASE");
         assertThat(job.getResultJson()).contains("\"reportId\":55");
         verify(chatModel).generate(anyList());
+        verify(userLlmModelFactory).createChatModel(runtimeConfig, Duration.ofSeconds(180));
+    }
+
+    @Test
+    @DisplayName("详细报告按批调用 LLM，避免整场面试一次性生成导致超时")
+    void shouldGenerateDetailedReportInBatches() {
+        InterviewRecord record = record();
+        record.setScore(82);
+        record.setFeedback("整体反馈");
+        when(recordMapper.selectById(10L)).thenReturn(record);
+        when(reportMapper.selectOne(any())).thenReturn(null);
+        doAnswer(invocation -> {
+            InterviewReport report = invocation.getArgument(0);
+            report.setId(55L);
+            return 1;
+        }).when(reportMapper).insert(any());
+        when(turnMapper.selectList(any())).thenReturn(List.of(
+                turn(20L, 1),
+                turn(21L, 2),
+                turn(22L, 3),
+                turn(23L, 4)
+        ));
+        UserLlmRuntimeConfig runtimeConfig = new UserLlmRuntimeConfig(
+                1L, 1L, "deepseek", "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "sk-test", 0.7);
+        when(userLlmConfigService.requireActiveRuntimeConfig(1L)).thenReturn(runtimeConfig);
+        when(userLlmModelFactory.createChatModel(runtimeConfig, Duration.ofSeconds(180))).thenReturn(chatModel);
+        when(chatModel.generate(anyList()))
+                .thenReturn(Response.from(new AiMessage("""
+                        {
+                          "summary": "第一批总结",
+                          "items": [
+                            {"turnId": 20, "score": 8, "referenceAnswer": "参考答案 20", "scoreBreakdown": {"relevance": 2, "correctness": 2, "depth": 2, "practicality": 1, "communication": 1}, "improvementSuggestion": "补充细节。"},
+                            {"turnId": 21, "score": 7, "referenceAnswer": "参考答案 21", "scoreBreakdown": {"relevance": 2, "correctness": 2, "depth": 1, "practicality": 1, "communication": 1}, "improvementSuggestion": "补充案例。"},
+                            {"turnId": 22, "score": 8, "referenceAnswer": "参考答案 22", "scoreBreakdown": {"relevance": 2, "correctness": 2, "depth": 2, "practicality": 1, "communication": 1}, "improvementSuggestion": "补充权衡。"}
+                          ]
+                        }
+                        """)))
+                .thenReturn(Response.from(new AiMessage("""
+                        {
+                          "summary": "第二批总结",
+                          "items": [
+                            {"turnId": 23, "score": 9, "referenceAnswer": "参考答案 23", "scoreBreakdown": {"relevance": 2, "correctness": 3, "depth": 2, "practicality": 1, "communication": 1}, "improvementSuggestion": "保持结构化表达。"}
+                          ]
+                        }
+                        """)));
+
+        handler().handle(job());
+
+        ArgumentCaptor<InterviewReport> reportCaptor = ArgumentCaptor.forClass(InterviewReport.class);
+        verify(reportMapper).insert(reportCaptor.capture());
+        verify(chatModel, org.mockito.Mockito.times(2)).generate(anyList());
+        verify(reportItemMapper, org.mockito.Mockito.times(4)).insert(any());
+        assertThat(reportCaptor.getValue().getStatus()).isEqualTo("COMPLETED");
+        assertThat(reportCaptor.getValue().getOverallScore()).isEqualTo(80);
+        assertThat(reportCaptor.getValue().getSummary()).contains("第一批总结", "第二批总结");
     }
 
     @Test
@@ -149,7 +205,7 @@ class GenerateReportJobHandlerTest {
         UserLlmRuntimeConfig runtimeConfig = new UserLlmRuntimeConfig(
                 1L, 1L, "deepseek", "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "sk-test", 0.7);
         when(userLlmConfigService.requireActiveRuntimeConfig(1L)).thenReturn(runtimeConfig);
-        when(userLlmModelFactory.createChatModel(runtimeConfig)).thenReturn(chatModel);
+        when(userLlmModelFactory.createChatModel(runtimeConfig, Duration.ofSeconds(180))).thenReturn(chatModel);
         when(chatModel.generate(anyList())).thenReturn(Response.from(new AiMessage("""
                 {
                   "summary": "详细报告总结",
@@ -198,7 +254,7 @@ class GenerateReportJobHandlerTest {
         UserLlmRuntimeConfig runtimeConfig = new UserLlmRuntimeConfig(
                 1L, 1L, "deepseek", "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "sk-test", 0.7);
         when(userLlmConfigService.requireActiveRuntimeConfig(1L)).thenReturn(runtimeConfig);
-        when(userLlmModelFactory.createChatModel(runtimeConfig)).thenReturn(chatModel);
+        when(userLlmModelFactory.createChatModel(runtimeConfig, Duration.ofSeconds(180))).thenReturn(chatModel);
         when(chatModel.generate(anyList())).thenReturn(Response.from(new AiMessage("不是 JSON")));
 
         assertThatThrownBy(() -> handler().handle(job()))
@@ -253,7 +309,7 @@ class GenerateReportJobHandlerTest {
         InterviewReport finalReport = reportCaptor.getAllValues().get(reportCaptor.getAllValues().size() - 1);
         assertThat(finalReport.getStatus()).isEqualTo("FAILED");
         verify(reportItemMapper, never()).insert(any());
-        verify(userLlmModelFactory, never()).createChatModel(any());
+        verify(userLlmModelFactory, never()).createChatModel(any(UserLlmRuntimeConfig.class), any(Duration.class));
     }
 
     private GenerateReportJobHandler handler() {
@@ -281,13 +337,17 @@ class GenerateReportJobHandlerTest {
     }
 
     private InterviewTurn turn() {
+        return turn(20L, 1);
+    }
+
+    private InterviewTurn turn(Long id, int turnIndex) {
         InterviewTurn turn = new InterviewTurn();
-        turn.setId(20L);
+        turn.setId(id);
         turn.setRecordId(10L);
-        turn.setTurnIndex(1);
+        turn.setTurnIndex(turnIndex);
         turn.setPhase("TECHNICAL");
-        turn.setAiQuestion("解释 RAG");
-        turn.setUserAnswer("检索增强生成");
+        turn.setAiQuestion("解释 RAG " + turnIndex);
+        turn.setUserAnswer("检索增强生成 " + turnIndex);
         turn.setRetrievedAtomIds("[\"rag-flow\"]");
         turn.setContextSnapshotJson("""
                 {"promptContext":"1. [atom_id: rag-flow]\\n考核点: RAG 流程\\n核心原理与标准答案: RAG 先召回知识，再注入上下文生成。\\n面试常见陷阱与候选人易错点: 不要把 RAG 说成模型训练。"}

@@ -308,11 +308,27 @@
           <el-alert
             v-else-if="detailFailureMessage"
             class="detail-alert"
-            :title="detailFailureMessage"
+            title="详细报告生成失败"
             type="error"
             show-icon
             :closable="false"
-          />
+          >
+            <template #default>
+              <div class="detail-failure-actions">
+                <span>{{ detailFailureMessage }}</span>
+                <el-button
+                  v-if="canRetrySelectedDetailedReport"
+                  size="small"
+                  type="danger"
+                  plain
+                  :loading="detailRetrying"
+                  @click="retryDetailedReport"
+                >
+                  重新生成详细报告
+                </el-button>
+              </div>
+            </template>
+          </el-alert>
           <div v-else-if="selectedDetailedReport && detailedReportItems.length" class="detail-turn-list">
             <div class="detail-summary">
               <span>详细报告总分</span>
@@ -451,8 +467,9 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { ArrowLeft, RefreshRight, Search } from '@element-plus/icons-vue'
-import { getHistoryListAPI, getInterviewReportAPI } from '@/api/interview'
+import { getHistoryListAPI, getInterviewReportAPI, retryJobAPI } from '@/api/interview'
 import { getKnowledgeCoverageAPI } from '@/api/user'
 import { getKnowledgeWorkspaceAPI } from '@/api/knowledgeWorkspace'
 import { reportCenterConfig } from '@/mock/reports'
@@ -460,7 +477,7 @@ import * as echarts from 'echarts'
 import KnowledgeCoverageChart from '@/components/charts/KnowledgeCoverageChart.vue'
 import { buildTooltipConfig, buildHeatmapVisualMap, buildHeatmapData } from '@/utils/chartOptions'
 import { normalizeKnowledgePoints } from '@/utils/reportMetrics'
-import { normalizeAbility, parseStructuredField, stripInterviewControlMarkers } from '@/utils/interviewReport'
+import { canRetryDetailedReport, normalizeAbility, parseStructuredField, stripInterviewControlMarkers } from '@/utils/interviewReport'
 
 const router = useRouter()
 const loading = ref(true)
@@ -480,6 +497,7 @@ const drawerOpen = ref(false)
 const selected = ref(null)
 const selectedDetailedReport = ref(null)
 const detailLoading = ref(false)
+const detailRetrying = ref(false)
 const detailError = ref('')
 let detailRequestSeq = 0
 const reportCenter = reportCenterConfig
@@ -532,6 +550,7 @@ const detailFailureMessage = computed(() => {
   if (selectedDetailedReport.value?.status !== 'FAILED') return ''
   return selectedDetailedReport.value?.errorMessage || '详细报告生成失败，请稍后重试'
 })
+const canRetrySelectedDetailedReport = computed(() => canRetryDetailedReport(selectedDetailedReport.value))
 
 const EMOTION_LABELS = { neutral: '平静', happy: '积极', sad: '低落', angry: '紧张', fearful: '焦虑', disgusted: '不适', surprised: '惊讶' }
 const emotionLabel = (key) => EMOTION_LABELS[key] || key
@@ -747,6 +766,26 @@ const openDetail = async (row) => {
     if (requestSeq === detailRequestSeq) {
       detailLoading.value = false
     }
+  }
+}
+
+const reloadSelectedDetailedReport = async () => {
+  if (!selected.value?.id) return
+  const report = await getInterviewReportAPI(selected.value.id, { silent: true })
+  selectedDetailedReport.value = report
+}
+
+const retryDetailedReport = async () => {
+  if (!canRetrySelectedDetailedReport.value || detailRetrying.value) return
+  detailRetrying.value = true
+  try {
+    await retryJobAPI(selectedDetailedReport.value.jobId)
+    ElMessage.success('已重新提交详细报告生成任务')
+    await reloadSelectedDetailedReport()
+  } catch (err) {
+    ElMessage.error(err?.message || '重新生成失败，请稍后重试')
+  } finally {
+    detailRetrying.value = false
   }
 }
 
@@ -1461,6 +1500,15 @@ const drawMiniRadar = () => {
 .detail-state,
 .detail-alert {
   margin-top: 4px;
+}
+
+.detail-failure-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  line-height: 1.5;
 }
 
 .detail-turn-list {
