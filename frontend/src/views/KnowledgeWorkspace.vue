@@ -410,6 +410,7 @@ const selectPosition = (position) => {
   activePositionId.value = position.id
   resetImportPackageState()
   resetPackageAtoms()
+  loadPackageAtoms()
 }
 
 const loadWorkspace = async () => {

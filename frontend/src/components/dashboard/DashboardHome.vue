@@ -248,6 +248,7 @@ import {
 import { getLlmConfigStatusAPI } from '@/api/llm'
 import { getHistoryListAPI } from '@/api/interview'
 import { getMentorInsightAPI, getKnowledgeCoverageAPI, getPreferenceAPI, getCurrentUserAPI } from '@/api/user'
+import { getKnowledgeWorkspaceAPI } from '@/api/knowledgeWorkspace'
 import { getUsername, getNickname, setNickname, userKey, withAuthHeaders } from '@/utils/auth'
 import {
   buildLlmConfigRouteQuery,
@@ -267,6 +268,7 @@ const knowledgeCats = ref('--')
 const recentInterviews = ref([])
 const mentorInsight = ref(null)
 const llmStatus = ref(createUnknownLlmConfigStatus())
+const workspacePositions = ref([])
 
 const showModeDialog = ref(false)
 const showResumeDialog = ref(false)
@@ -387,15 +389,35 @@ const loadLlmStatus = async () => {
   }
 }
 
-const buildInterviewQuery = (mode) => ({
-  role: selectedRole.value || pref.value.defaultRole || interviewSetupDefaults.roleOptions[0],
-  focus: (() => {
-    try { const areas = JSON.parse(pref.value.focusAreas || '[]'); return Array.isArray(areas) ? areas.join(',') : '' }
-    catch { return '' }
-  })(),
-  mode,
-  difficulty: pref.value.difficultyLevel || 'mid'
-})
+const buildInterviewQuery = (mode) => {
+  const roleName = selectedRole.value || pref.value.defaultRole || interviewSetupDefaults.roleOptions[0]
+  const positionId = resolvePositionId(roleName)
+  const query = {
+    role: roleName,
+    focus: (() => {
+      try { const areas = JSON.parse(pref.value.focusAreas || '[]'); return Array.isArray(areas) ? areas.join(',') : '' }
+      catch { return '' }
+    })(),
+    mode,
+    difficulty: pref.value.difficultyLevel || 'mid'
+  }
+  if (positionId) query.positionId = positionId
+  return query
+}
+
+const resolvePositionId = (roleName) => {
+  if (!roleName || !workspacePositions.value.length) return null
+  const matched = workspacePositions.value.find((item) => item.name === roleName)
+  return matched?.id || workspacePositions.value[0]?.id || null
+}
+
+const loadPositions = async () => {
+  try {
+    const data = await getKnowledgeWorkspaceAPI({ silent: true })
+    workspacePositions.value = (data?.positions || [])
+      .filter((item) => item.status === 'ACTIVE' && item.knowledgeBase?.id)
+  } catch { workspacePositions.value = [] }
+}
 
 const goSetup = () => router.push('/interview/setup')
 const goLlmSettings = () => router.push({ path: '/llm-providers', query: buildLlmConfigRouteQuery('dashboard') })
@@ -453,12 +475,15 @@ const confirmMode = (mode) => {
     role = resumeProfile.value.position || resumeProfile.value.targetRole || ''
   }
   if (!role) role = pref.value.defaultRole || interviewSetupDefaults.roleOptions[0]
+  const positionId = resolvePositionId(role)
   const focus = (() => {
     try { const areas = JSON.parse(pref.value.focusAreas || '[]'); return Array.isArray(areas) ? areas.join(',') : '' }
     catch { return '' }
   })()
   const path = mode === 'video' ? '/video-interview' : '/interview'
-  router.push({ path, query: { role, isTailored, difficulty: pref.value.difficultyLevel || 'mid', focus } })
+  const query = { role, isTailored, difficulty: pref.value.difficultyLevel || 'mid', focus }
+  if (positionId) query.positionId = positionId
+  router.push({ path, query })
 }
 
 const loadPreference = async () => {
@@ -474,7 +499,7 @@ const loadPreference = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([checkExistingResume(), loadHistory(), loadPreference(), loadNickname(), loadLlmStatus()])
+  await Promise.all([checkExistingResume(), loadHistory(), loadPreference(), loadNickname(), loadLlmStatus(), loadPositions()])
   // 页面核心数据已就绪，Mentor 异步加载不阻塞渲染
   loadMentor()
 })
