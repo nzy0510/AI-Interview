@@ -24,8 +24,8 @@ export const discardInterviewAPI = (data) => {
     return request({ url: '/interview/discard', method: 'post', data });
 };
 
-export const getHistoryListAPI = () => {
-    return request({ url: '/history/list', method: 'get' });
+export const getHistoryListAPI = (params) => {
+    return request({ url: '/history/list', method: 'get', params });
 };
 
 export const getHistoryDetailAPI = (id) => {

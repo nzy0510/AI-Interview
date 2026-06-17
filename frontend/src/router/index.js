@@ -92,12 +92,10 @@ const router = createRouter({
 })
 
 // Navigation Guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   const token = getToken()
   if (to.path !== '/login' && !token) {
-    next('/login')
-  } else {
-    next()
+    return '/login'
   }
 })
 

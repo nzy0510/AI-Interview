@@ -12,17 +12,66 @@
         </div>
 
         <div class="header-actions">
+          <el-select
+            v-model="selectedPositionId"
+            class="position-select"
+            placeholder="选择岗位"
+            :loading="positionLoading"
+            @change="onPositionChange"
+          >
+            <el-option
+              v-for="pos in positionOptions"
+              :key="pos.id"
+              :label="pos.name"
+              :value="pos.id"
+            >
+              <span>{{ pos.name }}</span>
+              <el-tag size="small" effect="plain" :type="pos.scope === 'PRIVATE' ? 'warning' : 'info'" class="option-tag">
+                {{ pos.scope === 'PRIVATE' ? '私有' : '公开' }}
+              </el-tag>
+            </el-option>
+          </el-select>
           <el-tag effect="plain" type="info" class="status-pill">配置中心</el-tag>
-          <el-button class="primary-cta" type="primary" @click="showModeDialog = true">基于画像开启面试</el-button>
+          <el-button
+            class="primary-cta"
+            type="primary"
+            :disabled="!selectedPositionId"
+            @click="startInterviewFromResume"
+          >基于画像开启面试</el-button>
         </div>
       </el-header>
 
       <el-main class="resume-main">
-        <section v-if="!analysis" class="surface-card empty-shell">
+        <section v-if="!selectedPositionId" class="surface-card empty-shell">
           <div class="empty-copy">
             <p class="section-kicker">Resume Intake</p>
-            <h2 class="section-title">暂无简历解析记录</h2>
-            <p class="section-desc">请重新上传简历，系统会在这里重新生成画像与定制问题。</p>
+            <h2 class="section-title">请先选择岗位</h2>
+            <p class="section-desc">选择岗位后可以管理该岗位的简历画像，上传的简历会按岗位隔离存储。</p>
+          </div>
+        </section>
+
+        <section v-else-if="!analysis" class="surface-card empty-shell">
+          <div class="empty-copy">
+            <p class="section-kicker">Resume Intake</p>
+            <h2 class="section-title">{{ currentPositionName }} — 暂无简历解析记录</h2>
+            <p class="section-desc">为该岗位上传 PDF 简历，系统会生成专属画像与定制问题。</p>
+            <el-upload
+              class="resume-upload-inline"
+              drag
+              :action="uploadUrl"
+              :headers="uploadHeaders"
+              :data="uploadData"
+              :show-file-list="false"
+              :on-success="handleResumeUploadSuccess"
+              :on-error="handleResumeUploadError"
+              :before-upload="beforeResumeUpload"
+              accept=".pdf"
+            >
+              <div class="el-upload__text" v-if="!isParsing"><em>点击上传 PDF 简历</em>，生成定制化画像</div>
+              <div class="el-upload__text" v-else>
+                <el-icon class="is-loading"><Loading /></el-icon> 正在深度解析简历，请稍候...
+              </div>
+            </el-upload>
           </div>
         </section>
 
@@ -32,7 +81,7 @@
               <div class="hero-copy">
                 <p class="section-kicker">Profile Brief</p>
                 <h2 class="section-title">简历扫描透视</h2>
-                <p class="section-desc">围绕当前 {{ role }} 岗位，输出匹配率、技能星云和追问路径。</p>
+                <p class="section-desc">围绕当前 <strong>{{ currentPositionName }}</strong> 岗位，输出匹配率、技能星云和追问路径。</p>
               </div>
               <div class="hero-metrics">
                 <div class="hero-metric">
@@ -41,12 +90,35 @@
                 </div>
                 <div class="hero-metric">
                   <span class="metric-label">目标岗位</span>
-                  <strong>{{ role }}</strong>
+                  <strong>{{ currentPositionName }}</strong>
                 </div>
-                <div class="hero-metric">
-                  <span class="metric-label">进入面试</span>
-                  <el-button size="small" type="primary" @click="showModeDialog = true">选择模式</el-button>
+                <div class="hero-metric action-metric">
+                  <span class="metric-label">操作</span>
+                  <div class="hero-metric-actions">
+                    <el-button size="small" type="primary" @click="showModeDialog = true">选择模式</el-button>
+                    <el-button size="small" type="danger" plain @click="deleteProfile">清除画像</el-button>
+                  </div>
                 </div>
+              </div>
+            </section>
+
+            <section class="surface-card section-shell upload-shell">
+              <div class="upload-row">
+                <span class="upload-hint">更新简历：上传新 PDF 将覆盖当前岗位的画像</span>
+                <el-upload
+                  :action="uploadUrl"
+                  :headers="uploadHeaders"
+                  :data="uploadData"
+                  :show-file-list="false"
+                  :on-success="handleResumeUploadSuccess"
+                  :on-error="handleResumeUploadError"
+                  :before-upload="beforeResumeUpload"
+                  accept=".pdf"
+                >
+                  <el-button :loading="isParsing" type="primary" plain size="small">
+                    {{ isParsing ? '解析中...' : '上传新简历覆盖' }}
+                  </el-button>
+                </el-upload>
               </div>
             </section>
 
@@ -158,29 +230,145 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ArrowLeft, DataAnalysis, Star, Warning, Briefcase } from '@element-plus/icons-vue'
+import { ArrowLeft, DataAnalysis, Star, Warning, Briefcase, Loading } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import 'echarts-wordcloud'
-import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import { getPreferenceAPI } from '@/api/user'
+import { getVisiblePositionsAPI } from '@/api/position'
+import { fetchResumeProfile, deleteResumeProfileAPI } from '@/api/resume'
 import { withAuthHeaders } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
-const role = route.query.role || '软件开发'
+
+// ─── Position State ──────────────────────────────────────────────────────────
+const positionOptions = ref([])
+const selectedPositionId = ref(null)
+const positionLoading = ref(false)
+const currentPositionName = computed(() => {
+  const pos = positionOptions.value.find(p => p.id === selectedPositionId.value)
+  return pos ? pos.name : ''
+})
 
 const analysis = ref(null)
 const showModeDialog = ref(false)
+const isParsing = ref(false)
 const pref = ref({ defaultRole: '', difficultyLevel: 'mid', focusAreas: '[]' })
+
+const uploadUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/resume/parse`
+const uploadHeaders = ref(withAuthHeaders())
+const uploadData = computed(() => ({ positionId: selectedPositionId.value, position: currentPositionName.value }))
+
+const role = computed(() => currentPositionName.value || '软件开发')
 
 let gaugeChartInstance = null
 let cloudChartInstance = null
 
+// ─── Fetch ───────────────────────────────────────────────────────────────────
+const fetchPositions = async () => {
+  positionLoading.value = true
+  try {
+    const data = await getVisiblePositionsAPI()
+    positionOptions.value = data || []
+  } catch {
+    positionOptions.value = []
+  } finally {
+    positionLoading.value = false
+  }
+}
+
+const loadProfile = async () => {
+  if (!selectedPositionId.value) {
+    analysis.value = null
+    return
+  }
+  try {
+    const profileData = await fetchResumeProfile(selectedPositionId.value)
+    if (profileData) {
+      analysis.value = profileData.analysis
+
+      // 重新渲染图表
+      setTimeout(() => {
+        initGaugeChart()
+        initWordCloud()
+      }, 100)
+    } else {
+      analysis.value = null
+    }
+  } catch {
+    analysis.value = null
+  }
+}
+
+const onPositionChange = async () => {
+  await loadProfile()
+}
+
+const handleResumeUploadSuccess = async (response) => {
+  isParsing.value = false
+  if (response?.code === 200) {
+    ElMessage.success('简历专属画像生成完毕！')
+    await loadProfile()
+  } else {
+    ElMessage.error(`简历解析异常：${response?.msg || '未知错误'}`)
+  }
+}
+
+const handleResumeUploadError = () => {
+  isParsing.value = false
+  ElMessage.error('简历解析失败，请检查文件后重试！')
+}
+
+const beforeResumeUpload = (file) => {
+  if (file.type !== 'application/pdf') {
+    ElMessage.error('只能上传 PDF 格式的简历！')
+    return false
+  }
+  isParsing.value = true
+  uploadHeaders.value = withAuthHeaders()
+  return true
+}
+
+const deleteProfile = async () => {
+  if (!selectedPositionId.value) return
+  try {
+    await deleteResumeProfileAPI(selectedPositionId.value)
+    ElMessage.success('简历画像已清除')
+    analysis.value = null
+  } catch (err) {
+    ElMessage.error(err?.message || '删除失败')
+  }
+}
+
+const startInterviewFromResume = () => {
+  if (!selectedPositionId.value) return
+  router.push({
+    path: '/interview/setup',
+    query: { positionId: selectedPositionId.value, role: currentPositionName.value }
+  })
+}
+
 onMounted(async () => {
-  // 加载偏好用于面试入口
+  await fetchPositions()
+
+  // 默认选择逻辑：URL positionId > 第一个可用岗位
+  const urlPositionId = route.query.positionId
+  if (urlPositionId) {
+    const matched = positionOptions.value.find(p => p.id === Number(urlPositionId))
+    if (matched) selectedPositionId.value = matched.id
+  }
+  if (!selectedPositionId.value && positionOptions.value.length) {
+    selectedPositionId.value = positionOptions.value[0].id
+  }
+
+  if (selectedPositionId.value) {
+    await loadProfile()
+  }
+
+  // 加载偏好
   try {
     const p = await getPreferenceAPI()
     if (p) {
@@ -190,30 +378,7 @@ onMounted(async () => {
     }
   } catch {}
 
-  let profileData = null
-  try {
-    // 静默请求：用原生 axios 避免触发拦截器的 ElMessage.error
-    const resp = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/resume/profile', {
-      headers: withAuthHeaders()
-    })
-    if (resp.ok) {
-      const result = await resp.json()
-      if (result.code === 200 && result.data) {
-        profileData = result.data
-      }
-    }
-  } catch (error) {
-    console.log('暂无简历画像:', error.message)
-  }
-
-  if (profileData) {
-    analysis.value = profileData
-    setTimeout(() => {
-      initGaugeChart()
-      initWordCloud()
-    }, 100)
-    window.addEventListener('resize', handleResize)
-  }
+  window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
@@ -231,6 +396,7 @@ const handleResize = () => {
 const initGaugeChart = () => {
   const dom = document.getElementById('gaugeChart')
   if (!dom) return
+  if (gaugeChartInstance) gaugeChartInstance.dispose()
   gaugeChartInstance = echarts.init(dom)
   
   const score = analysis.value.matchScore || 0
@@ -295,6 +461,7 @@ const initGaugeChart = () => {
 const initWordCloud = () => {
   const dom = document.getElementById('cloudChart')
   if (!dom) return
+  if (cloudChartInstance) cloudChartInstance.dispose()
   cloudChartInstance = echarts.init(dom)
 
   const skills = analysis.value.coreSkills || []
@@ -368,18 +535,20 @@ const initWordCloud = () => {
 // === 跳转面试 ===
 const confirmStart = (mode) => {
   showModeDialog.value = false
-  const effectiveRole = role !== '软件开发' ? role : (pref.value.defaultRole || 'Java 后端开发')
+  const effectiveRole = currentPositionName.value || pref.value.defaultRole || 'Java 后端开发'
   const focus = (() => {
     try { const areas = JSON.parse(pref.value.focusAreas || '[]'); return Array.isArray(areas) ? areas.join(',') : '' }
     catch { return '' }
   })()
   const path = mode === 'video' ? '/video-interview' : '/interview'
-  router.push({ path, query: {
+  const query = {
     role: effectiveRole,
     isTailored: 'true',
     difficulty: pref.value.difficultyLevel || 'mid',
     focus
-  }})
+  }
+  if (selectedPositionId.value) query.positionId = selectedPositionId.value
+  router.push({ path, query })
 }
 
 </script>
@@ -468,6 +637,15 @@ const confirmStart = (mode) => {
   flex: 0 0 auto;
 }
 
+.position-select {
+  width: 220px;
+}
+
+.option-tag {
+  margin-left: 8px;
+  font-size: 11px;
+}
+
 .status-pill {
   border-color: rgba(58, 56, 139, 0.12);
   color: #3a388b;
@@ -535,9 +713,10 @@ const confirmStart = (mode) => {
 
 .hero-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
   gap: 12px;
-  min-width: 0;
+  width: min(100%, 420px);
+  min-width: 320px;
 }
 
 .hero-metric {
@@ -558,9 +737,47 @@ const confirmStart = (mode) => {
 
 .hero-metric strong {
   display: block;
+  overflow-wrap: anywhere;
   color: #191c1e;
   font-size: 15px;
   line-height: 1.4;
+}
+
+.action-metric {
+  grid-column: 1 / -1;
+}
+
+.hero-metric-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.upload-shell {
+  padding: 16px 24px;
+}
+
+.upload-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.upload-hint {
+  color: #5a6678;
+  font-size: 13px;
+}
+
+.resume-upload-inline {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.resume-upload-inline :deep(.el-upload-dragger) {
+  border-radius: 16px;
+  background: #faf9f5;
 }
 
 .bento-grid {
@@ -830,6 +1047,8 @@ const confirmStart = (mode) => {
 
   .hero-metrics {
     grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
   }
 
   .bento-grid {

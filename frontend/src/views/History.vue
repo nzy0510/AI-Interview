@@ -11,6 +11,27 @@
       </div>
 
       <div class="header-actions">
+        <el-select
+          v-model="selectedPositionId"
+          class="position-select"
+          placeholder="选择岗位"
+          :loading="positionLoading"
+          @change="onPositionChange"
+        >
+          <el-option label="全部岗位" :value="ALL_POSITIONS_VALUE">
+            <span>全部岗位</span>
+            <span class="option-count">{{ totalHistoryCount }}</span>
+          </el-option>
+          <el-option
+            v-for="pos in positionOptions"
+            :key="pos.id"
+            :label="pos.name"
+            :value="pos.id"
+          >
+            <span>{{ pos.name }}</span>
+            <span class="option-count">{{ pos.historyCount }}</span>
+          </el-option>
+        </el-select>
         <el-tag effect="plain" type="info" class="status-pill">历史归档</el-tag>
         <el-button type="primary" class="primary-cta" @click="router.push('/interview/setup')">开始面试</el-button>
       </div>
@@ -153,29 +174,14 @@
           <el-empty v-else :description="reportCenter.emptyStates.all" />
         </section>
 
-        <section v-if="positions.length" class="surface-card section-shell coverage-section">
+        <section class="surface-card section-shell coverage-section">
           <div class="section-head">
             <div>
               <p class="section-kicker">知识覆盖</p>
               <h2 class="section-title">知识领域覆盖</h2>
-              <p class="section-desc">选择岗位查看该岗位下 RAG 真实命中的知识原子覆盖度。</p>
+              <p class="section-desc">{{ activePositionId ? '当前岗位下 RAG 真实命中的知识原子覆盖度。' : '全部岗位下 RAG 真实命中的知识原子覆盖度。' }}</p>
             </div>
             <div class="coverage-actions">
-              <el-select
-                v-model="selectedPositionId"
-                placeholder="选择岗位"
-                size="default"
-                :loading="coverageLoading"
-                @change="fetchCoverage"
-              >
-                <el-option label="全部岗位" :value="null" />
-                <el-option
-                  v-for="pos in positions"
-                  :key="pos.id"
-                  :label="pos.name"
-                  :value="pos.id"
-                />
-              </el-select>
               <el-tag v-if="knowledgeCoverage?.details?.length" effect="plain" type="info">
                 {{ knowledgeCoverage.details.length }} 个领域
               </el-tag>
@@ -471,7 +477,7 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft, RefreshRight, Search } from '@element-plus/icons-vue'
 import { getHistoryListAPI, getInterviewReportAPI, retryJobAPI } from '@/api/interview'
 import { getKnowledgeCoverageAPI } from '@/api/user'
-import { getKnowledgeWorkspaceAPI } from '@/api/knowledgeWorkspace'
+import { getVisiblePositionsAPI } from '@/api/position'
 import { reportCenterConfig } from '@/mock/reports'
 import * as echarts from 'echarts'
 import KnowledgeCoverageChart from '@/components/charts/KnowledgeCoverageChart.vue'
@@ -488,9 +494,13 @@ const modeFilter = ref('all')
 const growthChartRef = ref(null)
 const miniRadarRef = ref(null)
 const knowledgeCoverage = ref(null)
-const positions = ref([])
-const selectedPositionId = ref(null)
+const positionOptions = ref([])
+const allVisiblePositions = ref([])
+const ALL_POSITIONS_VALUE = 'ALL'
+const selectedPositionId = ref(ALL_POSITIONS_VALUE)
+const positionLoading = ref(false)
 const coverageLoading = ref(false)
+const totalHistoryCount = ref(0)
 let growthChartInstance = null
 let miniRadarInstance = null
 const drawerOpen = ref(false)
@@ -579,6 +589,8 @@ const visibleHistoryList = computed(() => filteredHistoryList.value)
 const chartData = computed(() => [...visibleHistoryList.value].reverse())
 const latestRecord = computed(() => sortedHistoryList.value[0] || null)
 const previousRecord = computed(() => sortedHistoryList.value[1] || null)
+const activePositionId = computed(() => selectedPositionId.value === ALL_POSITIONS_VALUE ? null : selectedPositionId.value)
+const selectedScopeLabel = computed(() => activePositionId.value ? '当前岗位' : '全部岗位')
 const averageScore = computed(() => {
   if (!sortedHistoryList.value.length) return 0
   const total = sortedHistoryList.value.reduce((sum, row) => sum + (Number(row.score) || 0), 0)
@@ -599,8 +611,8 @@ const summaryCards = computed(() => {
   const textCount = total - videoCount
   const latest = latestRecord.value
   return [
-    { label: '累计报告', value: total || '--', hint: total ? '所有已归档记录' : '等待面试结束后生成' },
-    { label: '平均得分', value: total ? `${averageScore.value}` : '--', hint: total ? '基于全部历史记录' : '暂无可计算数据' },
+    { label: '累计报告', value: total || '--', hint: total ? `${selectedScopeLabel.value}已归档记录` : '等待面试结束后生成' },
+    { label: '平均得分', value: total ? `${averageScore.value}` : '--', hint: total ? `基于${selectedScopeLabel.value}记录` : '暂无可计算数据' },
     { label: '视频 / 文字', value: total ? `${videoCount} / ${textCount}` : '--', hint: '按面试模式拆分' },
     { label: '最近更新', value: latest ? formatDate(latest.createTime) : '--', hint: latest ? latest.position : '尚未有新报告' }
   ]
@@ -612,7 +624,7 @@ const overviewMetrics = computed(() => [
     value: sortedHistoryList.value.length || '--',
     trend: sortedHistoryList.value.length ? '稳步积累' : '待开始',
     tagType: 'info',
-    description: '所有归档面试记录都会在这里汇总。'
+    description: `${selectedScopeLabel.value}的归档面试记录汇总。`
   },
   {
     kicker: '平均分',
@@ -665,20 +677,40 @@ const strongestAbility = computed(() => {
   }
 })
 
-// ─── Knowledge Coverage ───────────────────────────────────────────────────────
+// ─── Position & History Fetching ────────────────────────────────────────────────
 const fetchPositions = async () => {
+  positionLoading.value = true
   try {
-    const data = await getKnowledgeWorkspaceAPI()
-    positions.value = data?.positions || []
+    const data = await getVisiblePositionsAPI()
+    positionOptions.value = (data || []).filter(p => p.historyCount > 0)
+    allVisiblePositions.value = data || []
+    totalHistoryCount.value = (data || []).reduce((sum, p) => sum + p.historyCount, 0)
   } catch {
-    positions.value = []
+    positionOptions.value = []
+    allVisiblePositions.value = []
+    totalHistoryCount.value = 0
+  } finally {
+    positionLoading.value = false
+  }
+}
+
+const fetchHistory = async () => {
+  loading.value = true
+  try {
+    const params = activePositionId.value ? { positionId: activePositionId.value } : undefined
+    historyList.value = await getHistoryListAPI(params)
+  } catch {
+    historyList.value = []
+  } finally {
+    loading.value = false
+    nextTick(() => { drawGrowthChart() })
   }
 }
 
 const fetchCoverage = async () => {
   coverageLoading.value = true
   try {
-    const params = selectedPositionId.value ? { positionId: selectedPositionId.value } : undefined
+    const params = activePositionId.value ? { positionId: activePositionId.value } : undefined
     const insight = await getKnowledgeCoverageAPI(params)
     if (insight?.knowledgeCoverage) knowledgeCoverage.value = insight.knowledgeCoverage
     else knowledgeCoverage.value = null
@@ -689,33 +721,30 @@ const fetchCoverage = async () => {
   }
 }
 
+const onPositionChange = async () => {
+  await fetchHistory()
+  await fetchCoverage()
+}
+
 onMounted(async () => {
-  try {
-    historyList.value = await getHistoryListAPI()
-  } catch { historyList.value = [] }
-  finally {
-    loading.value = false
-    nextTick(() => { drawGrowthChart() })
-  }
+  // 并行获取岗位列表和历史记录
+  await Promise.all([fetchPositions(), fetchHistory()])
 
-  // 获取岗位列表
-  await fetchPositions()
-
-  // 设置默认岗位：优先使用最近面试记录的岗位，否则使用第一个岗位
-  if (positions.value.length) {
-    if (latestRecord.value?.positionId || latestRecord.value?.position) {
-      const matched = positions.value.find(p => p.id === latestRecord.value.positionId)
-        || positions.value.find(p => p.name === latestRecord.value.position)
-      selectedPositionId.value = matched ? matched.id : positions.value[0].id
-    } else {
-      selectedPositionId.value = positions.value[0].id
+  // 设置默认岗位：优先使用最近面试记录的岗位，否则使用第一个有记录的岗位
+  if (positionOptions.value.length) {
+    if (latestRecord.value?.positionId) {
+      const matched = positionOptions.value.find(p => p.id === latestRecord.value.positionId)
+      if (matched) {
+        selectedPositionId.value = matched.id
+        await fetchHistory()
+      }
+      // 如果最近记录的岗位不在可见岗位中（已删除/不可见），保持 null（全部岗位）
     }
+    // 如果没有最近记录或最近记录无 positionId，保持 null（全部岗位）
   }
 
   // 获取知识覆盖数据
-  if (selectedPositionId.value) {
-    await fetchCoverage()
-  }
+  await fetchCoverage()
 
   window.addEventListener('resize', handleResize)
 })
@@ -1074,6 +1103,17 @@ const drawMiniRadar = () => {
   flex: 0 0 auto;
 }
 
+.position-select {
+  width: 220px;
+}
+
+.option-count {
+  float: right;
+  margin-left: 16px;
+  color: #87867f;
+  font-size: 12px;
+}
+
 .status-pill {
   border-color: rgba(58, 56, 139, 0.12);
   color: #3a388b;
@@ -1209,6 +1249,37 @@ const drawMiniRadar = () => {
   margin-top: 10px;
   color: #5a6678;
   font-size: 13px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-tile {
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #faf9f5;
+  border: 1px solid rgba(69, 70, 82, 0.08);
+}
+
+.summary-label,
+.summary-hint {
+  display: block;
+  color: #5a6678;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.summary-value {
+  display: block;
+  margin: 6px 0 4px;
+  overflow-wrap: anywhere;
+  color: #191c1e;
+  font-size: 20px;
+  line-height: 1.25;
 }
 
 .overview-shell {
@@ -1826,6 +1897,10 @@ const drawMiniRadar = () => {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .position-select {
+    width: min(100%, 240px);
   }
 
   .mode-switch {

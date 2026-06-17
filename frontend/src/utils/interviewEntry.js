@@ -26,15 +26,20 @@ export function parseFocusAreas(queryFocus) {
 
 export async function loadTailoredResumeQuestions({
   isTailored,
+  positionId,
   storageKey,
   apiBaseUrl,
   token,
   fetchImpl = fetch
 }) {
   if (!isTailored) return undefined
+  if (!positionId) {
+    localStorage.removeItem(storageKey)
+    return undefined
+  }
 
   try {
-    const resp = await fetchImpl(`${apiBaseUrl || ''}/api/resume/profile`, {
+    const resp = await fetchImpl(`${apiBaseUrl || ''}/api/resume/profile?positionId=${encodeURIComponent(positionId)}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     if (!resp.ok) {
@@ -42,9 +47,10 @@ export async function loadTailoredResumeQuestions({
       return undefined
     }
     const result = await resp.json()
-    if (result.code === 200 && result.data && result.data.tailoredQuestions) {
-      localStorage.setItem(storageKey, JSON.stringify(result.data))
-      return result.data.tailoredQuestions
+    const analysis = result?.data?.analysis || result?.data
+    if (result.code === 200 && analysis?.tailoredQuestions) {
+      localStorage.setItem(storageKey, JSON.stringify(analysis))
+      return analysis.tailoredQuestions
     }
     localStorage.removeItem(storageKey)
   } catch {}

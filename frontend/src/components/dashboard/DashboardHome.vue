@@ -55,7 +55,7 @@
           </div>
           <div class="overview-card" data-tone="neutral">
             <span class="overview-label">简历状态</span>
-            <div class="overview-value">{{ hasResume ? '已解析' : '未上传' }}</div>
+            <div class="overview-value">{{ resumeStatusValue }}</div>
           </div>
           <div class="overview-card" data-tone="accent">
             <span class="overview-label">知识覆盖</span>
@@ -148,75 +148,6 @@
       </aside>
     </div>
 
-    <!-- Resume Dialog -->
-    <el-dialog v-model="showResumeDialog" title="面试准备" width="480" center :close-on-click-modal="false">
-      <div class="dialog-panel">
-        <el-icon class="dialog-icon"><Document /></el-icon>
-        <template v-if="hasResume">
-          <h3>检测到已有简历画像</h3>
-          <p>系统将复用上次上传的简历进行定制化面试，也可以重新上传覆盖。</p>
-          <el-button type="success" class="dialog-primary" @click="useExistingResume">
-            使用已有简历，选择面试模式
-          </el-button>
-          <div class="dialog-divider"><span>或</span></div>
-          <el-upload class="resume-upload" drag :action="uploadUrl"
-            :headers="uploadHeaders" :show-file-list="false"
-            :on-success="handleResumeSuccess" :on-error="handleResumeError"
-            :before-upload="beforeResumeUpload" accept=".pdf">
-            <div class="el-upload__text" v-if="!isParsing"><em>重新上传新简历</em>，覆盖旧画像</div>
-            <div class="el-upload__text" v-else>
-              <el-icon class="is-loading"><Loading /></el-icon> 正在深度解析简历，请稍候...
-            </div>
-          </el-upload>
-        </template>
-        <template v-else>
-          <h3>是否提供个人简历？</h3>
-          <p>系统会先解析简历，再结合角色和模式生成更贴近真实面试的追问。</p>
-          <el-upload class="resume-upload" drag :action="uploadUrl"
-            :headers="uploadHeaders" :show-file-list="false"
-            :on-success="handleResumeSuccess" :on-error="handleResumeError"
-            :before-upload="beforeResumeUpload" accept=".pdf">
-            <div class="el-upload__text" v-if="!isParsing"><em>点击上传 PDF 简历</em>，生成定制化画像</div>
-            <div class="el-upload__text" v-else>
-              <el-icon class="is-loading"><Loading /></el-icon> 正在深度解析简历，请稍候...
-            </div>
-          </el-upload>
-          <div class="dialog-divider"><span>或</span></div>
-          <el-button class="dialog-secondary" plain @click="skipResumeAndSelectMode">
-            暂无简历，直接选择文字 / 视频模式
-          </el-button>
-        </template>
-      </div>
-    </el-dialog>
-
-    <!-- Resume Manager Dialog -->
-    <el-dialog v-model="showResumeManager" title="简历管理" width="480" center>
-      <div class="dialog-panel">
-        <el-icon class="dialog-icon"><TrendCharts /></el-icon>
-        <template v-if="hasResume">
-          <h3>当前简历画像已就绪</h3>
-          <p>面试时会自动复用该画像，也可以上传新的简历覆盖。</p>
-          <el-button type="primary" class="dialog-primary" @click="goResumePage">查看画像详情</el-button>
-          <div class="dialog-divider"><span>更新简历</span></div>
-        </template>
-        <template v-else>
-          <h3>尚未上传简历</h3>
-          <p>上传简历后，面试时将自动使用 AI 定制化提问。</p>
-        </template>
-        <el-upload class="resume-upload" drag :action="uploadUrl"
-          :headers="uploadHeaders" :show-file-list="false"
-          :on-success="handleResumeManagerSuccess" :on-error="handleResumeError"
-          :before-upload="beforeResumeUpload" accept=".pdf">
-          <div class="el-upload__text" v-if="!isParsing">
-            <em>{{ hasResume ? '上传新简历覆盖' : '点击上传 PDF 简历' }}</em>
-          </div>
-          <div class="el-upload__text" v-else>
-            <el-icon class="is-loading"><Loading /></el-icon> 正在深度解析简历，请稍候...
-          </div>
-        </el-upload>
-      </div>
-    </el-dialog>
-
     <!-- Mode Dialog -->
     <el-dialog v-model="showModeDialog" title="选择面试模式" width="480" center :close-on-click-modal="false">
       <div class="mode-options">
@@ -242,14 +173,15 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  ArrowRight, Document, Loading, Operation,
+  ArrowRight, Document, Operation,
   TrendCharts, VideoCamera
 } from '@element-plus/icons-vue'
 import { getLlmConfigStatusAPI } from '@/api/llm'
 import { getHistoryListAPI } from '@/api/interview'
 import { getMentorInsightAPI, getKnowledgeCoverageAPI, getPreferenceAPI, getCurrentUserAPI } from '@/api/user'
 import { getKnowledgeWorkspaceAPI } from '@/api/knowledgeWorkspace'
-import { getUsername, getNickname, setNickname, userKey, withAuthHeaders } from '@/utils/auth'
+import { getVisiblePositionsAPI } from '@/api/position'
+import { getUsername, getNickname, setNickname } from '@/utils/auth'
 import {
   buildLlmConfigRouteQuery,
   createUnknownLlmConfigStatus,
@@ -260,8 +192,6 @@ import { interviewSetupDefaults } from '@/mock/setup'
 const router = useRouter()
 
 const displayName = ref(getNickname() || getUsername() || '用户')
-const hasResume = ref(false)
-const resumeProfile = ref(null)
 const historyTotal = ref(0)
 const latestScore = ref('--')
 const knowledgeCats = ref('--')
@@ -269,14 +199,11 @@ const recentInterviews = ref([])
 const mentorInsight = ref(null)
 const llmStatus = ref(createUnknownLlmConfigStatus())
 const workspacePositions = ref([])
+const visiblePositionTotal = ref(0)
+const resumeReadyCount = ref(0)
 
 const showModeDialog = ref(false)
-const showResumeDialog = ref(false)
-const showResumeManager = ref(false)
-const isParsing = ref(false)
 const selectedRole = ref('')
-const uploadUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/api/resume/parse`
-const uploadHeaders = ref(withAuthHeaders())
 
 const pref = ref({
   defaultMode: 'text',
@@ -307,33 +234,10 @@ const displayTitle = computed(() => {
   return `${recentInterviews.value[0].position}方向`
 })
 
-const readCachedResume = () => {
-  hasResume.value = false
-  resumeProfile.value = null
-}
-
-const checkExistingResume = async () => {
-  readCachedResume()
-  try {
-    const resp = await fetch(uploadUrl.replace('/parse', '/profile'), {
-      headers: withAuthHeaders()
-    })
-    if (resp.ok) {
-      const result = await resp.json()
-      if (result.code === 200 && result.data) {
-        localStorage.setItem(userKey('resume_analysis'), JSON.stringify(result.data))
-        hasResume.value = true
-        resumeProfile.value = result.data
-      } else {
-        localStorage.removeItem(userKey('resume_analysis'))
-      }
-    } else {
-      localStorage.removeItem(userKey('resume_analysis'))
-    }
-  } catch {
-    localStorage.removeItem(userKey('resume_analysis'))
-  }
-}
+const resumeStatusValue = computed(() => {
+  if (!visiblePositionTotal.value) return '按岗位管理'
+  return `${resumeReadyCount.value}/${visiblePositionTotal.value}`
+})
 
 const loadHistory = async () => {
   try {
@@ -435,45 +339,27 @@ const goVideoInterview = () => {
   if (!ensureLlmReady()) return
   router.push({ path: '/video-interview', query: buildInterviewQuery('video') })
 }
-const goResumePage = () => { showResumeManager.value = false; router.push({ path: '/resume' }) }
-const openResumeManager = () => { showResumeManager.value = true }
-const useExistingResume = () => { showResumeDialog.value = false; showModeDialog.value = true }
-const skipResumeAndSelectMode = () => { showResumeDialog.value = false; showModeDialog.value = true }
-
-const beforeResumeUpload = (file) => {
-  if (file.type !== 'application/pdf') { ElMessage.error('只能上传 PDF 格式的简历！'); return false }
-  isParsing.value = true
-  uploadHeaders.value = withAuthHeaders()
-  return true
+const goResumePage = () => {
+  const positionId = selectedRole.value ? resolvePositionId(selectedRole.value) : null
+  router.push({ path: '/resume', query: positionId ? { positionId } : {} })
 }
 
-const handleResumeSuccess = (response) => {
-  isParsing.value = false; showResumeDialog.value = false
-  if (response?.code === 200) {
-    if (response.data) { localStorage.setItem(userKey('resume_analysis'), JSON.stringify(response.data)); hasResume.value = true }
-    ElMessage.success('简历专属画像生成完毕！')
-    router.push({ path: '/resume', query: { role: selectedRole.value } })
-  } else { ElMessage.error(`简历解析异常：${response?.msg || '未知错误'}`) }
+const loadResumePositionSummary = async () => {
+  try {
+    const data = await getVisiblePositionsAPI()
+    const positions = data || []
+    visiblePositionTotal.value = positions.length
+    resumeReadyCount.value = positions.filter((item) => item.hasResumeProfile).length
+  } catch {
+    visiblePositionTotal.value = 0
+    resumeReadyCount.value = 0
+  }
 }
-
-const handleResumeManagerSuccess = (response) => {
-  isParsing.value = false
-  if (response?.code === 200) {
-    if (response.data) { localStorage.setItem(userKey('resume_analysis'), JSON.stringify(response.data)); hasResume.value = true }
-    showResumeManager.value = false; ElMessage.success('简历画像已更新！'); router.push({ path: '/resume' })
-  } else { ElMessage.error(`简历解析异常：${response?.msg || '未知错误'}`) }
-}
-
-const handleResumeError = () => { isParsing.value = false; ElMessage.error('简历解析失败，请检查文件后重试！') }
+const openResumeManager = () => { goResumePage() }
 
 const confirmMode = (mode) => {
   showModeDialog.value = false
-  const isTailored = hasResume.value ? 'true' : 'false'
-  // Extract role from resume profile if available, otherwise from preferences
   let role = selectedRole.value
-  if (!role && resumeProfile.value) {
-    role = resumeProfile.value.position || resumeProfile.value.targetRole || ''
-  }
   if (!role) role = pref.value.defaultRole || interviewSetupDefaults.roleOptions[0]
   const positionId = resolvePositionId(role)
   const focus = (() => {
@@ -481,7 +367,7 @@ const confirmMode = (mode) => {
     catch { return '' }
   })()
   const path = mode === 'video' ? '/video-interview' : '/interview'
-  const query = { role, isTailored, difficulty: pref.value.difficultyLevel || 'mid', focus }
+  const query = { role, isTailored: 'false', difficulty: pref.value.difficultyLevel || 'mid', focus }
   if (positionId) query.positionId = positionId
   router.push({ path, query })
 }
@@ -499,7 +385,7 @@ const loadPreference = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([checkExistingResume(), loadHistory(), loadPreference(), loadNickname(), loadLlmStatus(), loadPositions()])
+  await Promise.all([loadHistory(), loadPreference(), loadNickname(), loadLlmStatus(), loadPositions(), loadResumePositionSummary()])
   // 页面核心数据已就绪，Mentor 异步加载不阻塞渲染
   loadMentor()
 })

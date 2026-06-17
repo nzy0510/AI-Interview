@@ -222,6 +222,7 @@ onMounted(async () => {
   // 3. Start interview session
   const resumeQuestions = await loadTailoredResumeQuestions({
     isTailored: route.query.isTailored === 'true',
+    positionId: positionId.value,
     storageKey: userKey('resume_analysis'),
     apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '',
     token: localStorage.getItem('token'),

@@ -76,6 +76,10 @@
 
               <div class="status-grid">
                 <div class="status-item">
+                  <span class="status-label">目标岗位</span>
+                  <strong>{{ currentPositionName }}</strong>
+                </div>
+                <div class="status-item">
                   <span class="status-label">画像来源</span>
                   <strong>{{ resumeSnapshot.resumeSource }}</strong>
                 </div>
@@ -263,6 +267,11 @@ const experienceLevel = ref('mid')
 const focusAreas = ref([])
 const mode = ref('text')
 const llmStatus = ref(createUnknownLlmConfigStatus())
+let resumeProfileRequestSeq = 0
+
+const currentPositionName = computed(() => {
+  return workspacePositions.value.find((item) => item.id === selectedPositionId.value)?.name || role.value || '未选择'
+})
 
 const clearResumeState = () => {
   resumeAnalysis.value = null
@@ -270,25 +279,31 @@ const clearResumeState = () => {
 }
 
 const loadResumeProfile = async () => {
+  const requestSeq = ++resumeProfileRequestSeq
   clearResumeState()
+  if (!selectedPositionId.value) return
   try {
     if (!getToken()) return
-    const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/resume/profile`, {
+    const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/resume/profile?positionId=${selectedPositionId.value}`, {
       headers: withAuthHeaders()
     })
+    if (requestSeq !== resumeProfileRequestSeq) return
     if (!resp.ok) {
       localStorage.removeItem(userKey('resume_analysis'))
       return
     }
     const result = await resp.json()
     if (result.code === 200 && result.data) {
-      resumeAnalysis.value = result.data
+      // Phase 2: data is ResumeProfileResponse wrapper; extract analysis for display
+      const profileData = result.data.analysis || result.data
+      resumeAnalysis.value = profileData
       resumeReady.value = true
-      localStorage.setItem(userKey('resume_analysis'), JSON.stringify(result.data))
+      localStorage.setItem(userKey('resume_analysis'), JSON.stringify(profileData))
     } else {
       localStorage.removeItem(userKey('resume_analysis'))
     }
   } catch {
+    if (requestSeq !== resumeProfileRequestSeq) return
     localStorage.removeItem(userKey('resume_analysis'))
   }
 }
@@ -436,11 +451,12 @@ const autoSavePreference = () => {
 }
 
 onMounted(async () => {
-  await loadResumeProfile()
+  // Phase 2: 先加载岗位列表和偏好，解析 positionId，再按岗位加载简历画像
   await loadWorkspacePositions()
   await loadPreference()
-  await loadLlmStatus()
   syncFromQuery()
+  await loadResumeProfile()
+  await loadLlmStatus()
 })
 
 watch(
@@ -449,6 +465,11 @@ watch(
     syncFromQuery()
   }
 )
+
+watch(selectedPositionId, async (nextId, previousId) => {
+  if (nextId === previousId) return
+  await loadResumeProfile()
+})
 
 // Auto-save preference when selections change
 watch([role, experienceLevel, focusAreas, mode], () => {
@@ -678,7 +699,7 @@ const goLlmSettings = () => {
 
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
