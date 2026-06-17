@@ -57,7 +57,6 @@ This file is the lightweight entrypoint for Codex and compatible coding agents i
 - 新增接口时，保持与现有 REST API 风格一致。
 - 不要在 Controller 中写复杂业务逻辑。
 - 不要在 Service 中直接拼接复杂 SQL。
-- Service 中逻辑编写
 - 涉及事务时，优先在 Service 层使用 `@Transactional`。
 - 涉及认证授权时，必须检查 Spring Security / JWT / 拦截器相关逻辑。
 - 不要随意修改 `application.yml`、`SecurityConfig`、`WebMvcConfig` 等全局配置；确需修改时先说明影响范围。
