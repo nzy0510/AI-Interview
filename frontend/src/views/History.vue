@@ -471,567 +471,122 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch, onBeforeUnmount } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { ArrowLeft, RefreshRight, Search } from '@element-plus/icons-vue'
-import { getHistoryListAPI, getInterviewReportAPI, retryJobAPI } from '@/api/interview'
-import { getKnowledgeCoverageAPI } from '@/api/user'
-import { getVisiblePositionsAPI } from '@/api/position'
-import { reportCenterConfig } from '@/mock/reports'
-import * as echarts from 'echarts'
 import KnowledgeCoverageChart from '@/components/charts/KnowledgeCoverageChart.vue'
-import { buildTooltipConfig, buildHeatmapVisualMap, buildHeatmapData } from '@/utils/chartOptions'
-import { normalizeKnowledgePoints } from '@/utils/reportMetrics'
-import { canRetryDetailedReport, normalizeAbility, parseStructuredField, stripInterviewControlMarkers } from '@/utils/interviewReport'
+import { reportCenterConfig } from '@/mock/reports'
+import {
+  ALL_POSITIONS_VALUE,
+  abilityDimensions,
+  excerpt,
+  formatDate,
+  getGradeType,
+  getScoreType,
+  useHistoryData
+} from '@/composables/history/useHistoryData'
+import {
+  emotionColor,
+  emotionLabel,
+  formatAnswerSource,
+  formatItemScore,
+  formatReferenceAnswer,
+  formatSnapshot,
+  phaseLabel,
+  useDetailDrawer
+} from '@/composables/history/useDetailDrawer'
+import { useChartRenderer } from '@/composables/history/useChartRenderer'
 
 const router = useRouter()
-const loading = ref(true)
-const historyList = ref([])
-const chartMode = ref('score')
-const searchKeyword = ref('')
-const modeFilter = ref('all')
-const growthChartRef = ref(null)
-const miniRadarRef = ref(null)
-const knowledgeCoverage = ref(null)
-const positionOptions = ref([])
-const allVisiblePositions = ref([])
-const ALL_POSITIONS_VALUE = 'ALL'
-const selectedPositionId = ref(ALL_POSITIONS_VALUE)
-const positionLoading = ref(false)
-const coverageLoading = ref(false)
-const totalHistoryCount = ref(0)
-let growthChartInstance = null
-let miniRadarInstance = null
-const drawerOpen = ref(false)
-const selected = ref(null)
-const selectedDetailedReport = ref(null)
-const detailLoading = ref(false)
-const detailRetrying = ref(false)
-const detailError = ref('')
-let detailRequestSeq = 0
 const reportCenter = reportCenterConfig
 
-const abilityDimensions = {
-  techDepth:      { label: '技术深度', color: '#409eff' },
-  breadth:        { label: '知识广度', color: '#67c23a' },
-  problemSolving: { label: '解题思路', color: '#e6a23c' },
-  expression:     { label: '表达清晰', color: '#f56c6c' },
-  logic:          { label: '逻辑思维', color: '#909399' },
-  adaptability:   { label: '应变能力', color: '#c71585' }
-}
+const {
+  drawerOpen,
+  selected,
+  selectedDetailedReport,
+  detailLoading,
+  detailRetrying,
+  detailError,
+  selectedAbility,
+  selectedRecs,
+  selectedEmotion,
+  selectedFeedback,
+  selectedKnowledgePoints,
+  detailedReportItems,
+  detailStatusText,
+  detailStatusType,
+  detailFailureMessage,
+  canRetrySelectedDetailedReport,
+  openDetail,
+  retryDetailedReport
+} = useDetailDrawer()
 
-const gradeScore = { A: 1.0, B: 0.8, C: 0.6, D: 0.4, E: 0.2 }
-const getGradeType = g => ({ A: 'danger', B: 'success', C: 'primary', D: 'warning' }[g] || 'info')
-const getScoreType = s => s >= 85 ? 'success' : s >= 70 ? 'primary' : s >= 55 ? 'warning' : 'danger'
-
-const selectedAbility = computed(() => {
-  return normalizeAbility(selected.value?.abilityJson)
-})
-const selectedRecs = computed(() => {
-  const recommendations = parseStructuredField(selected.value?.recommendations, [])
-  return Array.isArray(recommendations) ? recommendations : []
-})
-const selectedEmotion = computed(() => {
-  const emotion = parseStructuredField(selected.value?.emotionJson, null)
-  return emotion && typeof emotion === 'object' ? emotion : null
-})
-const selectedFeedback = computed(() => stripInterviewControlMarkers(selected.value?.feedback || ''))
-const detailedReportItems = computed(() => {
-  return Array.isArray(selectedDetailedReport.value?.items) ? selectedDetailedReport.value.items : []
-})
-const detailStatusText = computed(() => {
-  if (detailLoading.value) return '加载中'
-  if (detailError.value) return '未完成'
-  const status = selectedDetailedReport.value?.status
-  if (status === 'COMPLETED') return '已生成'
-  if (status === 'FAILED') return '生成失败'
-  if (status === 'RUNNING') return '生成中'
-  if (status === 'PENDING') return '排队中'
-  return '未生成'
-})
-const detailStatusType = computed(() => {
-  if (selectedDetailedReport.value?.status === 'COMPLETED') return 'success'
-  if (selectedDetailedReport.value?.status === 'FAILED') return 'danger'
-  if (detailLoading.value || selectedDetailedReport.value?.status === 'RUNNING') return 'primary'
-  return 'info'
-})
-const detailFailureMessage = computed(() => {
-  if (selectedDetailedReport.value?.status !== 'FAILED') return ''
-  return selectedDetailedReport.value?.errorMessage || '详细报告生成失败，请稍后重试'
-})
-const canRetrySelectedDetailedReport = computed(() => canRetryDetailedReport(selectedDetailedReport.value))
-
-const EMOTION_LABELS = { neutral: '平静', happy: '积极', sad: '低落', angry: '紧张', fearful: '焦虑', disgusted: '不适', surprised: '惊讶' }
-const emotionLabel = (key) => EMOTION_LABELS[key] || key
-const emotionColor = (key) => ({ neutral: '#909399', happy: '#67C23A', sad: '#5B9BD5', angry: '#F56C6C', fearful: '#E6A23C', disgusted: '#C71585', surprised: '#409EFF' }[key] || '#909399')
-
-const sortedHistoryList = computed(() => {
-  return [...historyList.value].sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
-})
-const filteredHistoryList = computed(() => {
-  const keyword = searchKeyword.value.trim().toLowerCase()
-  return sortedHistoryList.value.filter((row) => {
-    const matchesMode = modeFilter.value === 'all'
-      ? true
-      : modeFilter.value === 'video'
-        ? row.interviewMode === 'video'
-        : row.interviewMode !== 'video'
-    const matchesKeyword = !keyword
-      ? true
-      : [row.position, row.feedback, row.score, row.voiceWpm]
-        .filter(Boolean)
-        .some((field) => String(field).toLowerCase().includes(keyword))
-    return matchesMode && matchesKeyword
-  })
-})
-const visibleHistoryList = computed(() => filteredHistoryList.value)
-const chartData = computed(() => [...visibleHistoryList.value].reverse())
-const latestRecord = computed(() => sortedHistoryList.value[0] || null)
-const previousRecord = computed(() => sortedHistoryList.value[1] || null)
-const activePositionId = computed(() => selectedPositionId.value === ALL_POSITIONS_VALUE ? null : selectedPositionId.value)
-const selectedScopeLabel = computed(() => activePositionId.value ? '当前岗位' : '全部岗位')
-const averageScore = computed(() => {
-  if (!sortedHistoryList.value.length) return 0
-  const total = sortedHistoryList.value.reduce((sum, row) => sum + (Number(row.score) || 0), 0)
-  return Math.round(total / sortedHistoryList.value.length)
-})
-const scoreDelta = computed(() => {
-  if (!latestRecord.value || !previousRecord.value) return null
-  return Number(latestRecord.value.score || 0) - Number(previousRecord.value.score || 0)
-})
-const scoreDeltaText = computed(() => {
-  if (scoreDelta.value == null) return '暂无前后对比'
-  const prefix = scoreDelta.value > 0 ? '+' : ''
-  return `较上一场 ${prefix}${scoreDelta.value} 分`
-})
-const summaryCards = computed(() => {
-  const total = sortedHistoryList.value.length
-  const videoCount = sortedHistoryList.value.filter((row) => row.interviewMode === 'video').length
-  const textCount = total - videoCount
-  const latest = latestRecord.value
-  return [
-    { label: '累计报告', value: total || '--', hint: total ? `${selectedScopeLabel.value}已归档记录` : '等待面试结束后生成' },
-    { label: '平均得分', value: total ? `${averageScore.value}` : '--', hint: total ? `基于${selectedScopeLabel.value}记录` : '暂无可计算数据' },
-    { label: '视频 / 文字', value: total ? `${videoCount} / ${textCount}` : '--', hint: '按面试模式拆分' },
-    { label: '最近更新', value: latest ? formatDate(latest.createTime) : '--', hint: latest ? latest.position : '尚未有新报告' }
-  ]
-})
-const overviewMetrics = computed(() => [
-  {
-    kicker: '报告数',
-    label: '累计报告',
-    value: sortedHistoryList.value.length || '--',
-    trend: sortedHistoryList.value.length ? '稳步积累' : '待开始',
-    tagType: 'info',
-    description: `${selectedScopeLabel.value}的归档面试记录汇总。`
-  },
-  {
-    kicker: '平均分',
-    label: '平均得分',
-    value: sortedHistoryList.value.length ? `${averageScore.value}` : '--',
-    trend: sortedHistoryList.value.length ? '基线' : '暂无',
-    tagType: sortedHistoryList.value.length ? 'success' : 'info',
-    description: '用来快速判断整体稳定性。'
-  },
-  {
-    kicker: '模式分布',
-    label: '视频 / 文字',
-    value: sortedHistoryList.value.length
-      ? `${sortedHistoryList.value.filter((row) => row.interviewMode === 'video').length} / ${sortedHistoryList.value.filter((row) => row.interviewMode !== 'video').length}`
-      : '--',
-    trend: '结构',
-    tagType: 'primary',
-    description: '帮助查看训练模式的分布。'
-  },
-  {
-    kicker: '变化趋势',
-    label: '最近变化',
-    value: scoreDelta.value == null ? '--' : `${scoreDelta.value > 0 ? '+' : ''}${scoreDelta.value}`,
-    trend: scoreDelta.value == null ? '无对比' : scoreDelta.value > 0 ? '上升' : scoreDelta.value < 0 ? '回落' : '持平',
-    tagType: scoreDelta.value == null ? 'info' : scoreDelta.value > 0 ? 'success' : scoreDelta.value < 0 ? 'warning' : 'info',
-    description: '和上一场面试对比的分数变化。'
-  }
-])
-const strongestAbility = computed(() => {
-  const source = selected.value || latestRecord.value
-  const ability = normalizeAbility(source?.abilityJson)
-  const entries = Object.entries(ability).filter(([key]) => abilityDimensions[key])
-  if (!entries.length) {
-    return { label: '暂无画像', grade: '--', description: '等到报告详情展开后，会在这里显示主能力项。' }
-  }
-
-  let bestKey = entries[0][0]
-  let bestVal = entries[0][1]
-  entries.forEach(([key, grade]) => {
-    if ((gradeScore[grade] || 0) > (gradeScore[bestVal] || 0)) {
-      bestKey = key
-      bestVal = grade
-    }
-  })
-
-  return {
-    label: abilityDimensions[bestKey]?.label || bestKey,
-    grade: bestVal,
-    description: '当前最稳定的能力项'
-  }
+let drawGrowthChart = () => {}
+const {
+  loading,
+  historyList,
+  chartMode,
+  searchKeyword,
+  modeFilter,
+  knowledgeCoverage,
+  positionOptions,
+  selectedPositionId,
+  positionLoading,
+  coverageLoading,
+  totalHistoryCount,
+  visibleHistoryList,
+  chartData,
+  latestRecord,
+  activePositionId,
+  scoreDeltaText,
+  summaryCards,
+  overviewMetrics,
+  strongestAbility,
+  onPositionChange,
+  initializeHistory,
+  clearFilters
+} = useHistoryData({
+  selectedRecord: selected,
+  redrawChart: () => drawGrowthChart()
 })
 
-// ─── Position & History Fetching ────────────────────────────────────────────────
-const fetchPositions = async () => {
-  positionLoading.value = true
-  try {
-    const data = await getVisiblePositionsAPI()
-    positionOptions.value = (data || []).filter(p => p.historyCount > 0)
-    allVisiblePositions.value = data || []
-    totalHistoryCount.value = (data || []).reduce((sum, p) => sum + p.historyCount, 0)
-  } catch {
-    positionOptions.value = []
-    allVisiblePositions.value = []
-    totalHistoryCount.value = 0
-  } finally {
-    positionLoading.value = false
-  }
-}
+const chartRenderer = useChartRenderer({
+  abilityDimensions,
+  chartData,
+  chartMode,
+  formatDate,
+  selected,
+  selectedAbility
+})
 
-const fetchHistory = async () => {
-  loading.value = true
-  try {
-    const params = activePositionId.value ? { positionId: activePositionId.value } : undefined
-    historyList.value = await getHistoryListAPI(params)
-  } catch {
-    historyList.value = []
-  } finally {
-    loading.value = false
-    nextTick(() => { drawGrowthChart() })
-  }
-}
+const {
+  growthChartRef,
+  miniRadarRef,
+  drawMiniRadar,
+  refreshChart,
+  handleResize,
+  disposeCharts
+} = chartRenderer
 
-const fetchCoverage = async () => {
-  coverageLoading.value = true
-  try {
-    const params = activePositionId.value ? { positionId: activePositionId.value } : undefined
-    const insight = await getKnowledgeCoverageAPI(params)
-    if (insight?.knowledgeCoverage) knowledgeCoverage.value = insight.knowledgeCoverage
-    else knowledgeCoverage.value = null
-  } catch {
-    knowledgeCoverage.value = null
-  } finally {
-    coverageLoading.value = false
-  }
-}
-
-const onPositionChange = async () => {
-  await fetchHistory()
-  await fetchCoverage()
-}
+drawGrowthChart = chartRenderer.drawGrowthChart
 
 onMounted(async () => {
-  // 并行获取岗位列表和历史记录
-  await Promise.all([fetchPositions(), fetchHistory()])
-
-  // 设置默认岗位：优先使用最近面试记录的岗位，否则使用第一个有记录的岗位
-  if (positionOptions.value.length) {
-    if (latestRecord.value?.positionId) {
-      const matched = positionOptions.value.find(p => p.id === latestRecord.value.positionId)
-      if (matched) {
-        selectedPositionId.value = matched.id
-        await fetchHistory()
-      }
-      // 如果最近记录的岗位不在可见岗位中（已删除/不可见），保持 null（全部岗位）
-    }
-    // 如果没有最近记录或最近记录无 positionId，保持 null（全部岗位）
-  }
-
-  // 获取知识覆盖数据
-  await fetchCoverage()
-
+  await initializeHistory()
   window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
-  if (growthChartInstance) growthChartInstance.dispose()
-  if (miniRadarInstance) miniRadarInstance.dispose()
+  disposeCharts()
 })
 
-const handleResize = () => {
-  if (growthChartInstance) growthChartInstance.resize()
-  if (miniRadarInstance) miniRadarInstance.resize()
-}
-
-watch(drawerOpen, (v) => {
-  if (v) nextTick(() => drawMiniRadar())
+watch([drawerOpen, selected], ([open]) => {
+  if (open) nextTick(() => drawMiniRadar())
 })
 
 watch([chartMode, visibleHistoryList], () => {
   nextTick(() => drawGrowthChart())
 }, { deep: true })
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatDate = (d) => d ? new Date(d).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'
-const excerpt = (t) => {
-  const cleaned = stripInterviewControlMarkers(t || '')
-  return cleaned ? (cleaned.length > 60 ? cleaned.slice(0, 60) + '...' : cleaned) : ''
-}
-
-const openDetail = async (row) => {
-  selected.value = row
-  selectedDetailedReport.value = null
-  detailError.value = ''
-  drawerOpen.value = true
-  const requestSeq = ++detailRequestSeq
-  detailLoading.value = true
-  try {
-    const report = await getInterviewReportAPI(row.id, { silent: true })
-    if (requestSeq === detailRequestSeq) {
-      selectedDetailedReport.value = report
-    }
-  } catch (err) {
-    if (requestSeq === detailRequestSeq) {
-      detailError.value = err?.message || '详细报告尚未生成，请稍后刷新查看'
-    }
-  } finally {
-    if (requestSeq === detailRequestSeq) {
-      detailLoading.value = false
-    }
-  }
-}
-
-const reloadSelectedDetailedReport = async () => {
-  if (!selected.value?.id) return
-  const report = await getInterviewReportAPI(selected.value.id, { silent: true })
-  selectedDetailedReport.value = report
-}
-
-const retryDetailedReport = async () => {
-  if (!canRetrySelectedDetailedReport.value || detailRetrying.value) return
-  detailRetrying.value = true
-  try {
-    await retryJobAPI(selectedDetailedReport.value.jobId)
-    ElMessage.success('已重新提交详细报告生成任务')
-    await reloadSelectedDetailedReport()
-  } catch (err) {
-    ElMessage.error(err?.message || '重新生成失败，请稍后重试')
-  } finally {
-    detailRetrying.value = false
-  }
-}
-
-const phaseLabel = (phase) => ({
-  TECHNICAL: '技术轮',
-  HR: 'HR 轮',
-  OPENING: '开场',
-  FINISHED: '结束'
-}[phase] || phase || '未知轮次')
-
-const formatAnswerSource = (source) => ({
-  KNOWLEDGE_BASE: '知识库命中',
-  AI_GENERATED: 'AI 生成'
-}[source] || source || '暂无来源')
-
-const formatItemScore = (score) => {
-  const numeric = Number(score)
-  return Number.isFinite(numeric) ? `${numeric.toFixed(1)} / 10` : '-- / 10'
-}
-
-const formatSnapshot = (snapshotJson) => {
-  if (!snapshotJson) return ''
-  try {
-    const parsed = JSON.parse(snapshotJson)
-    return parsed.promptContext || ''
-  } catch {
-    return ''
-  }
-}
-
-const formatReferenceAnswer = (referenceAnswer) => {
-  if (!referenceAnswer) return '暂无参考答案'
-  try {
-    const parsed = JSON.parse(referenceAnswer)
-    return parsed.promptContext || referenceAnswer
-  } catch {
-    return referenceAnswer
-  }
-}
-
-const clearFilters = () => {
-  modeFilter.value = 'all'
-  searchKeyword.value = ''
-}
-
-const refreshChart = () => {
-  nextTick(() => drawGrowthChart())
-}
-
-// ─── Growth Trend Chart ───────────────────────────────────────────────────────
-const drawGrowthChart = () => {
-  const container = growthChartRef.value
-  if (!container || chartData.value.length === 0) {
-    if (growthChartInstance) growthChartInstance.clear()
-    return
-  }
-
-  if (!growthChartInstance) {
-    growthChartInstance = echarts.init(container)
-  }
-
-  const data = chartData.value
-  const xAxisData = data.map(r => formatDate(r.createTime).split(' ')[0])
-
-  if (chartMode.value === 'score') {
-    const scores = data.map(r => r.score || 0)
-
-    const option = {
-      grid: { top: 40, right: 30, bottom: 40, left: 50 },
-      tooltip: buildTooltipConfig({ trigger: 'axis' }),
-      xAxis: {
-        type: 'category',
-        data: xAxisData,
-        axisLine: { lineStyle: { color: '#cfcdc4' } },
-        axisLabel: { color: '#5e5d59' }
-      },
-      yAxis: {
-        type: 'value',
-        min: 'dataMin',
-        max: 'dataMax',
-        splitLine: { lineStyle: { color: '#e8e6dc', type: 'dashed' } },
-        axisLabel: { color: '#5e5d59' }
-      },
-      series: [
-        {
-          name: '综合得分',
-          data: scores,
-          type: 'line',
-          smooth: true,
-          symbolSize: 8,
-          itemStyle: { color: '#c96442' },
-          lineStyle: { color: '#c96442', width: 3 },
-          areaStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(201, 100, 66, 0.35)' },
-              { offset: 1, color: 'rgba(201, 100, 66, 0.0)' }
-            ])
-          }
-        }
-      ]
-    }
-    growthChartInstance.setOption(option, true)
-  } else if (chartMode.value === 'radar') {
-    // Heatmap mode
-    const dimKeys = Object.keys(abilityDimensions)
-    const dimLabels = Object.values(abilityDimensions).map(d => d.label)
-    const { data: hData, yAxisData } = buildHeatmapData(data, dimKeys, dimLabels)
-
-    const option = {
-      grid: { top: 30, right: 30, bottom: 50, left: 80 },
-      tooltip: {
-        ...buildTooltipConfig(),
-        position: 'top',
-        formatter: (params) => `${params.name} <br/> 维度: <b>${yAxisData[params.value[1]]}</b> <br/> 评级: <b>${params.value[3]}</b>`
-      },
-      xAxis: {
-        type: 'category',
-        data: xAxisData,
-        axisLine: { lineStyle: { color: '#cfcdc4' } },
-        axisLabel: { color: '#5e5d59' },
-        splitArea: { show: true, areaStyle: { color: ['rgba(0,0,0,0.02)', 'transparent'] } }
-      },
-      yAxis: {
-        type: 'category',
-        data: yAxisData,
-        axisLine: { lineStyle: { color: '#cfcdc4' } },
-        axisLabel: { color: '#5e5d59' }
-      },
-      visualMap: buildHeatmapVisualMap(),
-      series: [{
-        name: '能力评级',
-        type: 'heatmap',
-        data: hData,
-        label: {
-          show: true,
-          formatter: (p) => p.data[3],
-          color: '#141413',
-          fontSize: 12,
-          fontWeight: 'bold'
-        },
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowColor: 'rgba(201, 100, 66, 0.3)'
-          }
-        },
-        itemStyle: {
-          borderColor: '#faf9f5',
-          borderWidth: 2,
-          borderRadius: 4
-        }
-      }]
-    }
-    growthChartInstance.setOption(option, true)
-  }
-}
-
-// ─── Drawer Derived Data ─────────────────────────────────────────────────────
-const selectedKnowledgePoints = computed(() => {
-  return normalizeKnowledgePoints(selected.value?.knowledgeJson)
-})
-
-// ─── Mini Radar ───────────────────────────────────────────────────────────────
-const drawMiniRadar = () => {
-  const container = miniRadarRef.value
-  if (!container || !selected.value) return
-  if (!miniRadarInstance) miniRadarInstance = echarts.init(container)
-
-  const ability = selectedAbility.value
-  const gradeToNum = (grade) => {
-    const map = { A: 95, B: 80, C: 65, D: 45, E: 20 }
-    return map[grade] || 20
-  }
-  const scores = [
-    gradeToNum(ability.techDepth),
-    gradeToNum(ability.breadth),
-    gradeToNum(ability.logic),
-    gradeToNum(ability.expression),
-    gradeToNum(ability.adaptability),
-    gradeToNum(ability.problemSolving)
-  ]
-
-  const option = {
-    radar: {
-      indicator: [
-        { name: '技术深度', max: 100 },
-        { name: '知识广度', max: 100 },
-        { name: '逻辑思维', max: 100 },
-        { name: '表达清晰', max: 100 },
-        { name: '应变能力', max: 100 },
-        { name: '解题思路', max: 100 }
-      ],
-      shape: 'polygon',
-      axisName: { color: '#5e5d59', fontSize: 12 },
-      splitNumber: 4,
-      splitArea: { areaStyle: { color: ['rgba(201, 100, 66, 0.05)', 'transparent'] } },
-      axisLine: { lineStyle: { color: 'rgba(0,0,0,0.1)' } },
-      splitLine: { lineStyle: { color: 'rgba(0,0,0,0.08)' } }
-    },
-    series: [{
-      type: 'radar',
-      data: [{
-        value: scores,
-        symbolSize: 4,
-        itemStyle: { color: '#c96442' },
-        lineStyle: { width: 2 },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(201, 100, 66, 0.45)' },
-            { offset: 1, color: 'rgba(201, 100, 66, 0.08)' }
-          ])
-        }
-      }]
-    }]
-  }
-  miniRadarInstance.setOption(option)
-}
 </script>
 
 <style scoped>
