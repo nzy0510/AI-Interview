@@ -10,6 +10,7 @@ import com.interview.entity.InterviewRecord;
 import com.interview.entity.InterviewTurn;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeBase;
+import com.interview.entity.ResumeProfile;
 import com.interview.exception.LlmProviderRequiredException;
 import com.interview.mapper.InterviewPositionMapper;
 import com.interview.mapper.InterviewRecordMapper;
@@ -17,6 +18,7 @@ import com.interview.mapper.InterviewTurnMapper;
 import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.AppJobMapper;
+import com.interview.mapper.ResumeProfileMapper;
 import com.interview.service.AppJobRecoveryService;
 import com.interview.service.AppJobService;
 import com.interview.service.InterviewRetrievalService;
@@ -107,6 +109,9 @@ public class InterviewServiceImpl implements InterviewService {
     @Autowired
     private AppJobMapper appJobMapper;
 
+    @Autowired
+    private ResumeProfileMapper resumeProfileMapper;
+
     @Autowired(required = false)
     private com.interview.service.AppEventService appEventService;
 
@@ -150,15 +155,65 @@ public class InterviewServiceImpl implements InterviewService {
         record.setFocusAreas(serializeFocusAreas(focusAreas));
         record.setCreateTime(LocalDateTime.now());
         record.setChatHistory("[]");
+
+        // Phase 2: 服务端按岗位自动加载简历定制题
+        List<String> effectiveResumeQuestions = resumeQuestions;
+        Long resumeProfileId = null;
+        if (effectiveResumeQuestions == null || effectiveResumeQuestions.isEmpty()) {
+            ResumeProfile profile = loadResumeProfileForPosition(userId, resolvedPosition.getId());
+            if (profile != null) {
+                resumeProfileId = profile.getId();
+                effectiveResumeQuestions = extractTailoredQuestions(profile.getAnalysisJson());
+            }
+        }
+        if (resumeProfileId != null) {
+            record.setResumeProfileId(resumeProfileId);
+        }
+
         interviewRecordMapper.insert(record);
 
         sessionStore.save(record.getId(), new ArrayList<>());
 
-        if (resumeQuestions != null && !resumeQuestions.isEmpty()) {
-            sessionStore.saveTailoredQuestions(record.getId(), resumeQuestions);
+        if (effectiveResumeQuestions != null && !effectiveResumeQuestions.isEmpty()) {
+            sessionStore.saveTailoredQuestions(record.getId(), effectiveResumeQuestions);
         }
 
         return record.getId();
+    }
+
+    /**
+     * 根据 userId + positionId 加载当前岗位的简历画像。
+     */
+    private ResumeProfile loadResumeProfileForPosition(Long userId, Long positionId) {
+        if (positionId == null) return null;
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ResumeProfile> query =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        query.eq(ResumeProfile::getUserId, userId)
+             .eq(ResumeProfile::getPositionId, positionId);
+        return resumeProfileMapper.selectOne(query);
+    }
+
+    /**
+     * 从简历画像 analysisJson 中提取定制题列表。
+     */
+    private List<String> extractTailoredQuestions(String analysisJson) {
+        if (analysisJson == null || analysisJson.isBlank()) return null;
+        try {
+            com.alibaba.fastjson2.JSONObject obj = JSON.parseObject(analysisJson);
+            com.alibaba.fastjson2.JSONArray questions = obj.getJSONArray("tailoredQuestions");
+            if (questions == null || questions.isEmpty()) return null;
+            List<String> result = new ArrayList<>();
+            for (int i = 0; i < questions.size(); i++) {
+                String q = questions.getString(i);
+                if (q != null && !q.isBlank()) {
+                    result.add(q);
+                }
+            }
+            return result.isEmpty() ? null : result;
+        } catch (Exception e) {
+            log.warn("提取简历定制题失败: {}", e.getMessage());
+            return null;
+        }
     }
 
     private InterviewPosition resolveInterviewPosition(Long userId, Long positionId, String fallbackName) {
@@ -551,12 +606,38 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     public java.util.List<InterviewRecord> getHistoryList(Long userId) {
+        return getHistoryList(userId, null);
+    }
+
+    @Override
+    public java.util.List<InterviewRecord> getHistoryList(Long userId, Long positionId) {
+        if (userId == null) {
+            throw new RuntimeException("未登录：缺少用户身份");
+        }
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<InterviewRecord> query =
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         query.eq("user_id", userId)
              .isNotNull("score")
              .orderByDesc("create_time")
              .last("LIMIT 50");
+
+        if (positionId != null) {
+            // 校验岗位可见性
+            InterviewPosition position = interviewPositionMapper.selectOne(
+                    new LambdaQueryWrapper<InterviewPosition>()
+                            .eq(InterviewPosition::getId, positionId)
+                            .eq(InterviewPosition::getStatus, "ACTIVE")
+                            .and(wrapper -> wrapper
+                                    .eq(InterviewPosition::getScope, "PUBLIC")
+                                    .or(nested -> nested
+                                            .eq(InterviewPosition::getScope, "PRIVATE")
+                                            .eq(InterviewPosition::getOwnerUserId, userId))));
+            if (position == null) {
+                throw new RuntimeException("岗位不存在或无权访问");
+            }
+            query.eq("position_id", positionId);
+        }
+
         return interviewRecordMapper.selectList(query);
     }
 

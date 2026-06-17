@@ -19,10 +19,16 @@ public class HistoryController {
     @Autowired
     private InterviewService interviewService;
 
+    /**
+     * 获取当前用户面试历史列表（已评分，按时间倒序，最多50条）。
+     * 可选 positionId 参数按岗位过滤；不传则返回全部岗位记录（全局视图）。
+     */
     @GetMapping("/list")
-    public Result<List<InterviewRecord>> listHistory(HttpServletRequest request) {
+    public Result<List<InterviewRecord>> listHistory(
+            @RequestParam(required = false) Long positionId,
+            HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("currentUserId");
-        List<InterviewRecord> records = interviewService.getHistoryList(userId);
+        List<InterviewRecord> records = interviewService.getHistoryList(userId, positionId);
         return Result.success(records);
     }
 

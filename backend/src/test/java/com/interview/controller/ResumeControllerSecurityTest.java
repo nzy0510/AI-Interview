@@ -29,7 +29,7 @@ class ResumeControllerSecurityTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute("currentUserId", 7L);
 
-        var result = controller.parseResume(file, "AI大模型", request);
+        var result = controller.parseResume(file, 1L, "AI大模型", request);
 
         assertThat(result.getCode()).isEqualTo(400);
         assertThat(result.getMsg()).contains("PDF");
@@ -53,7 +53,7 @@ class ResumeControllerSecurityTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute("currentUserId", 7L);
 
-        var result = controller.parseResume(file, "AI大模型", request);
+        var result = controller.parseResume(file, 1L, "AI大模型", request);
 
         assertThat(result.getCode()).isEqualTo(400);
         assertThat(result.getMsg()).contains("不能超过");

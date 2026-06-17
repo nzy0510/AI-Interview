@@ -17,6 +17,7 @@ import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.AppJobMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.mapper.RagRetrievalRequestLogMapper;
+import com.interview.mapper.ResumeProfileMapper;
 import com.interview.service.impl.InterviewServiceImpl;
 import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
@@ -116,6 +117,9 @@ class InterviewServiceImplTest {
 
     @Mock
     private AppJobMapper appJobMapper;
+
+    @Mock
+    private ResumeProfileMapper resumeProfileMapper;
 
     @InjectMocks
     private InterviewServiceImpl interviewService;

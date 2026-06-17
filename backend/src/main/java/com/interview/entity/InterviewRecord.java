@@ -76,6 +76,9 @@ public class InterviewRecord {
     /** 面试过程中 RAG 命中的知识原子 ID 列表 JSON，去重。如 ["redis-001","mysql-042"] */
     private String usedAtomIds;
 
+    /** 面试启动时使用的简历画像 ID（Phase 2 起记录，历史行可为空） */
+    private Long resumeProfileId;
+
     private LocalDateTime createTime;
 
     private LocalDateTime endTime;

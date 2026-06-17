@@ -1,6 +1,7 @@
 package com.interview.service.impl;
 
 import com.alibaba.fastjson2.JSON;
+import com.interview.dto.ResumeProfileResponse;
 import com.interview.exception.LlmProviderRequiredException;
 import com.interview.service.ResumeService;
 import com.interview.service.UserLlmConfigService;
@@ -22,7 +23,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.interview.entity.InterviewPosition;
 import com.interview.entity.ResumeProfile;
+import com.interview.mapper.InterviewPositionMapper;
 import com.interview.mapper.ResumeProfileMapper;
 import java.time.LocalDateTime;
 
@@ -38,6 +41,9 @@ public class ResumeServiceImpl implements ResumeService {
 
     @Autowired
     private ResumeProfileMapper resumeProfileMapper;
+
+    @Autowired
+    private InterviewPositionMapper positionMapper;
 
     @Autowired
     private com.interview.config.InterviewPrompts interviewPrompts;
@@ -81,7 +87,7 @@ public class ResumeServiceImpl implements ResumeService {
                             new UserMessage("【原始简历内容】\\n" + rawText)
                     )
             );
-            
+
             String jsonStr = aiResponse.content().text().trim();
             // 鲁棒性处理：剔除可能包含的 markdown 语法块
             if (jsonStr.startsWith("```json")) {
@@ -93,7 +99,7 @@ public class ResumeServiceImpl implements ResumeService {
             if (jsonStr.endsWith("```")) {
                 jsonStr = jsonStr.substring(0, jsonStr.length() - 3);
             }
-            
+
             return JSON.parseObject(jsonStr.trim(), Map.class);
         } catch (LlmProviderRequiredException e) {
             throw e;
@@ -104,19 +110,22 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
-    public void saveOrUpdateProfile(Long userId, String position, String analysisJson) {
+    public void saveOrUpdateProfile(Long userId, Long positionId, String positionName, String analysisJson) {
+        // UPSERT by userId + positionId
         LambdaQueryWrapper<ResumeProfile> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ResumeProfile::getUserId, userId);
+        wrapper.eq(ResumeProfile::getUserId, userId)
+               .eq(ResumeProfile::getPositionId, positionId);
         ResumeProfile existing = resumeProfileMapper.selectOne(wrapper);
         if (existing != null) {
-            existing.setPosition(position);
+            existing.setPosition(positionName);
             existing.setAnalysisJson(analysisJson);
             existing.setUpdateTime(LocalDateTime.now());
             resumeProfileMapper.updateById(existing);
         } else {
             ResumeProfile profile = new ResumeProfile();
             profile.setUserId(userId);
-            profile.setPosition(position);
+            profile.setPositionId(positionId);
+            profile.setPosition(positionName);
             profile.setAnalysisJson(analysisJson);
             profile.setCreateTime(LocalDateTime.now());
             profile.setUpdateTime(LocalDateTime.now());
@@ -125,6 +134,44 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
+    public ResumeProfileResponse getProfileByUserIdAndPosition(Long userId, Long positionId) {
+        LambdaQueryWrapper<ResumeProfile> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ResumeProfile::getUserId, userId)
+               .eq(ResumeProfile::getPositionId, positionId);
+        ResumeProfile profile = resumeProfileMapper.selectOne(wrapper);
+        if (profile == null) return null;
+
+        // 查询当前岗位名称（可能与上传时不同）
+        String currentPositionName = null;
+        if (profile.getPositionId() != null) {
+            InterviewPosition pos = positionMapper.selectById(profile.getPositionId());
+            if (pos != null) {
+                currentPositionName = pos.getName();
+            }
+        }
+
+        ResumeProfileResponse resp = new ResumeProfileResponse();
+        resp.setProfileId(profile.getId());
+        resp.setPositionId(profile.getPositionId());
+        resp.setCurrentPositionName(currentPositionName != null ? currentPositionName : profile.getPosition());
+        resp.setUploadPositionSnapshot(profile.getPosition());
+        resp.setUpdatedAt(profile.getUpdateTime());
+        resp.setAnalysis(JSON.parse(profile.getAnalysisJson()));
+        return resp;
+    }
+
+    @Override
+    public void deleteProfileByUserIdAndPosition(Long userId, Long positionId) {
+        LambdaQueryWrapper<ResumeProfile> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ResumeProfile::getUserId, userId)
+               .eq(ResumeProfile::getPositionId, positionId);
+        resumeProfileMapper.delete(wrapper);
+    }
+
+    // ─── 兼容旧接口 ───
+
+    @Override
+    @Deprecated
     public Object getProfileByUserId(Long userId) {
         LambdaQueryWrapper<ResumeProfile> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ResumeProfile::getUserId, userId);
@@ -134,6 +181,7 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
+    @Deprecated
     public void deleteProfileByUserId(Long userId) {
         LambdaQueryWrapper<ResumeProfile> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ResumeProfile::getUserId, userId);

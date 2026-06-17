@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 
 /**
  * 简历画像持久化实体
- * 每个用户保存一份最新的简历解析画像，支持更新覆盖
+ * 每个用户在每岗位保留一份最新的简历解析画像，(userId, positionId) 唯一。
  */
 @Data
 @TableName("resume_profile")
@@ -20,7 +20,10 @@ public class ResumeProfile {
     /** 所属用户 ID */
     private Long userId;
 
-    /** 面试目标岗位 */
+    /** 结构化岗位 ID（Phase 2 起作为隔离键；历史行可为空） */
+    private Long positionId;
+
+    /** 面试目标岗位名称（上传时的快照） */
     private String position;
 
     /** AI 解析后的完整 JSON 画像（匹配度、技能、定制题等） */

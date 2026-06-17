@@ -38,6 +38,12 @@ public interface InterviewService {
     /** 查询用户面试历史列表（已评分，按时间倒序，最多50条） */
     List<InterviewRecord> getHistoryList(Long userId);
 
+    /**
+     * 查询用户面试历史列表。positionId 为 null 时返回全部岗位记录；
+     * positionId 非 null 时先校验岗位可见性，再仅返回该岗位下的记录。
+     */
+    List<InterviewRecord> getHistoryList(Long userId, Long positionId);
+
     /** 查询当前用户单场面试详情 */
     InterviewRecord getHistoryDetail(Long userId, Long recordId);
 }
