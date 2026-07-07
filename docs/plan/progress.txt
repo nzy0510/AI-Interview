@@ -1,0 +1,22 @@
+# Ralph Progress Log
+
+## 2026-07-07 — SMOKE-001: Ralph Smoke Test Handoff Note
+
+### Development process
+1. Read PRD from docs/plan/prd.json — identified SMOKE-001 as the only and highest-priority task.
+2. Created docs/ralph-smoke-test.md with the required heading, handoff note section, and explicit statement that no production code was changed.
+3. Verified the file content against all acceptance criteria using Grep:
+   - Heading "# Ralph Smoke Test" present
+   - "Handoff note" section heading present
+   - "No production code was changed" statement present
+4. Updated PRD task status from "todo" to "done", passes from false to true, and added verification evidence.
+5. Appended this progress note.
+
+### Bugs encountered
+No bugs encountered. The task was a straightforward documentation-only change.
+
+### Note for the next person
+- This was the first Ralph loop iteration. The smoke test passed cleanly.
+- The only new file is docs/ralph-smoke-test.md — it's a safe documentation artifact.
+- docs/plan/prd.json task SMOKE-001 is now done. If you add more tasks to this PRD, they will be the new candidates for the next loop iteration.
+- The workflow is proven: Ralph reads PRD → selects task → implements → verifies → updates bookkeeping → commits.

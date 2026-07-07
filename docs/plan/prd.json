@@ -1,0 +1,33 @@
+{
+  "project": "Ralph Local Smoke Test",
+  "description": "A minimal PRD used to verify that docs/plan/ralph.sh can select one task, make a small change, verify it, update this PRD, append progress, and stop cleanly.",
+  "testSafety": [
+    "This PRD is for local Ralph workflow testing only.",
+    "Do not modify backend, frontend, migrations, deployment files, secrets, or product behavior.",
+    "Only touch docs/ralph-smoke-test.md plus the Ralph bookkeeping files referenced by the script."
+  ],
+  "tasks": [
+    {
+      "id": "SMOKE-001",
+      "title": "Create Ralph smoke test handoff note",
+      "description": "Create docs/ralph-smoke-test.md with a short handoff note proving that Ralph completed one safe documentation-only task.",
+      "priority": 1,
+      "status": "done",
+      "passes": true,
+      "acceptanceCriteria": [
+        "docs/ralph-smoke-test.md exists",
+        "The file contains the heading '# Ralph Smoke Test'",
+        "The file contains a 'Handoff note' section",
+        "The note states that no production code was changed",
+        "This PRD task is updated with completion status and verification evidence",
+        "docs/plan/progress.txt is appended with the development process, bugs encountered or 'no bugs encountered', and a note for the next person"
+      ],
+      "verification": [
+        "Confirm docs/ralph-smoke-test.md exists",
+        "Confirm the required heading and handoff section are present",
+        "Confirm git diff only includes the smoke test document and Ralph bookkeeping files"
+      ],
+      "evidence": "Created docs/ralph-smoke-test.md with heading, handoff note, and confirmation that no production code was changed. All acceptance criteria verified 2026-07-07."
+    }
+  ]
+}
