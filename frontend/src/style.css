@@ -69,6 +69,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(circle at top left, rgba(59, 110, 234, 0.08), transparent 32%),
     radial-gradient(circle at top right, rgba(47, 158, 106, 0.06), transparent 28%),
@@ -78,6 +79,7 @@ body {
 
 #app {
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--app-text);
 }
 

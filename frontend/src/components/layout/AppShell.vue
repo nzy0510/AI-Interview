@@ -250,13 +250,18 @@ watch(
 
 <style scoped>
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   background: var(--app-bg);
 }
 
 .app-shell__sidebar {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -395,6 +400,8 @@ watch(
 
 .app-shell__main {
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -443,6 +450,9 @@ watch(
 .app-shell__content {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 28px;
 }
 
@@ -463,6 +473,7 @@ watch(
 @media (max-width: 1024px) {
   .app-shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .app-shell__sidebar {
@@ -471,7 +482,8 @@ watch(
     z-index: 12;
     min-width: 0;
     max-width: 100vw;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     gap: 16px;
     padding: 18px 16px 14px;
     border-right: 0;

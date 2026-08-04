@@ -29,13 +29,14 @@ const mountReport = () => mount(InterviewReportOverlay, {
 })
 
 describe('InterviewReportOverlay', () => {
-  it('renders as an in-flow report page instead of a fixed overlay', () => {
+  it('renders as a full-screen overlay without remounting the interview workspace', () => {
     const wrapper = mountReport()
 
     expect(wrapper.classes()).toContain('interview-report-page')
     expect(wrapper.classes()).not.toContain('dashboard-overlay')
-    expect(reportSource).not.toMatch(/\.interview-report-page\s*{[^}]*position:\s*fixed/s)
-    expect(reportSource).not.toMatch(/\.interview-report-page\s*{[^}]*overflow-y:\s*auto/s)
+    expect(reportSource).toMatch(/\.interview-report-page\s*{[^}]*position:\s*fixed/s)
+    expect(reportSource).toMatch(/\.interview-report-page\s*{[^}]*overflow-y:\s*auto/s)
+    expect(reportSource).toMatch(/\.interview-report-page\s*{[^}]*backdrop-filter:\s*blur/s)
   })
 
   it.each([interviewSource, videoInterviewSource])('replaces the interview workspace when the report is shown', (source) => {

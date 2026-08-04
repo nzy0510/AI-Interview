@@ -3,6 +3,7 @@ import {
   buildTooltipConfig,
   buildHeatmapVisualMap,
   buildHeatmapData,
+  buildInterviewRadarOption,
   buildKnowledgeRoseOption,
 } from '../chartOptions'
 
@@ -123,5 +124,29 @@ describe('buildKnowledgeRoseOption', () => {
     expect(option.series[0].data).toEqual([{ name: '暂无覆盖', value: 1, total: 0, percent: 0 }])
     expect(option.color).not.toContain('#3a388b')
     expect(option.color).not.toContain('#5250a4')
+  })
+})
+
+describe('buildInterviewRadarOption', () => {
+  it('uses high-contrast labels and grid lines on the light report surface', () => {
+    const echarts = {
+      graphic: {
+        LinearGradient: class LinearGradient {
+          constructor(x, y, x2, y2, colorStops) {
+            this.colorStops = colorStops
+          }
+        },
+      },
+    }
+
+    const option = buildInterviewRadarOption(echarts, [80, 75, 70, 85, 68, 78])
+    const series = option.series[0].data[0]
+
+    expect(option.radar.axisName.color).toBe('#475569')
+    expect(option.radar.axisLine.lineStyle.color).toBe('rgba(71, 85, 105, 0.24)')
+    expect(option.radar.splitLine.lineStyle.color).toBe('rgba(71, 85, 105, 0.24)')
+    expect(series.lineStyle.color).toBe('#047857')
+    expect(series.lineStyle.width).toBeGreaterThanOrEqual(3)
+    expect(series.areaStyle.color.colorStops[0].color).toBe('rgba(5,150,105,0.48)')
   })
 })

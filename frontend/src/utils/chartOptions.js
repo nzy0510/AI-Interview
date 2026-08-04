@@ -146,21 +146,21 @@ export function buildInterviewRadarOption(echarts, scores) {
         { name: '解题思路', max: 100 },
       ],
       shape: 'polygon',
-      axisName: { color: '#cbd5e1', fontSize: 13, fontWeight: 600 },
+      axisName: { color: '#475569', fontSize: 13, fontWeight: 700 },
       splitNumber: 5,
       splitArea: {
         areaStyle: {
           color: [
-            'rgba(16,185,129,0.06)',
-            'rgba(16,185,129,0.02)',
+            'rgba(5,150,105,0.12)',
+            'rgba(5,150,105,0.06)',
             'transparent',
             'transparent',
             'transparent',
           ],
         },
       },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+      axisLine: { lineStyle: { color: 'rgba(71, 85, 105, 0.24)' } },
+      splitLine: { lineStyle: { color: 'rgba(71, 85, 105, 0.24)', width: 1.2 } },
     },
     tooltip: buildTooltipConfig({ trigger: 'item' }),
     series: [
@@ -171,12 +171,12 @@ export function buildInterviewRadarOption(echarts, scores) {
             value: scores,
             name: '综合评估',
             symbolSize: 6,
-            itemStyle: { color: '#10b981', borderColor: '#fff', borderWidth: 2 },
-            lineStyle: { color: '#10b981', width: 2 },
+            itemStyle: { color: '#047857', borderColor: '#fff', borderWidth: 2 },
+            lineStyle: { color: '#047857', width: 3 },
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(16,185,129,0.6)' },
-                { offset: 1, color: 'rgba(16,185,129,0.1)' },
+                { offset: 0, color: 'rgba(5,150,105,0.48)' },
+                { offset: 1, color: 'rgba(5,150,105,0.14)' },
               ]),
             },
           },

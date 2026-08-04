@@ -128,7 +128,17 @@ const hasEmotionSection = computed(() => Boolean(props.emotionDistribution || pr
 
 <style scoped>
 .interview-report-page {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
   width: 100%;
+  padding: 28px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    radial-gradient(circle at top, rgba(58, 56, 139, 0.12), transparent 38%),
+    rgba(244, 246, 251, 0.96);
+  backdrop-filter: blur(18px);
 }
 
 .dashboard-container {
@@ -570,6 +580,10 @@ const hasEmotionSection = computed(() => Boolean(props.emotionDistribution || pr
 }
 
 @media (max-width: 640px) {
+  .interview-report-page {
+    padding: 18px 12px;
+  }
+
   .dash-title {
     font-size: 20px;
   }
