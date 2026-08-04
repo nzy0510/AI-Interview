@@ -23,6 +23,9 @@ public class InterviewTurn {
     private String retrievedAtomIds;
     private String contextSnapshotJson;
     private String retrievalStrategy;
+    private String orchestrationMode;
+    private String decisionAction;
+    private String decisionJson;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }
