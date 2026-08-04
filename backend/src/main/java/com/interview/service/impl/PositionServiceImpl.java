@@ -2,6 +2,7 @@ package com.interview.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.interview.config.QuestionBankAccessProperties;
 import com.interview.dto.VisiblePositionResponse;
 import com.interview.entity.InterviewPosition;
 import com.interview.entity.InterviewRecord;
@@ -10,7 +11,6 @@ import com.interview.mapper.InterviewPositionMapper;
 import com.interview.mapper.InterviewRecordMapper;
 import com.interview.mapper.ResumeProfileMapper;
 import com.interview.service.PositionService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -21,14 +21,20 @@ import java.util.stream.Collectors;
 @Service
 public class PositionServiceImpl implements PositionService {
 
-    @Autowired
-    private InterviewPositionMapper positionMapper;
+    private final InterviewPositionMapper positionMapper;
+    private final InterviewRecordMapper recordMapper;
+    private final ResumeProfileMapper resumeProfileMapper;
+    private final QuestionBankAccessProperties accessProperties;
 
-    @Autowired
-    private InterviewRecordMapper recordMapper;
-
-    @Autowired
-    private ResumeProfileMapper resumeProfileMapper;
+    public PositionServiceImpl(InterviewPositionMapper positionMapper,
+                               InterviewRecordMapper recordMapper,
+                               ResumeProfileMapper resumeProfileMapper,
+                               QuestionBankAccessProperties accessProperties) {
+        this.positionMapper = positionMapper;
+        this.recordMapper = recordMapper;
+        this.resumeProfileMapper = resumeProfileMapper;
+        this.accessProperties = accessProperties;
+    }
 
     @Override
     public List<VisiblePositionResponse> getVisiblePositions(Long userId) {
@@ -36,15 +42,24 @@ public class PositionServiceImpl implements PositionService {
             throw new RuntimeException("未登录：缺少用户身份");
         }
 
-        // 1. 查询所有 ACTIVE 状态且可见的岗位（公共 + 用户私有）
+        // 1. 查询所有 ACTIVE 状态且可见的岗位
         LambdaQueryWrapper<InterviewPosition> positionQuery = new LambdaQueryWrapper<>();
-        positionQuery.eq(InterviewPosition::getStatus, "ACTIVE")
-                .and(wrapper -> wrapper
+        positionQuery.eq(InterviewPosition::getStatus, "ACTIVE");
+        if (accessProperties.isUserMaintenanceEnabled()) {
+            positionQuery.and(wrapper -> wrapper
                         .eq(InterviewPosition::getScope, "PUBLIC")
                         .or(nested -> nested
                                 .eq(InterviewPosition::getScope, "PRIVATE")
                                 .eq(InterviewPosition::getOwnerUserId, userId)));
+        } else {
+            positionQuery.eq(InterviewPosition::getScope, "PUBLIC");
+        }
         List<InterviewPosition> positions = positionMapper.selectList(positionQuery);
+        if (!accessProperties.isUserMaintenanceEnabled()) {
+            positions = positions.stream()
+                    .filter(position -> "PUBLIC".equalsIgnoreCase(position.getScope()))
+                    .toList();
+        }
 
         if (positions.isEmpty()) {
             return List.of();

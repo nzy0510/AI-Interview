@@ -2,6 +2,7 @@ package com.interview.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interview.config.GlobalExceptionHandler;
+import com.interview.dto.QuestionBankCapabilitiesResponse;
 import com.interview.service.RequestUserResolver;
 import com.interview.dto.questionbank.QuestionBankAtomQueryRequest;
 import com.interview.dto.questionbank.QuestionBankBulkAtomRequest;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -70,6 +72,22 @@ class KnowledgeWorkspaceControllerTest {
     }
 
     @Test
+    @DisplayName("能力接口返回当前登录用户的题库开放状态")
+    void shouldReturnCapabilitiesForCurrentUser() throws Exception {
+        when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
+        when(workspaceService.getCapabilities(7L))
+                .thenReturn(new QuestionBankCapabilitiesResponse(false, false, false));
+
+        mockMvc.perform(get("/api/knowledge-workspace/capabilities"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userMaintenanceEnabled").value(false))
+                .andExpect(jsonPath("$.data.admin").value(false))
+                .andExpect(jsonPath("$.data.canAccessWorkspace").value(false));
+
+        verify(workspaceService).getCapabilities(7L);
+    }
+
+    @Test
     @DisplayName("创建私有岗位使用当前登录用户")
     void shouldCreatePrivatePositionForCurrentUser() throws Exception {
         when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
@@ -86,6 +104,19 @@ class KnowledgeWorkspaceControllerTest {
                 .andExpect(jsonPath("$.data.editable").value(true));
 
         verify(workspaceService).createPrivatePosition(any(), any());
+    }
+
+    @Test
+    @DisplayName("题库维护关闭时写操作返回 403")
+    void shouldReturnForbiddenWhenWorkspaceAccessIsDenied() throws Exception {
+        when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
+        doThrow(new RuntimeException("无权访问题库工作台"))
+                .when(workspaceService).deletePrivatePosition(7L, 20L);
+
+        mockMvc.perform(delete("/api/knowledge-workspace/positions/20"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403))
+                .andExpect(jsonPath("$.msg").value(org.hamcrest.Matchers.containsString("无权访问")));
     }
 
     @Test

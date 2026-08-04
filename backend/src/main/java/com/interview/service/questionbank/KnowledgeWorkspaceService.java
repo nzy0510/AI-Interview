@@ -2,6 +2,8 @@ package com.interview.service.questionbank;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.interview.config.QuestionBankAccessProperties;
+import com.interview.dto.QuestionBankCapabilitiesResponse;
 import com.interview.entity.AppJob;
 import com.interview.entity.InterviewPosition;
 import com.interview.entity.KnowledgeAtom;
@@ -57,6 +59,7 @@ public class KnowledgeWorkspaceService {
     private final QuestionBankService questionBankService;
     private final QdrantVectorService qdrantVectorService;
     private final RagRetrievalLogMapper ragLogMapper;
+    private final QuestionBankAccessProperties accessProperties;
 
     public KnowledgeWorkspaceService(InterviewPositionMapper positionMapper,
                                      KnowledgeBaseMapper knowledgeBaseMapper,
@@ -67,7 +70,8 @@ public class KnowledgeWorkspaceService {
                                      AdminRoleService adminRoleService,
                                      QuestionBankService questionBankService,
                                      QdrantVectorService qdrantVectorService,
-                                     RagRetrievalLogMapper ragLogMapper) {
+                                     RagRetrievalLogMapper ragLogMapper,
+                                     QuestionBankAccessProperties accessProperties) {
         this.positionMapper = positionMapper;
         this.knowledgeBaseMapper = knowledgeBaseMapper;
         this.atomMapper = atomMapper;
@@ -78,10 +82,11 @@ public class KnowledgeWorkspaceService {
         this.questionBankService = questionBankService;
         this.qdrantVectorService = qdrantVectorService;
         this.ragLogMapper = ragLogMapper;
+        this.accessProperties = accessProperties;
     }
 
     public KnowledgeWorkspaceResponse listWorkspace(Long currentUserId) {
-        requireUser(currentUserId);
+        requireWorkspaceAccess(currentUserId);
         List<InterviewPosition> positions = positionMapper.selectList(new QueryWrapper<InterviewPosition>()
                 .and(wrapper -> wrapper
                         .eq("scope", SCOPE_PUBLIC)
@@ -114,7 +119,7 @@ public class KnowledgeWorkspaceService {
 
     @Transactional
     public KnowledgePositionResponse createPrivatePosition(Long currentUserId, KnowledgePositionCreateRequest request) {
-        requireUser(currentUserId);
+        requireWorkspaceAccess(currentUserId);
         String name = cleanName(request != null ? request.name() : null);
         String description = cleanDescription(request != null ? request.description() : null);
         LocalDateTime now = LocalDateTime.now();
@@ -159,7 +164,7 @@ public class KnowledgeWorkspaceService {
     }
 
     public KnowledgeCoverage getPositionCoverage(Long currentUserId, Long positionId) {
-        requireUser(currentUserId);
+        requireWorkspaceAccess(currentUserId);
         InterviewPosition position = positionMapper.selectById(positionId);
         if (position == null) {
             throw new RuntimeException("岗位不存在");
@@ -223,7 +228,7 @@ public class KnowledgeWorkspaceService {
 
     @Transactional
     public void deletePrivatePosition(Long currentUserId, Long positionId) {
-        requireUser(currentUserId);
+        requireWorkspaceAccess(currentUserId);
         InterviewPosition position = positionMapper.selectById(positionId);
         if (position == null
                 || !SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
@@ -301,6 +306,17 @@ public class KnowledgeWorkspaceService {
                 importScopeFor(currentUserId, knowledgeBaseId));
     }
 
+    public QuestionBankCapabilitiesResponse getCapabilities(Long currentUserId) {
+        requireUser(currentUserId);
+        boolean admin = adminRoleService.isAdmin(currentUserId);
+        boolean userMaintenanceEnabled = accessProperties.isUserMaintenanceEnabled();
+        return new QuestionBankCapabilitiesResponse(
+                userMaintenanceEnabled,
+                admin,
+                admin || userMaintenanceEnabled
+        );
+    }
+
     private KnowledgePositionResponse toPositionResponse(InterviewPosition position,
                                                          KnowledgeBase knowledgeBase,
                                                          Long currentUserId) {
@@ -350,8 +366,15 @@ public class KnowledgeWorkspaceService {
         }
     }
 
-    private QuestionBankImportScope importScopeFor(Long currentUserId, Long knowledgeBaseId) {
+    private void requireWorkspaceAccess(Long currentUserId) {
         requireUser(currentUserId);
+        if (!accessProperties.isUserMaintenanceEnabled() && !adminRoleService.isAdmin(currentUserId)) {
+            throw new RuntimeException("无权访问题库工作台");
+        }
+    }
+
+    private QuestionBankImportScope importScopeFor(Long currentUserId, Long knowledgeBaseId) {
+        requireWorkspaceAccess(currentUserId);
         KnowledgeBase knowledgeBase = knowledgeBaseMapper.selectById(knowledgeBaseId);
         if (knowledgeBase == null || !canManageKnowledgeBase(knowledgeBase, currentUserId)) {
             throw new RuntimeException("无权访问知识库");
