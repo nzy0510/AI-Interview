@@ -2,6 +2,7 @@ package com.interview.service.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.interview.config.QuestionBankAccessProperties;
 import com.interview.dto.FinishInterviewResponse;
 import com.interview.entity.AppJob;
 import com.interview.entity.InterviewPhase;
@@ -112,6 +113,9 @@ public class InterviewServiceImpl implements InterviewService {
     @Autowired
     private ResumeProfileMapper resumeProfileMapper;
 
+    @Autowired
+    private QuestionBankAccessProperties questionBankAccessProperties;
+
     @Autowired(required = false)
     private com.interview.service.AppEventService appEventService;
 
@@ -220,19 +224,30 @@ public class InterviewServiceImpl implements InterviewService {
         if (userId == null) {
             throw new RuntimeException("未登录：缺少用户身份");
         }
+        boolean userMaintenanceEnabled = questionBankAccessProperties.isUserMaintenanceEnabled();
         LambdaQueryWrapper<InterviewPosition> query = new LambdaQueryWrapper<InterviewPosition>()
-                .eq(InterviewPosition::getStatus, "ACTIVE")
-                .and(wrapper -> wrapper
-                        .eq(InterviewPosition::getScope, "PUBLIC")
-                        .or(nested -> nested
-                                .eq(InterviewPosition::getScope, "PRIVATE")
-                                .eq(InterviewPosition::getOwnerUserId, userId)));
+                .eq(InterviewPosition::getStatus, "ACTIVE");
+        if (userMaintenanceEnabled) {
+            query.and(wrapper -> wrapper
+                    .eq(InterviewPosition::getScope, "PUBLIC")
+                    .or(nested -> nested
+                            .eq(InterviewPosition::getScope, "PRIVATE")
+                            .eq(InterviewPosition::getOwnerUserId, userId)));
+        } else {
+            query.eq(InterviewPosition::getScope, "PUBLIC");
+        }
         if (positionId == null) {
             throw new IllegalArgumentException("岗位 ID 不能为空");
         }
         query.eq(InterviewPosition::getId, positionId);
         InterviewPosition position = interviewPositionMapper.selectOne(query.last("LIMIT 1"));
         if (position == null) {
+            throw new RuntimeException("岗位不存在或无权访问");
+        }
+        if (!userMaintenanceEnabled && !"PUBLIC".equals(position.getScope())) {
+            throw new RuntimeException("比赛模式仅支持使用内置公共岗位");
+        }
+        if ("PRIVATE".equals(position.getScope()) && !userId.equals(position.getOwnerUserId())) {
             throw new RuntimeException("岗位不存在或无权访问");
         }
         return position;
@@ -320,8 +335,6 @@ public class InterviewServiceImpl implements InterviewService {
             InterviewTurnPlan turnPlan = interviewOrchestrator.plan(buildTurnRequest(
                     record, userId, chatHistory, message, usedAtomIds, tailoredQuestions));
             List<String> contextAtomIds = turnPlan.consumedAtomIds();
-            record.setPhase(turnPlan.phase().name());
-            interviewRecordMapper.updateById(record);
             try {
                 emitter.send(JSON.toJSONString(orchestrationEvent(turnPlan)));
                 emitter.send(JSON.toJSONString(Map.of("phase", turnPlan.phase().name())));
@@ -361,8 +374,9 @@ public class InterviewServiceImpl implements InterviewService {
                     try {
                         currentHistory.add(new UserMessage(message));
                         currentHistory.add(new AiMessage(aiResponseBuilder.toString()));
+                        record.setPhase(persistedPhase.name());
                         sessionStore.save(recordId, currentHistory);
-                        persistChatHistory(recordId, currentHistory);
+                        persistCompletedTurnState(recordId, persistedPhase, currentHistory);
                         sessionStore.addUsedAtoms(recordId, contextAtomIds);
                         persistInterviewTurn(record, userId, turnIndex, persistedPhase, message,
                                 aiResponseBuilder.toString(), promptAtomIds, contextSnapshot, persistedPlan);
@@ -517,21 +531,37 @@ public class InterviewServiceImpl implements InterviewService {
                 || record.getScore() != null) {
             throw new RuntimeException("已完成的面试记录不能退出");
         }
-        if (activeInterviewTurns.contains(recordId)) {
+        if (!activeInterviewTurns.add(recordId)) {
             throw new RuntimeException("当前轮次正在处理中，请稍后退出");
         }
-
-        int deleted = interviewRecordMapper.delete(new LambdaQueryWrapper<InterviewRecord>()
-                .eq(InterviewRecord::getId, recordId)
-                .eq(InterviewRecord::getUserId, userId));
-        if (deleted != 1) {
-            throw new RuntimeException("面试记录不存在或无权访问");
+        try {
+            int deleted = interviewRecordMapper.delete(new LambdaQueryWrapper<InterviewRecord>()
+                    .eq(InterviewRecord::getId, recordId)
+                    .eq(InterviewRecord::getUserId, userId));
+            if (deleted != 1) {
+                throw new RuntimeException("面试记录不存在或无权访问");
+            }
+            sessionStore.delete(recordId);
+        } finally {
+            activeInterviewTurns.remove(recordId);
         }
-        sessionStore.delete(recordId);
-        activeInterviewTurns.remove(recordId);
     }
 
     private FinishInterviewResponse completeInterview(InterviewRecord record, Integer wpm, String emotionJson) {
+        Long recordId = record.getId();
+        if (!activeInterviewTurns.add(recordId)) {
+            throw new RuntimeException("当前轮次正在处理中，请稍后结束面试");
+        }
+        try {
+            return completeInterviewWhileLocked(record, wpm, emotionJson);
+        } finally {
+            activeInterviewTurns.remove(recordId);
+        }
+    }
+
+    private FinishInterviewResponse completeInterviewWhileLocked(InterviewRecord record,
+                                                                  Integer wpm,
+                                                                  String emotionJson) {
         Long recordId = record.getId();
         if (InterviewPhase.FINISHED.name().equals(record.getPhase())) {
             log.info("面试已完成，跳过重复结束 recordId={}", recordId);
@@ -727,14 +757,18 @@ public class InterviewServiceImpl implements InterviewService {
         return record;
     }
 
-    private void persistChatHistory(Long recordId, List<ChatMessage> messages) {
+    private void persistCompletedTurnState(Long recordId,
+                                           InterviewPhase phase,
+                                           List<ChatMessage> messages) {
         InterviewRecord update = new InterviewRecord();
         update.setId(recordId);
+        update.setPhase(phase.name());
         update.setChatHistory(serializeChatHistory(messages));
         try {
             interviewRecordMapper.updateById(update);
         } catch (Exception e) {
-            log.warn("对话历史增量持久化失败: recordId={}, error={}", recordId, sanitizeErrorMessage(e.getMessage()));
+            log.warn("面试轮次状态增量持久化失败: recordId={}, error={}", recordId,
+                    sanitizeErrorMessage(e.getMessage()));
         }
     }
 

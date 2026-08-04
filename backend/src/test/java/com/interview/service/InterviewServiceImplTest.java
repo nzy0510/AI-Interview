@@ -1,5 +1,6 @@
 package com.interview.service;
 
+import com.interview.config.QuestionBankAccessProperties;
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewPosition;
 import com.interview.entity.InterviewRecord;
@@ -128,6 +129,9 @@ class InterviewServiceImplTest {
     @Mock
     private ResumeProfileMapper resumeProfileMapper;
 
+    @Mock
+    private QuestionBankAccessProperties questionBankAccessProperties;
+
     @InjectMocks
     private InterviewServiceImpl interviewService;
 
@@ -143,6 +147,7 @@ class InterviewServiceImplTest {
                 "deepseek-chat", "sk-test", 0.7);
         lenient().when(userLlmConfigService.requireActiveRuntimeConfig(any())).thenReturn(runtimeConfig);
         lenient().when(userLlmModelFactory.createStreamingChatModel(any())).thenReturn(streamingChatModel);
+        lenient().when(questionBankAccessProperties.isUserMaintenanceEnabled()).thenReturn(false);
         InterviewPosition publicPosition = position(101L, "Java 后端开发", "PUBLIC", null);
         lenient().when(interviewPositionMapper.selectOne(any())).thenReturn(publicPosition);
         lenient().when(interviewPositionMapper.selectById(101L)).thenReturn(publicPosition);
@@ -333,6 +338,47 @@ class InterviewServiceImplTest {
         assertThat(saved.getInterviewMode()).isEqualTo("video");
         assertThat(saved.getDifficultyLevel()).isEqualTo("senior");
         assertThat(saved.getFocusAreas()).contains("projects", "systemDesign");
+    }
+
+    @Test
+    @DisplayName("比赛模式关闭用户题库维护时拒绝使用历史私有岗位开始面试")
+    void shouldRejectPrivatePositionWhenUserQuestionBankMaintenanceIsDisabled() {
+        InterviewPosition privatePosition = position(102L, "我的 Java 岗位", "PRIVATE", 1L);
+        when(interviewPositionMapper.selectOne(any())).thenReturn(privatePosition);
+
+        assertThatThrownBy(() -> interviewService.startInterview(
+                1L,
+                privatePosition.getName(),
+                "text",
+                null,
+                "mid",
+                List.of(),
+                privatePosition.getId()))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("公共岗位");
+
+        verify(interviewRecordMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("显式开启用户题库维护后仍允许所属用户使用私有岗位")
+    void shouldAllowOwnedPrivatePositionWhenUserQuestionBankMaintenanceIsEnabled() {
+        when(questionBankAccessProperties.isUserMaintenanceEnabled()).thenReturn(true);
+        InterviewPosition privatePosition = position(103L, "我的 AI 岗位", "PRIVATE", 1L);
+        when(interviewPositionMapper.selectOne(any())).thenReturn(privatePosition);
+
+        interviewService.startInterview(
+                1L,
+                privatePosition.getName(),
+                "text",
+                null,
+                "mid",
+                List.of(),
+                privatePosition.getId());
+
+        ArgumentCaptor<InterviewRecord> captor = ArgumentCaptor.forClass(InterviewRecord.class);
+        verify(interviewRecordMapper).insert(captor.capture());
+        assertThat(captor.getValue().getPositionId()).isEqualTo(privatePosition.getId());
     }
 
     @Test
@@ -636,6 +682,52 @@ class InterviewServiceImplTest {
     }
 
     @Test
+    @DisplayName("流式生成失败时不提前提交 Agent 规划的下一阶段")
+    void shouldNotPersistPlannedPhaseWhenStreamFails() {
+        InterviewRecord record = stubChatStreamWithoutStreaming(34L, InterviewPhase.TECHNICAL);
+        record.setPhase(InterviewPhase.TECHNICAL.name());
+        InterviewOrchestrator agentOrchestrator = mock(InterviewOrchestrator.class);
+        when(agentOrchestrator.plan(any())).thenReturn(new InterviewTurnPlan(
+                InterviewPhase.HR,
+                InterviewAction.MOVE_TO_HR,
+                OrchestrationMode.AGENT,
+                "hr system prompt",
+                "",
+                List.of(),
+                List.of(),
+                List.of(),
+                "进入 HR 面试",
+                null));
+        ReflectionTestUtils.setField(interviewService, "interviewOrchestrator", agentOrchestrator);
+        doAnswer(invocation -> {
+            StreamingResponseHandler<AiMessage> handler = invocation.getArgument(1);
+            handler.onError(new IllegalStateException("stream failed"));
+            return null;
+        }).when(streamingChatModel).generate(anyList(), any());
+
+        interviewService.chatStream(record.getUserId(), record.getId(), "技术面已完成");
+
+        assertThat(record.getPhase()).isEqualTo(InterviewPhase.TECHNICAL.name());
+        verify(interviewRecordMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("当前轮次仍在生成时拒绝结束面试")
+    void shouldRejectFinishingWhileTurnIsActive() {
+        InterviewRecord record = stubChatStreamWithoutStreaming(35L, InterviewPhase.TECHNICAL);
+        record.setPhase(InterviewPhase.TECHNICAL.name());
+        doAnswer(invocation -> null).when(streamingChatModel).generate(anyList(), any());
+
+        interviewService.chatStream(record.getUserId(), record.getId(), "请继续");
+
+        assertThatThrownBy(() -> interviewService.finishInterview(record.getUserId(), record.getId(), 0, null))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("当前轮次正在处理中");
+        verify(evaluationGenerator, never()).generate(any(), anyList(), anyInt());
+        verify(sessionStore, never()).delete(record.getId());
+    }
+
+    @Test
     @DisplayName("rejects a second active turn for the same interview record")
     void shouldRejectConcurrentTurnForSameRecord() {
         stubChatStreamWithoutStreaming(33L, InterviewPhase.TECHNICAL);
@@ -715,18 +807,18 @@ class InterviewServiceImplTest {
     }
 
     @Test
-    @DisplayName("每轮 AI 回复完成后增量持久化对话历史")
-    void shouldPersistChatHistoryAfterEachCompletedTurn() {
+    @DisplayName("每轮 AI 回复完成后一次性持久化阶段和对话历史")
+    void shouldPersistCompletedTurnStateAfterEachCompletedTurn() {
         stubChatStream(26L, InterviewPhase.OPENING);
 
         interviewService.chatStream(1L, 26L, "请开始");
 
         ArgumentCaptor<InterviewRecord> captor = ArgumentCaptor.forClass(InterviewRecord.class);
-        verify(interviewRecordMapper, atLeast(2)).updateById(captor.capture());
-        assertThat(captor.getAllValues())
-                .anySatisfy(update -> assertThat(update.getChatHistory())
-                        .contains("\"type\":\"USER\"", "\"text\":\"请开始\"",
-                                "\"type\":\"AI\"", "\"text\":\"下一题\""));
+        verify(interviewRecordMapper).updateById(captor.capture());
+        assertThat(captor.getValue().getPhase()).isEqualTo(InterviewPhase.OPENING.name());
+        assertThat(captor.getValue().getChatHistory())
+                .contains("\"type\":\"USER\"", "\"text\":\"请开始\"",
+                        "\"type\":\"AI\"", "\"text\":\"下一题\"");
     }
 
     @Test
