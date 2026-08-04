@@ -46,6 +46,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -654,6 +655,62 @@ class InterviewServiceImplTest {
                 .contains("searchPositionKnowledge", "atom-agent", "继续深挖当前知识点")
                 .doesNotContain("agent system prompt", "safe evidence");
         verify(sessionStore).addUsedAtoms(33L, List.of("atom-agent"));
+    }
+
+    @Test
+    @DisplayName("Agent 回退事件只暴露安全原因分类，不暴露内部 reasonCode")
+    void shouldExposeOnlySafeFallbackCategory() {
+        Map<String, String> categories = Map.of(
+                "AGENT_TIMEOUT", "TIMEOUT",
+                "AGENT_PROVIDER_UNAVAILABLE", "PROVIDER",
+                "AGENT_TOOL_FAILURE", "TOOL",
+                "AGENT_INVALID_JSON", "OUTPUT",
+                "AGENT_MODEL_FAILURE", "MODEL",
+                "AGENT_SCHEDULING_FAILURE", "SYSTEM");
+
+        categories.forEach((reasonCode, category) -> {
+            InterviewTurnPlan plan = new InterviewTurnPlan(
+                    InterviewPhase.TECHNICAL,
+                    InterviewAction.CONTINUE_PHASE,
+                    OrchestrationMode.RULE_FALLBACK,
+                    "fallback prompt",
+                    "",
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    "已切换稳定策略",
+                    reasonCode);
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> event = ReflectionTestUtils.invokeMethod(
+                    interviewService, "orchestrationEvent", plan);
+
+            assertThat(event)
+                    .containsEntry("fallbackCategory", category)
+                    .doesNotContainKey("fallbackReasonCode");
+        });
+    }
+
+    @Test
+    @DisplayName("非回退编排不发送降级原因分类")
+    void shouldNotExposeFallbackCategoryOutsideFallbackMode() {
+        InterviewTurnPlan plan = new InterviewTurnPlan(
+                InterviewPhase.TECHNICAL,
+                InterviewAction.DEEPEN,
+                OrchestrationMode.AGENT,
+                "agent prompt",
+                "",
+                List.of(),
+                List.of(),
+                List.of(),
+                "继续深挖",
+                "AGENT_TIMEOUT");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> event = ReflectionTestUtils.invokeMethod(
+                interviewService, "orchestrationEvent", plan);
+
+        assertThat(event).doesNotContainKey("fallbackCategory");
     }
 
     @Test

@@ -29,6 +29,7 @@ import com.interview.service.orchestration.InterviewMessageSnapshot;
 import com.interview.service.orchestration.InterviewOrchestrator;
 import com.interview.service.orchestration.InterviewTurnPlan;
 import com.interview.service.orchestration.InterviewTurnRequest;
+import com.interview.service.orchestration.OrchestrationMode;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -481,7 +482,24 @@ public class InterviewServiceImpl implements InterviewService {
         event.put("action", plan.action().name());
         event.put("summary", plan.publicSummary());
         event.put("tools", plan.toolsUsed());
+        if (plan.orchestrationMode() == OrchestrationMode.RULE_FALLBACK) {
+            event.put("fallbackCategory", fallbackCategory(plan.fallbackReasonCode()));
+        }
         return event;
+    }
+
+    private String fallbackCategory(String reasonCode) {
+        if (reasonCode == null) {
+            return "SYSTEM";
+        }
+        return switch (reasonCode) {
+            case "AGENT_TIMEOUT" -> "TIMEOUT";
+            case "AGENT_PROVIDER_UNAVAILABLE" -> "PROVIDER";
+            case "AGENT_TOOL_LIMIT", "AGENT_TOOL_FAILURE" -> "TOOL";
+            case "AGENT_INVALID_JSON", "AGENT_UNKNOWN_ACTION" -> "OUTPUT";
+            case "AGENT_MODEL_FAILURE" -> "MODEL";
+            default -> "SYSTEM";
+        };
     }
 
     private String truncate(String value, int maxLength) {

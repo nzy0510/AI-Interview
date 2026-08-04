@@ -3,6 +3,7 @@ package com.interview.service.orchestration;
 import com.interview.config.InterviewAgentProperties;
 import com.interview.entity.InterviewPhase;
 import com.interview.service.SessionStore;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.AsyncTaskExecutor;
@@ -16,6 +17,7 @@ import java.util.regex.Pattern;
 
 @Primary
 @Service
+@Slf4j
 public class FallbackInterviewOrchestrator implements InterviewOrchestrator {
 
   static final String AGENT_TIMEOUT = "AGENT_TIMEOUT";
@@ -51,41 +53,50 @@ public class FallbackInterviewOrchestrator implements InterviewOrchestrator {
       return ruleOrchestrator.plan(request);
     }
 
+    long planningStartedNanos = System.nanoTime();
     String disabledReason = sessionStore.loadAgentDisabledReason(request.recordId());
     if (disabledReason != null && !disabledReason.isBlank()) {
-      return fallbackOrThrow(request, safeReasonCode(disabledReason), null);
+      return fallbackOrThrow(request, safeReasonCode(disabledReason), null,
+          elapsedMillis(planningStartedNanos));
     }
 
     Future<InterviewTurnPlan> planningTask = null;
     try {
       planningTask = taskExecutor.submit(() -> agentOrchestrator.plan(request));
-      return planningTask.get(planningTimeoutSeconds(), TimeUnit.SECONDS);
+      InterviewTurnPlan agentPlan = planningTask.get(planningTimeoutSeconds(), TimeUnit.SECONDS);
+      sessionStore.clearAgentTimeoutCount(request.recordId());
+      return agentPlan;
     } catch (TimeoutException e) {
       if (planningTask != null) {
         planningTask.cancel(true);
       }
-      return fallbackOrThrow(request, AGENT_TIMEOUT, e);
+      return timeoutFallbackOrThrow(request, e, elapsedMillis(planningStartedNanos));
     } catch (InterruptedException e) {
       if (planningTask != null) {
         planningTask.cancel(true);
       }
       Thread.currentThread().interrupt();
-      return fallbackOrThrow(request, AGENT_INTERRUPTED, e);
+      return fallbackOrThrow(request, AGENT_INTERRUPTED, e,
+          elapsedMillis(planningStartedNanos));
     } catch (ExecutionException e) {
       Throwable cause = e.getCause() != null ? e.getCause() : e;
       String reasonCode = cause instanceof AgentPlanningException planningException
           ? safeReasonCode(planningException.reasonCode())
           : AGENT_FAILURE;
-      return fallbackOrThrow(request, reasonCode, cause);
+      return fallbackOrThrow(request, reasonCode, cause,
+          elapsedMillis(planningStartedNanos));
     } catch (RuntimeException e) {
-      return fallbackOrThrow(request, AGENT_SCHEDULING_FAILURE, e);
+      return fallbackOrThrow(request, AGENT_SCHEDULING_FAILURE, e,
+          elapsedMillis(planningStartedNanos));
     }
   }
 
   private InterviewTurnPlan fallbackOrThrow(InterviewTurnRequest request,
                                              String reasonCode,
-                                             Throwable cause) {
+                                             Throwable cause,
+                                             long elapsedMs) {
     if (!properties.isFallbackEnabled()) {
+      logFallbackDecision(request.recordId(), reasonCode, elapsedMs, false);
       if (cause instanceof AgentPlanningException planningException) {
         throw planningException;
       }
@@ -93,6 +104,31 @@ public class FallbackInterviewOrchestrator implements InterviewOrchestrator {
     }
 
     sessionStore.disableAgent(request.recordId(), reasonCode);
+    logFallbackDecision(request.recordId(), reasonCode, elapsedMs, true);
+    return ruleFallback(request, reasonCode,
+        "Agent 暂不可用，本场已切换稳定策略");
+  }
+
+  private InterviewTurnPlan timeoutFallbackOrThrow(InterviewTurnRequest request,
+                                                    TimeoutException cause,
+                                                    long elapsedMs) {
+    if (!properties.isFallbackEnabled()) {
+      logFallbackDecision(request.recordId(), AGENT_TIMEOUT, elapsedMs, false);
+      throw new AgentPlanningException(AGENT_TIMEOUT, "面试 Agent 规划失败", cause);
+    }
+
+    int timeoutCount = sessionStore.incrementAgentTimeoutCount(request.recordId());
+    if (timeoutCount >= 2) {
+      return fallbackOrThrow(request, AGENT_TIMEOUT, cause, elapsedMs);
+    }
+    logFallbackDecision(request.recordId(), AGENT_TIMEOUT, elapsedMs, false);
+    return ruleFallback(request, AGENT_TIMEOUT,
+        "Agent 本轮规划超时，已使用稳定规则，下一轮自动重试");
+  }
+
+  private InterviewTurnPlan ruleFallback(InterviewTurnRequest request,
+                                         String reasonCode,
+                                         String publicSummary) {
     InterviewTurnPlan rulePlan = ruleOrchestrator.plan(request);
     return new InterviewTurnPlan(
         rulePlan.phase(),
@@ -103,8 +139,20 @@ public class FallbackInterviewOrchestrator implements InterviewOrchestrator {
         rulePlan.evidenceAtomIds(),
         rulePlan.consumedAtomIds(),
         rulePlan.toolsUsed(),
-        "Agent 暂不可用，已自动切换到稳定面试策略",
+        publicSummary,
         reasonCode);
+  }
+
+  private void logFallbackDecision(Long recordId,
+                                   String reasonCode,
+                                   long elapsedMs,
+                                   boolean sticky) {
+    log.warn("面试 Agent 回退: recordId={}, reason={}, elapsedMs={}, sticky={}",
+        recordId, reasonCode, elapsedMs, sticky);
+  }
+
+  private long elapsedMillis(long planningStartedNanos) {
+    return Math.max(0, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - planningStartedNanos));
   }
 
   private int planningTimeoutSeconds() {

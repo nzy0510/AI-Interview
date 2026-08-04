@@ -212,7 +212,8 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
         JSON 只能包含 action、reason、publicSummary 三个字符串字段；不要输出 Markdown、代码围栏、思维链或其他字段。
         action 只能是 DEEPEN、REMEDIATE、SWITCH_TOPIC、PROBE_RESUME、MOVE_TO_HR、CONTINUE_PHASE。
         reason 仅供编排层记录，publicSummary 只能是面向用户的简短安全说明。
-        工具调用总数最多 3 次；没有证据时不要臆造事实。
+        工具调用总数最多 3 次；每轮优先只调用一个最相关工具；仅当第一个工具明确无可用证据时，才允许再调用另一个；禁止为了收集完整信息依次调用全部工具。
+        没有证据时不要臆造事实。
         """;
   }
 
@@ -231,7 +232,7 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
             .append(safeText(message.content(), 500)).append("\n");
       }
     }
-    prompt.append("请先判断是否需要调用工具，再只返回契约规定的 JSON。");
+    prompt.append("请先判断是否需要调用工具；如需调用，优先选择一个最相关工具，再只返回契约规定的 JSON。");
     return prompt.toString();
   }
 
