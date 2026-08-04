@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.core.task.AsyncTaskExecutor;
 
 import java.util.List;
@@ -28,7 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
 @DisplayName("面试 Agent 稳定回退")
 class FallbackInterviewOrchestratorTest {
 
@@ -89,6 +91,7 @@ class FallbackInterviewOrchestratorTest {
     InterviewTurnPlan result = orchestrator.plan(request(InterviewPhase.TECHNICAL));
 
     assertThat(result).isSameAs(agentPlan);
+    verify(sessionStore).clearAgentTimeoutCount(9L);
     verify(sessionStore, never()).disableAgent(anyLong(), any());
     verifyNoInteractions(ruleOrchestrator);
   }
@@ -105,7 +108,7 @@ class FallbackInterviewOrchestratorTest {
 
     assertThat(result.orchestrationMode()).isEqualTo(OrchestrationMode.RULE_FALLBACK);
     assertThat(result.fallbackReasonCode()).isEqualTo("AGENT_INVALID_JSON");
-    assertThat(result.publicSummary()).contains("稳定面试策略");
+    assertThat(result.publicSummary()).contains("本场已切换稳定策略");
     verify(sessionStore).disableAgent(9L, "AGENT_INVALID_JSON");
   }
 
@@ -123,17 +126,54 @@ class FallbackInterviewOrchestratorTest {
   }
 
   @Test
-  @DisplayName("规划超时会取消任务并回退")
-  void timeoutShouldCancelTaskAndFallback() throws Exception {
+  @DisplayName("首次规划超时只回退当前轮并允许下一轮自动重试")
+  void firstTimeoutShouldFallbackOnlyForCurrentTurn(CapturedOutput output) throws Exception {
     @SuppressWarnings("unchecked")
     Future<InterviewTurnPlan> future = org.mockito.Mockito.mock(Future.class);
     when(taskExecutor.submit(any(Callable.class))).thenReturn(future);
-    when(future.get(anyLong(), eq(TimeUnit.SECONDS))).thenThrow(new TimeoutException());
+    when(future.get(anyLong(), eq(TimeUnit.SECONDS)))
+        .thenThrow(new TimeoutException("provider-secret-should-not-leak"));
+    when(sessionStore.incrementAgentTimeoutCount(9L)).thenReturn(1);
     when(ruleOrchestrator.plan(any())).thenReturn(rulePlan(InterviewPhase.TECHNICAL));
 
     InterviewTurnPlan result = orchestrator.plan(request(InterviewPhase.TECHNICAL));
 
     assertThat(result.fallbackReasonCode()).isEqualTo("AGENT_TIMEOUT");
+    assertThat(result.publicSummary()).contains("下一轮自动重试");
+    assertThat(output.getAll())
+        .contains("recordId=9", "reason=AGENT_TIMEOUT", "elapsedMs=", "sticky=false")
+        .doesNotContain("provider-secret-should-not-leak");
+
+    InterviewTurnPlan agentPlan = agentPlan();
+    when(agentOrchestrator.plan(any())).thenReturn(agentPlan);
+    executeSubmittedCallableImmediately();
+
+    InterviewTurnPlan retryResult = orchestrator.plan(request(InterviewPhase.TECHNICAL));
+
+    assertThat(retryResult).isSameAs(agentPlan);
+    verify(future).cancel(true);
+    verify(sessionStore).clearAgentTimeoutCount(9L);
+    verify(sessionStore, never()).disableAgent(anyLong(), any());
+  }
+
+  @Test
+  @DisplayName("连续第二次规划超时后整场会话固定回退")
+  void secondConsecutiveTimeoutShouldDisableAgentForSession(CapturedOutput output) throws Exception {
+    @SuppressWarnings("unchecked")
+    Future<InterviewTurnPlan> future = org.mockito.Mockito.mock(Future.class);
+    when(taskExecutor.submit(any(Callable.class))).thenReturn(future);
+    when(future.get(anyLong(), eq(TimeUnit.SECONDS)))
+        .thenThrow(new TimeoutException("provider-secret-should-not-leak"));
+    when(sessionStore.incrementAgentTimeoutCount(9L)).thenReturn(2);
+    when(ruleOrchestrator.plan(any())).thenReturn(rulePlan(InterviewPhase.TECHNICAL));
+
+    InterviewTurnPlan result = orchestrator.plan(request(InterviewPhase.TECHNICAL));
+
+    assertThat(result.fallbackReasonCode()).isEqualTo("AGENT_TIMEOUT");
+    assertThat(result.publicSummary()).contains("本场已切换稳定策略");
+    assertThat(output.getAll())
+        .contains("recordId=9", "reason=AGENT_TIMEOUT", "elapsedMs=", "sticky=true")
+        .doesNotContain("provider-secret-should-not-leak");
     verify(future).cancel(true);
     verify(sessionStore).disableAgent(9L, "AGENT_TIMEOUT");
   }
@@ -150,6 +190,25 @@ class FallbackInterviewOrchestratorTest {
         .isInstanceOf(AgentPlanningException.class)
         .satisfies(error -> assertThat(((AgentPlanningException) error).reasonCode())
             .isEqualTo("AGENT_MODEL_FAILURE"));
+    verify(sessionStore, never()).disableAgent(anyLong(), any());
+    verifyNoInteractions(ruleOrchestrator);
+  }
+
+  @Test
+  @DisplayName("关闭回退时规划超时仍按原语义向上抛出")
+  void disabledFallbackShouldPropagateTimeout() throws Exception {
+    properties.setFallbackEnabled(false);
+    @SuppressWarnings("unchecked")
+    Future<InterviewTurnPlan> future = org.mockito.Mockito.mock(Future.class);
+    when(taskExecutor.submit(any(Callable.class))).thenReturn(future);
+    when(future.get(anyLong(), eq(TimeUnit.SECONDS))).thenThrow(new TimeoutException());
+
+    assertThatThrownBy(() -> orchestrator.plan(request(InterviewPhase.TECHNICAL)))
+        .isInstanceOf(AgentPlanningException.class)
+        .satisfies(error -> assertThat(((AgentPlanningException) error).reasonCode())
+            .isEqualTo("AGENT_TIMEOUT"));
+    verify(future).cancel(true);
+    verify(sessionStore, never()).incrementAgentTimeoutCount(anyLong());
     verify(sessionStore, never()).disableAgent(anyLong(), any());
     verifyNoInteractions(ruleOrchestrator);
   }
