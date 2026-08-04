@@ -230,7 +230,6 @@ graph TD
 
 - Docker Desktop / Docker Compose
 - 用户自备 OpenAI-compatible API 账号（如 DeepSeek、Kimi、GLM、Qwen 或自定义兼容供应商）
-- SMTP 邮箱授权码（注册、找回密码需要）
 
 裸跑后端、前端或检索评测工具链时，再分别安装 JDK 17、Node.js 20+、Python 3.10+。
 
@@ -241,21 +240,28 @@ Copy-Item .env.example .env
 Copy-Item docker-compose.example.yml docker-compose.yml
 ```
 
-至少修改 `.env` 中的数据库密码、JWT 签名密钥、用户 API Key 加密密钥、统计盐值和 SMTP 邮箱配置：
+至少修改 `.env` 中的数据库密码、JWT 签名密钥、用户 API Key 加密密钥和统计盐值：
 
 ```env
 DB_PASSWORD=your_mysql_password
 APP_LLM_CONFIG_ENCRYPTION_KEY=your_base64_or_high_entropy_encryption_key
 JWT_SIGN_KEY=your_jwt_signing_key_at_least_32_characters
 APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
-MAIL_USERNAME=your_email@qq.com
-MAIL_PASSWORD=your_smtp_authorization_code
 ```
+
+本地 Docker 默认启用 `local-admin` 认证模式，不需要配置 QQ 邮箱、SMTP 授权码、注册验证码或找回密码。请保留以下默认配置：
+
+```env
+APP_AUTH_MODE=local-admin
+```
+
+本地默认账号固定为 `admin / admin123`，只用于绑定到 `127.0.0.1` 的本机部署，不要用于公网服务器。
 
 大模型配置说明：
 
 - 项目不提供系统兜底 API Key，也不依赖全局 `DEEPSEEK_API_KEY` 作为普通用户兜底。
-- 普通用户若没有有效的启用配置，文字面试、视频面试、报告生成和 AI Mentor 等用户侧 LLM 功能应先引导其到侧边栏“大模型配置”完成配置。
+- 默认管理员首次登录后，需要进入侧边栏“大模型配置”，新建 DeepSeek 或其他兼容 Provider，填写自己的 API Key，测试连接并启用该配置。
+- 没有有效的启用配置时，文字面试、视频面试、报告生成和 AI Mentor 等用户侧 LLM 功能会引导用户先完成配置。
 - 当前支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 和自定义。
 - 服务端只需要 `APP_LLM_CONFIG_ENCRYPTION_KEY` 这类加密密钥来加密保存用户 API Key；不要在 `.env`、示例配置、日志或文档里写入任何真实供应商密钥。
 - 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置；管理员不能查看用户 API Key 明文。
@@ -269,6 +275,22 @@ MAIL_PASSWORD=your_smtp_authorization_code
 docker compose up -d --build
 ```
 
+容器全部启动后，打开 `http://localhost`，使用本地默认管理员登录：
+
+```text
+用户名：admin
+密码：admin123
+```
+
+登录后的首次使用顺序：
+
+1. 打开侧边栏“大模型配置”。
+2. 选择 DeepSeek，填写自己的 API Key。
+3. 点击“测试连接”，测试成功后保存并启用。
+4. 返回首页选择内置岗位，开始模拟面试。
+
+默认管理员只会在空库首次启动时创建。如果 `mysql_data` 中已经存在 `ADMIN` 角色的 `admin` 账号，启动过程不会覆盖其密码或资料；如果同名账号不是管理员，后端会明确拒绝启动，避免静默提权。修改密码后，重启容器也不会重置为 `admin123`。
+
 默认访问：
 
 - 前端：`http://localhost`
@@ -277,7 +299,15 @@ docker compose up -d --build
 - MySQL：`localhost:3307`
 - Redis：`localhost:6379`
 
+本地 Compose 的这些端口只监听 `127.0.0.1`，局域网中的其他设备不能直接访问。停止容器但保留账号、题库和面试数据：
+
+```powershell
+docker compose stop
+```
+
 首次构建 embedding-service 会下载 PyTorch、sentence-transformers 和 multilingual-e5 模型，耗时取决于网络质量。若切换过 embedding 模型或 Qdrant collection，启动后需要通过知识库 / 题库维护流程重建索引。
+
+未来如果部署到公网，应改用 `docker-compose.prod.yml` 的 `email-verified` 模式，配置独立管理员、SMTP、HTTPS 和强密码；不要直接公开本地默认管理员，也不要把包含该账号的本地 `mysql_data` 原样迁移到公网。
 
 ### RAG 评测工具
 

@@ -73,6 +73,19 @@ class DeploymentConfigurationContractTest {
         assertSpringMultipartLimit(Path.of("src", "main", "resources", "application.yml.example"));
     }
 
+    @Test
+    @DisplayName("本地 Compose 使用固定管理员且只监听回环地址")
+    void shouldKeepLocalDockerAuthenticationAndPortsSafe() throws IOException {
+        assertLocalDockerContract(Path.of("..", "docker-compose.example.yml"));
+    }
+
+    @Test
+    @DisplayName("生产 Compose 保持邮箱验证认证模式")
+    void shouldKeepProductionEmailAuthentication() throws IOException {
+        assertThat(Files.readString(Path.of("..", "docker-compose.prod.yml")))
+                .contains("APP_AUTH_MODE: email-verified");
+    }
+
     private void assertDefaults(Path path) throws IOException {
         String content = Files.readString(path);
 
@@ -130,5 +143,18 @@ class DeploymentConfigurationContractTest {
                 .as(path.toString())
                 .contains("max-file-size: ${APP_MULTIPART_MAX_FILE_SIZE:20MB}")
                 .contains("max-request-size: ${APP_MULTIPART_MAX_REQUEST_SIZE:21MB}");
+    }
+
+    private void assertLocalDockerContract(Path path) throws IOException {
+        assertThat(Files.readString(path))
+                .as(path.toString())
+                .contains("APP_AUTH_MODE: ${APP_AUTH_MODE:-local-admin}")
+                .contains("MAIL_USERNAME: ${MAIL_USERNAME:-}")
+                .contains("MAIL_PASSWORD: ${MAIL_PASSWORD:-}")
+                .contains("127.0.0.1:80:80")
+                .contains("127.0.0.1:8080:8080")
+                .contains("127.0.0.1:3307:3306")
+                .contains("127.0.0.1:6379:6379")
+                .contains("127.0.0.1:6333:6333");
     }
 }
