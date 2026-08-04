@@ -21,11 +21,13 @@ import com.interview.mapper.AppJobMapper;
 import com.interview.mapper.ResumeProfileMapper;
 import com.interview.service.AppJobRecoveryService;
 import com.interview.service.AppJobService;
-import com.interview.service.InterviewRetrievalService;
 import com.interview.service.InterviewService;
-import com.interview.service.InterviewTurnPlanner;
 import com.interview.service.UserLlmConfigService;
 import com.interview.service.UserLlmModelFactory;
+import com.interview.service.orchestration.InterviewMessageSnapshot;
+import com.interview.service.orchestration.InterviewOrchestrator;
+import com.interview.service.orchestration.InterviewTurnPlan;
+import com.interview.service.orchestration.InterviewTurnRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -45,6 +47,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -88,9 +91,6 @@ public class InterviewServiceImpl implements InterviewService {
     private com.interview.service.EvaluationGenerator evaluationGenerator;
 
     @Autowired
-    private InterviewRetrievalService interviewRetrievalService;
-
-    @Autowired
     private com.interview.service.MentorService mentorService;
 
     @Autowired
@@ -98,7 +98,7 @@ public class InterviewServiceImpl implements InterviewService {
     private TaskExecutor mentorTaskExecutor;
 
     @Autowired
-    private InterviewTurnPlanner interviewTurnPlanner;
+    private InterviewOrchestrator interviewOrchestrator;
 
     @Autowired
     private AppJobService appJobService;
@@ -315,19 +315,15 @@ public class InterviewServiceImpl implements InterviewService {
         try {
             OpenAiStreamingChatModel streamingChatModel =
                     userLlmModelFactory.createStreamingChatModel(userLlmConfigService.requireActiveRuntimeConfig(userId));
-            InterviewPhase nextPhase = interviewTurnPlanner.determineNextPhase(record, chatHistory);
             List<String> usedAtomIds = sessionStore.loadUsedAtoms(recordId);
-            InterviewRetrievalService.TurnRetrieval retrieval = interviewRetrievalService.retrieve(
-                    userId, record, chatHistory, message, nextPhase, usedAtomIds);
-            List<String> contextAtomIds = retrieval.contextAtomIds();
-
-            // 2. 根据显式面试阶段选择 Agent 人设（替代隐式 turn 计算）
             List<String> tailoredQuestions = sessionStore.loadTailoredQuestions(recordId);
-            InterviewTurnPlanner.InterviewTurnPlan turnPlan =
-                    interviewTurnPlanner.plan(record, chatHistory, retrieval.promptContext(), tailoredQuestions);
+            InterviewTurnPlan turnPlan = interviewOrchestrator.plan(buildTurnRequest(
+                    record, userId, chatHistory, message, usedAtomIds, tailoredQuestions));
+            List<String> contextAtomIds = turnPlan.consumedAtomIds();
             record.setPhase(turnPlan.phase().name());
             interviewRecordMapper.updateById(record);
             try {
+                emitter.send(JSON.toJSONString(orchestrationEvent(turnPlan)));
                 emitter.send(JSON.toJSONString(Map.of("phase", turnPlan.phase().name())));
             } catch (IOException e) {
                 activeInterviewTurns.remove(recordId);
@@ -345,8 +341,9 @@ public class InterviewServiceImpl implements InterviewService {
             final List<ChatMessage> currentHistory = chatHistory;
             final int turnIndex = currentHistory.size() / 2 + 1;
             final InterviewPhase persistedPhase = turnPlan.phase();
-            final List<String> promptAtomIds = retrieval.promptAtomIds();
-            final String contextSnapshot = retrieval.promptContext();
+            final List<String> promptAtomIds = turnPlan.evidenceAtomIds();
+            final String contextSnapshot = turnPlan.evidenceContext();
+            final InterviewTurnPlan persistedPlan = turnPlan;
             StringBuilder aiResponseBuilder = new StringBuilder();
             streamingChatModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
                 @Override
@@ -368,7 +365,7 @@ public class InterviewServiceImpl implements InterviewService {
                         persistChatHistory(recordId, currentHistory);
                         sessionStore.addUsedAtoms(recordId, contextAtomIds);
                         persistInterviewTurn(record, userId, turnIndex, persistedPhase, message,
-                                aiResponseBuilder.toString(), promptAtomIds, contextSnapshot);
+                                aiResponseBuilder.toString(), promptAtomIds, contextSnapshot, persistedPlan);
 
                         emitter.send(JSON.toJSONString(Map.of("done", "true")));
                         emitter.complete();
@@ -412,6 +409,65 @@ public class InterviewServiceImpl implements InterviewService {
         String sanitized = URL_PATTERN.matcher(errorMessage).replaceAll("[URL]");
         sanitized = SENSITIVE_KEY_VALUE_PATTERN.matcher(sanitized).replaceAll("$1$2[REDACTED]");
         return truncate(sanitized, 500);
+    }
+
+    private InterviewTurnRequest buildTurnRequest(InterviewRecord record,
+                                                  Long userId,
+                                                  List<ChatMessage> chatHistory,
+                                                  String message,
+                                                  List<String> usedAtomIds,
+                                                  List<String> tailoredQuestions) {
+        List<InterviewMessageSnapshot> history = new ArrayList<>();
+        for (ChatMessage chatMessage : chatHistory) {
+            if (chatMessage instanceof UserMessage userMessage) {
+                history.add(new InterviewMessageSnapshot("USER", userMessage.singleText()));
+            } else if (chatMessage instanceof AiMessage aiMessage) {
+                history.add(new InterviewMessageSnapshot("AI", aiMessage.text()));
+            } else if (chatMessage instanceof SystemMessage systemMessage) {
+                history.add(new InterviewMessageSnapshot("SYSTEM", systemMessage.text()));
+            }
+        }
+        return new InterviewTurnRequest(
+                record.getId(),
+                userId,
+                record.getPositionId(),
+                record.getPosition(),
+                currentPhase(record.getPhase()),
+                chatHistory.size() / 2 + 1,
+                record.getDifficultyLevel(),
+                parseStringList(record.getFocusAreas()),
+                history,
+                message,
+                usedAtomIds,
+                tailoredQuestions);
+    }
+
+    private InterviewPhase currentPhase(String phase) {
+        if (phase == null || phase.isBlank()) {
+            return InterviewPhase.OPENING;
+        }
+        return InterviewPhase.valueOf(phase);
+    }
+
+    private List<String> parseStringList(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            return JSON.parseArray(json, String.class);
+        } catch (RuntimeException e) {
+            return List.of();
+        }
+    }
+
+    private Map<String, Object> orchestrationEvent(InterviewTurnPlan plan) {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("type", "orchestration");
+        event.put("mode", plan.orchestrationMode().name());
+        event.put("action", plan.action().name());
+        event.put("summary", plan.publicSummary());
+        event.put("tools", plan.toolsUsed());
+        return event;
     }
 
     private String truncate(String value, int maxLength) {
@@ -582,7 +638,8 @@ public class InterviewServiceImpl implements InterviewService {
                                       String userAnswer,
                                       String aiQuestion,
                                       List<String> promptAtomIds,
-                                      String contextSnapshot) {
+                                      String contextSnapshot,
+                                      InterviewTurnPlan orchestrationPlan) {
         InterviewTurn turn = new InterviewTurn();
         turn.setRecordId(record.getId());
         turn.setUserId(userId);
@@ -596,6 +653,16 @@ public class InterviewServiceImpl implements InterviewService {
                 ? null
                 : JSON.toJSONString(Map.of("promptContext", contextSnapshot)));
         turn.setRetrievalStrategy("SCOPED_RAG");
+        turn.setOrchestrationMode(orchestrationPlan.orchestrationMode().name());
+        turn.setDecisionAction(orchestrationPlan.action().name());
+        Map<String, Object> decision = new LinkedHashMap<>();
+        decision.put("tools", orchestrationPlan.toolsUsed());
+        decision.put("summary", orchestrationPlan.publicSummary());
+        decision.put("evidenceAtomIds", orchestrationPlan.evidenceAtomIds());
+        if (orchestrationPlan.fallbackReasonCode() != null) {
+            decision.put("fallbackReasonCode", orchestrationPlan.fallbackReasonCode());
+        }
+        turn.setDecisionJson(JSON.toJSONString(decision));
         try {
             interviewTurnMapper.insert(turn);
         } catch (Exception e) {

@@ -3,6 +3,7 @@ package com.interview.service;
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewPosition;
 import com.interview.entity.InterviewRecord;
+import com.interview.entity.InterviewTurn;
 import com.interview.entity.RagRetrievalLog;
 import com.interview.entity.RagRetrievalRequestLog;
 import com.interview.dto.FinishInterviewResponse;
@@ -19,6 +20,7 @@ import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.mapper.RagRetrievalRequestLogMapper;
 import com.interview.mapper.ResumeProfileMapper;
 import com.interview.service.impl.InterviewServiceImpl;
+import com.interview.service.orchestration.RuleBasedInterviewOrchestrator;
 import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -129,7 +131,8 @@ class InterviewServiceImplTest {
         InterviewRetrievalService retrievalService = new InterviewRetrievalService(
                 questionBankService, interviewPositionMapper, knowledgeBaseMapper,
                 ragRetrievalLogMapper, ragRetrievalRequestLogMapper, appEventService);
-        ReflectionTestUtils.setField(interviewService, "interviewRetrievalService", retrievalService);
+        ReflectionTestUtils.setField(interviewService, "interviewOrchestrator",
+                new RuleBasedInterviewOrchestrator(retrievalService, interviewTurnPlanner));
         UserLlmRuntimeConfig runtimeConfig = new UserLlmRuntimeConfig(
                 1L, 1L, "deepseek", "DeepSeek", "https://api.deepseek.com/v1",
                 "deepseek-chat", "sk-test", 0.7);
@@ -564,6 +567,12 @@ class InterviewServiceImplTest {
                 .allMatch(log -> Boolean.TRUE.equals(log.getContextSelected()));
         assertThat(hitCaptor.getAllValues().subList(10, 12))
                 .allMatch(log -> Boolean.FALSE.equals(log.getContextSelected()));
+        ArgumentCaptor<InterviewTurn> turnCaptor = ArgumentCaptor.forClass(InterviewTurn.class);
+        verify(interviewTurnMapper).insert(turnCaptor.capture());
+        assertThat(turnCaptor.getValue().getOrchestrationMode()).isEqualTo("RULE");
+        assertThat(turnCaptor.getValue().getDecisionAction()).isEqualTo("CONTINUE_PHASE");
+        assertThat(turnCaptor.getValue().getDecisionJson())
+                .contains("\"summary\"", "\"tools\"");
     }
 
     @Test

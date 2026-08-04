@@ -25,6 +25,13 @@ public class InterviewTurnPlanner {
                                   String ragContext,
                                   List<String> tailoredQuestions) {
         InterviewPhase phase = determineNextPhase(record, chatHistory);
+        return planForPhase(record, phase, ragContext, tailoredQuestions);
+    }
+
+    public InterviewTurnPlan planForPhase(InterviewRecord record,
+                                          InterviewPhase phase,
+                                          String ragContext,
+                                          List<String> tailoredQuestions) {
         return new InterviewTurnPlan(phase, buildSystemPrompt(record, phase, ragContext, tailoredQuestions));
     }
 

@@ -123,4 +123,22 @@ class SessionStoreTest {
 
         assertThat(store.loadUsedAtoms(1L)).hasSize(200);
     }
+
+    @Test
+    @DisplayName("记录 Agent 不可用原因后应在本场会话内保持")
+    void shouldRememberAgentDisabledReasonForSession() {
+        store.disableAgent(1L, "TOOLS_UNSUPPORTED");
+
+        assertThat(store.loadAgentDisabledReason(1L)).isEqualTo("TOOLS_UNSUPPORTED");
+    }
+
+    @Test
+    @DisplayName("删除会话时应同时清除 Agent 不可用状态")
+    void shouldClearAgentDisabledReasonWhenDeletingSession() {
+        store.disableAgent(1L, "TOOLS_UNSUPPORTED");
+
+        store.delete(1L);
+
+        assertThat(store.loadAgentDisabledReason(1L)).isNull();
+    }
 }

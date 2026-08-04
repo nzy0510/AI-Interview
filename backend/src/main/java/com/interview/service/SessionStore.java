@@ -24,12 +24,14 @@ public class SessionStore {
     private static final String CHAT_KEY_PREFIX = "interview:chat:";
     private static final String TAILORED_KEY_PREFIX = "interview:tailored:";
     private static final String USED_ATOMS_KEY_PREFIX = "interview:used_atoms:";
+    private static final String AGENT_DISABLED_KEY_PREFIX = "interview:agent_disabled:";
     private static final long SESSION_TTL_HOURS = 2;
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final Map<Long, List<ChatMessage>> localChatCache = new ConcurrentHashMap<>();
     private final Map<Long, List<String>> localTailoredCache = new ConcurrentHashMap<>();
     private final Map<Long, List<String>> localUsedAtomsCache = new ConcurrentHashMap<>();
+    private final Map<Long, String> localAgentDisabledCache = new ConcurrentHashMap<>();
     private volatile boolean redisAvailable = true;
 
     public SessionStore(RedisTemplate<String, Object> redisTemplate) {
@@ -112,11 +114,13 @@ public class SessionStore {
         localChatCache.remove(recordId);
         localTailoredCache.remove(recordId);
         localUsedAtomsCache.remove(recordId);
+        localAgentDisabledCache.remove(recordId);
         if (isRedisReady()) {
             try {
                 redisTemplate.delete(CHAT_KEY_PREFIX + recordId);
                 redisTemplate.delete(TAILORED_KEY_PREFIX + recordId);
                 redisTemplate.delete(USED_ATOMS_KEY_PREFIX + recordId);
+                redisTemplate.delete(AGENT_DISABLED_KEY_PREFIX + recordId);
             } catch (Exception ignored) {}
         }
     }
@@ -182,5 +186,34 @@ public class SessionStore {
         }
         List<String> cached = localUsedAtomsCache.get(recordId);
         return cached != null ? new ArrayList<>(cached) : new ArrayList<>();
+    }
+
+    public void disableAgent(Long recordId, String reasonCode) {
+        String safeReason = reasonCode == null || reasonCode.isBlank() ? "AGENT_UNAVAILABLE" : reasonCode;
+        localAgentDisabledCache.put(recordId, safeReason);
+        if (isRedisReady()) {
+            try {
+                redisTemplate.opsForValue().set(AGENT_DISABLED_KEY_PREFIX + recordId, safeReason,
+                        SESSION_TTL_HOURS, TimeUnit.HOURS);
+            } catch (Exception e) {
+                log.trace("Redis Agent 状态写入跳过: {}", e.getMessage());
+            }
+        }
+    }
+
+    public String loadAgentDisabledReason(Long recordId) {
+        if (isRedisReady()) {
+            try {
+                Object raw = redisTemplate.opsForValue().get(AGENT_DISABLED_KEY_PREFIX + recordId);
+                if (raw != null) {
+                    String reason = String.valueOf(raw);
+                    localAgentDisabledCache.put(recordId, reason);
+                    return reason;
+                }
+            } catch (Exception e) {
+                log.trace("Redis Agent 状态读取跳过: {}", e.getMessage());
+            }
+        }
+        return localAgentDisabledCache.get(recordId);
     }
 }

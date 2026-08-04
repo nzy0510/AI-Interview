@@ -121,6 +121,19 @@ class InterviewTurnPlannerTest {
         assertThat(plan.systemPrompt()).contains("hr");
     }
 
+    @Test
+    @DisplayName("显式阶段规划不应被截断的聊天历史重新计算")
+    void shouldBuildPromptForExplicitPhase() {
+        InterviewRecord record = record(InterviewPhase.TECHNICAL);
+        record.setDifficultyLevel("mid");
+
+        InterviewTurnPlanner.InterviewTurnPlan plan = planner.planForPhase(
+                record, InterviewPhase.HR, "沟通协作证据", List.of());
+
+        assertThat(plan.phase()).isEqualTo(InterviewPhase.HR);
+        assertThat(plan.systemPrompt()).contains("沟通协作证据");
+    }
+
     private InterviewRecord record(InterviewPhase phase) {
         InterviewRecord record = new InterviewRecord();
         record.setPhase(phase.name());
