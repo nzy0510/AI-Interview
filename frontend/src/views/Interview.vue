@@ -1,5 +1,5 @@
 <template>
-  <div class="interview-shell">
+  <div v-if="!showReport" class="interview-shell">
     <el-container class="interview-frame">
       <el-header class="interview-header">
         <div class="header-left">
@@ -88,28 +88,28 @@
         </div>
       </el-footer>
 
-      <InterviewReportOverlay
-        v-if="showReport"
-        :display-score="displayScore"
-        :score="reportData.score"
-        :score-color="scoreColor"
-        :metrics="reportMetrics"
-        :emotion-distribution="reportData.emotion?.emotionDistribution || null"
-        :emotion-summary-text="reportData.emotion?.summary || ''"
-        :feedback-html="renderMarkdown(reportData.feedback || '暂无反馈')"
-        :recommendations="reportData.recommendations"
-        :emotion-label-fn="emotionLabel"
-        :emotion-color-fn="emotionColor"
-        @history="router.push('/history')"
-        @home="router.push('/')"
-      >
-        <template #radar>
-          <div ref="radarRef" class="radar-host"></div>
-        </template>
-      </InterviewReportOverlay>
-
     </el-container>
   </div>
+
+  <InterviewReportOverlay
+    v-else
+    :display-score="displayScore"
+    :score="reportData.score"
+    :score-color="scoreColor"
+    :metrics="reportMetrics"
+    :emotion-distribution="reportData.emotion?.emotionDistribution || null"
+    :emotion-summary-text="reportData.emotion?.summary || ''"
+    :feedback-html="renderMarkdown(reportData.feedback || '暂无反馈')"
+    :recommendations="reportData.recommendations"
+    :emotion-label-fn="emotionLabel"
+    :emotion-color-fn="emotionColor"
+    @history="router.push('/history')"
+    @home="router.push('/')"
+  >
+    <template #radar>
+      <div ref="radarRef" class="radar-host"></div>
+    </template>
+  </InterviewReportOverlay>
 </template>
 
 <script setup>

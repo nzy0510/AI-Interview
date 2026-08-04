@@ -1,8 +1,11 @@
 <template>
-  <div class="dashboard-overlay">
+  <section class="interview-report-page" aria-labelledby="interview-report-title">
     <div class="dashboard-container">
       <div class="dash-header">
-        <span class="dash-title">📋 智能面试深度体检报告</span>
+        <div>
+          <p class="dash-eyebrow">Interview report</p>
+          <h2 id="interview-report-title" class="dash-title">面试能力分析报告</h2>
+        </div>
         <div class="dash-actions">
           <el-button @click="$emit('history')" plain>查看历史</el-button>
           <el-button type="primary" @click="$emit('home')">返回大厅</el-button>
@@ -92,7 +95,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup>
@@ -124,23 +127,14 @@ const hasEmotionSection = computed(() => Boolean(props.emotionDistribution || pr
 </script>
 
 <style scoped>
-.dashboard-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 28px 20px;
-  background:
-    radial-gradient(circle at top, rgba(58, 56, 139, 0.20), transparent 35%),
-    rgba(18, 20, 25, 0.84);
-  backdrop-filter: blur(18px);
-  overflow-y: auto;
+.interview-report-page {
+  width: 100%;
 }
 
 .dashboard-container {
-  width: min(1160px, 100%);
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -371,16 +365,12 @@ const hasEmotionSection = computed(() => Boolean(props.emotionDistribution || pr
   grid-column: 1 / 3;
   grid-row: 4 / 5;
   min-height: 300px;
-  max-height: 500px;
-  overflow-y: auto;
 }
 
 .bento-roadmap {
   grid-column: 3 / 4;
   grid-row: 4 / 5;
   min-height: 300px;
-  max-height: 500px;
-  overflow-y: auto;
 }
 
 .custom-md {
@@ -419,9 +409,122 @@ const hasEmotionSection = computed(() => Boolean(props.emotionDistribution || pr
 }
 
 :deep(.el-button.is-plain) {
-  background: rgba(255, 255, 255, 0.55);
-  color: #171a1f;
-  box-shadow: 0 0 0 1px rgba(23, 26, 31, 0.06);
+  background: var(--app-surface);
+  color: var(--app-text);
+  box-shadow: 0 0 0 1px var(--app-border);
+}
+
+.dash-eyebrow {
+  margin: 0 0 4px;
+  color: var(--app-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.dash-title {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 1.65rem;
+}
+
+.bento-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: auto;
+}
+
+.bento-card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-sm);
+  backdrop-filter: none;
+}
+
+.bento-card-title,
+.kpi-val,
+.roadmap-item h4,
+.custom-md,
+.custom-md :deep(h1),
+.custom-md :deep(h2),
+.custom-md :deep(h3) {
+  color: var(--app-text);
+}
+
+.score-lbl,
+.kpi-lbl,
+.unit,
+.em-name,
+.roadmap-item p {
+  color: var(--app-text-muted);
+}
+
+.sentiment-summary p,
+.em-pct {
+  color: var(--app-text);
+}
+
+.kpi-val.highlight {
+  color: var(--app-primary);
+}
+
+.grade-badge,
+.kpi-item,
+.sentiment-summary p,
+.em-bar-bg {
+  background: var(--app-surface-2);
+}
+
+.custom-md :deep(strong) {
+  color: var(--app-primary);
+}
+
+.bento-score {
+  grid-column: 1 / 5;
+  grid-row: auto;
+}
+
+.bento-radar {
+  grid-column: 5 / 13;
+  grid-row: auto;
+  min-height: 320px;
+}
+
+.bento-kpis {
+  grid-column: 1 / 13;
+  grid-row: auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--app-surface);
+}
+
+.kpi-item {
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--app-radius-md);
+}
+
+.kpi-icon {
+  background: rgba(58, 56, 139, 0.08);
+}
+
+.bento-sentiment {
+  grid-column: 1 / 13;
+  grid-row: auto;
+}
+
+.bento-feedback {
+  grid-column: 1 / 8;
+  grid-row: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+.bento-roadmap {
+  grid-column: 8 / 13;
+  grid-row: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 @media (max-width: 1100px) {
@@ -441,7 +544,12 @@ const hasEmotionSection = computed(() => Boolean(props.emotionDistribution || pr
 
   .bento-feedback,
   .bento-roadmap {
+    min-height: 0;
     max-height: none;
+  }
+
+  .bento-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -462,16 +570,16 @@ const hasEmotionSection = computed(() => Boolean(props.emotionDistribution || pr
 }
 
 @media (max-width: 640px) {
-  .dashboard-overlay {
-    padding: 18px 12px;
-  }
-
   .dash-title {
     font-size: 20px;
   }
 
   .bento-card {
     padding: 18px;
+  }
+
+  .bento-kpis {
+    grid-template-columns: 1fr;
   }
 }
 </style>

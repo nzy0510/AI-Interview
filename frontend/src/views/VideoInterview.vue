@@ -1,5 +1,5 @@
 <template>
-  <div class="video-interview-shell">
+  <div v-if="!showReport" class="video-interview-shell">
     <header class="vi-header">
       <div class="header-left">
         <el-button class="back-button" :icon="ArrowLeft" circle @click="router.back()" />
@@ -46,27 +46,28 @@
       </div>
     </main>
 
-    <InterviewReportOverlay
-      v-if="showReport"
-      :display-score="displayScore"
-      :score="reportData.score"
-      :score-color="scoreColor"
-      :metrics="reportMetrics"
-      :emotion-distribution="resolvedEmotionDistribution"
-      :emotion-summary-text="reportData.emotionSummaryText"
-      emotion-tag="视频模式"
-      :feedback-html="renderMarkdown(reportData.feedback || '暂无反馈')"
-      :recommendations="reportData.recommendations"
-      :emotion-label-fn="emotionLabel"
-      :emotion-color-fn="emotionColor"
-      @history="router.push('/history')"
-      @home="router.push('/')"
-    >
-      <template #radar>
-        <div ref="radarRef" class="radar-host"></div>
-      </template>
-    </InterviewReportOverlay>
   </div>
+
+  <InterviewReportOverlay
+    v-else
+    :display-score="displayScore"
+    :score="reportData.score"
+    :score-color="scoreColor"
+    :metrics="reportMetrics"
+    :emotion-distribution="resolvedEmotionDistribution"
+    :emotion-summary-text="reportData.emotionSummaryText"
+    emotion-tag="视频模式"
+    :feedback-html="renderMarkdown(reportData.feedback || '暂无反馈')"
+    :recommendations="reportData.recommendations"
+    :emotion-label-fn="emotionLabel"
+    :emotion-color-fn="emotionColor"
+    @history="router.push('/history')"
+    @home="router.push('/')"
+  >
+    <template #radar>
+      <div ref="radarRef" class="radar-host"></div>
+    </template>
+  </InterviewReportOverlay>
 </template>
 
 <script setup>
