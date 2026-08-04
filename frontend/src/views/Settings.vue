@@ -137,8 +137,9 @@ import {
   getPreferenceAPI,
   updatePreferenceAPI
 } from '@/api/user'
-import { getKnowledgeWorkspaceAPI } from '@/api/knowledgeWorkspace'
+import { getVisiblePositionsAPI } from '@/api/position'
 import { logout, withAuthHeaders } from '@/utils/auth'
+import { normalizeVisibleInterviewPositions } from '@/utils/interviewEntry'
 
 const router = useRouter()
 const savingProfile = ref(false)
@@ -169,11 +170,8 @@ const loadData = async () => {
     }
   } catch { /* defaults ok */ }
   try {
-    const workspace = await getKnowledgeWorkspaceAPI()
-    const positions = workspace?.positions || []
-    roleOptions.value = positions
-      .filter(p => p.status !== 'ARCHIVED' && p.name)
-      .map(p => p.name)
+    const positions = await getVisiblePositionsAPI({ silent: true })
+    roleOptions.value = normalizeVisibleInterviewPositions(positions).map((position) => position.name)
   } catch { roleOptions.value = [] }
   try {
     const p = await getPreferenceAPI()

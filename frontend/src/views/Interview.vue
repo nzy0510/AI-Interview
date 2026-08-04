@@ -23,6 +23,10 @@
         </div>
       </el-header>
 
+      <div v-if="orchestrationDecision" class="orchestration-strip">
+        <InterviewOrchestrationIndicator :decision="orchestrationDecision" />
+      </div>
+
       <el-main class="chat-main" ref="chatMainRef">
         <div class="chat-scene">
           <div
@@ -117,6 +121,8 @@ import { startInterviewAPI, finishInterviewAPI, discardInterviewAPI, getHistoryD
 import { getPreferenceAPI } from '@/api/user'
 import * as echarts from 'echarts'
 import { userKey } from '@/utils/auth'
+import { useInterviewOrchestration } from '@/composables/useInterviewOrchestration'
+import InterviewOrchestrationIndicator from '@/components/interview/InterviewOrchestrationIndicator.vue'
 import InterviewReportOverlay from '@/components/interview/InterviewReportOverlay.vue'
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
 import { buildLlmConfigRouteQuery, isMissingLlmConfigError } from '@/utils/llmConfig'
@@ -130,6 +136,7 @@ import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFa
 import { trackEvent } from '@/utils/analytics'
 import { getAnonymousId } from '@/utils/visitor'
 import { renderSafeMarkdown } from '@/utils/markdown'
+import { parseInterviewSseData } from '@/utils/interviewOrchestration'
 
 const route = useRoute()
 const router = useRouter()
@@ -147,6 +154,11 @@ const messageList = ref([])
 const inputMsg = ref('')
 const isStreaming = ref(false)
 const currentPhase = ref('OPENING')
+const {
+  orchestrationDecision,
+  setOrchestrationDecision,
+  resetOrchestrationDecision
+} = useInterviewOrchestration()
 const chatMainRef = ref(null)
 const isFinishing = ref(false)
 const isDiscarding = ref(false)
@@ -247,7 +259,10 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  if (eventSource) eventSource.close()
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
   cleanupAudio()
   if (silenceTimer) clearTimeout(silenceTimer)
   if (radarChartInstance) {
@@ -566,6 +581,7 @@ const sendMessage = () => {
 const streamAiResponse = (msg) => {
   isStreaming.value = true
   pendingEndType = null
+  resetOrchestrationDecision()
   // Use reactive push via an object reference we keep
   const aiMsg = reactive({ role: 'ai', content: '', streaming: true })
   messageList.value.push(aiMsg)
@@ -574,37 +590,44 @@ const streamAiResponse = (msg) => {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
   const url = `${baseUrl}/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(msg)}&token=${token}&aid=${getAnonymousId()}`
   if (eventSource) eventSource.close()
-  eventSource = new EventSource(url)
+  const source = new EventSource(url)
+  eventSource = source
 
-  eventSource.onmessage = (event) => {
+  source.onmessage = (event) => {
+    if (eventSource !== source) return
     const rawData = event.data
     if (!rawData || rawData.trim() === '') return // skip heartbeat empty lines
 
-    let d
-    try {
-      d = JSON.parse(rawData)
-    } catch (err) {
-      console.warn('[SSE] JSON parse failed:', rawData, err)
+    const parsedEvent = parseInterviewSseData(rawData)
+    if (!parsedEvent) {
+      console.warn('[SSE] JSON parse failed:', rawData)
       return
     }
 
-    if (d.error) {
-      ElMessage.error(d.error)
+    if (parsedEvent.kind === 'error') {
+      ElMessage.error(parsedEvent.data)
       aiMsg.streaming = false
       isStreaming.value = false
-      eventSource.close()
+      source.close()
+      if (eventSource === source) eventSource = null
       return
     }
 
-    if (d.phase) {
-      currentPhase.value = d.phase
+    if (parsedEvent.kind === 'orchestration') {
+      setOrchestrationDecision(parsedEvent.data)
       return
     }
 
-    if (d.done === 'true' || d.done === true) {
+    if (parsedEvent.kind === 'phase') {
+      currentPhase.value = parsedEvent.data
+      return
+    }
+
+    if (parsedEvent.kind === 'done') {
       aiMsg.streaming = false
       isStreaming.value = false
-      eventSource.close()
+      source.close()
+      if (eventSource === source) eventSource = null
       saveActiveInterview()
       if (pendingEndType) {
         const endType = pendingEndType
@@ -620,8 +643,8 @@ const streamAiResponse = (msg) => {
       return
     }
 
-    if (d.content !== undefined && d.content !== null) {
-      aiMsg.content += d.content
+    if (parsedEvent.kind === 'content') {
+      aiMsg.content += parsedEvent.data
 
       const markers = detectInterviewControlMarkers(aiMsg.content)
       if (markers.autoFinish && currentPhase.value === 'CLOSING') {
@@ -637,7 +660,13 @@ const streamAiResponse = (msg) => {
       scrollToBottom()
     }
   }
-  eventSource.onerror = () => { aiMsg.streaming = false; isStreaming.value = false; eventSource.close() }
+  source.onerror = () => {
+    if (eventSource !== source) return
+    aiMsg.streaming = false
+    isStreaming.value = false
+    source.close()
+    eventSource = null
+  }
 }
 
 // ─── End Interview ────────────────────────────────────────────────────────────
@@ -778,6 +807,12 @@ const performEndInterview = async (endType = 'manual') => {
   backdrop-filter: blur(18px);
   box-shadow: 0 1px 0 rgba(23, 26, 31, 0.04), 0 10px 30px rgba(23, 26, 31, 0.04);
   flex-shrink: 0;
+}
+
+.orchestration-strip {
+  flex: 0 0 auto;
+  padding: 10px 28px 0;
+  background: rgba(247, 249, 251, 0.72);
 }
 
 .header-left,
@@ -1036,6 +1071,7 @@ const performEndInterview = async (endType = 'manual') => {
 
 @media (max-width: 860px) {
   .interview-header,
+  .orchestration-strip,
   .chat-footer,
   .chat-main {
     padding-left: 16px;

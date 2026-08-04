@@ -5,13 +5,17 @@
         <el-button :icon="ArrowLeft" class="icon-button" circle @click="router.push('/')" />
         <div class="header-copy">
           <p class="eyebrow">Knowledge Bank</p>
-          <h1 class="page-title">岗位 / 题库维护</h1>
-          <p class="page-subtitle">管理当前账号的私有岗位知识库，公共岗位仅作为只读 starter 内容。</p>
+          <h1 class="page-title">{{ isPublicMaintenanceMode ? '公共题库维护' : '岗位 / 题库维护' }}</h1>
+          <p class="page-subtitle">
+            {{ isPublicMaintenanceMode
+              ? '维护比赛 Demo 使用的内置公共题库，普通用户仅使用已发布内容。'
+              : '管理当前账号的私有岗位知识库，公共岗位仅作为只读 starter 内容。' }}
+          </p>
         </div>
       </div>
       <div class="header-actions">
         <el-button :icon="RefreshRight" :loading="loading" @click="loadWorkspace">刷新</el-button>
-        <el-button type="primary" :icon="Plus" @click="createDialogVisible = true">新建岗位</el-button>
+        <el-button v-if="!isPublicMaintenanceMode" type="primary" :icon="Plus" @click="createDialogVisible = true">新建岗位</el-button>
       </div>
     </header>
 
@@ -25,8 +29,8 @@
           <el-tag effect="plain">{{ positions.length }} 个岗位</el-tag>
         </div>
 
-        <el-empty v-if="!loading && !positions.length" description="暂无可用岗位">
-          <el-button type="primary" @click="createDialogVisible = true">创建私有岗位</el-button>
+        <el-empty v-if="!loading && !positions.length" :description="isPublicMaintenanceMode ? '暂无公共岗位' : '暂无可用岗位'">
+          <el-button v-if="!isPublicMaintenanceMode" type="primary" @click="createDialogVisible = true">创建私有岗位</el-button>
         </el-empty>
 
         <div v-else class="position-list">
@@ -271,6 +275,7 @@
     </el-main>
 
     <el-dialog
+      v-if="!isPublicMaintenanceMode"
       v-model="createDialogVisible"
       title="新建私有岗位"
       width="min(92vw, 520px)"
@@ -301,7 +306,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, Delete, Plus, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -328,10 +333,17 @@ import {
   getPositionScopeLabel,
   getPositionStatusType,
   isPositionEditable,
+  KNOWLEDGE_WORKSPACE_CAPABILITIES_KEY,
+  normalizeKnowledgeWorkspaceCapabilities,
   parseImportPackageText
 } from '@/utils/knowledgeWorkspace'
 
 const router = useRouter()
+const workspaceCapabilities = inject(
+  KNOWLEDGE_WORKSPACE_CAPABILITIES_KEY,
+  ref(normalizeKnowledgeWorkspaceCapabilities())
+)
+const isPublicMaintenanceMode = computed(() => workspaceCapabilities.value.admin === true)
 const loading = ref(false)
 const creating = ref(false)
 const deleting = ref(false)
@@ -417,7 +429,10 @@ const loadWorkspace = async () => {
   loading.value = true
   try {
     const data = await getKnowledgeWorkspaceAPI()
-    positions.value = data?.positions || []
+    const availablePositions = data?.positions || []
+    positions.value = isPublicMaintenanceMode.value
+      ? availablePositions.filter((item) => item.scope === 'PUBLIC')
+      : availablePositions
     if (!positions.value.some((item) => item.id === activePositionId.value)) {
       activePositionId.value = positions.value[0]?.id || null
     }
@@ -428,6 +443,7 @@ const loadWorkspace = async () => {
 }
 
 const createPosition = async () => {
+  if (isPublicMaintenanceMode.value) return
   const name = createForm.name.trim()
   if (!name) {
     ElMessage.warning('请填写岗位名称')

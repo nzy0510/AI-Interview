@@ -23,6 +23,10 @@
       </div>
     </header>
 
+    <div v-if="orchestrationDecision" class="vi-orchestration-strip">
+      <InterviewOrchestrationIndicator :decision="orchestrationDecision" dark />
+    </div>
+
     <main class="vi-main" v-show="!showReport">
       <div class="camera-stage">
         <video ref="videoRef" autoplay muted playsinline class="camera-video" />
@@ -75,6 +79,8 @@ import { startInterviewAPI, finishInterviewAPI, discardInterviewAPI } from '@/ap
 import { getPreferenceAPI } from '@/api/user'
 import { initModels, analyzeFrame, getEmotionSummary, EMOTION_LABELS } from '@/utils/emotionAnalyzer'
 import { userKey } from '@/utils/auth'
+import { useInterviewOrchestration } from '@/composables/useInterviewOrchestration'
+import InterviewOrchestrationIndicator from '@/components/interview/InterviewOrchestrationIndicator.vue'
 import InterviewReportOverlay from '@/components/interview/InterviewReportOverlay.vue'
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
 import { buildLlmConfigRouteQuery, isMissingLlmConfigError } from '@/utils/llmConfig'
@@ -88,6 +94,7 @@ import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFa
 import { trackEvent } from '@/utils/analytics'
 import { getAnonymousId } from '@/utils/visitor'
 import { renderSafeMarkdown } from '@/utils/markdown'
+import { parseInterviewSseData } from '@/utils/interviewOrchestration'
 
 const router = useRouter()
 const route = useRoute()
@@ -112,6 +119,11 @@ const isSpeaking = ref(false)
 const showReport = ref(false)
 const currentAiText = ref('')
 const currentPhase = ref('OPENING')
+const {
+  orchestrationDecision,
+  setOrchestrationDecision,
+  resetOrchestrationDecision
+} = useInterviewOrchestration()
 const totalRounds = ref(0)
 const hrOverridden = ref(false)
 const currentAgent = ref('面试组长')
@@ -310,6 +322,7 @@ function sendToAI(message) {
   isListening.value = false
   currentAiText.value = ''
   pendingEndType = null
+  resetOrchestrationDecision()
 
   // Determine current agent based on round count
   if (totalRounds.value === 0) currentAgent.value = '面试组长'
@@ -320,38 +333,45 @@ function sendToAI(message) {
   const token = localStorage.getItem('token') || ''
   const url = `/api/interview/chatStream?recordId=${recordId.value}&message=${encodeURIComponent(message)}&token=${token}&aid=${getAnonymousId()}`
   if (eventSource) eventSource.close()
-  eventSource = new EventSource(url)
+  const source = new EventSource(url)
+  eventSource = source
 
   let fullText = ''
 
-  eventSource.onmessage = (e) => {
-    let d
-    try { d = JSON.parse(e.data) } catch { return }
+  source.onmessage = (e) => {
+    if (eventSource !== source) return
+    const parsedEvent = parseInterviewSseData(e.data)
+    if (!parsedEvent) return
 
-    if (d.error) {
-      ElMessage.error(d.error)
+    if (parsedEvent.kind === 'error') {
+      ElMessage.error(parsedEvent.data)
       isStreaming.value = false
-      eventSource.close()
-      eventSource = null
+      source.close()
+      if (eventSource === source) eventSource = null
       startListening()
       return
     }
 
-    if (d.phase) {
-      currentPhase.value = d.phase
-      if (d.phase === 'HR') {
+    if (parsedEvent.kind === 'orchestration') {
+      setOrchestrationDecision(parsedEvent.data)
+      return
+    }
+
+    if (parsedEvent.kind === 'phase') {
+      currentPhase.value = parsedEvent.data
+      if (parsedEvent.data === 'HR') {
         hrOverridden.value = true
         currentAgent.value = 'HR 面试官'
-      } else if (d.phase === 'CLOSING') {
+      } else if (parsedEvent.data === 'CLOSING') {
         currentAgent.value = '面试组长'
       }
       return
     }
 
-    if (d.done === 'true' || d.done === true) {
+    if (parsedEvent.kind === 'done') {
       isStreaming.value = false
-      eventSource.close()
-      eventSource = null
+      source.close()
+      if (eventSource === source) eventSource = null
       totalRounds.value++
       if (pendingEndType) {
         const endType = pendingEndType
@@ -370,8 +390,8 @@ function sendToAI(message) {
       return
     }
 
-    if (d.content !== undefined && d.content !== null) {
-      fullText += d.content
+    if (parsedEvent.kind === 'content') {
+      fullText += parsedEvent.data
 
       const markers = detectInterviewControlMarkers(fullText)
       if (markers.switchToHr) {
@@ -391,9 +411,10 @@ function sendToAI(message) {
     }
   }
 
-  eventSource.onerror = () => {
+  source.onerror = () => {
+    if (eventSource !== source) return
     isStreaming.value = false
-    eventSource.close()
+    source.close()
     eventSource = null
     startListening()
   }
@@ -698,6 +719,10 @@ function animateRadar() {
   --accent-soft: rgba(58, 56, 139, 0.14);
   min-height: 100vh;
   min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   color: #f8fafc;
   background:
@@ -715,6 +740,13 @@ function animateRadar() {
   background: rgba(16, 18, 26, 0.72);
   backdrop-filter: blur(18px);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 30px rgba(0, 0, 0, 0.20);
+  flex: 0 0 auto;
+}
+
+.vi-orchestration-strip {
+  flex: 0 0 auto;
+  padding: 10px 28px 0;
+  background: rgba(16, 18, 26, 0.72);
 }
 
 .header-left,
@@ -749,6 +781,7 @@ function animateRadar() {
 
 .vi-main {
   flex: 1;
+  min-height: 0;
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -758,8 +791,7 @@ function animateRadar() {
 .camera-stage {
   position: relative;
   width: min(100%, 1400px);
-  height: calc(100vh - 122px);
-  height: calc(100dvh - 122px);
+  min-height: 0;
   overflow: hidden;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.03);
@@ -879,15 +911,9 @@ function animateRadar() {
     0 0 0 3px rgba(58, 56, 139, 0.08);
 }
 
-@media (max-width: 1100px) {
-  .camera-stage {
-    height: calc(100vh - 110px);
-    height: calc(100dvh - 110px);
-  }
-}
-
 @media (max-width: 860px) {
   .vi-header,
+  .vi-orchestration-strip,
   .vi-main {
     padding-left: 16px;
     padding-right: 16px;
@@ -906,8 +932,6 @@ function animateRadar() {
   }
 
   .camera-stage {
-    height: calc(100vh - 144px);
-    height: calc(100dvh - 144px);
     border-radius: 18px;
   }
 

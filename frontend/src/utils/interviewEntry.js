@@ -16,6 +16,20 @@ function normalizeFocusAreas(value) {
   return parsed.map((item) => String(item).trim()).filter(Boolean)
 }
 
+export function normalizeVisibleInterviewPositions(value) {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    const id = Number(item?.id)
+    const name = typeof item?.name === 'string' ? item.name.trim() : ''
+    if (!Number.isFinite(id) || id <= 0 || !name) return []
+    return [{
+      id,
+      name,
+      scope: item.scope || 'PUBLIC'
+    }]
+  })
+}
+
 export function parseFocusAreas(queryFocus) {
   if (typeof queryFocus !== 'string' || !queryFocus.trim()) return []
   return queryFocus
