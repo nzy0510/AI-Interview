@@ -45,10 +45,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Value("${app.developer.exempt-emails:}")
     private String developerExemptEmails;
 
-    @Value("${app.bootstrap-admin.username:nzy333}")
+    @Value("${app.bootstrap-admin.username:}")
     private String bootstrapAdminUsername;
 
-    @Value("${app.bootstrap-admin.email:1525764737@qq.com}")
+    @Value("${app.bootstrap-admin.email:}")
     private String bootstrapAdminEmail;
 
     @Override

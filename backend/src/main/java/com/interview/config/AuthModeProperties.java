@@ -7,9 +7,10 @@ public class AuthModeProperties {
 
     public static final String LOCAL_ADMIN_MODE = "local-admin";
     public static final String EMAIL_VERIFIED_MODE = "email-verified";
+    public static final String LOCAL_ADMIN_USERNAME = "admin";
+    public static final String LOCAL_ADMIN_PASSWORD = "admin123";
 
     private String mode = EMAIL_VERIFIED_MODE;
-    private LocalAdmin localAdmin = new LocalAdmin();
 
     public String getMode() {
         return mode;
@@ -19,36 +20,14 @@ public class AuthModeProperties {
         this.mode = mode;
     }
 
-    public LocalAdmin getLocalAdmin() {
-        return localAdmin;
-    }
-
-    public void setLocalAdmin(LocalAdmin localAdmin) {
-        this.localAdmin = localAdmin;
-    }
-
     public boolean isLocalAdminMode() {
-        return LOCAL_ADMIN_MODE.equalsIgnoreCase(mode);
-    }
-
-    public static class LocalAdmin {
-        private String username = "admin";
-        private String password = "admin123";
-
-        public String getUsername() {
-            return username;
+        if (LOCAL_ADMIN_MODE.equalsIgnoreCase(mode)) {
+            return true;
         }
-
-        public void setUsername(String username) {
-            this.username = username;
+        if (EMAIL_VERIFIED_MODE.equalsIgnoreCase(mode)) {
+            return false;
         }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
+        throw new IllegalStateException(
+                "APP_AUTH_MODE 仅支持 local-admin 或 email-verified，当前值: " + mode);
     }
 }

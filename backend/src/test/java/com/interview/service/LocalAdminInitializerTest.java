@@ -48,6 +48,7 @@ class LocalAdminInitializerTest {
         User existing = new User();
         existing.setUsername("admin");
         existing.setPassword("existing-hash");
+        existing.setRole("ADMIN");
         when(userMapper.selectOne(any(Wrapper.class))).thenReturn(existing);
         LocalAdminInitializer initializer = new LocalAdminInitializer(userMapper, properties);
 
@@ -56,6 +57,26 @@ class LocalAdminInitializerTest {
         verify(userMapper, never()).insert(any(User.class));
         verify(userMapper, never()).updateById(any(User.class));
         assertThat(existing.getPassword()).isEqualTo("existing-hash");
+    }
+
+    @Test
+    @DisplayName("同名账号不是管理员时明确拒绝启动")
+    void shouldRejectConflictingNonAdminAccount() {
+        UserMapper userMapper = mock(UserMapper.class);
+        AuthModeProperties properties = localAdminProperties();
+        User existing = new User();
+        existing.setUsername("admin");
+        existing.setRole("USER");
+        when(userMapper.selectOne(any(Wrapper.class))).thenReturn(existing);
+        LocalAdminInitializer initializer = new LocalAdminInitializer(userMapper, properties);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> initializer.run(null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("同名账号")
+                .hasMessageContaining("ADMIN");
+
+        verify(userMapper, never()).insert(any(User.class));
+        verify(userMapper, never()).updateById(any(User.class));
     }
 
     @Test
@@ -75,8 +96,6 @@ class LocalAdminInitializerTest {
     private AuthModeProperties localAdminProperties() {
         AuthModeProperties properties = new AuthModeProperties();
         properties.setMode("local-admin");
-        properties.getLocalAdmin().setUsername("admin");
-        properties.getLocalAdmin().setPassword("admin123");
         return properties;
     }
 }

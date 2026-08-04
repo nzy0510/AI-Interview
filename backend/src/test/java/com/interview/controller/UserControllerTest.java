@@ -1,6 +1,8 @@
 package com.interview.controller;
 
 import com.interview.common.Result;
+import com.interview.dto.RegisterDTO;
+import com.interview.dto.ResetPasswordDTO;
 import com.interview.entity.User;
 import com.interview.service.AdminRoleService;
 import com.interview.service.AuthModeService;
@@ -16,6 +18,10 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class UserControllerTest {
@@ -32,6 +38,29 @@ class UserControllerTest {
         Result<AuthModeService.PublicAuthConfig> result = controller.authConfig();
 
         assertThat(result.getData()).isEqualTo(config);
+    }
+
+    @Test
+    void localModeBlocksAllEmailFlowsBeforeBusinessCalls() {
+        UserController controller = new UserController();
+        UserService userService = mock(UserService.class);
+        AuthModeService authModeService = mock(AuthModeService.class);
+        ReflectionTestUtils.setField(controller, "userService", userService);
+        ReflectionTestUtils.setField(controller, "authModeService", authModeService);
+        doThrow(new IllegalStateException("本地管理员模式已关闭邮箱注册与密码找回"))
+                .when(authModeService).requireEmailAuthentication();
+
+        assertThatThrownBy(() -> controller.register(new RegisterDTO()))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> controller.sendCode(Map.of("email", "local@example.com")))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> controller.forgotPassword(Map.of("email", "local@example.com")))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> controller.resetPassword(new ResetPasswordDTO()))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(authModeService, times(4)).requireEmailAuthentication();
+        verifyNoInteractions(userService);
     }
 
     @Test

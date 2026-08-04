@@ -30,13 +30,16 @@ public class LocalAdminInitializer implements ApplicationRunner {
             return;
         }
 
-        String username = properties.getLocalAdmin().getUsername();
-        String password = properties.getLocalAdmin().getPassword();
-        validateCredentials(username, password);
+        String username = AuthModeProperties.LOCAL_ADMIN_USERNAME;
+        String password = AuthModeProperties.LOCAL_ADMIN_PASSWORD;
 
         User existing = userMapper.selectOne(new LambdaQueryWrapper<User>()
                 .eq(User::getUsername, username));
         if (existing != null) {
+            if (!AdminRoleService.ROLE_ADMIN.equalsIgnoreCase(existing.getRole())) {
+                throw new IllegalStateException(
+                        "本地默认用户名 admin 已被同名账号占用，但该账号不是 ADMIN；请处理数据库冲突后重启");
+            }
             log.info("本地管理员账号已存在，保留现有密码与资料: {}", username);
             return;
         }
@@ -49,14 +52,5 @@ public class LocalAdminInitializer implements ApplicationRunner {
         admin.setAdminGrantedAt(LocalDateTime.now());
         userMapper.insert(admin);
         log.info("本地管理员账号初始化完成: {}", username);
-    }
-
-    private void validateCredentials(String username, String password) {
-        if (username == null || username.isBlank()) {
-            throw new IllegalStateException("APP_LOCAL_ADMIN_USERNAME 不能为空");
-        }
-        if (password == null || password.length() < 6) {
-            throw new IllegalStateException("APP_LOCAL_ADMIN_PASSWORD 至少需要 6 位");
-        }
     }
 }

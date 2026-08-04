@@ -41,4 +41,15 @@ class AuthModeServiceTest {
         assertThat(config.passwordResetEnabled()).isTrue();
         service.requireEmailAuthentication();
     }
+
+    @Test
+    @DisplayName("未知认证模式应明确失败")
+    void shouldRejectUnknownMode() {
+        AuthModeProperties properties = new AuthModeProperties();
+        properties.setMode("unexpected");
+
+        assertThatThrownBy(properties::isLocalAdminMode)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("APP_AUTH_MODE");
+    }
 }
