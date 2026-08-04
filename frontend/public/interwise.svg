@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">InterWise</title>
+  <defs>
+    <linearGradient id="brand" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5250A4" />
+      <stop offset="1" stop-color="#2D2B73" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#brand)" />
+  <path
+    fill="#FFFFFF"
+    d="M14 13h36a7 7 0 0 1 7 7v22a7 7 0 0 1-7 7H31l-10 8v-8h-7a7 7 0 0 1-7-7V20a7 7 0 0 1 7-7Z"
+  />
+  <path fill="#3A388B" d="M17 21h10v4h-3v13h3v4H17v-4h3V25h-3v-4Z" />
+  <path
+    fill="none"
+    stroke="#3A388B"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="4.5"
+    d="m31 23 4 17 5-12 5 12 4-17"
+  />
+</svg>
