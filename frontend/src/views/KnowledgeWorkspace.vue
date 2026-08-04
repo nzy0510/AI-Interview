@@ -345,7 +345,7 @@ const isPublicMaintenanceMode = computed(() => isPublicOnlyMaintenanceMode(works
 const canCreatePosition = computed(() => canCreatePrivatePosition(workspaceCapabilities.value))
 const workspaceDescription = computed(() => {
   if (isPublicMaintenanceMode.value) {
-    return '维护比赛 Demo 使用的内置公共题库，普通用户仅使用已发布内容。'
+    return '维护平台内置公共题库，普通用户仅使用已发布内容。'
   }
   if (workspaceCapabilities.value.admin) {
     return '维护公共 starter 题库，也可创建当前管理员自己的私有岗位与题库。'
