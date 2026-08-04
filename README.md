@@ -11,7 +11,7 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 - 模拟面试与题库打通：MySQL 保存可审核、可发布、可归档的知识原子，Qdrant 只作为可重建的语义索引；已发布 Atom 才能进入面试追问链路。
 - 追问路径更贴近真实面试：技术阶段按岗位和难度召回，结合低信息回答、弱召回、连续回避、已用 Atom 排除等信号，决定补救追问、切换知识点或继续深挖。
 - 多模式训练闭环：支持文字面试、视频面试、简历画像、历史报告、AI Mentor 分析和知识覆盖率复盘。
-- 内置比赛题库：普通用户默认只使用仓库内置的公共 starter 岗位；题库生产与发布由 `ADMIN` 账号维护，既有私有题库能力和数据保留在功能开关后，比赛 Demo 不对普通用户开放。
+- 公共与私有题库并存：所有本地账号可使用公共 starter 岗位，也可创建并维护自己的私有岗位 / 题库；`ADMIN` 账号额外负责公共内容发布，私有数据按账号隔离。
 - 可评测的 RAG 链路：内置离线检索评测工具链，固定 AI 大模型岗位评测集，支持比较 embedding、候选集大小和 rerank 效果。
 - 稳定性与运营观测：内置访问事件、限流、反馈记录、RAG 请求级日志和 Qdrant 失败降级路径。
 
@@ -120,7 +120,7 @@ graph LR
 - embedding-service 只负责文本向量化，默认输出 768 维 multilingual-e5 向量。
 - 前端不直接访问数据库、Redis 或 Qdrant，所有维护动作走后端 API 与用户 ownership / `ADMIN` 角色校验。
 - Agent 工具的用户、岗位和记录作用域由后端绑定，模型不能传入任意 ID；失败后同一面试会话回退稳定规则。
-- 普通用户题库维护默认关闭，前端隐藏入口只是体验层，后端写权限仍会独立校验。
+- 本地 Docker 默认开放账号自有的私有题库维护；公共资源仍只允许 `ADMIN` 修改，私有资源由后端按 owner 独立校验。
 
 ## 项目结构
 
@@ -156,7 +156,7 @@ graph LR
 - 视频面试：摄像头与语音交互入口，结合浏览器能力进行更接近真实场景的训练。
 - 面试 Agent：技术阶段先生成受约束的下一问计划，再驱动真实 Prompt 和阶段；页面展示安全决策摘要，异常时不中断整场面试。
 - 大模型配置：用户可以在侧边栏配置自己的大模型 Provider，并用加密保存的 API Key 驱动面试、报告和 AI Mentor 等用户侧 LLM 功能。
-- 岗位/题库维护：比赛版由管理员维护公共 starter 岗位；普通用户维护能力默认关闭，但原有私有数据和可逆功能开关不会被删除。
+- 岗位/题库维护：本地账号可新增自己的私有岗位并维护私有题库；所有 `ADMIN` 角色拥有一致的公共题库维护能力，同时也能维护各自的私有内容。
 - 面试准备：选择岗位、难度、重点方向和简历信息，为后续追问提供上下文。
 - 历史报告：保存面试记录、评分、反馈和复盘建议。
 - 岗位隔离：现在用户可为不同岗位上传不同简历，并进行针对简历的定制面试。
@@ -212,17 +212,17 @@ graph TD
 
 ### 题库与 RAG
 
-- 知识库 / 题库工作台：比赛版仅向 `ADMIN` 账号开放，用于维护公共 starter 岗位、导入结构化 JSON 题库包以及管理知识原子草稿、发布和索引状态。
-- 题库导入包生成：项目维护者可在本机使用 `interview-question-bank` skill 或 `scripts/question_bank_import.py` 处理结构化资料，再由管理员在主应用内导入、审查、显式发布和重建索引。
+- 知识库 / 题库工作台：本地账号均可创建私有岗位、导入自己的结构化 JSON 题库包并管理私有知识原子；`ADMIN` 账号还能维护公共 starter 岗位及其发布、归档和索引状态。
+- 题库导入包生成：用户可在本机使用 `interview-question-bank` skill 或 `scripts/question_bank_import.py` 处理结构化资料，再导入自己有权限的公共或私有题库，完成审查、显式发布和重建索引。
 - 同步状态：Qdrant 写入或删除失败会保留可重试状态，不让数据库事务和外部索引状态悄悄分叉。
 - 离线评测：`scripts/retrieval_eval` 支持导出、构建候选池、预标注、计算指标和 rerank 对比。
 - 内置基础题库：仓库随代码内置可运行公共 starter 题库，覆盖 Java 后端、Web 前端、AI 大模型应用等方向；本地启动会幂等导入 `backend/src/main/resources/knowledge_base/imports/public/**/*.json` 公共导入包并建立 Qdrant 索引。普通用户直接选择这些岗位训练，不需要维护或导入题库。
 
 ### 题库维护
 
-仓库内置公共 starter 题库，用于空库首次初始化。比赛 Demo 默认设置 `APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=false`：普通用户看不到维护入口，后端也拒绝其创建、导入、编辑、发布、归档或重建索引操作；`ADMIN` 账号仍可维护公共题库。
+仓库内置公共 starter 题库，用于空库首次初始化。本地 Docker 默认设置 `APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=true`：每个登录账号都能新增自己的私有岗位，并对自己的题库执行 JSON 导入、查询、发布、归档和重建索引；不能读取或修改其他账号的私有内容。
 
-原有私有岗位、私有题库代码和既有数据不删除。未来需要恢复受控开放时，可显式开启该功能开关；不同部署的私有数据仍只保存在各自的 MySQL/Qdrant 中。
+所有 `ADMIN` 账号遵循同一角色规则：既能维护公共 starter 题库，也能创建和维护各自的私有岗位。生产 Compose 仍默认关闭普通用户维护能力，需要上线时再结合租户、配额和存储治理显式评估。
 
 ## 快速启动(本地部署)
 
@@ -253,9 +253,12 @@ APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
 
 ```env
 APP_AUTH_MODE=local-admin
+APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=true
 ```
 
 本地默认账号固定为 `admin / admin123`，只用于绑定到 `127.0.0.1` 的本机部署，不要用于公网服务器。
+
+题库维护权限按角色和 owner 判断，不按用户名写死：`admin`、`nzy333` 或其他 `ADMIN` 账号拥有相同能力；普通账号可新增并维护自己的私有岗位 / 题库，不能操作公共题库或其他账号的私有数据。
 
 大模型配置说明：
 
@@ -265,7 +268,7 @@ APP_AUTH_MODE=local-admin
 - 当前支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 和自定义。
 - 服务端只需要 `APP_LLM_CONFIG_ENCRYPTION_KEY` 这类加密密钥来加密保存用户 API Key；不要在 `.env`、示例配置、日志或文档里写入任何真实供应商密钥。
 - 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置；管理员不能查看用户 API Key 明文。
-- 比赛配置默认启用有边界 Agent，并把普通用户题库维护关闭；对应变量见 `.env.example` 的 `APP_INTERVIEW_AGENT_*` 与 `APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED`。
+- 本地配置默认启用有边界 Agent 和账号自有题库维护；对应变量见 `.env.example` 的 `APP_INTERVIEW_AGENT_*` 与 `APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED`。
 
 不要提交 `.env`、真实 API Key、JWT Secret、邮箱授权码或数据库密码。
 
@@ -287,7 +290,7 @@ docker compose up -d --build
 1. 打开侧边栏“大模型配置”。
 2. 选择 DeepSeek，填写自己的 API Key。
 3. 点击“测试连接”，测试成功后保存并启用。
-4. 返回首页选择内置岗位，开始模拟面试。
+4. 可直接选择内置岗位开始模拟面试，也可进入“岗位 / 题库维护”新增自己的私有岗位并导入题库。
 
 首次启用 `local-admin` 且数据库中不存在同名 `admin` 时，系统会创建默认管理员；这不要求整库为空，也不会删除已有账号、题库或面试数据。如果已经存在 `ADMIN` 角色的 `admin` 账号，启动过程不会覆盖其密码或资料；如果同名账号不是管理员，后端会明确拒绝启动，避免静默提权。修改密码后，重启容器也不会重置为 `admin123`。
 
