@@ -2,6 +2,7 @@ package com.interview.service.orchestration;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.interview.config.InterviewAgentProperties;
 import com.interview.dto.MentorInsightResponse;
 import com.interview.dto.ResumeProfileResponse;
 import com.interview.entity.InterviewPhase;
@@ -60,6 +61,7 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
   private final ResumeService resumeService;
   private final MentorService mentorService;
   private final InterviewTurnPlanner turnPlanner;
+  private final int maxToolCalls;
   private final Function<Long, ChatLanguageModel> modelResolver;
 
   @Autowired
@@ -68,8 +70,10 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
                                           MentorService mentorService,
                                           UserLlmConfigService userLlmConfigService,
                                           UserLlmModelFactory modelFactory,
-                                          InterviewTurnPlanner turnPlanner) {
+                                          InterviewTurnPlanner turnPlanner,
+                                          InterviewAgentProperties properties) {
     this(retrievalService, resumeService, mentorService, turnPlanner,
+        clampMaxToolCalls(properties.getMaxToolCalls()),
         userId -> modelFactory.createChatModel(
             userLlmConfigService.requireActiveRuntimeConfig(userId)));
   }
@@ -79,10 +83,21 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
                                    MentorService mentorService,
                                    InterviewTurnPlanner turnPlanner,
                                    Function<Long, ChatLanguageModel> modelResolver) {
+    this(retrievalService, resumeService, mentorService, turnPlanner,
+        MAX_TOOL_CALLS, modelResolver);
+  }
+
+  ToolCallingInterviewOrchestrator(InterviewRetrievalService retrievalService,
+                                   ResumeService resumeService,
+                                   MentorService mentorService,
+                                   InterviewTurnPlanner turnPlanner,
+                                   int maxToolCalls,
+                                   Function<Long, ChatLanguageModel> modelResolver) {
     this.retrievalService = retrievalService;
     this.resumeService = resumeService;
     this.mentorService = mentorService;
     this.turnPlanner = turnPlanner;
+    this.maxToolCalls = clampMaxToolCalls(maxToolCalls);
     this.modelResolver = modelResolver;
   }
 
@@ -135,13 +150,15 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
     }
 
     AgentDecision decision = parseDecision(rawDecision);
-    InterviewAction action = normalizeAction(decision.action(), request.turnIndex());
+    InterviewAction requestedAction = normalizeAction(decision.action(), request.turnIndex());
+    InterviewAction action = enforceEvidenceRequirements(requestedAction, boundTools);
     InterviewPhase outputPhase = action == InterviewAction.MOVE_TO_HR
         ? InterviewPhase.HR : request.currentPhase();
     String outputPhasePrompt = planForPhase(record, outputPhase, request.tailoredQuestions())
         .systemPrompt();
     String systemPrompt = buildFinalSystemPrompt(outputPhasePrompt, action, boundTools);
-    String publicSummary = safePublicSummary(decision.publicSummary(), action, boundTools);
+    String publicSummary = safePublicSummary(
+        action == requestedAction ? decision.publicSummary() : "", action, boundTools);
 
     return new InterviewTurnPlan(
         outputPhase,
@@ -231,15 +248,11 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
   private InterviewTurnPlanner.InterviewTurnPlan planForPhase(InterviewRecord record,
                                                                InterviewPhase phase,
                                                                List<String> tailoredQuestions) {
-    String previousPhase = record.getPhase();
-    record.setPhase(phase.name());
-    try {
-      // Empty history keeps the requested phase stable. The shared integration layer later
-      // exposes the same intent directly through InterviewTurnPlanner.planForPhase(...).
-      return turnPlanner.plan(record, List.of(), "", tailoredQuestions);
-    } finally {
-      record.setPhase(previousPhase);
-    }
+    return turnPlanner.planForPhase(record, phase, "", tailoredQuestions);
+  }
+
+  private static int clampMaxToolCalls(int configuredValue) {
+    return Math.max(1, Math.min(configuredValue, MAX_TOOL_CALLS));
   }
 
   private String actionInstruction(InterviewAction action) {
@@ -303,6 +316,13 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
     return normalized;
   }
 
+  private InterviewAction enforceEvidenceRequirements(InterviewAction action, BoundTools tools) {
+    if (action == InterviewAction.PROBE_RESUME && !tools.hasResumeEvidence()) {
+      return InterviewAction.CONTINUE_PHASE;
+    }
+    return action;
+  }
+
   private String safePublicSummary(String summary, InterviewAction action, BoundTools tools) {
     String safe = safeText(summary, 280);
     if (!safe.isBlank()) {
@@ -358,6 +378,7 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
     private int callCount;
     private String evidenceContext = "";
     private String failureCode;
+    private boolean resumeEvidenceAvailable;
 
     private BoundTools(InterviewTurnRequest request, List<ChatMessage> history) {
       this.request = request;
@@ -398,6 +419,7 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
         }
         String evidence = safeText(JSON.toJSONString(profile.getAnalysis()), 3500);
         appendEvidence("简历证据", evidence, 3500);
+        resumeEvidenceAvailable = !evidence.isBlank();
         return evidence;
       } catch (ToolInvocationFailure e) {
         throw e;
@@ -428,7 +450,7 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
     }
 
     private void beforeTool(String toolName) {
-      if (callCount >= MAX_TOOL_CALLS) {
+      if (callCount >= maxToolCalls) {
         failureCode = AGENT_TOOL_LIMIT;
         throw new ToolInvocationFailure(AGENT_TOOL_LIMIT);
       }
@@ -465,6 +487,10 @@ public class ToolCallingInterviewOrchestrator implements InterviewOrchestrator {
 
     private List<String> toolsUsed() {
       return List.copyOf(toolsUsed);
+    }
+
+    private boolean hasResumeEvidence() {
+      return resumeEvidenceAvailable;
     }
   }
 

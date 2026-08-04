@@ -56,10 +56,9 @@ class ToolCallingInterviewOrchestratorTest {
 
   @BeforeEach
   void setUp() {
-    lenient().when(turnPlanner.plan(any(), anyList(), eq(""), anyList()))
+    lenient().when(turnPlanner.planForPhase(any(), any(), eq(""), anyList()))
         .thenAnswer(invocation -> {
-          com.interview.entity.InterviewRecord record = invocation.getArgument(0);
-          InterviewPhase phase = InterviewPhase.valueOf(record.getPhase());
+          InterviewPhase phase = invocation.getArgument(1);
           return new InterviewTurnPlanner.InterviewTurnPlan(
               phase, phase.name() + "_PROMPT");
         });
@@ -124,6 +123,18 @@ class ToolCallingInterviewOrchestratorTest {
     assertThat(plan.evidenceContext()).contains("42.5");
     assertThat(plan.systemPrompt()).contains("学习覆盖率").contains("补救追问");
     verify(mentorService).getKnowledgeCoverageOnly(7L, 8L);
+  }
+
+  @Test
+  @DisplayName("没有简历工具证据时拒绝执行 PROBE_RESUME")
+  void probeResumeWithoutEvidenceShouldContinuePhase() {
+    InterviewTurnPlan plan = orchestrator(new ScriptedChatModel(List.of(
+        jsonDecision("PROBE_RESUME", "猜测有项目", "追问项目")))).plan(
+        request(4, InterviewPhase.TECHNICAL));
+
+    assertThat(plan.action()).isEqualTo(InterviewAction.CONTINUE_PHASE);
+    assertThat(plan.systemPrompt()).contains("保持当前技术阶段");
+    assertThat(plan.publicSummary()).contains("保持当前阶段");
   }
 
   @Test
@@ -222,6 +233,19 @@ class ToolCallingInterviewOrchestratorTest {
         .isInstanceOf(AgentPlanningException.class)
         .satisfies(error -> assertThat(((AgentPlanningException) error).reasonCode())
             .isEqualTo(ToolCallingInterviewOrchestrator.AGENT_UNKNOWN_ACTION));
+  }
+
+  @Test
+  @DisplayName("公开摘要会移除 Provider URL 和密钥")
+  void publicSummaryShouldBeSanitized() {
+    InterviewTurnPlan plan = orchestrator(new ScriptedChatModel(List.of(
+        jsonDecision("CONTINUE_PHASE", "ok",
+            "继续面试 api_key=top-secret https://provider.example/v1")))).plan(
+        request(2, InterviewPhase.TECHNICAL));
+
+    assertThat(plan.publicSummary())
+        .contains("api_key=[REDACTED]", "[URL]")
+        .doesNotContain("top-secret", "provider.example");
   }
 
   private ToolCallingInterviewOrchestrator orchestrator(ScriptedChatModel model) {

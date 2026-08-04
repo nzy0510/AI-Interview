@@ -39,4 +39,15 @@ public class AsyncTaskConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean("interviewAgentTaskExecutor")
+    public ThreadPoolTaskExecutor interviewAgentTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(32);
+        executor.setThreadNamePrefix("interview-agent-");
+        executor.initialize();
+        return executor;
+    }
 }

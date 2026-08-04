@@ -20,6 +20,10 @@ import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.mapper.RagRetrievalRequestLogMapper;
 import com.interview.mapper.ResumeProfileMapper;
 import com.interview.service.impl.InterviewServiceImpl;
+import com.interview.service.orchestration.InterviewAction;
+import com.interview.service.orchestration.InterviewOrchestrator;
+import com.interview.service.orchestration.InterviewTurnPlan;
+import com.interview.service.orchestration.OrchestrationMode;
 import com.interview.service.orchestration.RuleBasedInterviewOrchestrator;
 import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
@@ -51,6 +55,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -576,6 +581,36 @@ class InterviewServiceImplTest {
     }
 
     @Test
+    @DisplayName("persists sanitized Agent decision metadata after a successful stream")
+    void shouldPersistAgentDecisionMetadata() {
+        stubChatStream(33L, InterviewPhase.TECHNICAL);
+        InterviewOrchestrator agentOrchestrator = mock(InterviewOrchestrator.class);
+        when(agentOrchestrator.plan(any())).thenReturn(new InterviewTurnPlan(
+                InterviewPhase.TECHNICAL,
+                InterviewAction.DEEPEN,
+                OrchestrationMode.AGENT,
+                "agent system prompt",
+                "safe evidence",
+                List.of("atom-agent"),
+                List.of("atom-agent"),
+                List.of("searchPositionKnowledge"),
+                "继续深挖当前知识点",
+                null));
+        ReflectionTestUtils.setField(interviewService, "interviewOrchestrator", agentOrchestrator);
+
+        interviewService.chatStream(1L, 33L, "请继续");
+
+        ArgumentCaptor<InterviewTurn> turnCaptor = ArgumentCaptor.forClass(InterviewTurn.class);
+        verify(interviewTurnMapper).insert(turnCaptor.capture());
+        assertThat(turnCaptor.getValue().getOrchestrationMode()).isEqualTo("AGENT");
+        assertThat(turnCaptor.getValue().getDecisionAction()).isEqualTo("DEEPEN");
+        assertThat(turnCaptor.getValue().getDecisionJson())
+                .contains("searchPositionKnowledge", "atom-agent", "继续深挖当前知识点")
+                .doesNotContain("agent system prompt", "safe evidence");
+        verify(sessionStore).addUsedAtoms(33L, List.of("atom-agent"));
+    }
+
+    @Test
     @DisplayName("does not consume context atoms when the AI stream fails")
     void shouldNotMarkAtomsUsedWhenStreamFails() {
         InterviewRecord record = stubChatStreamWithoutStreaming(31L, InterviewPhase.TECHNICAL);
@@ -764,8 +799,8 @@ class InterviewServiceImplTest {
         when(sessionStore.load(recordId)).thenReturn(new ArrayList<>());
         when(sessionStore.loadUsedAtoms(recordId)).thenReturn(List.of());
         when(sessionStore.loadTailoredQuestions(recordId)).thenReturn(List.of());
-        when(interviewTurnPlanner.determineNextPhase(any(), anyList())).thenReturn(nextPhase);
-        when(interviewTurnPlanner.plan(any(), anyList(), any(), any()))
+        lenient().when(interviewTurnPlanner.determineNextPhase(any(), anyList())).thenReturn(nextPhase);
+        lenient().when(interviewTurnPlanner.plan(any(), anyList(), any(), any()))
                 .thenReturn(new InterviewTurnPlanner.InterviewTurnPlan(nextPhase, "coordinator"));
         return record;
     }
