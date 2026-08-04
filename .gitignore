@@ -126,6 +126,7 @@ conflicts_render.txt
 !/docs/
 !/docs/rag-chain-summary.md
 !/docs/贡献指南.md
+!/docs/goai-demo.md
 !/docs/plan/
 !/docs/adr/
 !/docs/adr/*.md

@@ -33,6 +33,15 @@ class DeploymentConfigurationContractTest {
     }
 
     @Test
+    @DisplayName("比赛功能开关在运行配置与部署示例中保持一致")
+    void shouldKeepCompetitionFeatureFlagsAligned() throws IOException {
+        assertCompetitionFeatureFlags(Path.of("src", "main", "resources", "application.yml"));
+        assertCompetitionFeatureFlags(Path.of("src", "main", "resources", "application.yml.example"));
+        assertCompetitionFeatureFlags(Path.of("..", "docker-compose.example.yml"));
+        assertCompetitionFeatureFlags(Path.of("..", "docker-compose.prod.yml"));
+    }
+
+    @Test
     @DisplayName("keeps Nginx upload body limits compatible with application uploads")
     void shouldKeepNginxUploadLimitCompatibleWithApplicationUploads() throws IOException {
         assertNginxUploadLimit(Path.of("..", "frontend", "nginx.conf"));
@@ -74,6 +83,16 @@ class DeploymentConfigurationContractTest {
                 .contains("provider: ${APP_EMBEDDING_PROVIDER:all-minilm}")
                 .contains("collection: ${QDRANT_COLLECTION:interview_atoms}")
                 .contains("vector-size: ${QDRANT_VECTOR_SIZE:384}");
+    }
+
+    private void assertCompetitionFeatureFlags(Path path) throws IOException {
+        assertThat(Files.readString(path))
+                .as(path.toString())
+                .contains("APP_INTERVIEW_AGENT_ENABLED")
+                .contains("APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS")
+                .contains("APP_INTERVIEW_AGENT_MAX_TOOL_CALLS")
+                .contains("APP_INTERVIEW_AGENT_FALLBACK_ENABLED")
+                .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED");
     }
 
     private void assertNginxUploadLimit(Path path) throws IOException {

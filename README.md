@@ -1,16 +1,17 @@
 # InterWise AI 模拟面试系统
 
-InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把简历画像、文字面试、视频面试、数据库题库、动态 RAG 追问、面试复盘和 AI Mentor 打通到同一条学习闭环中，重点解决“只会单轮问答、题库与模拟面试割裂、追问缺少依据、训练结果难以复盘”的问题。
+InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把有边界的面试 Agent、简历画像、文字面试、视频面试、数据库题库、动态 RAG 追问、面试复盘和 AI Mentor 打通到同一条学习闭环中，重点解决“只会单轮问答、题库与模拟面试割裂、追问缺少依据、训练结果难以复盘”的问题。
 
 后端基于 `Spring Boot 3 + MyBatis-Plus + LangChain4j + MySQL + Redis + Qdrant`，前端基于 `Vue 3 + Vite + Element Plus`。Docker 部署默认使用独立 `embedding-service` 加载 `intfloat/multilingual-e5-base`，通过 Qdrant 为面试追问提供可重建的语义索引。
 
 ## 项目亮点
 
 - 动态面试 RAG：不是传统知识库问答式“用户问题 -> 检索 -> 摘要回答”，而是在每一轮面试中把候选人回答、岗位、阶段、历史已问知识点和题库召回结果转成“下一问决策信号”。
+- 有边界的单轮 Agent：技术面每轮可按需调用岗位知识、当前简历和学习覆盖三个只读工具，自主选择深挖、补救、换题、项目追问或阶段切换；工具次数、作用域、输出格式和失败回退均受服务端约束。
 - 模拟面试与题库打通：MySQL 保存可审核、可发布、可归档的知识原子，Qdrant 只作为可重建的语义索引；已发布 Atom 才能进入面试追问链路。
 - 追问路径更贴近真实面试：技术阶段按岗位和难度召回，结合低信息回答、弱召回、连续回避、已用 Atom 排除等信号，决定补救追问、切换知识点或继续深挖。
 - 多模式训练闭环：支持文字面试、视频面试、简历画像、历史报告、AI Mentor 分析和知识覆盖率复盘。
-- 用户自主管理题库：登录用户可在知识库 / 题库工作台维护私有岗位，导入本机题库维护 skill 生成的 JSON 导入包，并审查、发布知识原子；公共 starter 岗位由 `ADMIN` 角色维护。
+- 内置比赛题库：普通用户默认只使用仓库内置的公共 starter 岗位；题库生产与发布由 `ADMIN` 账号维护，既有私有题库能力和数据保留在功能开关后，比赛 Demo 不对普通用户开放。
 - 可评测的 RAG 链路：内置离线检索评测工具链，固定 AI 大模型岗位评测集，支持比较 embedding、候选集大小和 rerank 效果。
 - 稳定性与运营观测：内置访问事件、限流、反馈记录、RAG 请求级日志和 Qdrant 失败降级路径。
 
@@ -95,7 +96,14 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 graph LR
     User["候选人 / 训练用户"] --> Frontend["Vue 3 前端"]
     Frontend -->|"HTTP / SSE"| Backend["Spring Boot 后端"]
-    Backend --> LLM["用户启用的 OpenAI-compatible 模型"]
+    Backend --> Orchestrator["有边界面试编排器"]
+    Orchestrator --> Planner["规划 Agent"]
+    Orchestrator --> Tools["岗位知识 / 简历 / 覆盖率只读工具"]
+    Orchestrator --> Generator["流式面试模型"]
+    Planner --> LLM["用户启用的 OpenAI-compatible 模型"]
+    Generator --> LLM
+    Tools --> MySQL
+    Tools --> Qdrant
     Backend --> MySQL[("MySQL: 业务真相")]
     Backend --> Redis[("Redis: 会话缓存 / 限流 / Mentor 缓存")]
     Backend --> Qdrant[("Qdrant: 语义索引")]
@@ -111,6 +119,8 @@ graph LR
 - Qdrant 是可重建的向量索引，不直接承载题库发布状态。
 - embedding-service 只负责文本向量化，默认输出 768 维 multilingual-e5 向量。
 - 前端不直接访问数据库、Redis 或 Qdrant，所有维护动作走后端 API 与用户 ownership / `ADMIN` 角色校验。
+- Agent 工具的用户、岗位和记录作用域由后端绑定，模型不能传入任意 ID；失败后同一面试会话回退稳定规则。
+- 普通用户题库维护默认关闭，前端隐藏入口只是体验层，后端写权限仍会独立校验。
 
 ## 项目结构
 
@@ -120,6 +130,7 @@ graph LR
 │   ├── src/main/java/com/interview/
 │   │   ├── controller/              # REST API
 │   │   ├── service/                 # 面试、简历、Mentor、RAG、题库服务
+│   │   │   └── orchestration/       # Agent 契约、只读工具与稳定规则回退
 │   │   ├── entity/                  # MySQL 实体
 │   │   └── config/                  # LLM、Redis、Embedding、JWT 等配置
 │   └── src/main/resources/db/migration/
@@ -128,6 +139,7 @@ graph LR
 ├── embedding-service/               # FastAPI multilingual-e5 向量服务
 ├── scripts/question_bank_import.py  # 本机题库导入包生成脚本
 ├── skills/interview-question-bank/  # 本机题库维护 skill
+├── docs/adr/                        # 关键架构决策
 ├── docs/superpowers/                # 重要实现计划与设计记录
 ├── image                            # 系统架构图与 RAG 流程图
 ├── docker-compose.example.yml       # 本地 Compose 模板
@@ -142,8 +154,9 @@ graph LR
 
 - 文字面试：SSE 流式生成，按面试阶段推进，支持技术追问、HR 软技能阶段和结束总结。
 - 视频面试：摄像头与语音交互入口，结合浏览器能力进行更接近真实场景的训练。
+- 面试 Agent：技术阶段先生成受约束的下一问计划，再驱动真实 Prompt 和阶段；页面展示安全决策摘要，异常时不中断整场面试。
 - 大模型配置：用户可以在侧边栏配置自己的大模型 Provider，并用加密保存的 API Key 驱动面试、报告和 AI Mentor 等用户侧 LLM 功能。
-- 岗位/题库维护：用户可以创建私有岗位，导入结构化题库包，并在发布后用于面试 RAG。
+- 岗位/题库维护：比赛版由管理员维护公共 starter 岗位；普通用户维护能力默认关闭，但原有私有数据和可逆功能开关不会被删除。
 - 面试准备：选择岗位、难度、重点方向和简历信息，为后续追问提供上下文。
 - 历史报告：保存面试记录、评分、反馈和复盘建议。
 - 岗位隔离：现在用户可为不同岗位上传不同简历，并进行针对简历的定制面试。
@@ -154,7 +167,27 @@ graph LR
 - AI Mentor：基于历史面试、知识覆盖率和风险点给出训练建议。
 - 知识覆盖：以已发布题库 Atom 为分母，以实际进入面试上下文的 Atom 为分子，避免只统计“看似召回”的候选。
 
-## 动态 RAG 链路
+## 有边界 Agent 与动态 RAG
+
+技术面每轮先由 `InterviewOrchestrator` 形成一个可验证计划。规划 Agent 可以调用三个服务端绑定作用域的只读工具，最终只能返回限定动作；动作和证据会进入实际下一问 Prompt。开场、HR、收尾或 Agent 不可用时，系统继续走稳定规则。
+
+```mermaid
+flowchart LR
+    Answer["候选人最新回答"] --> Orchestrator["InterviewOrchestrator"]
+    Orchestrator -->|"技术阶段且可用"| Agent["Tool Calling Agent"]
+    Agent --> Knowledge["岗位知识检索"]
+    Agent --> Resume["当前岗位简历证据"]
+    Agent --> Coverage["同岗位学习覆盖"]
+    Agent --> Plan["受约束动作 + 安全证据"]
+    Orchestrator -->|"非技术阶段或失败"| Rule["稳定规则"]
+    Plan --> Prompt["实际下一问 Prompt / 阶段"]
+    Rule --> Prompt
+    Prompt --> SSE["文字 / 视频面试 SSE"]
+```
+
+单轮工具调用上限为 3。输出必须符合严格 JSON 契约；提前进入 HR 有轮次门槛；超时、Provider 不兼容、工具失败或输出非法时，当前面试会话固定回退规则模式。持久化与前端事件只包含模式、动作、工具名、安全摘要和证据原子 ID，不保存思维链或原始 Provider 错误。详细取舍见 [ADR 0001](docs/adr/0001-bounded-interview-agent.md)。
+
+### 动态 RAG 链路
 
 ![InterWise RAG 流程图](image/架构图/InterWise-RAG流程图.png)
 
@@ -179,17 +212,17 @@ graph TD
 
 ### 题库与 RAG
 
-- 知识库 / 题库工作台：用户可以查看公共 starter 岗位，创建私有岗位，导入结构化 JSON 题库包，并维护知识原子草稿、发布状态和索引状态。
-- 题库导入包生成：用户在本机使用 `interview-question-bank` skill 或 `scripts/question_bank_import.py` 处理结构化资料，主应用只负责导入、审查、显式发布和重建索引。
+- 知识库 / 题库工作台：比赛版仅向 `ADMIN` 账号开放，用于维护公共 starter 岗位、导入结构化 JSON 题库包以及管理知识原子草稿、发布和索引状态。
+- 题库导入包生成：项目维护者可在本机使用 `interview-question-bank` skill 或 `scripts/question_bank_import.py` 处理结构化资料，再由管理员在主应用内导入、审查、显式发布和重建索引。
 - 同步状态：Qdrant 写入或删除失败会保留可重试状态，不让数据库事务和外部索引状态悄悄分叉。
 - 离线评测：`scripts/retrieval_eval` 支持导出、构建候选池、预标注、计算指标和 rerank 对比。
-- 内置基础题库：仓库随代码内置可运行公共 starter 题库，覆盖 Java 后端、Web 前端、AI 大模型应用等方向；本地启动会幂等导入 `backend/src/main/resources/knowledge_base/imports/public/**/*.json` 公共导入包并建立 Qdrant 索引。用户私有题库保存在自己的 MySQL/Qdrant 数据中，不会提交到 Git 或同步到其他部署。
+- 内置基础题库：仓库随代码内置可运行公共 starter 题库，覆盖 Java 后端、Web 前端、AI 大模型应用等方向；本地启动会幂等导入 `backend/src/main/resources/knowledge_base/imports/public/**/*.json` 公共导入包并建立 Qdrant 索引。普通用户直接选择这些岗位训练，不需要维护或导入题库。
 
 ### 题库维护
 
-仓库内置公共 starter 题库，用于空库首次初始化。用户自有题库的主路径是：先在本机使用 `interview-question-bank` skill 或 `scripts/question_bank_import.py` 生成结构化 JSON 导入包，再进入“知识库 / 题库”工作台导入为草稿，人工审查后显式发布并重建索引。
+仓库内置公共 starter 题库，用于空库首次初始化。比赛 Demo 默认设置 `APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=false`：普通用户看不到维护入口，后端也拒绝其创建、导入、编辑、发布、归档或重建索引操作；`ADMIN` 账号仍可维护公共题库。
 
-用户私有题库只保存在当前部署的 MySQL/Qdrant 数据中，不会提交到 Git，也不会同步到其他部署。
+原有私有岗位、私有题库代码和既有数据不删除。未来需要恢复受控开放时，可显式开启该功能开关；不同部署的私有数据仍只保存在各自的 MySQL/Qdrant 中。
 
 ## 快速启动(本地部署)
 
@@ -226,6 +259,7 @@ MAIL_PASSWORD=your_smtp_authorization_code
 - 当前支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 和自定义。
 - 服务端只需要 `APP_LLM_CONFIG_ENCRYPTION_KEY` 这类加密密钥来加密保存用户 API Key；不要在 `.env`、示例配置、日志或文档里写入任何真实供应商密钥。
 - 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置；管理员不能查看用户 API Key 明文。
+- 比赛配置默认启用有边界 Agent，并把普通用户题库维护关闭；对应变量见 `.env.example` 的 `APP_INTERVIEW_AGENT_*` 与 `APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED`。
 
 不要提交 `.env`、真实 API Key、JWT Secret、邮箱授权码或数据库密码。
 
@@ -285,6 +319,8 @@ python -m unittest discover -s tests
 ## 相关文档
 
 - [领域上下文](CONTEXT.md)
+- [GOAI 比赛 Demo 指南](docs/goai-demo.md)
+- [ADR 0001：有边界的单轮面试 Agent](docs/adr/0001-bounded-interview-agent.md)
 - [后续优化计划](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-followups.zh.md)
 - [RAG 检索评测设计](docs/superpowers/specs/2026-06-03-rag-retrieval-evaluation-design.md)
 - [RAG 链路总结](docs/rag-chain-summary.md)
