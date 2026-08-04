@@ -45,14 +45,11 @@ public class AppJobController {
     @GetMapping
     public Result<List<AppJobResponse>> list(HttpServletRequest request) {
         Long userId = currentUserId(request);
-        boolean admin = adminRoleService.isAdmin(userId);
         QueryWrapper<AppJob> query = new QueryWrapper<>();
-        if (!admin) {
-            query.and(visible -> visible
-                    .eq("owner_user_id", userId)
-                    .or()
-                    .eq("scope", SCOPE_PUBLIC));
-        }
+        query.and(visible -> visible
+                .eq("owner_user_id", userId)
+                .or()
+                .eq("scope", SCOPE_PUBLIC));
         query.orderByDesc("create_time", "id");
         return Result.success(appJobMapper.selectList(query).stream()
                 .map(AppJobResponse::from)
@@ -63,8 +60,7 @@ public class AppJobController {
     public Result<AppJobResponse> detail(@PathVariable Long jobId,
                                           HttpServletRequest request) {
         Long userId = currentUserId(request);
-        boolean admin = adminRoleService.isAdmin(userId);
-        AppJob job = visibleJob(jobId, userId, admin);
+        AppJob job = visibleJob(jobId, userId);
         return Result.success(AppJobResponse.from(job));
     }
 
@@ -73,8 +69,8 @@ public class AppJobController {
                               HttpServletRequest request) {
         Long userId = currentUserId(request);
         boolean admin = adminRoleService.isAdmin(userId);
-        AppJob job = visibleJob(jobId, userId, admin);
-        if (!admin && !isOwnedByUser(job, userId)) {
+        AppJob job = visibleJob(jobId, userId);
+        if (!isOwnedByUser(job, userId) && !(admin && isPublic(job))) {
             throw new RuntimeException("无权访问作业或作业不可重试");
         }
         if (!appJobService.retryJob(jobId, userId, admin)) {
@@ -84,12 +80,12 @@ public class AppJobController {
         return Result.success();
     }
 
-    private AppJob visibleJob(Long jobId, Long userId, boolean admin) {
+    private AppJob visibleJob(Long jobId, Long userId) {
         AppJob job = appJobMapper.selectById(jobId);
         if (job == null) {
             throw new RuntimeException("无权访问作业");
         }
-        if (!admin && !isVisibleToUser(job, userId)) {
+        if (!isVisibleToUser(job, userId)) {
             throw new RuntimeException("无权访问作业");
         }
         return job;
@@ -99,6 +95,10 @@ public class AppJobController {
         if (isOwnedByUser(job, userId)) {
             return true;
         }
+        return isPublic(job);
+    }
+
+    private boolean isPublic(AppJob job) {
         return SCOPE_PUBLIC.equalsIgnoreCase(job.getScope());
     }
 

@@ -194,6 +194,7 @@ class AppJobServiceTest {
         when(appJobMapper.selectById(15L)).thenReturn(notRetryable);
 
         assertThat(service.retryJob(13L, 99L)).isFalse();
+        assertThat(service.retryJob(13L, 99L, true)).isFalse();
         assertThat(service.retryJob(14L, 88L)).isFalse();
         assertThat(service.retryJob(15L, 88L)).isFalse();
 

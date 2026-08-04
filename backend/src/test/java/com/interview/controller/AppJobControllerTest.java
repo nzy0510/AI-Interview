@@ -70,7 +70,6 @@ class AppJobControllerTest {
     @DisplayName("普通用户查询作业列表时查询自己的作业和公开作业")
     void shouldListVisibleJobsForOrdinaryUser() throws Exception {
         when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(11L);
-        when(adminRoleService.isAdmin(11L)).thenReturn(false);
         when(appJobMapper.selectList(any())).thenReturn(List.of(job(1L, 11L)));
 
         mockMvc.perform(get("/api/jobs"))
@@ -88,11 +87,12 @@ class AppJobControllerTest {
     }
 
     @Test
-    @DisplayName("管理员查询作业列表时不限制 owner")
-    void shouldListAllJobsForAdmin() throws Exception {
+    @DisplayName("管理员查询作业列表时仍只返回自己的和公开作业")
+    void shouldKeepAdminPrivateJobListScoped() throws Exception {
         when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(99L);
-        when(adminRoleService.isAdmin(99L)).thenReturn(true);
-        when(appJobMapper.selectList(any())).thenReturn(List.of(job(2L, 11L)));
+        AppJob publicJob = job(2L, 11L);
+        publicJob.setScope("PUBLIC");
+        when(appJobMapper.selectList(any())).thenReturn(List.of(publicJob));
 
         mockMvc.perform(get("/api/jobs"))
                 .andExpect(status().isOk())
@@ -101,7 +101,20 @@ class AppJobControllerTest {
 
         ArgumentCaptor<QueryWrapper<AppJob>> captor = queryCaptor();
         verify(appJobMapper).selectList(captor.capture());
-        assertThat(captor.getValue().getSqlSegment()).doesNotContain("owner_user_id");
+        assertThat(captor.getValue().getSqlSegment())
+                .contains("owner_user_id")
+                .contains("scope");
+    }
+
+    @Test
+    @DisplayName("管理员不能读取其他账号的私有作业详情")
+    void shouldRejectAdminReadingOtherUsersPrivateJob() throws Exception {
+        when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(99L);
+        when(appJobMapper.selectById(8L)).thenReturn(job(8L, 22L));
+
+        mockMvc.perform(get("/api/jobs/8"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
     }
 
     @Test
@@ -122,7 +135,6 @@ class AppJobControllerTest {
     @DisplayName("普通用户可以读取公开作业详情")
     void shouldAllowOrdinaryUserReadingPublicJob() throws Exception {
         when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(11L);
-        when(adminRoleService.isAdmin(11L)).thenReturn(false);
         AppJob publicJob = job(5L, 22L);
         publicJob.setScope("PUBLIC");
         when(appJobMapper.selectById(5L)).thenReturn(publicJob);
@@ -150,19 +162,36 @@ class AppJobControllerTest {
     }
 
     @Test
-    @DisplayName("管理员可以重试他人的可重试作业")
-    void shouldAllowAdminRetryingOtherUsersJob() throws Exception {
+    @DisplayName("管理员不能重试其他账号的私有作业")
+    void shouldRejectAdminRetryingOtherUsersPrivateJob() throws Exception {
         when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(99L);
         when(adminRoleService.isAdmin(99L)).thenReturn(true);
         when(appJobMapper.selectById(4L)).thenReturn(job(4L, 22L));
-        when(appJobService.retryJob(4L, 99L, true)).thenReturn(true);
 
         mockMvc.perform(post("/api/jobs/4/retry"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+
+        verify(appJobService, never()).retryJob(4L, 99L, true);
+        verify(appJobRecoveryService, never()).dispatchJob(4L);
+    }
+
+    @Test
+    @DisplayName("管理员可以重试公共题库作业")
+    void shouldAllowAdminRetryingPublicJob() throws Exception {
+        when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(99L);
+        when(adminRoleService.isAdmin(99L)).thenReturn(true);
+        AppJob publicJob = job(9L, 22L);
+        publicJob.setScope("PUBLIC");
+        when(appJobMapper.selectById(9L)).thenReturn(publicJob);
+        when(appJobService.retryJob(9L, 99L, true)).thenReturn(true);
+
+        mockMvc.perform(post("/api/jobs/9/retry"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
-        verify(appJobService).retryJob(4L, 99L, true);
-        verify(appJobRecoveryService).dispatchJob(4L);
+        verify(appJobService).retryJob(9L, 99L, true);
+        verify(appJobRecoveryService).dispatchJob(9L);
     }
 
     @Test

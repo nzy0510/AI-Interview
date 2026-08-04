@@ -147,7 +147,7 @@ public class AppJobService {
         if (!Boolean.TRUE.equals(job.getRetryable())) {
             return false;
         }
-        if (!admin && !canUserRetry(job, userId)) {
+        if (!canRetry(job, userId, admin)) {
             return false;
         }
         appJobMapper.update(null, new UpdateWrapper<AppJob>()
@@ -189,9 +189,9 @@ public class AppJobService {
         return jobs.size();
     }
 
-    private boolean canUserRetry(AppJob job, Long userId) {
+    private boolean canRetry(AppJob job, Long userId, boolean admin) {
         if (SCOPE_PUBLIC.equalsIgnoreCase(job.getScope())) {
-            return false;
+            return admin;
         }
         return job.getOwnerUserId() != null && job.getOwnerUserId().equals(userId);
     }

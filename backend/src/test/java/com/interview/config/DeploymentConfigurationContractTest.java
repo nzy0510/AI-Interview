@@ -85,7 +85,10 @@ class DeploymentConfigurationContractTest {
     @DisplayName("生产 Compose 保持邮箱验证认证模式")
     void shouldKeepProductionEmailAuthentication() throws IOException {
         assertThat(Files.readString(Path.of("..", "docker-compose.prod.yml")))
-                .contains("APP_AUTH_MODE: email-verified");
+                .contains("APP_AUTH_MODE: email-verified")
+                .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED: ${APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED:-false}");
+        assertThat(Files.readString(Path.of("..", ".env.prod.example")))
+                .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=false");
     }
 
     private void assertDefaults(Path path) throws IOException {
