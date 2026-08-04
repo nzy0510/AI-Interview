@@ -1,5 +1,7 @@
 package com.interview.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.interview.config.QuestionBankAccessProperties;
 import com.interview.entity.InterviewPhase;
 import com.interview.entity.InterviewPosition;
@@ -32,12 +34,15 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.apache.ibatis.session.Configuration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -47,6 +52,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,6 +62,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -138,6 +145,10 @@ class InterviewServiceImplTest {
 
     @BeforeEach
     void setUpRetrievalModule() {
+        initializeLambdaCache(RagRetrievalLog.class);
+        initializeLambdaCache(RagRetrievalRequestLog.class);
+        initializeLambdaCache(InterviewTurn.class);
+        initializeLambdaCache(InterviewRecord.class);
         InterviewRetrievalService retrievalService = new InterviewRetrievalService(
                 questionBankService, interviewPositionMapper, knowledgeBaseMapper,
                 ragRetrievalLogMapper, ragRetrievalRequestLogMapper, appEventService);
@@ -159,6 +170,15 @@ class InterviewServiceImplTest {
             job.setStatus("PENDING");
             return job;
         });
+    }
+
+    private void initializeLambdaCache(Class<?> entityType) {
+        Configuration configuration = new Configuration();
+        configuration.setMapUnderscoreToCamelCase(true);
+        TableInfoHelper.remove(entityType);
+        MapperBuilderAssistant assistant = new MapperBuilderAssistant(
+                configuration, "interview-service-test." + entityType.getSimpleName());
+        TableInfoHelper.initTableInfo(assistant, entityType);
     }
 
     @Test
@@ -232,14 +252,108 @@ class InterviewServiceImplTest {
         record.setUserId(1L);
         record.setPhase(InterviewPhase.TECHNICAL.name());
         when(interviewRecordMapper.selectOne(any())).thenReturn(record);
+        when(ragRetrievalLogMapper.delete(any())).thenReturn(1);
+        when(ragRetrievalRequestLogMapper.delete(any())).thenReturn(1);
+        when(interviewTurnMapper.delete(any())).thenReturn(1);
         when(interviewRecordMapper.delete(any())).thenReturn(1);
 
         interviewService.discardInterview(1L, 11L);
 
-        verify(interviewRecordMapper).delete(any());
-        verify(sessionStore).delete(11L);
+        InOrder inOrder = inOrder(ragRetrievalLogMapper, ragRetrievalRequestLogMapper,
+                interviewTurnMapper, interviewRecordMapper, sessionStore);
+        ArgumentCaptor<LambdaQueryWrapper> ragLogWrapperCaptor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        ArgumentCaptor<LambdaQueryWrapper> ragRequestWrapperCaptor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        ArgumentCaptor<LambdaQueryWrapper> turnWrapperCaptor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        ArgumentCaptor<LambdaQueryWrapper> recordWrapperCaptor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        inOrder.verify(ragRetrievalLogMapper).delete(ragLogWrapperCaptor.capture());
+        inOrder.verify(ragRetrievalRequestLogMapper).delete(ragRequestWrapperCaptor.capture());
+        inOrder.verify(interviewTurnMapper).delete(turnWrapperCaptor.capture());
+        inOrder.verify(interviewRecordMapper).delete(recordWrapperCaptor.capture());
+        inOrder.verify(sessionStore).delete(11L);
+        assertThat(ragLogWrapperCaptor.getValue().getSqlSegment())
+                .contains("user_id", "record_id");
+        assertThat(ragLogWrapperCaptor.getValue().getParamNameValuePairs().values())
+                .contains(1L, 11L);
+        assertThat(ragRequestWrapperCaptor.getValue().getSqlSegment())
+                .contains("user_id", "record_id");
+        assertThat(ragRequestWrapperCaptor.getValue().getParamNameValuePairs().values())
+                .contains(1L, 11L);
+        assertThat(turnWrapperCaptor.getValue().getSqlSegment())
+                .contains("user_id", "record_id");
+        assertThat(turnWrapperCaptor.getValue().getParamNameValuePairs().values())
+                .contains(1L, 11L);
+        assertThat(recordWrapperCaptor.getValue().getSqlSegment())
+                .contains("id", "user_id", "phase", "end_time", "score");
+        assertThat(recordWrapperCaptor.getValue().getParamNameValuePairs().values())
+                .contains(1L, 11L, InterviewPhase.FINISHED.name());
         verify(evaluationGenerator, never()).generate(any(), anyList(), anyInt());
         verify(mentorTaskExecutor, never()).execute(any());
+    }
+
+    @Test
+    @DisplayName("加锁后发现已完成面试时不删除任何会话数据")
+    void shouldRejectDiscardAfterLockWhenInterviewIsFinished() {
+        InterviewRecord record = new InterviewRecord();
+        record.setId(112L);
+        record.setUserId(1L);
+        record.setPhase(InterviewPhase.FINISHED.name());
+        doAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            Set<Long> activeTurns = (Set<Long>) ReflectionTestUtils.getField(
+                    interviewService, "activeInterviewTurns");
+            assertThat(activeTurns).contains(112L);
+            return record;
+        }).when(interviewRecordMapper).selectOne(any());
+
+        assertThatThrownBy(() -> interviewService.discardInterview(1L, 112L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("已完成的面试记录不能退出");
+
+        verify(ragRetrievalLogMapper, never()).delete(any());
+        verify(ragRetrievalRequestLogMapper, never()).delete(any());
+        verify(interviewTurnMapper, never()).delete(any());
+        verify(interviewRecordMapper, never()).delete(any());
+        verify(sessionStore, never()).delete(112L);
+        verify(evaluationGenerator, never()).generate(any(), anyList(), anyInt());
+        verify(mentorTaskExecutor, never()).execute(any());
+    }
+
+    @Test
+    @DisplayName("退出面试主记录删除失败时不清理会话并释放轮次锁")
+    void shouldNotClearSessionWhenInterviewRecordDeleteFails() {
+        InterviewRecord record = new InterviewRecord();
+        record.setId(111L);
+        record.setUserId(1L);
+        record.setPhase(InterviewPhase.TECHNICAL.name());
+        when(interviewRecordMapper.selectOne(any())).thenReturn(record);
+        when(ragRetrievalLogMapper.delete(any())).thenReturn(1);
+        when(ragRetrievalRequestLogMapper.delete(any())).thenReturn(1);
+        when(interviewTurnMapper.delete(any())).thenReturn(1);
+        when(interviewRecordMapper.delete(any())).thenReturn(0, 1);
+
+        assertThatThrownBy(() -> interviewService.discardInterview(1L, 111L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("面试记录不存在、已完成或无权访问");
+
+        verify(ragRetrievalLogMapper).delete(any());
+        verify(ragRetrievalRequestLogMapper).delete(any());
+        verify(interviewTurnMapper).delete(any());
+        verify(interviewRecordMapper).delete(any());
+        verify(sessionStore, never()).delete(111L);
+        verify(evaluationGenerator, never()).generate(any(), anyList(), anyInt());
+        verify(mentorTaskExecutor, never()).execute(any());
+
+        interviewService.discardInterview(1L, 111L);
+
+        verify(sessionStore).delete(111L);
+        @SuppressWarnings("unchecked")
+        Set<Long> activeTurns = (Set<Long>) ReflectionTestUtils.getField(
+                interviewService, "activeInterviewTurns");
+        assertThat(activeTurns).doesNotContain(111L);
     }
 
     @Test
