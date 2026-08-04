@@ -274,7 +274,7 @@ docker compose up -d --build
 - 前端：`http://localhost`
 - 后端：`http://localhost:8080`
 - Qdrant：`http://localhost:6333`
-- MySQL：`localhost:13307`
+- MySQL：`localhost:3307`
 - Redis：`localhost:6379`
 
 首次构建 embedding-service 会下载 PyTorch、sentence-transformers 和 multilingual-e5 模型，耗时取决于网络质量。若切换过 embedding 模型或 Qdrant collection，启动后需要通过知识库 / 题库维护流程重建索引。
