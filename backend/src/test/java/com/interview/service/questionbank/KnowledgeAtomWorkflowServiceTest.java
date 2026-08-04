@@ -81,6 +81,7 @@ class KnowledgeAtomWorkflowServiceTest {
         KnowledgeAtom publicAtom = publicAtom("PASS");
         KnowledgeAtom otherPrivate = draftAtom("PASS");
         otherPrivate.setOwnerUserId(9L);
+        otherPrivate.setPublishedBy(8L);
         when(atomMapper.selectById(5L)).thenReturn(publicAtom);
         when(atomMapper.selectById(6L)).thenReturn(otherPrivate);
         when(questionBankService.syncAtom(publicAtom)).thenReturn(true);
@@ -91,6 +92,27 @@ class KnowledgeAtomWorkflowServiceTest {
         assertThatThrownBy(() -> service.publishAtom(6L, 8L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("无权访问知识原子");
+    }
+
+    @Test
+    @DisplayName("开关关闭时管理员不能通过旧原子接口修改自己的私有原子")
+    void shouldDenyAdminOwnedPrivateAtomMutationsWhenDisabled() {
+        accessProperties.setUserMaintenanceEnabled(false);
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
+        KnowledgeAtom ownPrivate = draftAtom("PASS");
+        ownPrivate.setOwnerUserId(8L);
+        ownPrivate.setSuggestedPatchJson("{\"subject\":\"patched\"}");
+        when(atomMapper.selectById(7L)).thenReturn(ownPrivate);
+        KnowledgeAtomPatch patch = new KnowledgeAtomPatch(
+                "updated", null, null, null, null, null, null);
+
+        assertMutationDenied(() -> service.acceptSuggestedPatch(7L, 8L));
+        assertMutationDenied(() -> service.updateAtom(7L, 8L, patch));
+        assertMutationDenied(() -> service.publishAtom(7L, 8L));
+
+        verify(atomMapper, never()).updateById(any());
+        verify(atomMapper, never()).insert(any());
+        verify(questionBankService, never()).syncAtom(any());
     }
 
     @Test
