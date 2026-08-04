@@ -152,6 +152,11 @@ interview:
 
 # 应用治理与用户自定义题库配置
 app:
+  auth:
+    mode: ${APP_AUTH_MODE:email-verified}
+    local-admin:
+      username: ${APP_LOCAL_ADMIN_USERNAME:admin}
+      password: ${APP_LOCAL_ADMIN_PASSWORD:admin123}
   analytics:
     hash-salt: ${APP_ANALYTICS_HASH_SALT:}
   rate-limit:

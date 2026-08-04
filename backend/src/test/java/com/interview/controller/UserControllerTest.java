@@ -3,6 +3,7 @@ package com.interview.controller;
 import com.interview.common.Result;
 import com.interview.entity.User;
 import com.interview.service.AdminRoleService;
+import com.interview.service.AuthModeService;
 import com.interview.service.DeveloperAccessService;
 import com.interview.service.MentorService;
 import com.interview.service.UserService;
@@ -18,6 +19,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class UserControllerTest {
+
+    @Test
+    void authConfigExposesLocalModeWithoutCredentials() {
+        UserController controller = new UserController();
+        AuthModeService authModeService = mock(AuthModeService.class);
+        ReflectionTestUtils.setField(controller, "authModeService", authModeService);
+        AuthModeService.PublicAuthConfig config =
+                new AuthModeService.PublicAuthConfig("local-admin", false, false);
+        when(authModeService.getPublicConfig()).thenReturn(config);
+
+        Result<AuthModeService.PublicAuthConfig> result = controller.authConfig();
+
+        assertThat(result.getData()).isEqualTo(config);
+    }
 
     @Test
     void currentUserIncludesRoleAdminAndDeveloperFlags() {

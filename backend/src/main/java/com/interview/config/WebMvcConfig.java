@@ -44,6 +44,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**")           // 拦截所有 /api/ 接口
                 .excludePathPatterns(                 // 放行登录注册及密码重置相关
                         "/api/user/login",
+                        "/api/user/auth-config",
                         "/api/user/register",
                         "/api/user/send-code",
                         "/api/user/forgot-password",

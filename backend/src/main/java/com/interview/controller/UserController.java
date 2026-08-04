@@ -8,6 +8,7 @@ import com.interview.dto.ResetPasswordDTO;
 import com.interview.entity.UserPreference;
 import com.interview.service.DeveloperAccessService;
 import com.interview.service.AdminRoleService;
+import com.interview.service.AuthModeService;
 import com.interview.service.MentorService;
 import com.interview.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,6 +35,14 @@ public class UserController {
     @Autowired
     private AdminRoleService adminRoleService;
 
+    @Autowired
+    private AuthModeService authModeService;
+
+    @GetMapping("/auth-config")
+    public Result<AuthModeService.PublicAuthConfig> authConfig() {
+        return Result.success(authModeService.getPublicConfig());
+    }
+
     @PostMapping("/login")
     public Result<String> login(@RequestBody @Validated LoginDTO loginDTO) {
         String token = userService.login(loginDTO);
@@ -42,6 +51,7 @@ public class UserController {
 
     @PostMapping("/register")
     public Result<String> register(@RequestBody @Validated RegisterDTO registerDTO) {
+        authModeService.requireEmailAuthentication();
         userService.register(registerDTO);
         return Result.success("注册成功");
     }
@@ -51,6 +61,7 @@ public class UserController {
      */
     @PostMapping("/send-code")
     public Result<String> sendCode(@RequestBody Map<String, String> body) {
+        authModeService.requireEmailAuthentication();
         String email = body.get("email");
         if (email == null || email.isBlank()) {
             throw new RuntimeException("邮箱不能为空");
@@ -65,6 +76,7 @@ public class UserController {
      */
     @PostMapping("/forgot-password")
     public Result<String> forgotPassword(@RequestBody Map<String, String> body) {
+        authModeService.requireEmailAuthentication();
         String email = body.get("email");
         if (email == null || email.isBlank()) {
             throw new RuntimeException("邮箱不能为空");
@@ -78,6 +90,7 @@ public class UserController {
      */
     @PostMapping("/reset-password")
     public Result<String> resetPassword(@RequestBody @Validated ResetPasswordDTO resetDTO) {
+        authModeService.requireEmailAuthentication();
         userService.resetPassword(resetDTO);
         return Result.success("密码重置成功，请使用新密码登录");
     }
