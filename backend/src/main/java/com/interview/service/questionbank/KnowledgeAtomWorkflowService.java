@@ -123,16 +123,17 @@ public class KnowledgeAtomWorkflowService {
 
     private boolean isVisible(KnowledgeAtom atom, Long currentUserId) {
         return "PUBLIC".equalsIgnoreCase(atom.getScope())
-                || currentUserId.equals(atom.getOwnerUserId())
-                || currentUserId.equals(atom.getPublishedBy());
+                || ("PRIVATE".equalsIgnoreCase(atom.getScope())
+                && currentUserId.equals(atom.getOwnerUserId()));
     }
 
     private boolean canManage(KnowledgeAtom atom, Long currentUserId) {
         if ("PRIVATE".equalsIgnoreCase(atom.getScope())
                 && currentUserId.equals(atom.getOwnerUserId())) {
-            return true;
+            return accessProperties.isUserMaintenanceEnabled();
         }
-        return adminRoleService.isAdmin(currentUserId);
+        return "PUBLIC".equalsIgnoreCase(atom.getScope())
+                && adminRoleService.isAdmin(currentUserId);
     }
 
     private void archivePreviousDraftBase(String atomId) {

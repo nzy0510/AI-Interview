@@ -87,21 +87,33 @@ public class KnowledgeWorkspaceService {
 
     public KnowledgeWorkspaceResponse listWorkspace(Long currentUserId) {
         requireWorkspaceAccess(currentUserId);
-        List<InterviewPosition> positions = positionMapper.selectList(new QueryWrapper<InterviewPosition>()
-                .and(wrapper -> wrapper
-                        .eq("scope", SCOPE_PUBLIC)
-                        .or(nested -> nested.eq("scope", SCOPE_PRIVATE).eq("owner_user_id", currentUserId)))
-                .orderByAsc("scope", "id"));
+        QueryWrapper<InterviewPosition> positionQuery = new QueryWrapper<>();
+        if (accessProperties.isUserMaintenanceEnabled()) {
+            positionQuery.and(wrapper -> wrapper
+                    .eq("scope", SCOPE_PUBLIC)
+                    .or(nested -> nested.eq("scope", SCOPE_PRIVATE).eq("owner_user_id", currentUserId)));
+        } else {
+            positionQuery.eq("scope", SCOPE_PUBLIC);
+        }
+        List<InterviewPosition> positions = positionMapper.selectList(positionQuery.orderByAsc("scope", "id"))
+                .stream()
+                .filter(item -> isVisibleScoped(item.getScope(), item.getOwnerUserId(), currentUserId))
+                .toList();
         if (positions.isEmpty()) {
             return new KnowledgeWorkspaceResponse(List.of());
         }
 
         List<Long> positionIds = positions.stream().map(InterviewPosition::getId).toList();
-        Map<Long, KnowledgeBase> basesByPosition = knowledgeBaseMapper.selectList(new QueryWrapper<KnowledgeBase>()
-                        .in("position_id", positionIds)
-                        .and(wrapper -> wrapper
-                                .eq("scope", SCOPE_PUBLIC)
-                                .or(nested -> nested.eq("scope", SCOPE_PRIVATE).eq("owner_user_id", currentUserId))))
+        QueryWrapper<KnowledgeBase> knowledgeBaseQuery = new QueryWrapper<KnowledgeBase>()
+                .in("position_id", positionIds);
+        if (accessProperties.isUserMaintenanceEnabled()) {
+            knowledgeBaseQuery.and(wrapper -> wrapper
+                    .eq("scope", SCOPE_PUBLIC)
+                    .or(nested -> nested.eq("scope", SCOPE_PRIVATE).eq("owner_user_id", currentUserId)));
+        } else {
+            knowledgeBaseQuery.eq("scope", SCOPE_PUBLIC);
+        }
+        Map<Long, KnowledgeBase> basesByPosition = knowledgeBaseMapper.selectList(knowledgeBaseQuery)
                 .stream()
                 .filter(item -> isVisibleScoped(item.getScope(), item.getOwnerUserId(), currentUserId))
                 .collect(Collectors.toMap(KnowledgeBase::getPositionId, item -> item, (left, right) -> left, LinkedHashMap::new));
@@ -119,7 +131,7 @@ public class KnowledgeWorkspaceService {
 
     @Transactional
     public KnowledgePositionResponse createPrivatePosition(Long currentUserId, KnowledgePositionCreateRequest request) {
-        requireWorkspaceAccess(currentUserId);
+        requirePrivateMaintenanceAccess(currentUserId);
         String name = cleanName(request != null ? request.name() : null);
         String description = cleanDescription(request != null ? request.description() : null);
         LocalDateTime now = LocalDateTime.now();
@@ -169,7 +181,8 @@ public class KnowledgeWorkspaceService {
         if (position == null) {
             throw new RuntimeException("岗位不存在");
         }
-        boolean privateOwner = SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
+        boolean privateOwner = accessProperties.isUserMaintenanceEnabled()
+                && SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
                 && currentUserId.equals(position.getOwnerUserId());
         boolean publicAdmin = SCOPE_PUBLIC.equalsIgnoreCase(position.getScope())
                 && adminRoleService.isAdmin(currentUserId);
@@ -228,7 +241,7 @@ public class KnowledgeWorkspaceService {
 
     @Transactional
     public void deletePrivatePosition(Long currentUserId, Long positionId) {
-        requireWorkspaceAccess(currentUserId);
+        requirePrivateMaintenanceAccess(currentUserId);
         InterviewPosition position = positionMapper.selectById(positionId);
         if (position == null
                 || !SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
@@ -320,13 +333,15 @@ public class KnowledgeWorkspaceService {
     private KnowledgePositionResponse toPositionResponse(InterviewPosition position,
                                                          KnowledgeBase knowledgeBase,
                                                          Long currentUserId) {
-        boolean editable = SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
+        boolean editable = accessProperties.isUserMaintenanceEnabled()
+                && SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
                 && currentUserId.equals(position.getOwnerUserId())
                 && !STATUS_ARCHIVED.equalsIgnoreCase(position.getStatus());
         boolean active = STATUS_ACTIVE.equalsIgnoreCase(position.getStatus())
                 && knowledgeBase != null
                 && STATUS_ACTIVE.equalsIgnoreCase(knowledgeBase.getStatus());
-        boolean privateOwner = active
+        boolean privateOwner = accessProperties.isUserMaintenanceEnabled()
+                && active
                 && SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
                 && currentUserId.equals(position.getOwnerUserId());
         boolean publicAdmin = active
@@ -373,6 +388,13 @@ public class KnowledgeWorkspaceService {
         }
     }
 
+    private void requirePrivateMaintenanceAccess(Long currentUserId) {
+        requireWorkspaceAccess(currentUserId);
+        if (!accessProperties.isUserMaintenanceEnabled()) {
+            throw new RuntimeException("无权访问私有题库维护");
+        }
+    }
+
     private QuestionBankImportScope importScopeFor(Long currentUserId, Long knowledgeBaseId) {
         requireWorkspaceAccess(currentUserId);
         KnowledgeBase knowledgeBase = knowledgeBaseMapper.selectById(knowledgeBaseId);
@@ -395,7 +417,7 @@ public class KnowledgeWorkspaceService {
         }
         if (SCOPE_PRIVATE.equalsIgnoreCase(knowledgeBase.getScope())
                 && currentUserId.equals(knowledgeBase.getOwnerUserId())) {
-            return true;
+            return accessProperties.isUserMaintenanceEnabled();
         }
         return SCOPE_PUBLIC.equalsIgnoreCase(knowledgeBase.getScope()) && adminRoleService.isAdmin(currentUserId);
     }
@@ -430,6 +452,8 @@ public class KnowledgeWorkspaceService {
 
     private boolean isVisibleScoped(String scope, Long ownerUserId, Long currentUserId) {
         return SCOPE_PUBLIC.equalsIgnoreCase(scope)
-                || (SCOPE_PRIVATE.equalsIgnoreCase(scope) && currentUserId.equals(ownerUserId));
+                || (accessProperties.isUserMaintenanceEnabled()
+                && SCOPE_PRIVATE.equalsIgnoreCase(scope)
+                && currentUserId.equals(ownerUserId));
     }
 }

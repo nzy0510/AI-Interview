@@ -123,6 +123,50 @@ class KnowledgeWorkspaceServiceTest {
     }
 
     @Test
+    @DisplayName("开关关闭时管理员工作台只返回公共岗位")
+    void shouldOnlyExposePublicWorkspaceToAdminWhenDisabled() {
+        accessProperties.setUserMaintenanceEnabled(false);
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
+        when(positionMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(
+                position(1L, "PUBLIC", null, "Java 后端开发", "ACTIVE", 11L),
+                position(2L, "PRIVATE", 8L, "管理员私有岗位", "ACTIVE", 12L)
+        ));
+        when(knowledgeBaseMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(
+                knowledgeBase(11L, 1L, "PUBLIC", null),
+                knowledgeBase(12L, 2L, "PRIVATE", 8L)
+        ));
+
+        KnowledgeWorkspaceResponse response = service.listWorkspace(8L);
+
+        assertThat(response.positions())
+                .extracting(KnowledgePositionResponse::scope)
+                .containsExactly("PUBLIC");
+    }
+
+    @Test
+    @DisplayName("开关关闭时管理员不能创建或操作自己的私有题库")
+    void shouldDenyAdminOwnedPrivateMaintenanceWhenDisabled() {
+        accessProperties.setUserMaintenanceEnabled(false);
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
+        when(positionMapper.selectById(20L))
+                .thenReturn(position(20L, "PRIVATE", 8L, "管理员私有岗位", "ACTIVE", 30L));
+        when(knowledgeBaseMapper.selectById(30L))
+                .thenReturn(knowledgeBase(30L, 20L, "PRIVATE", 8L));
+
+        assertWorkspaceDenied(() -> service.createPrivatePosition(8L,
+                new KnowledgePositionCreateRequest("私有岗位", "")));
+        assertWorkspaceDenied(() -> service.deletePrivatePosition(8L, 20L));
+        assertThatThrownBy(() -> service.getPositionCoverage(8L, 20L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("无权");
+        assertWorkspaceDenied(() -> service.importPackage(8L, 30L, new QuestionBankImportRequest()));
+
+        verify(positionMapper, never()).insert(any());
+        verify(positionMapper, never()).deleteById(any(Long.class));
+        verify(questionBankService, never()).importBatch(any(), any());
+    }
+
+    @Test
     @DisplayName("默认关闭时普通用户无权访问工作台或执行任何题库写操作")
     void shouldDenyWorkspaceAndAllMutationsForNormalUserWhenDisabled() {
         accessProperties.setUserMaintenanceEnabled(false);
