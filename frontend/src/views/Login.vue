@@ -57,10 +57,6 @@
 
           <el-tabs v-model="activeTab" class="auth-tabs">
             <el-tab-pane label="登录" name="login">
-              <LocalAdminNotice
-                v-if="isLocalAdminMode"
-                @fill="fillLocalAdminCredentials"
-              />
               <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="0" class="auth-form">
                 <el-form-item prop="username">
                   <el-input
@@ -193,7 +189,6 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Operation, Message, DataLine, Lock } from '@element-plus/icons-vue'
-import LocalAdminNotice from '@/components/auth/LocalAdminNotice.vue'
 import {
   forgotPasswordAPI,
   getAuthConfigAPI,
@@ -225,10 +220,6 @@ const loadAuthMode = async () => {
   } catch (error) {
     isLocalAdminMode.value = false
   }
-}
-
-const fillLocalAdminCredentials = (credentials) => {
-  loginForm.value = { ...credentials }
 }
 
 onMounted(loadAuthMode)

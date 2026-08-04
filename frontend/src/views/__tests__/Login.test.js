@@ -57,7 +57,7 @@ describe('Login auth mode', () => {
     vi.clearAllMocks()
   })
 
-  it('local-admin 模式只显示登录并可填入默认账号', async () => {
+  it('local-admin 模式只显示用户名密码登录', async () => {
     getAuthConfigAPI.mockResolvedValue({ mode: 'local-admin' })
     const wrapper = mountLogin()
 
@@ -65,13 +65,8 @@ describe('Login auth mode', () => {
 
     expect(wrapper.find('[data-name="register"]').exists()).toBe(false)
     expect(wrapper.find('[data-name="forgot"]').exists()).toBe(false)
-    expect(wrapper.get('.local-admin-notice').text()).toContain('admin123')
-
-    await wrapper.get('.local-admin-notice__fill').trigger('click')
-
-    const inputs = wrapper.findAll('input')
-    expect(inputs[0].element.value).toBe('admin')
-    expect(inputs[1].element.value).toBe('admin123')
+    expect(wrapper.find('.local-admin-notice').exists()).toBe(false)
+    expect(wrapper.findAll('input')[0].attributes('placeholder')).toBe('请输入用户名')
   })
 
   it('认证配置请求失败时保留邮箱注册与找回密码模式', async () => {
