@@ -11,6 +11,8 @@ import com.interview.entity.InterviewRecord;
 import com.interview.entity.InterviewTurn;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeBase;
+import com.interview.entity.RagRetrievalLog;
+import com.interview.entity.RagRetrievalRequestLog;
 import com.interview.entity.ResumeProfile;
 import com.interview.exception.LlmProviderRequiredException;
 import com.interview.mapper.InterviewPositionMapper;
@@ -19,6 +21,8 @@ import com.interview.mapper.InterviewTurnMapper;
 import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.AppJobMapper;
+import com.interview.mapper.RagRetrievalLogMapper;
+import com.interview.mapper.RagRetrievalRequestLogMapper;
 import com.interview.mapper.ResumeProfileMapper;
 import com.interview.service.AppJobRecoveryService;
 import com.interview.service.AppJobService;
@@ -43,6 +47,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -70,6 +75,12 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Autowired
     private InterviewTurnMapper interviewTurnMapper;
+
+    @Autowired
+    private RagRetrievalLogMapper ragRetrievalLogMapper;
+
+    @Autowired
+    private RagRetrievalRequestLogMapper ragRetrievalRequestLogMapper;
 
     @Autowired
     private InterviewPositionMapper interviewPositionMapper;
@@ -542,22 +553,35 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     @Override
+    @Transactional
     public void discardInterview(Long userId, Long recordId) {
-        InterviewRecord record = loadOwnedRecord(userId, recordId);
-        if (InterviewPhase.FINISHED.name().equals(record.getPhase())
-                || record.getEndTime() != null
-                || record.getScore() != null) {
-            throw new RuntimeException("已完成的面试记录不能退出");
-        }
         if (!activeInterviewTurns.add(recordId)) {
             throw new RuntimeException("当前轮次正在处理中，请稍后退出");
         }
         try {
+            InterviewRecord record = loadOwnedRecord(userId, recordId);
+            if (InterviewPhase.FINISHED.name().equals(record.getPhase())
+                    || record.getEndTime() != null
+                    || record.getScore() != null) {
+                throw new RuntimeException("已完成的面试记录不能退出");
+            }
+            ragRetrievalLogMapper.delete(new LambdaQueryWrapper<RagRetrievalLog>()
+                    .eq(RagRetrievalLog::getUserId, userId)
+                    .eq(RagRetrievalLog::getRecordId, recordId));
+            ragRetrievalRequestLogMapper.delete(new LambdaQueryWrapper<RagRetrievalRequestLog>()
+                    .eq(RagRetrievalRequestLog::getUserId, userId)
+                    .eq(RagRetrievalRequestLog::getRecordId, recordId));
+            interviewTurnMapper.delete(new LambdaQueryWrapper<InterviewTurn>()
+                    .eq(InterviewTurn::getUserId, userId)
+                    .eq(InterviewTurn::getRecordId, recordId));
             int deleted = interviewRecordMapper.delete(new LambdaQueryWrapper<InterviewRecord>()
                     .eq(InterviewRecord::getId, recordId)
-                    .eq(InterviewRecord::getUserId, userId));
+                    .eq(InterviewRecord::getUserId, userId)
+                    .ne(InterviewRecord::getPhase, InterviewPhase.FINISHED.name())
+                    .isNull(InterviewRecord::getEndTime)
+                    .isNull(InterviewRecord::getScore));
             if (deleted != 1) {
-                throw new RuntimeException("面试记录不存在或无权访问");
+                throw new RuntimeException("面试记录不存在、已完成或无权访问");
             }
             sessionStore.delete(recordId);
         } finally {
