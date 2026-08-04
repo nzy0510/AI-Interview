@@ -1,4 +1,13 @@
 const ORCHESTRATION_MODES = new Set(['AGENT', 'RULE', 'RULE_FALLBACK'])
+const FALLBACK_CATEGORY_LABELS = {
+  TIMEOUT: '规划超时',
+  PROVIDER: '模型服务异常',
+  TOOL: '工具调用失败',
+  OUTPUT: '规划输出异常',
+  MODEL: '模型规划失败',
+  SYSTEM: '编排异常'
+}
+const FALLBACK_CATEGORIES = new Set(Object.keys(FALLBACK_CATEGORY_LABELS))
 const ORCHESTRATION_ACTIONS = new Set([
   'DEEPEN',
   'REMEDIATE',
@@ -41,11 +50,17 @@ export function normalizeOrchestrationEvent(payload) {
       .filter(Boolean))]
     : []
 
+  const fallbackCategory = payload.mode === 'RULE_FALLBACK'
+    && FALLBACK_CATEGORIES.has(payload.fallbackCategory)
+    ? payload.fallbackCategory
+    : null
+
   return {
     mode: payload.mode,
     action: payload.action,
     summary: typeof payload.summary === 'string' ? payload.summary.trim().slice(0, 180) : '',
-    tools: tools.slice(0, 3)
+    tools: tools.slice(0, 3),
+    ...(fallbackCategory ? { fallbackCategory } : {})
   }
 }
 
@@ -81,6 +96,11 @@ export function getOrchestrationModePresentation(mode) {
 
 export function getOrchestrationActionLabel(action) {
   return ACTION_LABELS[action] || '继续面试'
+}
+
+export function getOrchestrationFallbackLabel(mode, fallbackCategory) {
+  if (mode !== 'RULE_FALLBACK' || !FALLBACK_CATEGORIES.has(fallbackCategory)) return ''
+  return FALLBACK_CATEGORY_LABELS[fallbackCategory]
 }
 
 export function getFriendlyToolLabels(tools) {

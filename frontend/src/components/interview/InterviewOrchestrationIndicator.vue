@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import {
   getFriendlyToolLabels,
   getOrchestrationActionLabel,
+  getOrchestrationFallbackLabel,
   getOrchestrationModePresentation
 } from '@/utils/interviewOrchestration'
 
@@ -18,6 +19,10 @@ const props = defineProps({
 })
 
 const mode = computed(() => getOrchestrationModePresentation(props.decision.mode))
+const fallbackLabel = computed(() => getOrchestrationFallbackLabel(
+  props.decision.mode,
+  props.decision.fallbackCategory
+))
 const summary = computed(() => props.decision.summary || getOrchestrationActionLabel(props.decision.action))
 const toolLabels = computed(() => getFriendlyToolLabels(props.decision.tools))
 </script>
@@ -31,6 +36,16 @@ const toolLabels = computed(() => getFriendlyToolLabels(props.decision.tools))
     aria-label="当前面试策略"
   >
     <el-tag :type="mode.type" size="small" effect="dark" round>{{ mode.label }}</el-tag>
+    <el-tag
+      v-if="fallbackLabel"
+      class="orchestration-indicator__fallback"
+      type="warning"
+      size="small"
+      effect="plain"
+      round
+    >
+      {{ fallbackLabel }}
+    </el-tag>
     <span class="orchestration-indicator__summary">{{ summary }}</span>
     <span v-if="toolLabels.length" class="orchestration-indicator__tools">
       <span class="orchestration-indicator__tool-prefix">参考</span>
@@ -80,6 +95,10 @@ const toolLabels = computed(() => getFriendlyToolLabels(props.decision.tools))
   white-space: nowrap;
 }
 
+.orchestration-indicator__fallback {
+  flex: 0 0 auto;
+}
+
 .orchestration-indicator__tools {
   display: flex;
   align-items: center;
@@ -109,10 +128,19 @@ const toolLabels = computed(() => getFriendlyToolLabels(props.decision.tools))
     white-space: normal;
   }
 
+  .orchestration-indicator.is-rule-fallback .orchestration-indicator__summary {
+    order: 1;
+    flex-basis: 100%;
+  }
+
   .orchestration-indicator__tools {
     width: 100%;
     flex-wrap: wrap;
     padding-left: 2px;
+  }
+
+  .orchestration-indicator.is-rule-fallback .orchestration-indicator__tools {
+    order: 2;
   }
 }
 </style>
