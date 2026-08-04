@@ -112,7 +112,16 @@
                 <el-tag effect="plain" type="info">可编辑</el-tag>
               </div>
 
-              <div class="target-grid">
+              <el-alert
+                v-if="positionLoadState === 'error'"
+                title="可用岗位加载失败，请刷新页面后重试"
+                type="error"
+                :closable="false"
+                show-icon
+              />
+              <el-skeleton v-else-if="positionLoadState === 'loading'" :rows="2" animated />
+              <el-empty v-else-if="!roleOptions.length" description="暂无可用的内置岗位，请联系管理员维护公共题库" />
+              <div v-else class="target-grid">
                 <div class="target-input">
                   <label>岗位名称</label>
                   <el-input
@@ -192,7 +201,7 @@
                 <el-button
                   :type="mode === 'text' ? 'primary' : 'default'"
                   class="start-button"
-                  :disabled="showLlmConfigPrompt"
+                  :disabled="!canStartInterview"
                   @click="startInterview('text')"
                 >
                   开始文字面试
@@ -200,11 +209,14 @@
                 <el-button
                   :type="mode === 'video' ? 'primary' : 'default'"
                   class="start-button"
-                  :disabled="showLlmConfigPrompt"
+                  :disabled="!canStartInterview"
                   @click="startInterview('video')"
                 >
                   开始视频面试
                 </el-button>
+                <p v-if="positionAvailabilityMessage" class="start-blocked-hint">
+                  {{ positionAvailabilityMessage }}
+                </p>
               </div>
             </section>
 
@@ -251,7 +263,10 @@ import {
   createUnknownLlmConfigStatus,
   normalizeLlmConfigStatus
 } from '@/utils/llmConfig'
-import { normalizeVisibleInterviewPositions } from '@/utils/interviewEntry'
+import {
+  normalizeVisibleInterviewPositions,
+  resolveVisibleInterviewPosition
+} from '@/utils/interviewEntry'
 
 const router = useRouter()
 const route = useRoute()
@@ -264,15 +279,17 @@ const resumeAnalysis = ref(null)
 const role = ref('')
 const selectedPositionId = ref(null)
 const workspacePositions = ref([])
+const positionLoadState = ref('loading')
 const experienceLevel = ref('mid')
 const focusAreas = ref([])
 const mode = ref('text')
 const llmStatus = ref(createUnknownLlmConfigStatus())
 let resumeProfileRequestSeq = 0
 
-const currentPositionName = computed(() => {
-  return workspacePositions.value.find((item) => item.id === selectedPositionId.value)?.name || role.value || '未选择'
+const selectedPosition = computed(() => {
+  return workspacePositions.value.find((item) => item.id === selectedPositionId.value) || null
 })
+const currentPositionName = computed(() => selectedPosition.value?.name || '未选择')
 
 const clearResumeState = () => {
   resumeAnalysis.value = null
@@ -316,6 +333,16 @@ const modeLabel = computed(() => {
 })
 
 const showLlmConfigPrompt = computed(() => llmStatus.value.resolved && !llmStatus.value.hasActiveConfig)
+const positionAvailabilityMessage = computed(() => {
+  if (positionLoadState.value === 'loading') return '正在加载可用岗位'
+  if (positionLoadState.value === 'error') return '可用岗位加载失败，暂时不能开始面试'
+  if (!workspacePositions.value.length) return '暂无可用的内置岗位'
+  if (!selectedPosition.value) return '请选择一个可用岗位'
+  return ''
+})
+const canStartInterview = computed(() => {
+  return !showLlmConfigPrompt.value && !positionAvailabilityMessage.value
+})
 const llmStatusText = computed(() => {
   if (!llmStatus.value.resolved) return '待检测'
   if (llmStatus.value.hasActiveConfig) {
@@ -326,18 +353,15 @@ const llmStatusText = computed(() => {
 
 const normalizeSupportedRole = (value) => {
   if (workspacePositions.value.some((item) => item.name === value)) return value
-  return setupDefaults.roleOptions.includes(value) ? value : setupDefaults.roleOptions[0]
+  return workspacePositions.value[0]?.name || ''
 }
 
 const roleOptions = computed(() => {
-  if (workspacePositions.value.length) {
-    return workspacePositions.value.map((item) => ({
-      id: item.id,
-      name: item.name,
-      scope: item.scope
-    }))
-  }
-  return setupDefaults.roleOptions.map((name) => ({ id: null, name, scope: 'PUBLIC' }))
+  return workspacePositions.value.map((item) => ({
+    id: item.id,
+    name: item.name,
+    scope: item.scope
+  }))
 })
 
 const selectRoleOption = (option) => {
@@ -366,20 +390,16 @@ const resumeSummary = computed(() => {
 
 const syncFromQuery = () => {
   const { role: routeRole, positionId, focus, mode: routeMode } = route.query
-
-  if (typeof routeRole === 'string' && routeRole.trim()) {
-    role.value = routeRole.trim()
-  } else if (!role.value) {
-    role.value = setupDefaults.roleOptions[0]
-  }
-
-  const numericPositionId = Number(positionId)
-  if (Number.isFinite(numericPositionId) && numericPositionId > 0) {
-    selectedPositionId.value = numericPositionId
-  } else {
-    const matched = workspacePositions.value.find((item) => item.name === role.value)
-    selectedPositionId.value = matched?.id || null
-  }
+  const requestedRole = typeof routeRole === 'string' && routeRole.trim()
+    ? routeRole.trim()
+    : role.value
+  const resolvedPosition = resolveVisibleInterviewPosition(
+    workspacePositions.value,
+    positionId,
+    requestedRole
+  )
+  selectedPositionId.value = resolvedPosition?.id || null
+  role.value = resolvedPosition?.name || ''
 
   if (typeof routeMode === 'string' && ['text', 'video'].includes(routeMode)) {
     mode.value = routeMode
@@ -410,16 +430,16 @@ const loadPreference = async () => {
 }
 
 const loadWorkspacePositions = async () => {
+  positionLoadState.value = 'loading'
   try {
     const data = await getVisiblePositionsAPI({ silent: true })
     workspacePositions.value = normalizeVisibleInterviewPositions(data)
-    if (!selectedPositionId.value) {
-      const matched = workspacePositions.value.find((item) => item.name === role.value)
-      selectedPositionId.value = matched?.id || workspacePositions.value[0]?.id || null
-      if (!role.value && workspacePositions.value[0]) role.value = workspacePositions.value[0].name
-    }
+    positionLoadState.value = 'ready'
   } catch {
     workspacePositions.value = []
+    selectedPositionId.value = null
+    role.value = ''
+    positionLoadState.value = 'error'
   }
 }
 
@@ -477,16 +497,19 @@ const startInterview = (preferredMode) => {
     goLlmSettings()
     return
   }
+  const validPosition = selectedPosition.value
+  if (!validPosition) {
+    ElMessage.warning(positionAvailabilityMessage.value || '请选择一个可用岗位')
+    return
+  }
   const nextMode = preferredMode || mode.value || 'text'
   const query = {
-    role: role.value || setupDefaults.roleOptions[0],
+    role: validPosition.name,
     focus: focusAreas.value.join(','),
     mode: nextMode,
     difficulty: experienceLevel.value
   }
-  if (selectedPositionId.value) {
-    query.positionId = selectedPositionId.value
-  }
+  query.positionId = validPosition.id
 
   const path = nextMode === 'video' ? '/video-interview' : '/interview'
   router.push({ path, query })
@@ -892,6 +915,14 @@ const goLlmSettings = () => {
   width: 100%;
   height: 46px;
   border-radius: 12px;
+}
+
+.start-blocked-hint {
+  margin: 0;
+  color: #8a3b32;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .start-button.secondary {

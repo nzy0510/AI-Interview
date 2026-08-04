@@ -30,6 +30,20 @@ export function normalizeVisibleInterviewPositions(value) {
   })
 }
 
+export function resolveVisibleInterviewPosition(value, requestedId, requestedName) {
+  const positions = normalizeVisibleInterviewPositions(value)
+  if (!positions.length) return null
+
+  const numericId = Number(requestedId)
+  if (Number.isFinite(numericId) && numericId > 0) {
+    const matchedById = positions.find((item) => item.id === numericId)
+    if (matchedById) return matchedById
+  }
+
+  const normalizedName = typeof requestedName === 'string' ? requestedName.trim() : ''
+  return positions.find((item) => item.name === normalizedName) || positions[0]
+}
+
 export function parseFocusAreas(queryFocus) {
   if (typeof queryFocus !== 'string' || !queryFocus.trim()) return []
   return queryFocus
