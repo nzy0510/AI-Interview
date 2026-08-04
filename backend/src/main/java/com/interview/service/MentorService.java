@@ -6,11 +6,13 @@ import com.interview.dto.MentorInsightResponse;
 import com.interview.dto.MentorInsightResponse.*;
 import com.interview.entity.InterviewPosition;
 import com.interview.entity.InterviewRecord;
+import com.interview.entity.InterviewTurn;
+import com.interview.entity.KnowledgeAtom;
 import com.interview.exception.LlmProviderRequiredException;
 import com.interview.mapper.InterviewPositionMapper;
 import com.interview.mapper.InterviewRecordMapper;
+import com.interview.mapper.InterviewTurnMapper;
 import com.interview.mapper.KnowledgeAtomMapper;
-import com.interview.mapper.RagRetrievalLogMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -43,7 +45,7 @@ public class MentorService {
     private InterviewRecordMapper recordMapper;
 
     @Autowired
-    private RagRetrievalLogMapper ragLogMapper;
+    private InterviewTurnMapper interviewTurnMapper;
 
     @Autowired
     private KnowledgeAtomMapper atomMapper;
@@ -146,21 +148,7 @@ public class MentorService {
                 .groupBy("category");
         List<Map<String, Object>> totalRows = atomMapper.selectMaps(totalQuery);
 
-        // 只统计真正进入 prompt context 的去重 atom。
-        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.interview.entity.RagRetrievalLog> query =
-                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
-        query.select("retrieved_category, COUNT(DISTINCT retrieved_atom_id) as cnt")
-             .eq("user_id", userId)
-             .eq("context_selected", true)
-             .eq(positionId != null, "position_id", positionId)
-             .groupBy("retrieved_category");
-        List<Map<String, Object>> coveredRows = ragLogMapper.selectMaps(query);
-        Map<String, Integer> coveredByCategory = new HashMap<>();
-        for (Map<String, Object> row : coveredRows) {
-            String category = (String) row.get("retrieved_category");
-            Number count = (Number) row.get("cnt");
-            if (category != null && count != null) coveredByCategory.put(category, count.intValue());
-        }
+        Map<String, Integer> coveredByCategory = loadDeliveredCoverageByCategory(userId, positionId);
 
         int coveredCats = 0;
         int coveredTotal = 0;
@@ -192,6 +180,62 @@ public class MentorService {
                 : 0.0);
         kc.setDetails(details);
         return kc;
+    }
+
+    private Map<String, Integer> loadDeliveredCoverageByCategory(Long userId, Long positionId) {
+        // interview_turn 只在模型输出成功完成后落库；规划阶段的检索日志不代表用户已获得该内容。
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<InterviewTurn> turnQuery =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        turnQuery.select("retrieved_atom_ids")
+                .eq("user_id", userId)
+                .eq(positionId != null, "position_id", positionId)
+                .isNotNull("retrieved_atom_ids");
+        List<InterviewTurn> deliveredTurns = interviewTurnMapper.selectList(turnQuery);
+
+        Set<String> deliveredAtomIds = new LinkedHashSet<>();
+        if (deliveredTurns != null) {
+            for (InterviewTurn turn : deliveredTurns) {
+                if (turn == null || turn.getRetrievedAtomIds() == null || turn.getRetrievedAtomIds().isBlank()) {
+                    continue;
+                }
+                try {
+                    List<String> atomIds = JSON.parseArray(turn.getRetrievedAtomIds(), String.class);
+                    if (atomIds != null) {
+                        atomIds.stream()
+                                .filter(Objects::nonNull)
+                                .filter(atomId -> !atomId.isBlank())
+                                .forEach(deliveredAtomIds::add);
+                    }
+                } catch (RuntimeException e) {
+                    log.warn("忽略无法解析的已交付知识原子列表");
+                }
+            }
+        }
+        if (deliveredAtomIds.isEmpty()) {
+            return Map.of();
+        }
+
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<KnowledgeAtom> deliveredAtomQuery =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        deliveredAtomQuery.select("atom_id", "category")
+                .eq("status", "PUBLISHED")
+                .eq(positionId != null, "position_id", positionId)
+                .in("atom_id", deliveredAtomIds);
+        List<KnowledgeAtom> deliveredAtoms = atomMapper.selectList(deliveredAtomQuery);
+
+        Map<String, Integer> coveredByCategory = new HashMap<>();
+        Set<String> countedAtomIds = new HashSet<>();
+        if (deliveredAtoms != null) {
+            for (KnowledgeAtom atom : deliveredAtoms) {
+                if (atom == null || atom.getAtomId() == null || atom.getCategory() == null) {
+                    continue;
+                }
+                if (countedAtomIds.add(atom.getAtomId())) {
+                    coveredByCategory.merge(atom.getCategory(), 1, Integer::sum);
+                }
+            }
+        }
+        return coveredByCategory;
     }
 
     private double roundPercent(double value) {

@@ -3,7 +3,10 @@ package com.interview.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.interview.dto.MentorInsightResponse;
 import com.interview.entity.InterviewPosition;
+import com.interview.entity.InterviewTurn;
+import com.interview.entity.KnowledgeAtom;
 import com.interview.mapper.InterviewPositionMapper;
+import com.interview.mapper.InterviewTurnMapper;
 import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +24,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,17 +42,26 @@ class MentorServiceTest {
     @Mock
     private InterviewPositionMapper positionMapper;
 
+    @Mock
+    private InterviewTurnMapper interviewTurnMapper;
+
     @Test
     @DisplayName("知识覆盖率使用已发布 Atom 总量作为分母")
     void shouldMeasureCoverageAgainstPublishedAtoms() {
         MentorService service = new MentorService();
-        ReflectionTestUtils.setField(service, "ragLogMapper", ragLogMapper);
         ReflectionTestUtils.setField(service, "atomMapper", atomMapper);
         ReflectionTestUtils.setField(service, "positionMapper", positionMapper);
+        ReflectionTestUtils.setField(service, "interviewTurnMapper", interviewTurnMapper);
         when(atomMapper.selectMaps(any())).thenReturn(List.of(
                 totalRow("AI大模型", 10),
                 totalRow("Java", 5)));
-        when(ragLogMapper.selectMaps(any())).thenReturn(List.of(coveredRow("AI大模型", 4)));
+        when(interviewTurnMapper.selectList(any())).thenReturn(List.of(
+                deliveredTurn("ai-1", "ai-2", "ai-3", "ai-4")));
+        when(atomMapper.selectList(any())).thenReturn(List.of(
+                atom("ai-1", "AI大模型"),
+                atom("ai-2", "AI大模型"),
+                atom("ai-3", "AI大模型"),
+                atom("ai-4", "AI大模型")));
 
         MentorInsightResponse response = service.getKnowledgeCoverageOnly(1L);
 
@@ -61,36 +74,61 @@ class MentorServiceTest {
     }
 
     @Test
+    @DisplayName("Agent 仅完成规划检索时不提前计入学习覆盖")
+    void shouldIgnorePlanningOnlyRetrievalWhenMeasuringCoverage() {
+        MentorService service = new MentorService();
+        ReflectionTestUtils.setField(service, "atomMapper", atomMapper);
+        ReflectionTestUtils.setField(service, "positionMapper", positionMapper);
+        ReflectionTestUtils.setField(service, "interviewTurnMapper", interviewTurnMapper);
+        when(atomMapper.selectMaps(any())).thenReturn(List.of(totalRow("Java", 5)));
+        lenient().when(ragLogMapper.selectMaps(any())).thenReturn(List.of(coveredRow("Java", 1)));
+        when(interviewTurnMapper.selectList(any())).thenReturn(List.of());
+
+        MentorInsightResponse response = service.getKnowledgeCoverageOnly(1L);
+
+        assertThat(response.getKnowledgeCoverage().getCoveredCategories()).isZero();
+        assertThat(response.getKnowledgeCoverage().getCoveragePercent()).isEqualTo(0.0);
+        verify(ragLogMapper, never()).selectMaps(any());
+    }
+
+    @Test
     @DisplayName("知识覆盖查询按可见岗位过滤分母和分子")
     void shouldFilterCoverageByVisiblePositionId() {
         MentorService service = new MentorService();
-        ReflectionTestUtils.setField(service, "ragLogMapper", ragLogMapper);
         ReflectionTestUtils.setField(service, "atomMapper", atomMapper);
         ReflectionTestUtils.setField(service, "positionMapper", positionMapper);
+        ReflectionTestUtils.setField(service, "interviewTurnMapper", interviewTurnMapper);
         when(positionMapper.selectById(20L)).thenReturn(position(20L, "PRIVATE", 7L, "ACTIVE"));
         when(atomMapper.selectMaps(any())).thenReturn(List.of(totalRow("Java", 5)));
-        when(ragLogMapper.selectMaps(any())).thenReturn(List.of(coveredRow("Java", 2)));
+        when(interviewTurnMapper.selectList(any())).thenReturn(List.of(deliveredTurn("java-1", "java-2")));
+        when(atomMapper.selectList(any())).thenReturn(List.of(
+                atom("java-1", "Java"),
+                atom("java-2", "Java")));
 
         MentorInsightResponse response = service.getKnowledgeCoverageOnly(7L, 20L);
 
         assertThat(response.getKnowledgeCoverage().getCoveragePercent()).isEqualTo(40.0);
-        ArgumentCaptor<QueryWrapper> atomQuery = ArgumentCaptor.forClass(QueryWrapper.class);
-        ArgumentCaptor<QueryWrapper> ragQuery = ArgumentCaptor.forClass(QueryWrapper.class);
-        verify(atomMapper).selectMaps(atomQuery.capture());
-        verify(ragLogMapper).selectMaps(ragQuery.capture());
-        assertThat(atomQuery.getValue().getSqlSegment()).contains("position_id");
-        assertThat(ragQuery.getValue().getSqlSegment()).contains("position_id");
-        assertThat(atomQuery.getValue().getParamNameValuePairs().values()).contains(20L);
-        assertThat(ragQuery.getValue().getParamNameValuePairs().values()).contains(20L);
+        ArgumentCaptor<QueryWrapper> totalAtomQuery = ArgumentCaptor.forClass(QueryWrapper.class);
+        ArgumentCaptor<QueryWrapper> deliveredAtomQuery = ArgumentCaptor.forClass(QueryWrapper.class);
+        ArgumentCaptor<QueryWrapper> deliveredTurnQuery = ArgumentCaptor.forClass(QueryWrapper.class);
+        verify(atomMapper).selectMaps(totalAtomQuery.capture());
+        verify(atomMapper).selectList(deliveredAtomQuery.capture());
+        verify(interviewTurnMapper).selectList(deliveredTurnQuery.capture());
+        assertThat(totalAtomQuery.getValue().getSqlSegment()).contains("position_id");
+        assertThat(deliveredAtomQuery.getValue().getSqlSegment()).contains("position_id", "atom_id");
+        assertThat(deliveredTurnQuery.getValue().getSqlSegment()).contains("user_id", "position_id");
+        assertThat(totalAtomQuery.getValue().getParamNameValuePairs().values()).contains(20L);
+        assertThat(deliveredAtomQuery.getValue().getParamNameValuePairs().values()).contains(20L);
+        assertThat(deliveredTurnQuery.getValue().getParamNameValuePairs().values()).contains(7L, 20L);
     }
 
     @Test
     @DisplayName("知识覆盖查询拒绝访问他人的私有岗位")
     void shouldRejectCoverageForOtherUsersPrivatePosition() {
         MentorService service = new MentorService();
-        ReflectionTestUtils.setField(service, "ragLogMapper", ragLogMapper);
         ReflectionTestUtils.setField(service, "atomMapper", atomMapper);
         ReflectionTestUtils.setField(service, "positionMapper", positionMapper);
+        ReflectionTestUtils.setField(service, "interviewTurnMapper", interviewTurnMapper);
         when(positionMapper.selectById(20L)).thenReturn(position(20L, "PRIVATE", 8L, "ACTIVE"));
 
         assertThatThrownBy(() -> service.getKnowledgeCoverageOnly(7L, 20L))
@@ -98,7 +136,7 @@ class MentorServiceTest {
                 .hasMessageContaining("无权访问");
 
         verify(atomMapper, never()).selectMaps(any());
-        verify(ragLogMapper, never()).selectMaps(any());
+        verify(interviewTurnMapper, never()).selectList(any());
     }
 
     /**
@@ -159,6 +197,19 @@ class MentorServiceTest {
         row.put("retrieved_category", category);
         row.put("cnt", covered);
         return row;
+    }
+
+    private InterviewTurn deliveredTurn(String... atomIds) {
+        InterviewTurn turn = new InterviewTurn();
+        turn.setRetrievedAtomIds(com.alibaba.fastjson2.JSON.toJSONString(atomIds));
+        return turn;
+    }
+
+    private KnowledgeAtom atom(String atomId, String category) {
+        KnowledgeAtom atom = new KnowledgeAtom();
+        atom.setAtomId(atomId);
+        atom.setCategory(category);
+        return atom;
     }
 
     private InterviewPosition position(Long id, String scope, Long ownerUserId, String status) {
