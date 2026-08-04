@@ -22,7 +22,8 @@
             </div>
             <div>
               <h3>快速开始</h3>
-              <p>注册、登录与找回密码集中处理，几步就能进入练习。</p>
+              <p v-if="isLocalAdminMode">使用本地默认管理员账号登录，并自行完成模型配置。</p>
+              <p v-else>注册、登录与找回密码集中处理，几步就能进入练习。</p>
             </div>
           </article>
           <article class="hero-card">
@@ -39,8 +40,9 @@
               <el-icon><Lock /></el-icon>
             </div>
             <div>
-              <h3>安全验证</h3>
-              <p>邮箱验证码与密码重置流程帮助你保护账号安全。</p>
+              <h3>{{ isLocalAdminMode ? '本机体验' : '安全验证' }}</h3>
+              <p v-if="isLocalAdminMode">默认账号仅用于本地 Docker 部署，请不要直接用于公网服务。</p>
+              <p v-else>邮箱验证码与密码重置流程帮助你保护账号安全。</p>
             </div>
           </article>
         </div>
@@ -55,11 +57,15 @@
 
           <el-tabs v-model="activeTab" class="auth-tabs">
             <el-tab-pane label="登录" name="login">
+              <LocalAdminNotice
+                v-if="isLocalAdminMode"
+                @fill="fillLocalAdminCredentials"
+              />
               <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="0" class="auth-form">
                 <el-form-item prop="username">
                   <el-input
                     v-model="loginForm.username"
-                    placeholder="请输入邮箱或用户名"
+                    :placeholder="isLocalAdminMode ? '请输入用户名' : '请输入邮箱或用户名'"
                     prefix-icon="Message"
                     size="large"
                   />
@@ -77,13 +83,13 @@
                 <el-form-item>
                   <el-button type="primary" class="submit-btn" :loading="loading" @click="handleLogin">登录</el-button>
                 </el-form-item>
-                <div class="extra-links">
+                <div v-if="!isLocalAdminMode" class="extra-links">
                   <el-link type="primary" @click="activeTab = 'forgot'">忘记密码？</el-link>
                 </div>
               </el-form>
             </el-tab-pane>
 
-            <el-tab-pane label="注册" name="register">
+            <el-tab-pane v-if="!isLocalAdminMode" label="注册" name="register">
               <el-form :model="registerForm" :rules="registerRules" ref="registerFormRef" label-width="0" class="auth-form">
                 <el-form-item prop="username">
                   <el-input
@@ -132,7 +138,7 @@
               </el-form>
             </el-tab-pane>
 
-            <el-tab-pane label="找回密码" name="forgot">
+            <el-tab-pane v-if="!isLocalAdminMode" label="找回密码" name="forgot">
               <el-form :model="forgotForm" :rules="forgotRules" ref="forgotFormRef" label-width="0" class="auth-form">
                 <el-form-item prop="email">
                   <el-input
@@ -183,16 +189,25 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Operation, Message, DataLine, Lock } from '@element-plus/icons-vue'
-import { loginAPI, registerAPI, sendCodeAPI, forgotPasswordAPI, resetPasswordAPI } from '@/api/user'
+import LocalAdminNotice from '@/components/auth/LocalAdminNotice.vue'
+import {
+  forgotPasswordAPI,
+  getAuthConfigAPI,
+  loginAPI,
+  registerAPI,
+  resetPasswordAPI,
+  sendCodeAPI
+} from '@/api/user'
 import { trackEvent } from '@/utils/analytics'
 
 const router = useRouter()
 const activeTab = ref('login')
 const loading = ref(false)
+const isLocalAdminMode = ref(false)
 
 const loginFormRef = ref(null)
 const registerFormRef = ref(null)
@@ -201,6 +216,22 @@ const forgotFormRef = ref(null)
 const loginForm = ref({ username: '', password: '' })
 const registerForm = ref({ username: '', password: '', email: '', code: '' })
 const forgotForm = ref({ email: '', code: '', newPassword: '' })
+
+const loadAuthMode = async () => {
+  try {
+    const config = await getAuthConfigAPI()
+    isLocalAdminMode.value = config?.mode === 'local-admin'
+    if (isLocalAdminMode.value) activeTab.value = 'login'
+  } catch (error) {
+    isLocalAdminMode.value = false
+  }
+}
+
+const fillLocalAdminCredentials = (credentials) => {
+  loginForm.value = { ...credentials }
+}
+
+onMounted(loadAuthMode)
 
 // 验证码冷却
 const regCooldown = ref(0)

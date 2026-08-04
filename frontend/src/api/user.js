@@ -8,6 +8,14 @@ export const loginAPI = (data) => {
     });
 };
 
+export const getAuthConfigAPI = () => {
+    return request({
+        url: '/user/auth-config',
+        method: 'get',
+        silent: true
+    });
+};
+
 export const registerAPI = (data) => {
     return request({
         url: '/user/register',
