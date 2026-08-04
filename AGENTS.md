@@ -99,6 +99,19 @@
 - 回答架构、RAG、题库、部署等问题时，以当前代码和配置为准，不凭历史记忆下结论。
 - CHANGELOG也可作为系统理解信息来源。
 
+## 本机部署相关
+
+本地 Docker 默认启用 `local-admin` 认证模式，不需要配置 QQ 邮箱、SMTP 授权码、注册验证码或找回密码。请保留以下默认配置：
+
+```env
+APP_AUTH_MODE=local-admin
+APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=true
+```
+
+本地默认账号固定为 `admin / admin123`，只用于绑定到 `127.0.0.1` 的本机部署，不要用于公网服务器。
+
+题库维护权限按角色和 owner 判断，不按用户名写死：`admin`、`nzy333` 或其他 `ADMIN` 账号拥有相同能力；普通账号可新增并维护自己的私有岗位 / 题库，不能操作公共题库或其他账号的私有数据。
+
 ## 常用验证命令
 
 ```powershell

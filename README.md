@@ -248,31 +248,11 @@ APP_LLM_CONFIG_ENCRYPTION_KEY=your_base64_or_high_entropy_encryption_key
 JWT_SIGN_KEY=your_jwt_signing_key_at_least_32_characters
 APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
 ```
+可以直接在 PowerShell 生成随机值：
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 
-本地 Docker 默认启用 `local-admin` 认证模式，不需要配置 QQ 邮箱、SMTP 授权码、注册验证码或找回密码。请保留以下默认配置：
 
-```env
-APP_AUTH_MODE=local-admin
-APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=true
-```
-
-本地默认账号固定为 `admin / admin123`，只用于绑定到 `127.0.0.1` 的本机部署，不要用于公网服务器。
-
-题库维护权限按角色和 owner 判断，不按用户名写死：`admin`、`nzy333` 或其他 `ADMIN` 账号拥有相同能力；普通账号可新增并维护自己的私有岗位 / 题库，不能操作公共题库或其他账号的私有数据。
-
-大模型配置说明：
-
-- 项目不提供系统兜底 API Key，也不依赖全局 `DEEPSEEK_API_KEY` 作为普通用户兜底。
-- 默认管理员首次登录后，需要进入侧边栏“大模型配置”，新建 DeepSeek 或其他兼容 Provider，填写自己的 API Key，测试连接并启用该配置。
-- 没有有效的启用配置时，文字面试、视频面试、报告生成和 AI Mentor 等用户侧 LLM 功能会引导用户先完成配置。
-- 当前支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 和自定义。
-- 服务端只需要 `APP_LLM_CONFIG_ENCRYPTION_KEY` 这类加密密钥来加密保存用户 API Key；不要在 `.env`、示例配置、日志或文档里写入任何真实供应商密钥。
-- 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置；管理员不能查看用户 API Key 明文。
-- 本地配置默认启用有边界 Agent 和账号自有题库维护；对应变量见 `.env.example` 的 `APP_INTERVIEW_AGENT_*` 与 `APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED`。
-
-不要提交 `.env`、真实 API Key、JWT Secret、邮箱授权码或数据库密码。
-
-### Docker 部署
+### Docker 部署(基础配置完成后)
 
 ```powershell
 docker compose up -d --build
@@ -292,8 +272,6 @@ docker compose up -d --build
 3. 点击“测试连接”，测试成功后保存并启用。
 4. 可直接选择内置岗位开始模拟面试，也可进入“岗位 / 题库维护”新增自己的私有岗位并导入题库。
 
-首次启用 `local-admin` 且数据库中不存在同名 `admin` 时，系统会创建默认管理员；这不要求整库为空，也不会删除已有账号、题库或面试数据。如果已经存在 `ADMIN` 角色的 `admin` 账号，启动过程不会覆盖其密码或资料；如果同名账号不是管理员，后端会明确拒绝启动，避免静默提权。修改密码后，重启容器也不会重置为 `admin123`。
-
 默认访问：
 
 - 前端：`http://localhost`
@@ -312,6 +290,15 @@ docker compose stop
 
 未来如果部署到公网，应改用 `docker-compose.prod.yml` 的 `email-verified` 模式，配置独立管理员、SMTP、HTTPS 和强密码；不要直接公开本地默认管理员，也不要把包含该账号的本地 `mysql_data` 原样迁移到公网。
 
+大模型配置说明：
+
+- 项目不提供系统兜底 API Key，也不依赖全局 `DEEPSEEK_API_KEY` 作为普通用户兜底。
+- 默认管理员首次登录后，需要进入侧边栏“大模型配置”，新建 DeepSeek 或其他兼容 Provider，填写自己的 API Key，测试连接并启用该配置。
+- 没有有效的启用配置时，文字面试、视频面试、报告生成和 AI Mentor 等用户侧 LLM 功能会引导用户先完成配置。
+- 当前支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 和自定义。
+- 服务端只需要 `APP_LLM_CONFIG_ENCRYPTION_KEY` 这类加密密钥来加密保存用户 API Key；不要在 `.env`、示例配置、日志或文档里写入任何真实供应商密钥。
+- 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置；管理员不能查看用户 API Key 明文。
+- 本地配置默认启用有边界 Agent 和账号自有题库维护；对应变量见 `.env.example` 的 `APP_INTERVIEW_AGENT_*` 与 `APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED`。
 ### RAG 评测工具
 
 ```powershell
@@ -352,7 +339,6 @@ python -m unittest discover -s tests
 ## 相关文档
 
 - [领域上下文](CONTEXT.md)
-- [GOAI 比赛 Demo 指南](docs/goai-demo.md)
 - [ADR 0001：有边界的单轮面试 Agent](docs/adr/0001-bounded-interview-agent.md)
 - [后续优化计划](docs/superpowers/specs/2026-06-13-user-owned-question-bank-rag-report-followups.zh.md)
 - [RAG 检索评测设计](docs/superpowers/specs/2026-06-03-rag-retrieval-evaluation-design.md)
