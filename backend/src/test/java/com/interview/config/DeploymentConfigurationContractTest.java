@@ -42,6 +42,24 @@ class DeploymentConfigurationContractTest {
     }
 
     @Test
+    @DisplayName("Agent 单轮规划预算默认保持为 35 秒")
+    void shouldKeepAgentPlanningTimeoutBudgetAligned() throws IOException {
+        assertThat(new InterviewAgentProperties().getPlanningTimeoutSeconds()).isEqualTo(35);
+        assertAgentPlanningTimeout(Path.of("src", "main", "resources", "application.yml"),
+                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS:35");
+        assertAgentPlanningTimeout(Path.of("src", "main", "resources", "application.yml.example"),
+                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS:35");
+        assertAgentPlanningTimeout(Path.of("..", ".env.example"),
+                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS=35");
+        assertAgentPlanningTimeout(Path.of("..", ".env.prod.example"),
+                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS=35");
+        assertAgentPlanningTimeout(Path.of("..", "docker-compose.example.yml"),
+                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS:-35");
+        assertAgentPlanningTimeout(Path.of("..", "docker-compose.prod.yml"),
+                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS:-35");
+    }
+
+    @Test
     @DisplayName("keeps Nginx upload body limits compatible with application uploads")
     void shouldKeepNginxUploadLimitCompatibleWithApplicationUploads() throws IOException {
         assertNginxUploadLimit(Path.of("..", "frontend", "nginx.conf"));
@@ -93,6 +111,12 @@ class DeploymentConfigurationContractTest {
                 .contains("APP_INTERVIEW_AGENT_MAX_TOOL_CALLS")
                 .contains("APP_INTERVIEW_AGENT_FALLBACK_ENABLED")
                 .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED");
+    }
+
+    private void assertAgentPlanningTimeout(Path path, String expectedDefault) throws IOException {
+        assertThat(Files.readString(path))
+                .as(path.toString())
+                .contains(expectedDefault);
     }
 
     private void assertNginxUploadLimit(Path path) throws IOException {

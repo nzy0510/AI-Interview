@@ -12,6 +12,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -226,6 +227,21 @@ class ToolCallingInterviewOrchestratorTest {
   }
 
   @Test
+  @DisplayName("规划提示要求每轮优先只调用一个最相关工具")
+  void planningPromptShouldPreferOneRelevantToolPerTurn() {
+    ScriptedChatModel model = new ScriptedChatModel(List.of(
+        jsonDecision("CONTINUE_PHASE", "证据已足够", "继续当前阶段")));
+
+    orchestrator(model).plan(request(2, InterviewPhase.TECHNICAL));
+
+    assertThat(model.systemPrompts())
+        .anySatisfy(prompt -> assertThat(prompt)
+            .contains("每轮优先只调用一个最相关工具")
+            .contains("第一个工具明确无可用证据")
+            .contains("禁止为了收集完整信息依次调用全部工具"));
+  }
+
+  @Test
   @DisplayName("未知动作统一转换为稳定 reasonCode")
   void unknownActionShouldFailClosed() {
     assertThatThrownBy(() -> orchestrator(new ScriptedChatModel(List.of(
@@ -285,6 +301,7 @@ class ToolCallingInterviewOrchestratorTest {
   private static final class ScriptedChatModel implements ChatLanguageModel {
     private final List<AiMessage> responses;
     private final List<List<ToolSpecification>> toolSpecifications = new ArrayList<>();
+    private final List<String> systemPrompts = new ArrayList<>();
     private int index;
 
     private ScriptedChatModel(List<AiMessage> responses) {
@@ -293,14 +310,24 @@ class ToolCallingInterviewOrchestratorTest {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
+      captureSystemPrompts(messages);
       return next();
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages,
                                         List<ToolSpecification> tools) {
+      captureSystemPrompts(messages);
       toolSpecifications.add(tools);
       return next();
+    }
+
+    private void captureSystemPrompts(List<ChatMessage> messages) {
+      messages.stream()
+          .filter(SystemMessage.class::isInstance)
+          .map(SystemMessage.class::cast)
+          .map(SystemMessage::text)
+          .forEach(systemPrompts::add);
     }
 
     private Response<AiMessage> next() {
@@ -310,6 +337,10 @@ class ToolCallingInterviewOrchestratorTest {
 
     private int calls() {
       return index;
+    }
+
+    private List<String> systemPrompts() {
+      return List.copyOf(systemPrompts);
     }
   }
 }

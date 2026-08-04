@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class InterviewAgentProperties {
 
     private boolean enabled = true;
-    private int planningTimeoutSeconds = 20;
+    private int planningTimeoutSeconds = 35;
     private int maxToolCalls = 3;
     private boolean fallbackEnabled = true;
 
