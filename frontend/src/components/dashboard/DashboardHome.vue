@@ -179,7 +179,6 @@ import {
 import { getLlmConfigStatusAPI } from '@/api/llm'
 import { getHistoryListAPI } from '@/api/interview'
 import { getMentorInsightAPI, getKnowledgeCoverageAPI, getPreferenceAPI, getCurrentUserAPI } from '@/api/user'
-import { getKnowledgeWorkspaceAPI } from '@/api/knowledgeWorkspace'
 import { getVisiblePositionsAPI } from '@/api/position'
 import { getUsername, getNickname, setNickname } from '@/utils/auth'
 import {
@@ -187,6 +186,7 @@ import {
   createUnknownLlmConfigStatus,
   normalizeLlmConfigStatus
 } from '@/utils/llmConfig'
+import { normalizeVisibleInterviewPositions } from '@/utils/interviewEntry'
 import { interviewSetupDefaults } from '@/mock/setup'
 
 const router = useRouter()
@@ -317,10 +317,18 @@ const resolvePositionId = (roleName) => {
 
 const loadPositions = async () => {
   try {
-    const data = await getKnowledgeWorkspaceAPI({ silent: true })
-    workspacePositions.value = (data?.positions || [])
-      .filter((item) => item.status === 'ACTIVE' && item.knowledgeBase?.id)
-  } catch { workspacePositions.value = [] }
+    const data = await getVisiblePositionsAPI({ silent: true })
+    workspacePositions.value = normalizeVisibleInterviewPositions(data)
+    visiblePositionTotal.value = workspacePositions.value.length
+    const visiblePositionIds = new Set(workspacePositions.value.map((item) => item.id))
+    resumeReadyCount.value = (data || [])
+      .filter((item) => visiblePositionIds.has(Number(item.id)) && item.hasResumeProfile)
+      .length
+  } catch {
+    workspacePositions.value = []
+    visiblePositionTotal.value = 0
+    resumeReadyCount.value = 0
+  }
 }
 
 const goSetup = () => router.push('/interview/setup')
@@ -344,17 +352,6 @@ const goResumePage = () => {
   router.push({ path: '/resume', query: positionId ? { positionId } : {} })
 }
 
-const loadResumePositionSummary = async () => {
-  try {
-    const data = await getVisiblePositionsAPI()
-    const positions = data || []
-    visiblePositionTotal.value = positions.length
-    resumeReadyCount.value = positions.filter((item) => item.hasResumeProfile).length
-  } catch {
-    visiblePositionTotal.value = 0
-    resumeReadyCount.value = 0
-  }
-}
 const openResumeManager = () => { goResumePage() }
 
 const confirmMode = (mode) => {
@@ -385,7 +382,7 @@ const loadPreference = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([loadHistory(), loadPreference(), loadNickname(), loadLlmStatus(), loadPositions(), loadResumePositionSummary()])
+  await Promise.all([loadHistory(), loadPreference(), loadNickname(), loadLlmStatus(), loadPositions()])
   // 页面核心数据已就绪，Mentor 异步加载不阻塞渲染
   loadMentor()
 })

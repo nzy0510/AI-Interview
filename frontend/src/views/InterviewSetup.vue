@@ -242,7 +242,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getLlmConfigStatusAPI } from '@/api/llm'
-import { getKnowledgeWorkspaceAPI } from '@/api/knowledgeWorkspace'
+import { getVisiblePositionsAPI } from '@/api/position'
 import { interviewSetupDefaults, buildSetupSnapshot } from '@/mock/setup'
 import { getPreferenceAPI, updatePreferenceAPI } from '@/api/user'
 import { getToken, userKey, withAuthHeaders } from '@/utils/auth'
@@ -251,6 +251,7 @@ import {
   createUnknownLlmConfigStatus,
   normalizeLlmConfigStatus
 } from '@/utils/llmConfig'
+import { normalizeVisibleInterviewPositions } from '@/utils/interviewEntry'
 
 const router = useRouter()
 const route = useRoute()
@@ -410,14 +411,8 @@ const loadPreference = async () => {
 
 const loadWorkspacePositions = async () => {
   try {
-    const data = await getKnowledgeWorkspaceAPI({ silent: true })
-    workspacePositions.value = (data?.positions || [])
-      .filter((item) => item.status === 'ACTIVE' && item.knowledgeBase?.id)
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        scope: item.scope
-      }))
+    const data = await getVisiblePositionsAPI({ silent: true })
+    workspacePositions.value = normalizeVisibleInterviewPositions(data)
     if (!selectedPositionId.value) {
       const matched = workspacePositions.value.find((item) => item.name === role.value)
       selectedPositionId.value = matched?.id || workspacePositions.value[0]?.id || null

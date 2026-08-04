@@ -1,5 +1,13 @@
 import request from '@/utils/request'
 
+export const getKnowledgeWorkspaceCapabilitiesAPI = (options = {}) => {
+  return request({
+    url: '/knowledge-workspace/capabilities',
+    method: 'get',
+    ...options
+  })
+}
+
 export const getKnowledgeWorkspaceAPI = (options = {}) => {
   return request({
     url: '/knowledge-workspace/positions',

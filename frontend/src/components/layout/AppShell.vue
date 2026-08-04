@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, provide, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -14,36 +14,65 @@ import {
 } from '@element-plus/icons-vue'
 import { submitFeedbackAPI } from '@/api/analytics'
 import { getLlmConfigStatusAPI } from '@/api/llm'
+import { useKnowledgeWorkspaceAccess } from '@/composables/useKnowledgeWorkspaceAccess'
 import {
   buildLlmConfigRouteQuery,
   createUnknownLlmConfigStatus,
   normalizeLlmConfigStatus
 } from '@/utils/llmConfig'
+import {
+  getKnowledgeWorkspaceNavLabel,
+  KNOWLEDGE_WORKSPACE_CAPABILITIES_KEY,
+  shouldShowKnowledgeWorkspace
+} from '@/utils/knowledgeWorkspace'
 
 const route = useRoute()
 const router = useRouter()
-
-const navItems = [
+const baseNavItems = [
   { path: '/', label: '工作台', icon: Monitor },
   { path: '/interview/setup', label: '面试准备', icon: MagicStick },
   { path: '/llm-providers', label: '大模型配置', icon: Operation },
-  { path: '/knowledge-workspace', label: '岗位 / 题库维护', icon: Document },
+  { path: '/knowledge-workspace', label: '岗位 / 题库维护', icon: Document, workspace: true },
   { path: '/mentor', label: 'AI Mentor', icon: DataAnalysis },
   { path: '/resume', label: '简历画像', icon: UserFilled },
   { path: '/history', label: '历史报告', icon: Document },
   { path: '/settings', label: '设置', icon: Setting }
 ]
 
-const currentTitle = computed(() => route.meta?.title || '工作台')
 const feedbackVisible = ref(false)
 const feedbackLoading = ref(false)
 const llmStatus = ref(createUnknownLlmConfigStatus())
+const {
+  workspaceCapabilities,
+  workspaceCapabilitiesResolved,
+  workspaceCapabilitiesFailed,
+  loadWorkspaceCapabilities
+} = useKnowledgeWorkspaceAccess()
+provide(KNOWLEDGE_WORKSPACE_CAPABILITIES_KEY, workspaceCapabilities)
+const navItems = computed(() => baseNavItems.flatMap((item) => {
+  if (!item.workspace) return [item]
+  if (!shouldShowKnowledgeWorkspace(workspaceCapabilities.value)) return []
+  return [{
+    ...item,
+    label: getKnowledgeWorkspaceNavLabel(workspaceCapabilities.value)
+  }]
+}))
+const currentTitle = computed(() => {
+  if (route.path === '/knowledge-workspace' && workspaceCapabilities.value.admin) {
+    return '公共题库维护'
+  }
+  return route.meta?.title || '工作台'
+})
+const canRenderCurrentRoute = computed(() => {
+  if (route.path !== '/knowledge-workspace') return true
+  return workspaceCapabilitiesResolved.value
+    && shouldShowKnowledgeWorkspace(workspaceCapabilities.value)
+})
 const feedbackForm = reactive({
   category: 'bug',
   content: '',
   contact: ''
 })
-
 const showLlmWarning = computed(() => llmStatus.value.resolved && !llmStatus.value.hasActiveConfig)
 const sidebarStatusText = computed(() => {
   if (showLlmWarning.value) {
@@ -100,10 +129,22 @@ const loadLlmStatus = async () => {
   }
 }
 
+const enforceWorkspaceAccess = async () => {
+  await loadWorkspaceCapabilities()
+  if (route.path !== '/knowledge-workspace') return
+  if (shouldShowKnowledgeWorkspace(workspaceCapabilities.value)) return
+
+  ElMessage.warning(workspaceCapabilitiesFailed.value
+    ? '题库维护权限校验失败，请刷新页面后重试'
+    : '当前版本暂未开放个人题库维护')
+  await router.replace('/')
+}
+
 watch(
   () => route.fullPath,
   () => {
     loadLlmStatus()
+    enforceWorkspaceAccess()
   },
   { immediate: true }
 )
@@ -163,7 +204,10 @@ watch(
       </header>
 
       <main class="app-shell__content">
-        <slot />
+        <slot v-if="canRenderCurrentRoute" />
+        <div v-else class="app-shell__access-check" aria-label="正在检查题库维护权限">
+          <el-skeleton :rows="4" animated />
+        </div>
       </main>
     </div>
 
@@ -405,6 +449,15 @@ watch(
 .feedback-form {
   display: grid;
   gap: 14px;
+}
+
+.app-shell__access-check {
+  width: min(100%, 760px);
+  margin: 36px auto;
+  padding: 24px;
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  background: var(--app-surface);
 }
 
 @media (max-width: 1024px) {

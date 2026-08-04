@@ -1,3 +1,5 @@
+export const KNOWLEDGE_WORKSPACE_CAPABILITIES_KEY = Symbol('knowledge-workspace-capabilities')
+
 export function isPositionEditable(position) {
   return Boolean(position?.editable) && position?.status !== 'ARCHIVED' && position?.scope === 'PRIVATE'
 }
@@ -49,4 +51,20 @@ export function parseImportPackageText(text) {
     throw new Error('导入包必须是 JSON 对象')
   }
   return parsed
+}
+
+export function normalizeKnowledgeWorkspaceCapabilities(value) {
+  return {
+    userMaintenanceEnabled: value?.userMaintenanceEnabled === true,
+    admin: value?.admin === true,
+    canAccessWorkspace: value?.canAccessWorkspace === true
+  }
+}
+
+export function shouldShowKnowledgeWorkspace(capabilities) {
+  return capabilities?.canAccessWorkspace === true
+}
+
+export function getKnowledgeWorkspaceNavLabel(capabilities) {
+  return capabilities?.admin === true ? '公共题库维护' : '岗位 / 题库维护'
 }
