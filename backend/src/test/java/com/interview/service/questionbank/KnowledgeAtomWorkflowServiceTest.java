@@ -1,5 +1,6 @@
 package com.interview.service.questionbank;
 
+import com.interview.config.QuestionBankAccessProperties;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeAtomVersion;
 import com.interview.mapper.KnowledgeAtomMapper;
@@ -38,16 +39,58 @@ class KnowledgeAtomWorkflowServiceTest {
     @Mock
     private QuestionBankService questionBankService;
 
+    private QuestionBankAccessProperties accessProperties;
+
     private KnowledgeAtomWorkflowService service;
 
     @BeforeEach
     void setUp() {
+        accessProperties = new QuestionBankAccessProperties();
+        accessProperties.setUserMaintenanceEnabled(true);
         service = new KnowledgeAtomWorkflowService(
                 atomMapper,
                 versionMapper,
                 adminRoleService,
-                questionBankService
+                questionBankService,
+                accessProperties
         );
+    }
+
+    @Test
+    @DisplayName("开关关闭时普通用户无法通过旧原子接口应用补丁、修改或发布")
+    void shouldDenyLegacyAtomMutationsForNormalUserWhenDisabled() {
+        accessProperties.setUserMaintenanceEnabled(false);
+        when(adminRoleService.isAdmin(7L)).thenReturn(false);
+        KnowledgeAtomPatch patch = new KnowledgeAtomPatch(
+                "updated", null, null, null, null, null, null);
+
+        assertMutationDenied(() -> service.acceptSuggestedPatch(5L, 7L));
+        assertMutationDenied(() -> service.updateAtom(5L, 7L, patch));
+        assertMutationDenied(() -> service.publishAtom(5L, 7L));
+
+        verify(atomMapper, never()).selectById(any());
+        verify(atomMapper, never()).updateById(any());
+        verify(questionBankService, never()).syncAtom(any());
+    }
+
+    @Test
+    @DisplayName("开关关闭时管理员仍可发布公共原子，但不能修改他人私有原子")
+    void shouldAllowAdminPublicMutationWithoutGrantingOtherPrivateAccess() {
+        accessProperties.setUserMaintenanceEnabled(false);
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
+        KnowledgeAtom publicAtom = publicAtom("PASS");
+        KnowledgeAtom otherPrivate = draftAtom("PASS");
+        otherPrivate.setOwnerUserId(9L);
+        when(atomMapper.selectById(5L)).thenReturn(publicAtom);
+        when(atomMapper.selectById(6L)).thenReturn(otherPrivate);
+        when(questionBankService.syncAtom(publicAtom)).thenReturn(true);
+
+        KnowledgeAtomResponse response = service.publishAtom(5L, 8L);
+
+        assertThat(response.publicationStatus()).isEqualTo("PUBLISHED");
+        assertThatThrownBy(() -> service.publishAtom(6L, 8L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("无权访问知识原子");
     }
 
     @Test
@@ -225,5 +268,11 @@ class KnowledgeAtomWorkflowServiceTest {
         atom.setScope("PUBLIC");
         atom.setOwnerUserId(null);
         return atom;
+    }
+
+    private void assertMutationDenied(org.assertj.core.api.ThrowableAssert.ThrowingCallable callable) {
+        assertThatThrownBy(callable)
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("无权访问");
     }
 }

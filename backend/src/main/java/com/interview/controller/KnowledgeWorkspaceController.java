@@ -1,6 +1,7 @@
 package com.interview.controller;
 
 import com.interview.common.Result;
+import com.interview.dto.QuestionBankCapabilitiesResponse;
 import com.interview.dto.questionbank.QuestionBankAtomListItem;
 import com.interview.dto.questionbank.QuestionBankAtomQueryRequest;
 import com.interview.dto.questionbank.QuestionBankBulkAtomRequest;
@@ -40,6 +41,11 @@ public class KnowledgeWorkspaceController {
     @GetMapping("/positions")
     public Result<KnowledgeWorkspaceResponse> listPositions(HttpServletRequest request) {
         return Result.success(workspaceService.listWorkspace(currentUserId(request)));
+    }
+
+    @GetMapping("/capabilities")
+    public Result<QuestionBankCapabilitiesResponse> getCapabilities(HttpServletRequest request) {
+        return Result.success(workspaceService.getCapabilities(currentUserId(request)));
     }
 
     @PostMapping("/positions")

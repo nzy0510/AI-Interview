@@ -2,6 +2,7 @@ package com.interview.service.questionbank;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.interview.config.QuestionBankAccessProperties;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeAtomVersion;
 import com.interview.mapper.KnowledgeAtomMapper;
@@ -25,19 +26,23 @@ public class KnowledgeAtomWorkflowService {
     private final KnowledgeAtomVersionMapper versionMapper;
     private final AdminRoleService adminRoleService;
     private final QuestionBankService questionBankService;
+    private final QuestionBankAccessProperties accessProperties;
 
     public KnowledgeAtomWorkflowService(KnowledgeAtomMapper atomMapper,
                                         KnowledgeAtomVersionMapper versionMapper,
                                         AdminRoleService adminRoleService,
-                                        QuestionBankService questionBankService) {
+                                        QuestionBankService questionBankService,
+                                        QuestionBankAccessProperties accessProperties) {
         this.atomMapper = atomMapper;
         this.versionMapper = versionMapper;
         this.adminRoleService = adminRoleService;
         this.questionBankService = questionBankService;
+        this.accessProperties = accessProperties;
     }
 
     @Transactional
     public KnowledgeAtomResponse acceptSuggestedPatch(Long atomId, Long currentUserId) {
+        requireMutationAccess(currentUserId);
         KnowledgeAtom atom = requireManageableAtom(atomId, currentUserId);
         if (atom.getSuggestedPatchJson() == null || atom.getSuggestedPatchJson().isBlank()) {
             throw new IllegalArgumentException("当前原子没有可应用的建议补丁");
@@ -54,6 +59,7 @@ public class KnowledgeAtomWorkflowService {
 
     @Transactional
     public KnowledgeAtomResponse updateAtom(Long atomId, Long currentUserId, KnowledgeAtomPatch patch) {
+        requireMutationAccess(currentUserId);
         KnowledgeAtom atom = requireManageableAtom(atomId, currentUserId);
         if ("PUBLISHED".equalsIgnoreCase(atom.getPublicationStatus())
                 || "PUBLISHED".equalsIgnoreCase(atom.getStatus())) {
@@ -74,6 +80,7 @@ public class KnowledgeAtomWorkflowService {
 
     @Transactional
     public KnowledgeAtomResponse publishAtom(Long atomId, Long currentUserId) {
+        requireMutationAccess(currentUserId);
         KnowledgeAtom atom = requireManageableAtom(atomId, currentUserId);
         String reviewStatus = normalizeReviewStatus(atom.getReviewStatus());
         if ("REJECT".equals(reviewStatus)) {
@@ -95,6 +102,15 @@ public class KnowledgeAtomWorkflowService {
             throw new RuntimeException("无权访问知识原子");
         }
         return atom;
+    }
+
+    private void requireMutationAccess(Long currentUserId) {
+        if (currentUserId == null) {
+            throw new RuntimeException("未登录：缺少用户身份");
+        }
+        if (!accessProperties.isUserMaintenanceEnabled() && !adminRoleService.isAdmin(currentUserId)) {
+            throw new RuntimeException("无权访问题库维护");
+        }
     }
 
     private KnowledgeAtom requireManageableAtom(Long atomId, Long currentUserId) {

@@ -1,10 +1,13 @@
 package com.interview.service.questionbank;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.interview.config.QuestionBankAccessProperties;
+import com.interview.dto.QuestionBankCapabilitiesResponse;
 import com.interview.dto.MentorInsightResponse.KnowledgeCoverage.CategoryDetail;
 import com.interview.entity.InterviewPosition;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeBase;
+import com.interview.dto.questionbank.QuestionBankBulkAtomRequest;
 import com.interview.dto.questionbank.QuestionBankImportRequest;
 import com.interview.dto.questionbank.QuestionBankImportResult;
 import com.interview.mapper.AppJobMapper;
@@ -46,6 +49,7 @@ class KnowledgeWorkspaceServiceTest {
     private QuestionBankService questionBankService;
     private QdrantVectorService qdrantVectorService;
     private RagRetrievalLogMapper ragLogMapper;
+    private QuestionBankAccessProperties accessProperties;
     private KnowledgeWorkspaceService service;
 
     @BeforeEach
@@ -60,10 +64,12 @@ class KnowledgeWorkspaceServiceTest {
         questionBankService = mock(QuestionBankService.class);
         qdrantVectorService = mock(QdrantVectorService.class);
         ragLogMapper = mock(RagRetrievalLogMapper.class);
+        accessProperties = new QuestionBankAccessProperties();
+        accessProperties.setUserMaintenanceEnabled(true);
         service = new KnowledgeWorkspaceService(positionMapper, knowledgeBaseMapper,
                 atomMapper, versionMapper, reviewMapper,
                 appJobMapper, adminRoleService, questionBankService, qdrantVectorService,
-                ragLogMapper);
+                ragLogMapper, accessProperties);
     }
 
     @Test
@@ -97,6 +103,7 @@ class KnowledgeWorkspaceServiceTest {
     @Test
     @DisplayName("管理员可通过同一工作台维护公共题库")
     void shouldExposePublicQuestionBankMaintenanceCapabilitiesForAdmin() {
+        accessProperties.setUserMaintenanceEnabled(false);
         InterviewPosition publicPosition = position(1L, "PUBLIC", null, "Java 后端开发", "ACTIVE", 11L);
         when(positionMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(publicPosition));
         when(knowledgeBaseMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(
@@ -113,6 +120,58 @@ class KnowledgeWorkspaceServiceTest {
         assertThat(position.canArchiveAtoms()).isTrue();
         assertThat(position.canPublishAtoms()).isTrue();
         assertThat(position.canReindexAtoms()).isTrue();
+    }
+
+    @Test
+    @DisplayName("默认关闭时普通用户无权访问工作台或执行任何题库写操作")
+    void shouldDenyWorkspaceAndAllMutationsForNormalUserWhenDisabled() {
+        accessProperties.setUserMaintenanceEnabled(false);
+        when(adminRoleService.isAdmin(7L)).thenReturn(false);
+        QuestionBankImportRequest importRequest = new QuestionBankImportRequest();
+        QuestionBankBulkAtomRequest bulkRequest = new QuestionBankBulkAtomRequest();
+        bulkRequest.setAtomIds(List.of("atom-1"));
+
+        assertWorkspaceDenied(() -> service.listWorkspace(7L));
+        assertWorkspaceDenied(() -> service.createPrivatePosition(7L,
+                new KnowledgePositionCreateRequest("私有岗位", "")));
+        assertWorkspaceDenied(() -> service.deletePrivatePosition(7L, 20L));
+        assertWorkspaceDenied(() -> service.previewImportPackage(7L, 30L, importRequest));
+        assertWorkspaceDenied(() -> service.importPackage(7L, 30L, importRequest));
+        assertWorkspaceDenied(() -> service.archiveAllAtoms(7L, 30L));
+        assertWorkspaceDenied(() -> service.publishAllDrafts(7L, 30L));
+        assertWorkspaceDenied(() -> service.archiveAtoms(7L, 30L, bulkRequest));
+        assertWorkspaceDenied(() -> service.publishAtoms(7L, 30L, bulkRequest));
+        assertWorkspaceDenied(() -> service.reindexAtoms(7L, 30L, bulkRequest));
+
+        verify(positionMapper, never()).insert(any());
+        verify(positionMapper, never()).deleteById(any(Long.class));
+        verify(knowledgeBaseMapper, never()).insert(any());
+        verify(questionBankService, never()).importBatch(any(), any());
+        verify(questionBankService, never()).archiveAll(any());
+        verify(questionBankService, never()).publishAllDrafts(any());
+    }
+
+    @Test
+    @DisplayName("能力状态区分默认关闭的普通用户、管理员和开关开启的普通用户")
+    void shouldReportQuestionBankCapabilities() {
+        accessProperties.setUserMaintenanceEnabled(false);
+        when(adminRoleService.isAdmin(7L)).thenReturn(false);
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
+
+        QuestionBankCapabilitiesResponse normalDisabled = service.getCapabilities(7L);
+        QuestionBankCapabilitiesResponse adminDisabled = service.getCapabilities(8L);
+        accessProperties.setUserMaintenanceEnabled(true);
+        QuestionBankCapabilitiesResponse normalEnabled = service.getCapabilities(7L);
+
+        assertThat(normalDisabled.userMaintenanceEnabled()).isFalse();
+        assertThat(normalDisabled.admin()).isFalse();
+        assertThat(normalDisabled.canAccessWorkspace()).isFalse();
+        assertThat(adminDisabled.userMaintenanceEnabled()).isFalse();
+        assertThat(adminDisabled.admin()).isTrue();
+        assertThat(adminDisabled.canAccessWorkspace()).isTrue();
+        assertThat(normalEnabled.userMaintenanceEnabled()).isTrue();
+        assertThat(normalEnabled.admin()).isFalse();
+        assertThat(normalEnabled.canAccessWorkspace()).isTrue();
     }
 
     @Test
@@ -217,6 +276,29 @@ class KnowledgeWorkspaceServiceTest {
     }
 
     @Test
+    @DisplayName("开关关闭时管理员仍可导入公共题库，但无权访问他人私有题库")
+    void shouldAllowAdminPublicMaintenanceWithoutGrantingOtherPrivateAccess() {
+        accessProperties.setUserMaintenanceEnabled(false);
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
+        when(knowledgeBaseMapper.selectById(11L))
+                .thenReturn(knowledgeBase(11L, 1L, "PUBLIC", null));
+        when(knowledgeBaseMapper.selectById(31L))
+                .thenReturn(knowledgeBase(31L, 21L, "PRIVATE", 9L));
+        when(questionBankService.importBatch(any(), any())).thenReturn(QuestionBankImportResult.builder()
+                .batchId("qb-public")
+                .mode("DRAFT")
+                .imported(1)
+                .build());
+
+        QuestionBankImportResult result = service.importPackage(8L, 11L, new QuestionBankImportRequest());
+
+        assertThat(result.getBatchId()).isEqualTo("qb-public");
+        assertThatThrownBy(() -> service.importPackage(8L, 31L, new QuestionBankImportRequest()))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("无权访问知识库");
+    }
+
+    @Test
     @DisplayName("当前用户可查看自己私有岗位的覆盖结构，未命中分类保留 covered 为 0")
     void shouldReturnCoverageForOwnedPrivatePositionWithZeroHits() {
         when(positionMapper.selectById(20L)).thenReturn(position(20L, "PRIVATE", 7L, "我的岗位", "ACTIVE", 30L));
@@ -277,6 +359,12 @@ class KnowledgeWorkspaceServiceTest {
         row.put("category", category);
         row.put("total", total);
         return row;
+    }
+
+    private void assertWorkspaceDenied(org.assertj.core.api.ThrowableAssert.ThrowingCallable callable) {
+        assertThatThrownBy(callable)
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("无权访问");
     }
 
 }
