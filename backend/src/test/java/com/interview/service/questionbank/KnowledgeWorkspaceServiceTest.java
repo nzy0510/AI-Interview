@@ -123,6 +123,45 @@ class KnowledgeWorkspaceServiceTest {
     }
 
     @Test
+    @DisplayName("开放个人维护后管理员同时拥有公共题库权限和私有岗位新增能力")
+    void shouldGiveEveryAdminPublicAndOwnedPrivateMaintenanceWhenEnabled() {
+        accessProperties.setUserMaintenanceEnabled(true);
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
+        when(positionMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(
+                position(1L, "PUBLIC", null, "Java 后端开发", "ACTIVE", 11L),
+                position(2L, "PRIVATE", 8L, "管理员私有岗位", "ACTIVE", 12L),
+                position(3L, "PRIVATE", 9L, "其他管理员私有岗位", "ACTIVE", 13L)
+        ));
+        when(knowledgeBaseMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(
+                knowledgeBase(11L, 1L, "PUBLIC", null),
+                knowledgeBase(12L, 2L, "PRIVATE", 8L),
+                knowledgeBase(13L, 3L, "PRIVATE", 9L)
+        ));
+        doAnswer(invocation -> {
+            InterviewPosition position = invocation.getArgument(0);
+            position.setId(20L);
+            return 1;
+        }).when(positionMapper).insert(any(InterviewPosition.class));
+        doAnswer(invocation -> {
+            KnowledgeBase knowledgeBase = invocation.getArgument(0);
+            knowledgeBase.setId(30L);
+            return 1;
+        }).when(knowledgeBaseMapper).insert(any(KnowledgeBase.class));
+
+        KnowledgeWorkspaceResponse workspace = service.listWorkspace(8L);
+        KnowledgePositionResponse created = service.createPrivatePosition(8L,
+                new KnowledgePositionCreateRequest("算法工程师", "管理员自有岗位"));
+
+        assertThat(workspace.positions()).hasSize(2);
+        assertThat(workspace.positions().get(0).scope()).isEqualTo("PUBLIC");
+        assertThat(workspace.positions().get(0).canImportPackage()).isTrue();
+        assertThat(workspace.positions().get(1).scope()).isEqualTo("PRIVATE");
+        assertThat(workspace.positions().get(1).editable()).isTrue();
+        assertThat(created.scope()).isEqualTo("PRIVATE");
+        assertThat(created.ownerUserId()).isEqualTo(8L);
+    }
+
+    @Test
     @DisplayName("开关关闭时管理员工作台只返回公共岗位")
     void shouldOnlyExposePublicWorkspaceToAdminWhenDisabled() {
         accessProperties.setUserMaintenanceEnabled(false);
@@ -271,8 +310,12 @@ class KnowledgeWorkspaceServiceTest {
     @DisplayName("不能删除公开岗位或他人的私有岗位")
     void shouldRejectDeletingPublicOrOtherUsersPosition() {
         when(positionMapper.selectById(1L)).thenReturn(position(1L, "PUBLIC", null, "Java 后端开发", "ACTIVE", 11L));
+        when(positionMapper.selectById(2L)).thenReturn(position(2L, "PRIVATE", 8L, "他人的岗位", "ACTIVE", 12L));
 
         assertThatThrownBy(() -> service.deletePrivatePosition(7L, 1L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("无权访问");
+        assertThatThrownBy(() -> service.deletePrivatePosition(7L, 2L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("无权访问");
 

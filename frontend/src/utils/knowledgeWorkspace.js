@@ -65,6 +65,15 @@ export function shouldShowKnowledgeWorkspace(capabilities) {
   return capabilities?.canAccessWorkspace === true
 }
 
+export function isPublicOnlyMaintenanceMode(capabilities) {
+  return capabilities?.admin === true && capabilities?.userMaintenanceEnabled !== true
+}
+
+export function canCreatePrivatePosition(capabilities) {
+  return capabilities?.canAccessWorkspace === true
+    && capabilities?.userMaintenanceEnabled === true
+}
+
 export function getKnowledgeWorkspaceNavLabel(capabilities) {
-  return capabilities?.admin === true ? '公共题库维护' : '岗位 / 题库维护'
+  return isPublicOnlyMaintenanceMode(capabilities) ? '公共题库维护' : '岗位 / 题库维护'
 }

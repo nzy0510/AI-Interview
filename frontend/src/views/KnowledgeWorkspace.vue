@@ -6,16 +6,12 @@
         <div class="header-copy">
           <p class="eyebrow">Knowledge Bank</p>
           <h1 class="page-title">{{ isPublicMaintenanceMode ? '公共题库维护' : '岗位 / 题库维护' }}</h1>
-          <p class="page-subtitle">
-            {{ isPublicMaintenanceMode
-              ? '维护比赛 Demo 使用的内置公共题库，普通用户仅使用已发布内容。'
-              : '管理当前账号的私有岗位知识库，公共岗位仅作为只读 starter 内容。' }}
-          </p>
+          <p class="page-subtitle">{{ workspaceDescription }}</p>
         </div>
       </div>
       <div class="header-actions">
         <el-button :icon="RefreshRight" :loading="loading" @click="loadWorkspace">刷新</el-button>
-        <el-button v-if="!isPublicMaintenanceMode" type="primary" :icon="Plus" @click="createDialogVisible = true">新建岗位</el-button>
+        <el-button v-if="canCreatePosition" type="primary" :icon="Plus" @click="createDialogVisible = true">新建岗位</el-button>
       </div>
     </header>
 
@@ -30,7 +26,7 @@
         </div>
 
         <el-empty v-if="!loading && !positions.length" :description="isPublicMaintenanceMode ? '暂无公共岗位' : '暂无可用岗位'">
-          <el-button v-if="!isPublicMaintenanceMode" type="primary" @click="createDialogVisible = true">创建私有岗位</el-button>
+          <el-button v-if="canCreatePosition" type="primary" @click="createDialogVisible = true">创建私有岗位</el-button>
         </el-empty>
 
         <div v-else class="position-list">
@@ -275,7 +271,7 @@
     </el-main>
 
     <el-dialog
-      v-if="!isPublicMaintenanceMode"
+      v-if="canCreatePosition"
       v-model="createDialogVisible"
       title="新建私有岗位"
       width="min(92vw, 520px)"
@@ -327,11 +323,13 @@ import {
 import KnowledgeCoverageChart from '@/components/charts/KnowledgeCoverageChart.vue'
 import {
   canArchiveQuestionBankAtoms,
+  canCreatePrivatePosition,
   canMaintainQuestionBank,
   canPublishQuestionBankAtoms,
   canReindexQuestionBankAtoms,
   getPositionScopeLabel,
   getPositionStatusType,
+  isPublicOnlyMaintenanceMode,
   isPositionEditable,
   KNOWLEDGE_WORKSPACE_CAPABILITIES_KEY,
   normalizeKnowledgeWorkspaceCapabilities,
@@ -343,7 +341,17 @@ const workspaceCapabilities = inject(
   KNOWLEDGE_WORKSPACE_CAPABILITIES_KEY,
   ref(normalizeKnowledgeWorkspaceCapabilities())
 )
-const isPublicMaintenanceMode = computed(() => workspaceCapabilities.value.admin === true)
+const isPublicMaintenanceMode = computed(() => isPublicOnlyMaintenanceMode(workspaceCapabilities.value))
+const canCreatePosition = computed(() => canCreatePrivatePosition(workspaceCapabilities.value))
+const workspaceDescription = computed(() => {
+  if (isPublicMaintenanceMode.value) {
+    return '维护比赛 Demo 使用的内置公共题库，普通用户仅使用已发布内容。'
+  }
+  if (workspaceCapabilities.value.admin) {
+    return '维护公共 starter 题库，也可创建当前管理员自己的私有岗位与题库。'
+  }
+  return '管理当前账号的私有岗位知识库，公共岗位仅作为只读 starter 内容。'
+})
 const loading = ref(false)
 const creating = ref(false)
 const deleting = ref(false)
@@ -443,7 +451,7 @@ const loadWorkspace = async () => {
 }
 
 const createPosition = async () => {
-  if (isPublicMaintenanceMode.value) return
+  if (!canCreatePosition.value) return
   const name = createForm.name.trim()
   if (!name) {
     ElMessage.warning('请填写岗位名称')

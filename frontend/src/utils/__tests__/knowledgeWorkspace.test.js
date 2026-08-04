@@ -4,7 +4,9 @@ import {
   canMaintainQuestionBank,
   canPublishQuestionBankAtoms,
   canArchiveQuestionBankAtoms,
+  canCreatePrivatePosition,
   getKnowledgeWorkspaceNavLabel,
+  isPublicOnlyMaintenanceMode,
   normalizeKnowledgeWorkspaceCapabilities,
   shouldShowKnowledgeWorkspace,
   parseImportPackageText
@@ -75,14 +77,32 @@ describe('knowledge workspace utils', () => {
   })
 
   it('builds workspace navigation from capabilities', () => {
-    const adminCapabilities = { admin: true, canAccessWorkspace: true }
+    const publicOnlyAdminCapabilities = {
+      admin: true,
+      userMaintenanceEnabled: false,
+      canAccessWorkspace: true
+    }
+    const localAdminCapabilities = {
+      admin: true,
+      userMaintenanceEnabled: true,
+      canAccessWorkspace: true
+    }
     const userCapabilities = { admin: false, userMaintenanceEnabled: true, canAccessWorkspace: true }
     const closedCapabilities = { admin: false, userMaintenanceEnabled: false, canAccessWorkspace: false }
 
-    expect(shouldShowKnowledgeWorkspace(adminCapabilities)).toBe(true)
-    expect(getKnowledgeWorkspaceNavLabel(adminCapabilities)).toBe('公共题库维护')
+    expect(shouldShowKnowledgeWorkspace(publicOnlyAdminCapabilities)).toBe(true)
+    expect(getKnowledgeWorkspaceNavLabel(publicOnlyAdminCapabilities)).toBe('公共题库维护')
+    expect(isPublicOnlyMaintenanceMode(publicOnlyAdminCapabilities)).toBe(true)
+    expect(canCreatePrivatePosition(publicOnlyAdminCapabilities)).toBe(false)
+
+    expect(getKnowledgeWorkspaceNavLabel(localAdminCapabilities)).toBe('岗位 / 题库维护')
+    expect(isPublicOnlyMaintenanceMode(localAdminCapabilities)).toBe(false)
+    expect(canCreatePrivatePosition(localAdminCapabilities)).toBe(true)
+
     expect(shouldShowKnowledgeWorkspace(userCapabilities)).toBe(true)
     expect(getKnowledgeWorkspaceNavLabel(userCapabilities)).toBe('岗位 / 题库维护')
+    expect(canCreatePrivatePosition(userCapabilities)).toBe(true)
     expect(shouldShowKnowledgeWorkspace(closedCapabilities)).toBe(false)
+    expect(canCreatePrivatePosition(closedCapabilities)).toBe(false)
   })
 })

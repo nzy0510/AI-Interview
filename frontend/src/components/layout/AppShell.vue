@@ -58,8 +58,8 @@ const navItems = computed(() => baseNavItems.flatMap((item) => {
   }]
 }))
 const currentTitle = computed(() => {
-  if (route.path === '/knowledge-workspace' && workspaceCapabilities.value.admin) {
-    return '公共题库维护'
+  if (route.path === '/knowledge-workspace') {
+    return getKnowledgeWorkspaceNavLabel(workspaceCapabilities.value)
   }
   return route.meta?.title || '工作台'
 })

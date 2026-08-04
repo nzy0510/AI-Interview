@@ -77,6 +77,8 @@ class DeploymentConfigurationContractTest {
     @DisplayName("本地 Compose 使用固定管理员且只监听回环地址")
     void shouldKeepLocalDockerAuthenticationAndPortsSafe() throws IOException {
         assertLocalDockerContract(Path.of("..", "docker-compose.example.yml"));
+        assertThat(Files.readString(Path.of("..", ".env.example")))
+                .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=true");
     }
 
     @Test
@@ -149,6 +151,7 @@ class DeploymentConfigurationContractTest {
         assertThat(Files.readString(path))
                 .as(path.toString())
                 .contains("APP_AUTH_MODE: ${APP_AUTH_MODE:-local-admin}")
+                .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED: ${APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED:-true}")
                 .contains("MAIL_USERNAME: ${MAIL_USERNAME:-}")
                 .contains("MAIL_PASSWORD: ${MAIL_PASSWORD:-}")
                 .contains("127.0.0.1:80:80")
