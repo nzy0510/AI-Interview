@@ -59,12 +59,18 @@ class QuestionBankLifecycleService extends QuestionBankSupport {
 
     Map<String, Integer> publishAtoms(List<String> atomIds, QuestionBankImportScope scope) {
         List<String> ids = cleanAtomIds(atomIds);
-        if (ids.isEmpty()) return resultMap("matched", 0, "published", 0, "synced", 0, "failed", 0);
+        if (ids.isEmpty()) return resultMap("matched", 0, "published", 0, "synced", 0, "failed", 0, "skipped", 0);
         List<KnowledgeAtom> atoms = atomMapper.selectList(applyScope(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids), scope));
         int published = 0;
         int synced = 0;
         int failed = 0;
+        int skipped = 0;
         for (KnowledgeAtom atom : atoms) {
+            if (!QuestionBankService.STATUS_DRAFT.equalsIgnoreCase(atom.getStatus())
+                    || !"PASS".equalsIgnoreCase(atom.getReviewStatus())) {
+                skipped++;
+                continue;
+            }
             atom.setStatus(QuestionBankService.STATUS_PUBLISHED);
             atom.setPublicationStatus(QuestionBankService.STATUS_PUBLISHED);
             atom.setPublishedBy(scope == null ? null : scope.currentUserId());
@@ -75,11 +81,13 @@ class QuestionBankLifecycleService extends QuestionBankSupport {
             published++;
             if (vectorSyncService.syncAtom(atom)) {
                 synced++;
+                archivePreviousDraftBase(atom, scope);
             } else {
                 failed++;
             }
         }
-        return resultMap("matched", atoms.size(), "published", published, "synced", synced, "failed", failed);
+        return resultMap("matched", atoms.size(), "published", published, "synced", synced,
+                "failed", failed, "skipped", skipped);
     }
 
     Map<String, Integer> publishAllDrafts(QuestionBankImportScope scope) {
@@ -93,7 +101,8 @@ class QuestionBankLifecycleService extends QuestionBankSupport {
         int failed = 0;
         int skipped = 0;
         for (KnowledgeAtom atom : draftAtoms) {
-            if (QuestionBankService.STATUS_ARCHIVED.equalsIgnoreCase(atom.getStatus())) {
+            if (!QuestionBankService.STATUS_DRAFT.equalsIgnoreCase(atom.getStatus())
+                    || !"PASS".equalsIgnoreCase(atom.getReviewStatus())) {
                 skipped++;
                 continue;
             }
@@ -107,12 +116,21 @@ class QuestionBankLifecycleService extends QuestionBankSupport {
             published++;
             if (vectorSyncService.syncAtom(atom)) {
                 synced++;
+                archivePreviousDraftBase(atom, scope);
             } else {
                 failed++;
             }
         }
         return resultMap("matched", draftAtoms.size(), "published", published,
                 "synced", synced, "failed", failed, "skipped", skipped);
+    }
+
+    private void archivePreviousDraftBase(KnowledgeAtom atom, QuestionBankImportScope scope) {
+        String atomId = atom == null ? null : atom.getAtomId();
+        if (atomId == null || atomId.isBlank()) return;
+        int draftMarker = atomId.indexOf("-draft-");
+        if (draftMarker <= 0) return;
+        archiveAtoms(List.of(atomId.substring(0, draftMarker)), scope);
     }
 
     Map<String, Integer> archiveAll(QuestionBankImportScope scope) {

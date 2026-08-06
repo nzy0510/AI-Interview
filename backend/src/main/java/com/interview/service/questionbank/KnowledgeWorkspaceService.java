@@ -298,6 +298,14 @@ public class KnowledgeWorkspaceService {
         return questionBankService.listAtoms(request, importScopeFor(currentUserId, knowledgeBaseId));
     }
 
+    public KnowledgeAtomResponse getAtom(Long currentUserId, Long knowledgeBaseId, Long atomId) {
+        KnowledgeAtom atom = questionBankService.getAtom(atomId, importScopeFor(currentUserId, knowledgeBaseId));
+        if (atom == null) {
+            throw new RuntimeException("知识原子不存在或无权访问");
+        }
+        return KnowledgeAtomResponse.from(atom);
+    }
+
     public java.util.Map<String, Integer> archiveAtoms(Long currentUserId,
                                                        Long knowledgeBaseId,
                                                        QuestionBankBulkAtomRequest request) {

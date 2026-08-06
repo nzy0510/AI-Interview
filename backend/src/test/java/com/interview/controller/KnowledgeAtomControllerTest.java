@@ -97,6 +97,19 @@ class KnowledgeAtomControllerTest {
     }
 
     @Test
+    @DisplayName("原子详情使用当前用户作用域")
+    void shouldLoadAtomDetailForCurrentUser() throws Exception {
+        when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
+        when(workflowService.getAtom(5L, 7L)).thenReturn(atomResponse());
+
+        mockMvc.perform(get("/api/knowledge-atoms/5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(5));
+
+        verify(workflowService).getAtom(5L, 7L);
+    }
+
+    @Test
     @DisplayName("源文件批量发布入口已退出 MVP 主流程")
     void shouldRejectSourceFileAtomBulkPublishInMvp() throws Exception {
         mockMvc.perform(post("/api/knowledge-files/10/atoms/publish"))

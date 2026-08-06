@@ -8,22 +8,24 @@
       "id": "contract-duplicate",
       "subject": "第一个重复题目",
       "category": "java",
-      "difficulty": "easy",
+      "difficulty": "mid",
       "tags": ["java"],
       "content": {
         "principles": "第一个题目的标准答案。",
-        "followUpPaths": []
+        "pitfalls": "重复 ID 测试题的常见陷阱。",
+        "followUpPaths": ["追问第一个问题？", "追问第二个问题？"]
       }
     },
     {
       "id": "contract-duplicate",
       "subject": "第二个重复题目",
       "category": "java",
-      "difficulty": "easy",
+      "difficulty": "mid",
       "tags": ["java"],
       "content": {
         "principles": "第二个题目的标准答案。",
-        "followUpPaths": []
+        "pitfalls": "重复 ID 测试题的常见陷阱。",
+        "followUpPaths": ["追问第一个问题？", "追问第二个问题？"]
       }
     }
   ]

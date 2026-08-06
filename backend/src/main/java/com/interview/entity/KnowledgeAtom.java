@@ -35,6 +35,7 @@ public class KnowledgeAtom {
     private String reviewReason;
     private Double reviewConfidence;
     private String suggestedPatchJson;
+    private String sourceEvidenceJson;
     private String publicationStatus;
     private Long publishedBy;
     private LocalDateTime publishedAt;

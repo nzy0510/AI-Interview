@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 abstract class QuestionBankSupport {
@@ -114,6 +115,17 @@ abstract class QuestionBankSupport {
         item.setStatus(atom.getStatus());
         item.setVectorStatus(atom.getVectorStatus());
         item.setSourceRef(atom.getSourceRef());
+        item.setSourceFileId(atom.getSourceFileId());
+        item.setSourceEvidenceJson(atom.getSourceEvidenceJson());
+        item.setReviewStatus(atom.getReviewStatus());
+        item.setReviewReason(atom.getReviewReason());
+        item.setReviewConfidence(atom.getReviewConfidence());
+        item.setReviewedBy(atom.getReviewedBy());
+        item.setReviewedAt(atom.getReviewedAt());
+        item.setSuggestedPatchJson(atom.getSuggestedPatchJson());
+        item.setPublicationStatus(atom.getPublicationStatus());
+        item.setCurrentVersionNo(atom.getCurrentVersionNo());
+        item.setId(atom.getId());
         item.setLastIndexedAt(atom.getLastIndexedAt());
         item.setUpdateTime(atom.getUpdateTime());
         return item;
@@ -171,13 +183,30 @@ abstract class QuestionBankSupport {
             if (scope != null && !matchesScope(existing, scope)) {
                 throw new IllegalStateException("atom id conflicts outside current knowledge base: " + atom.getAtomId());
             }
-            atom.setId(existing.getId());
-            atom.setCreateTime(existing.getCreateTime());
-            atomMapper.updateById(atom);
+            if (shouldCreateDraftRevision(atom, existing, scope)) {
+                atom.setAtomId(existing.getAtomId() + "-draft-" + UUID.randomUUID());
+                atom.setCurrentVersionNo((existing.getCurrentVersionNo() == null
+                        ? 1 : existing.getCurrentVersionNo()) + 1);
+                atomMapper.insert(atom);
+            } else {
+                atom.setId(existing.getId());
+                atom.setCreateTime(existing.getCreateTime());
+                atomMapper.updateById(atom);
+            }
         } else {
             atomMapper.insert(atom);
         }
         recordVersion(atom, reason);
+    }
+
+    private boolean shouldCreateDraftRevision(KnowledgeAtom incoming,
+                                              KnowledgeAtom existing,
+                                              QuestionBankImportScope scope) {
+        if (scope == null || !QuestionBankService.STATUS_DRAFT.equals(incoming.getStatus())) {
+            return false;
+        }
+        return QuestionBankService.STATUS_PUBLISHED.equals(existing.getStatus())
+                || QuestionBankService.STATUS_PUBLISHED.equals(existing.getPublicationStatus());
     }
 
     protected void recordVersion(KnowledgeAtom atom, String reason) {
@@ -209,24 +238,30 @@ abstract class QuestionBankSupport {
         atom.setAtomId(scopedAtomId(payload.getId(), scope));
         atom.setSubject(payload.getSubject().trim());
         atom.setCategory(nonBlank(payload.getCategory(), defaultCategory));
-        atom.setDifficulty(payload.getDifficulty());
+        atom.setDifficulty(payload.getDifficulty() == null ? null : payload.getDifficulty().trim());
         atom.setTagsJson(JSON.toJSONString(payload.getTags() != null ? payload.getTags() : List.of()));
         KnowledgeAtomPayload.Content content = payload.getContent() != null ? payload.getContent() : new KnowledgeAtomPayload.Content();
         atom.setPrinciples(content.getPrinciples());
         atom.setPitfalls(content.getPitfalls());
         atom.setFollowUpPathsJson(JSON.toJSONString(content.getFollowUpPaths() != null ? content.getFollowUpPaths() : List.of()));
+        if (payload.getSourceEvidence() != null) {
+            atom.setSourceEvidenceJson(JSON.toJSONString(payload.getSourceEvidence()));
+        }
         atom.setStatus("AUTO_PUBLISH".equals(mode) ? QuestionBankService.STATUS_PUBLISHED : QuestionBankService.STATUS_DRAFT);
         atom.setSourceRef(nonBlank(payload.getSourceRef(), sourceRef));
         atom.setChecksum(checksum(atom));
         atom.setVectorStatus(QuestionBankService.STATUS_PUBLISHED.equals(atom.getStatus()) ? "PENDING" : "SKIPPED");
+        // Import packages are treated as externally reviewed material. Scoped
+        // imports still remain DRAFT and require an explicit publication action.
+        atom.setReviewStatus("PASS");
+        atom.setReviewReason("导入包人工维护");
+        atom.setReviewConfidence(1.0);
+        atom.setReviewedAt(LocalDateTime.now());
         if (scope != null) {
             atom.setScope(scope.scope());
             atom.setOwnerUserId(scope.ownerUserId());
             atom.setPositionId(scope.positionId());
             atom.setKnowledgeBaseId(scope.knowledgeBaseId());
-            atom.setReviewStatus("PASS");
-            atom.setReviewReason("导入包人工维护");
-            atom.setReviewConfidence(1.0);
             atom.setReviewedBy(scope.currentUserId());
             atom.setReviewedAt(LocalDateTime.now());
             atom.setPublicationStatus(QuestionBankService.STATUS_PUBLISHED.equals(atom.getStatus())
@@ -287,8 +322,22 @@ abstract class QuestionBankSupport {
             if (isBlank(atom.getSubject())) errors.add(atom.getId() + ": subject is required");
             String category = nonBlank(atom.getCategory(), request.getTargetCategory());
             if (isBlank(category)) errors.add(atom.getId() + ": category is required");
+            if (isBlank(atom.getDifficulty())) {
+                errors.add(atom.getId() + ": difficulty is required");
+            } else if (!List.of("junior", "mid", "senior", "principal")
+                    .contains(atom.getDifficulty().trim())) {
+                errors.add(atom.getId() + ": difficulty must be one of junior|mid|senior|principal");
+            }
             if (atom.getContent() == null || isBlank(atom.getContent().getPrinciples())) {
                 errors.add(atom.getId() + ": content.principles is required");
+            }
+            long followUpCount = atom.getContent() == null || atom.getContent().getFollowUpPaths() == null
+                    ? 0
+                    : atom.getContent().getFollowUpPaths().stream()
+                    .filter(path -> !isBlank(path))
+                    .count();
+            if (followUpCount < 2) {
+                errors.add(atom.getId() + ": content.followUpPaths must contain at least 2 items");
             }
             if (!isBlank(atom.getId())) seen.merge(atom.getId(), 1, Integer::sum);
         }

@@ -17,6 +17,7 @@ public class KnowledgeSourceFile {
     private Long ownerUserId;
     private Long positionId;
     private Long knowledgeBaseId;
+    private Long buildId;
     private String originalFilename;
     private String contentType;
     private Long fileSize;

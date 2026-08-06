@@ -349,6 +349,30 @@ class KnowledgeWorkspaceServiceTest {
     }
 
     @Test
+    @DisplayName("原子详情只允许当前私有知识库 owner 读取")
+    void shouldScopeAtomDetailToKnowledgeBaseOwner() {
+        KnowledgeBase knowledgeBase = knowledgeBase(30L, 20L, "PRIVATE", 7L);
+        KnowledgeAtom atom = new KnowledgeAtom();
+        atom.setId(5L);
+        atom.setAtomId("kb30-java-001");
+        atom.setScope("PRIVATE");
+        atom.setOwnerUserId(7L);
+        atom.setPositionId(20L);
+        atom.setKnowledgeBaseId(30L);
+        when(knowledgeBaseMapper.selectById(30L)).thenReturn(knowledgeBase);
+        when(questionBankService.getAtom(any(), any())).thenReturn(atom);
+
+        assertThat(service.getAtom(7L, 30L, 5L).id()).isEqualTo(5L);
+        verify(questionBankService).getAtom(5L, new QuestionBankImportScope(
+                "PRIVATE", 7L, 20L, 30L, 7L, false));
+
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
+        assertThatThrownBy(() -> service.getAtom(8L, 30L, 5L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("无权访问知识库");
+    }
+
+    @Test
     @DisplayName("普通用户不能向公共知识库导入题库包")
     void shouldRejectPackageImportIntoPublicKnowledgeBaseForNormalUser() {
         KnowledgeBase knowledgeBase = knowledgeBase(11L, 1L, "PUBLIC", null);

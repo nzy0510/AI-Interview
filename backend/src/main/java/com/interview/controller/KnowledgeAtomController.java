@@ -56,6 +56,12 @@ public class KnowledgeAtomController {
         return Result.success(workflowService.acceptSuggestedPatch(atomId, currentUserId(request)));
     }
 
+    @GetMapping("/knowledge-atoms/{atomId}")
+    public Result<KnowledgeAtomResponse> get(@PathVariable Long atomId,
+                                             HttpServletRequest request) {
+        return Result.success(workflowService.getAtom(atomId, currentUserId(request)));
+    }
+
     @PutMapping("/knowledge-atoms/{atomId}")
     public Result<KnowledgeAtomResponse> update(@PathVariable Long atomId,
                                                 @RequestBody KnowledgeAtomPatch patch,

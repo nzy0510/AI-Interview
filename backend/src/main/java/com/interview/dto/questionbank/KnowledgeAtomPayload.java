@@ -14,6 +14,14 @@ public class KnowledgeAtomPayload {
     private List<String> tags = new ArrayList<>();
     private Content content = new Content();
     private String sourceRef;
+    /** Structured source snippets returned by the build agent. */
+    private List<SourceEvidence> sourceEvidence = new ArrayList<>();
+
+    @Data
+    public static class SourceEvidence {
+        private String quote;
+        private String pageOrSection;
+    }
 
     @Data
     public static class Content {

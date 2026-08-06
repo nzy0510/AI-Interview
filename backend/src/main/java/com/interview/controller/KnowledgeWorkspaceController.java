@@ -12,6 +12,7 @@ import com.interview.dto.questionbank.QuestionBankPageResponse;
 import com.interview.service.RequestUserResolver;
 import com.interview.service.questionbank.KnowledgePositionCreateRequest;
 import com.interview.service.questionbank.KnowledgePositionResponse;
+import com.interview.service.questionbank.KnowledgeAtomResponse;
 import com.interview.service.questionbank.KnowledgeWorkspaceResponse;
 import com.interview.service.questionbank.KnowledgeWorkspaceService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -80,6 +81,13 @@ public class KnowledgeWorkspaceController {
                                                                                 @RequestBody QuestionBankAtomQueryRequest body,
                                                                                 HttpServletRequest request) {
         return Result.success(workspaceService.listAtoms(currentUserId(request), knowledgeBaseId, body));
+    }
+
+    @GetMapping("/knowledge-bases/{knowledgeBaseId}/atoms/{atomId}")
+    public Result<KnowledgeAtomResponse> getAtom(@PathVariable Long knowledgeBaseId,
+                                                 @PathVariable Long atomId,
+                                                 HttpServletRequest request) {
+        return Result.success(workspaceService.getAtom(currentUserId(request), knowledgeBaseId, atomId));
     }
 
     @PostMapping("/knowledge-bases/{knowledgeBaseId}/atoms/archive")

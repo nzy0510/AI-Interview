@@ -83,6 +83,10 @@ public class QuestionBankService {
         return catalogService.listAtoms(request, scope);
     }
 
+    public KnowledgeAtom getAtom(Long atomId, QuestionBankImportScope scope) {
+        return catalogService.getAtom(atomId, scope);
+    }
+
     public QuestionBankPageResponse<QuestionBankBatchListItem> listBatches(int pageValue, int sizeValue) {
         return catalogService.listBatches(pageValue, sizeValue);
     }

@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -48,13 +49,20 @@ public class KnowledgeAtomWorkflowService {
             throw new IllegalArgumentException("当前原子没有可应用的建议补丁");
         }
         KnowledgeAtomPatch patch = parsePatch(atom.getSuggestedPatchJson());
-        applyPatch(atom, patch);
-        atom.setReviewStatus("PASS");
-        atom.setReviewReason("已应用模型建议补丁");
-        atom.setSuggestedPatchJson(null);
-        atomMapper.updateById(atom);
-        recordVersion(atom, "review:accept-patch");
-        return KnowledgeAtomResponse.from(atom);
+        boolean published = "PUBLISHED".equalsIgnoreCase(atom.getPublicationStatus())
+                || "PUBLISHED".equalsIgnoreCase(atom.getStatus());
+        KnowledgeAtom target = published ? cloneAsDraftRevision(atom, currentUserId) : atom;
+        applyPatch(target, patch);
+        validateReviewableAtom(target);
+        target.setReviewStatus("PASS");
+        target.setReviewReason("已应用模型建议补丁");
+        target.setReviewedBy(currentUserId);
+        target.setReviewedAt(LocalDateTime.now());
+        target.setSuggestedPatchJson(null);
+        if (published) atomMapper.insert(target);
+        else atomMapper.updateById(target);
+        recordVersion(target, "review:accept-patch");
+        return KnowledgeAtomResponse.from(target);
     }
 
     @Transactional
@@ -65,13 +73,17 @@ public class KnowledgeAtomWorkflowService {
                 || "PUBLISHED".equalsIgnoreCase(atom.getStatus())) {
             KnowledgeAtom draft = cloneAsDraftRevision(atom, currentUserId);
             applyPatch(draft, patch);
+            validateReviewableAtom(draft);
             atomMapper.insert(draft);
             recordVersion(draft, "edit:draft-revision");
             return KnowledgeAtomResponse.from(draft);
         }
         applyPatch(atom, patch);
+        validateReviewableAtom(atom);
         atom.setReviewStatus("PASS");
         atom.setReviewReason("人工修订后通过");
+        atom.setReviewedBy(currentUserId);
+        atom.setReviewedAt(LocalDateTime.now());
         atom.setSuggestedPatchJson(null);
         atomMapper.updateById(atom);
         recordVersion(atom, "edit:draft");
@@ -82,6 +94,9 @@ public class KnowledgeAtomWorkflowService {
     public KnowledgeAtomResponse publishAtom(Long atomId, Long currentUserId) {
         requireMutationAccess(currentUserId);
         KnowledgeAtom atom = requireManageableAtom(atomId, currentUserId);
+        if (!"DRAFT".equalsIgnoreCase(atom.getStatus())) {
+            throw new IllegalArgumentException("只有 DRAFT 原子可以发布");
+        }
         String reviewStatus = normalizeReviewStatus(atom.getReviewStatus());
         if ("REJECT".equals(reviewStatus)) {
             throw new IllegalArgumentException("REJECT 原子不可发布");
@@ -89,8 +104,15 @@ public class KnowledgeAtomWorkflowService {
         if ("NEEDS_REVIEW".equals(reviewStatus)) {
             throw new IllegalArgumentException("NEEDS_REVIEW 原子需要先应用补丁或人工修订");
         }
+        validateReviewableAtom(atom);
         publishDraftAtom(atom, currentUserId, "publish:user");
         return KnowledgeAtomResponse.from(atom);
+    }
+
+    /** Return a single atom only when the caller can manage its scope. */
+    public KnowledgeAtomResponse getAtom(Long atomId, Long currentUserId) {
+        requireMutationAccess(currentUserId);
+        return KnowledgeAtomResponse.from(requireManageableAtom(atomId, currentUserId));
     }
 
     private KnowledgeAtom requireVisibleAtom(Long atomId, Long currentUserId) {
@@ -188,6 +210,7 @@ public class KnowledgeAtomWorkflowService {
         draft.setPositionId(atom.getPositionId());
         draft.setKnowledgeBaseId(atom.getKnowledgeBaseId());
         draft.setSourceFileId(atom.getSourceFileId());
+        draft.setSourceEvidenceJson(atom.getSourceEvidenceJson());
         draft.setCurrentVersionNo((atom.getCurrentVersionNo() == null ? 1 : atom.getCurrentVersionNo()) + 1);
         draft.setReviewStatus("PASS");
         draft.setReviewReason("人工修订后通过");
@@ -221,6 +244,35 @@ public class KnowledgeAtomWorkflowService {
         if (patch.pitfalls() != null) atom.setPitfalls(patch.pitfalls());
         if (patch.followUpPaths() != null) atom.setFollowUpPathsJson(JSON.toJSONString(patch.followUpPaths()));
         atom.setChecksum(checksum(atom));
+    }
+
+    private void validateReviewableAtom(KnowledgeAtom atom) {
+        if (atom.getSubject() == null || atom.getSubject().isBlank()) {
+            throw new IllegalArgumentException("考点不能为空");
+        }
+        if (atom.getCategory() == null || atom.getCategory().isBlank()) {
+            throw new IllegalArgumentException("分类不能为空");
+        }
+        String difficulty = atom.getDifficulty() == null ? "" : atom.getDifficulty().trim().toLowerCase(Locale.ROOT);
+        if (!Set.of("junior", "mid", "senior", "principal").contains(difficulty)) {
+            throw new IllegalArgumentException("难度只能是 junior、mid、senior 或 principal");
+        }
+        atom.setDifficulty(difficulty);
+        if (atom.getPrinciples() == null || atom.getPrinciples().isBlank()) {
+            throw new IllegalArgumentException("核心原理不能为空");
+        }
+        List<String> followUpPaths;
+        try {
+            followUpPaths = JSON.parseArray(atom.getFollowUpPathsJson(), String.class);
+        } catch (RuntimeException ignored) {
+            followUpPaths = List.of();
+        }
+        long followUpCount = followUpPaths == null ? 0 : followUpPaths.stream()
+                .filter(path -> path != null && !path.isBlank())
+                .count();
+        if (followUpCount < 2) {
+            throw new IllegalArgumentException("请至少填写两条追问路径");
+        }
     }
 
     private String normalizeReviewStatus(String status) {

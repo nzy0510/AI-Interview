@@ -81,6 +81,14 @@ class QuestionBankCatalogService extends QuestionBankSupport {
         return QuestionBankPageResponse.of(total, page, size, items);
     }
 
+    KnowledgeAtom getAtom(Long atomId, QuestionBankImportScope scope) {
+        if (atomId == null) {
+            return null;
+        }
+        return atomMapper.selectOne(applyScope(new QueryWrapper<KnowledgeAtom>()
+                .eq("id", atomId), scope).last("LIMIT 1"));
+    }
+
     QuestionBankPageResponse<QuestionBankBatchListItem> listBatches(int pageValue, int sizeValue) {
         int page = Math.max(1, pageValue);
         int size = Math.min(Math.max(1, sizeValue), 100);

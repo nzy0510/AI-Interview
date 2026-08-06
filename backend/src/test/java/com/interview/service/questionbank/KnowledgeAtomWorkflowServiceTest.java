@@ -178,17 +178,48 @@ class KnowledgeAtomWorkflowServiceTest {
     }
 
     @Test
-    @DisplayName("编辑已发布原子时创建草稿修订，不覆盖当前可搜索版本")
-    void shouldCreateDraftRevisionWhenEditingPublishedAtom() {
-        KnowledgeAtom published = draftAtom("PASS");
+    @DisplayName("管理员对公共已发布原子应用建议补丁时创建草稿修订")
+    void shouldCreateDraftRevisionWhenAcceptingPatchForPublishedPublicAtom() {
+        KnowledgeAtom published = publicAtom("NEEDS_REVIEW");
+        published.setId(9L);
+        published.setAtomId("atom-published");
+        published.setStatus("PUBLISHED");
+        published.setPublicationStatus("PUBLISHED");
+        published.setSuggestedPatchJson("""
+                {"subject":"patched subject","principles":"patched principles"}
+                """);
+        when(atomMapper.selectById(9L)).thenReturn(published);
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
+
+        KnowledgeAtomResponse response = service.acceptSuggestedPatch(9L, 8L);
+
+        ArgumentCaptor<KnowledgeAtom> insertCaptor = ArgumentCaptor.forClass(KnowledgeAtom.class);
+        verify(atomMapper).insert(insertCaptor.capture());
+        verify(atomMapper, never()).updateById(published);
+        KnowledgeAtom draft = insertCaptor.getValue();
+        assertThat(response.id()).isEqualTo(draft.getId());
+        assertThat(draft.getSubject()).isEqualTo("patched subject");
+        assertThat(draft.getStatus()).isEqualTo("DRAFT");
+        assertThat(draft.getPublicationStatus()).isEqualTo("DRAFT");
+        assertThat(draft.getScope()).isEqualTo("PUBLIC");
+        assertThat(published.getStatus()).isEqualTo("PUBLISHED");
+        assertThat(published.getSubject()).isEqualTo("original subject");
+    }
+
+    @Test
+    @DisplayName("管理员编辑公共已发布原子时创建同作用域草稿修订，不覆盖当前可搜索版本")
+    void shouldCreatePublicDraftRevisionWhenAdminEditsPublishedAtom() {
+        KnowledgeAtom published = publicAtom("PASS");
         published.setId(8L);
         published.setAtomId("atom-published");
         published.setStatus("PUBLISHED");
         published.setPublicationStatus("PUBLISHED");
         published.setCurrentVersionNo(2);
+        published.setSourceEvidenceJson("[{\"quote\":\"source quote\",\"pageOrSection\":\"p.2\"}]");
         when(atomMapper.selectById(8L)).thenReturn(published);
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
 
-        KnowledgeAtomResponse response = service.updateAtom(8L, 7L,
+        KnowledgeAtomResponse response = service.updateAtom(8L, 8L,
                 new KnowledgeAtomPatch("draft revision", null, null, null, "new principles", null, null));
 
         ArgumentCaptor<KnowledgeAtom> insertCaptor = ArgumentCaptor.forClass(KnowledgeAtom.class);
@@ -200,6 +231,27 @@ class KnowledgeAtomWorkflowServiceTest {
         assertThat(draft.getStatus()).isEqualTo("DRAFT");
         assertThat(draft.getPublicationStatus()).isEqualTo("DRAFT");
         assertThat(draft.getCurrentVersionNo()).isEqualTo(3);
+        assertThat(draft.getScope()).isEqualTo("PUBLIC");
+        assertThat(draft.getOwnerUserId()).isNull();
+        assertThat(draft.getSourceEvidenceJson()).contains("source quote").contains("p.2");
+        assertThat(response.sourceEvidenceJson()).contains("source quote");
+    }
+
+    @Test
+    @DisplayName("人工编辑后的最终原子不满足导入契约时拒绝标记 PASS")
+    void shouldRejectInvalidManualEditBeforeMarkingPass() {
+        KnowledgeAtom atom = publicAtom("PASS");
+        when(atomMapper.selectById(5L)).thenReturn(atom);
+        when(adminRoleService.isAdmin(8L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.updateAtom(5L, 8L,
+                new KnowledgeAtomPatch("updated", "Java", "mid", List.of("java"),
+                        "principles", "pitfalls", List.of("only one follow-up"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("至少填写两条追问路径");
+
+        verify(atomMapper, never()).updateById(any());
+        verify(atomMapper, never()).insert(any());
     }
 
     @Test
@@ -267,11 +319,11 @@ class KnowledgeAtomWorkflowServiceTest {
         atom.setAtomId("atom-draft");
         atom.setSubject("original subject");
         atom.setCategory("Java");
-        atom.setDifficulty("MEDIUM");
+        atom.setDifficulty("mid");
         atom.setTagsJson("[\"java\"]");
         atom.setPrinciples("original principles");
         atom.setPitfalls("original pitfalls");
-        atom.setFollowUpPathsJson("[\"follow\"]");
+        atom.setFollowUpPathsJson("[\"follow one\",\"follow two\"]");
         atom.setStatus("DRAFT");
         atom.setPublicationStatus("DRAFT");
         atom.setReviewStatus(reviewStatus);

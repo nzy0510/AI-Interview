@@ -23,8 +23,39 @@ public record KnowledgeAtomResponse(
         String publicationStatus,
         Integer currentVersionNo,
         LocalDateTime publishedAt,
-        LocalDateTime updateTime
+        LocalDateTime updateTime,
+        String sourceRef,
+        String sourceEvidenceJson,
+        Long sourceFileId,
+        Long reviewedBy,
+        LocalDateTime reviewedAt
 ) {
+    /** Backward-compatible constructor used by existing controller clients/tests. */
+    public KnowledgeAtomResponse(Long id,
+                                 String atomId,
+                                 String subject,
+                                 String category,
+                                 String difficulty,
+                                 String tagsJson,
+                                 String principles,
+                                 String pitfalls,
+                                 String followUpPathsJson,
+                                 String status,
+                                 String vectorStatus,
+                                 String reviewStatus,
+                                 String reviewReason,
+                                 Double reviewConfidence,
+                                 String suggestedPatchJson,
+                                 String publicationStatus,
+                                 Integer currentVersionNo,
+                                 LocalDateTime publishedAt,
+                                 LocalDateTime updateTime) {
+        this(id, atomId, subject, category, difficulty, tagsJson, principles, pitfalls,
+                followUpPathsJson, status, vectorStatus, reviewStatus, reviewReason,
+                reviewConfidence, suggestedPatchJson, publicationStatus, currentVersionNo,
+                publishedAt, updateTime, null, null, null, null, null);
+    }
+
     public static KnowledgeAtomResponse from(KnowledgeAtom atom) {
         return new KnowledgeAtomResponse(
                 atom.getId(),
@@ -45,7 +76,12 @@ public record KnowledgeAtomResponse(
                 atom.getPublicationStatus(),
                 atom.getCurrentVersionNo(),
                 atom.getPublishedAt(),
-                atom.getUpdateTime()
+                atom.getUpdateTime(),
+                atom.getSourceRef(),
+                atom.getSourceEvidenceJson(),
+                atom.getSourceFileId(),
+                atom.getReviewedBy(),
+                atom.getReviewedAt()
         );
     }
 }

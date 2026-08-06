@@ -125,6 +125,18 @@ describe('buildKnowledgeRoseOption', () => {
     expect(option.color).not.toContain('#3a388b')
     expect(option.color).not.toContain('#5250a4')
   })
+
+  it('renders zero-hit categories as an explicit neutral empty state', () => {
+    const option = buildKnowledgeRoseOption([
+      { category: 'linux', covered: 0, total: 3, percent: 0 },
+      { category: 'windows', covered: 0, total: 2, percent: 0 },
+    ])
+
+    expect(option.series[0].data).toEqual([{ name: '暂无命中', value: 1, total: 5, percent: 0 }])
+    expect(option.color).toEqual(['#e8e6dc'])
+    expect(option.legend.show).toBe(false)
+    expect(option.series[0].roseType).toBe(false)
+  })
 })
 
 describe('buildInterviewRadarOption', () => {

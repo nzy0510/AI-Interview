@@ -14,10 +14,13 @@ public class AppJob {
     private Long id;
 
     private String jobType;
+    private String idempotencyKey;
     private String scope;
     private Long ownerUserId;
     private Long positionId;
     private Long knowledgeBaseId;
+    private Long sourceFileId;
+    private Long buildId;
     private Long recordId;
     private String status;
     private String stage;

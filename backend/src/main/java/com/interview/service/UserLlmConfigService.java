@@ -197,6 +197,18 @@ public class UserLlmConfigService {
         return toRuntimeConfig(config);
     }
 
+    /**
+     * Resolve an owned configuration for a long-running job. The job stores the
+     * config id/provider/model snapshot, while the key remains encrypted and is
+     * only materialized inside the provider client when the job executes.
+     */
+    public UserLlmRuntimeConfig requireOwnedRuntimeConfig(Long userId, Long configId) {
+        if (configId == null) {
+            throw new LlmProviderRequiredException("构建任务缺少模型配置");
+        }
+        return toRuntimeConfig(loadOwned(userId, configId));
+    }
+
     private UserLlmRuntimeConfig resolveTestRuntimeConfig(Long userId, LlmConnectionTestRequest request) {
         if (request != null && request.getConfigId() != null) {
             return toRuntimeConfig(loadOwned(userId, request.getConfigId()));

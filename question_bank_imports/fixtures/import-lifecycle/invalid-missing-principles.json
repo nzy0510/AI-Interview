@@ -12,7 +12,7 @@
       "tags": ["java"],
       "content": {
         "pitfalls": "缺少标准答案正文时不能导入。",
-        "followUpPaths": []
+        "followUpPaths": ["追问一？", "追问二？"]
       }
     }
   ]

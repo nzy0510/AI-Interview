@@ -38,7 +38,7 @@ class QuestionBankVectorSyncService extends QuestionBankSupport {
                 skipped++;
                 continue;
             }
-            if (syncAtom(atom)) {
+            if (syncReindexedAtom(atom)) {
                 synced++;
             } else {
                 failed++;
@@ -57,7 +57,7 @@ class QuestionBankVectorSyncService extends QuestionBankSupport {
         int synced = 0;
         int failed = 0;
         for (KnowledgeAtom atom : publishedAtoms) {
-            if (syncAtom(atom)) synced++;
+            if (syncReindexedAtom(atom)) synced++;
             else failed++;
         }
         int deleted = 0;
@@ -78,7 +78,7 @@ class QuestionBankVectorSyncService extends QuestionBankSupport {
         int synced = 0;
         int failed = 0;
         for (KnowledgeAtom atom : atoms) {
-            if (syncAtom(atom)) synced++;
+            if (syncReindexedAtom(atom)) synced++;
             else failed++;
         }
         return resultMap("matched", atoms.size(), "synced", synced, "failed", failed);
@@ -89,7 +89,7 @@ class QuestionBankVectorSyncService extends QuestionBankSupport {
                 .eq("status", QuestionBankService.STATUS_PUBLISHED));
         int synced = 0;
         for (KnowledgeAtom atom : atoms) {
-            if (syncAtom(atom)) synced++;
+            if (syncReindexedAtom(atom)) synced++;
         }
         return synced;
     }
@@ -105,6 +105,37 @@ class QuestionBankVectorSyncService extends QuestionBankSupport {
         atom.setLastIndexedAt(ok ? LocalDateTime.now() : atom.getLastIndexedAt());
         atomMapper.updateById(atom);
         return ok;
+    }
+
+    private boolean syncReindexedAtom(KnowledgeAtom atom) {
+        boolean synced = syncAtom(atom);
+        if (synced) archivePreviousDraftBase(atom);
+        return synced;
+    }
+
+    private void archivePreviousDraftBase(KnowledgeAtom atom) {
+        String atomId = atom == null ? null : atom.getAtomId();
+        if (atomId == null || atomId.isBlank()) return;
+        int draftMarker = atomId.indexOf("-draft-");
+        if (draftMarker <= 0) return;
+        String baseAtomId = atomId.substring(0, draftMarker);
+        QueryWrapper<KnowledgeAtom> query = new QueryWrapper<KnowledgeAtom>()
+                .eq("atom_id", baseAtomId)
+                .eq("status", QuestionBankService.STATUS_PUBLISHED)
+                .eq(atom.getScope() != null, "scope", atom.getScope())
+                .eq(atom.getPositionId() != null, "position_id", atom.getPositionId())
+                .eq(atom.getKnowledgeBaseId() != null, "knowledge_base_id", atom.getKnowledgeBaseId());
+        if (atom.getOwnerUserId() == null) query.isNull("owner_user_id");
+        else query.eq("owner_user_id", atom.getOwnerUserId());
+        for (KnowledgeAtom base : atomMapper.selectList(query)) {
+            base.setStatus(QuestionBankService.STATUS_ARCHIVED);
+            base.setVectorStatus("PENDING_DELETE");
+            atomMapper.updateById(base);
+            recordVersion(base, "archive:replaced-revision");
+            boolean deleted = deleteVector(base);
+            base.setVectorStatus(deleted ? "DELETED" : "DELETE_FAILED");
+            atomMapper.updateById(base);
+        }
     }
 
     boolean deleteVector(KnowledgeAtom atom) {

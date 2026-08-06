@@ -65,26 +65,29 @@ export const KNOWLEDGE_ROSE_COLORS = ['#f8e4c8', '#f4b46f', '#e27a3f', '#c9542f'
 
 export function buildKnowledgeRoseOption(details = []) {
   const source = Array.isArray(details) ? details : []
-  const data = source.length
+  const hasCoverage = source.some((item) => (Number(item.covered) || 0) > 0)
+  const emptyLabel = source.length ? '暂无命中' : '暂无覆盖'
+  const data = hasCoverage
     ? source.map((item) => ({
         name: item.category || '未分类',
         value: Number(item.covered) || 0,
         total: Number(item.total) || 0,
         percent: Number(item.percent) || 0,
       }))
-    : [{ name: '暂无覆盖', value: 1, total: 0, percent: 0 }]
+    : [{ name: emptyLabel, value: 1, total: source.reduce((sum, item) => sum + (Number(item.total) || 0), 0), percent: 0 }]
 
   return {
-    color: KNOWLEDGE_ROSE_COLORS,
+    color: hasCoverage ? KNOWLEDGE_ROSE_COLORS : ['#e8e6dc'],
     tooltip: {
       ...buildTooltipConfig({ trigger: 'item' }),
       formatter: (params) => {
         const item = params.data || {}
-        if (item.name === '暂无覆盖') return '暂无知识覆盖数据'
+        if (['暂无覆盖', '暂无命中'].includes(item.name)) return source.length ? '当前岗位暂无已发布知识原子命中' : '暂无知识覆盖数据'
         return `${params.marker}${item.name}<br/>命中知识原子: <b>${item.value}</b><br/>覆盖占比: <b>${item.percent}%</b>`
       },
     },
     legend: {
+      show: hasCoverage,
       type: 'scroll',
       orient: 'vertical',
       right: 0,
@@ -97,12 +100,13 @@ export function buildKnowledgeRoseOption(details = []) {
       {
         name: '知识领域覆盖',
         type: 'pie',
-        roseType: 'radius',
+        roseType: hasCoverage ? 'radius' : false,
         radius: ['24%', '76%'],
         center: ['38%', '50%'],
         minAngle: 8,
         avoidLabelOverlap: true,
         label: {
+          show: hasCoverage,
           color: '#3f3d38',
           fontSize: 12,
           formatter: '{b}',

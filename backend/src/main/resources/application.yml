@@ -178,6 +178,16 @@ app:
     fallback-enabled: ${APP_INTERVIEW_AGENT_FALLBACK_ENABLED:true}
   question-bank:
     user-maintenance-enabled: ${APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED:false}
+    build:
+      storage-root: ${APP_KNOWLEDGE_STORAGE_ROOT:knowledge-storage}
+      max-file-size-bytes: ${APP_KNOWLEDGE_BUILD_MAX_FILE_SIZE_BYTES:20971520}
+      max-files: ${APP_KNOWLEDGE_BUILD_MAX_FILES:10}
+      max-text-chars: ${APP_KNOWLEDGE_BUILD_MAX_TEXT_CHARS:1000000}
+      chunk-chars: ${APP_KNOWLEDGE_BUILD_CHUNK_CHARS:8000}
+      chunk-overlap-chars: ${APP_KNOWLEDGE_BUILD_CHUNK_OVERLAP_CHARS:400}
+      max-chunks: ${APP_KNOWLEDGE_BUILD_MAX_CHUNKS:50}
+      max-candidates: ${APP_KNOWLEDGE_BUILD_MAX_CANDIDATES:300}
+      prompt-version: ${APP_KNOWLEDGE_BUILD_PROMPT_VERSION:question-bank-build-v1}
   embedding:
     provider: ${APP_EMBEDDING_PROVIDER:all-minilm}
     endpoint: ${APP_EMBEDDING_ENDPOINT:}

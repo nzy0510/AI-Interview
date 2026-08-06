@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.interview.config.PositionCategoryConfig;
 import com.interview.dto.questionbank.QuestionBankImportRequest;
+import com.interview.dto.questionbank.KnowledgeAtomPayload;
 import com.interview.dto.questionbank.QuestionBankImportResult;
 import com.interview.entity.KnowledgeAtom;
 import com.interview.entity.KnowledgeAtomImportBatch;
@@ -78,6 +79,18 @@ class QuestionBankImportContractTest {
     }
 
     @Test
+    @DisplayName("导入 schema 阻断不支持的难度和不足两条追问")
+    void shouldRejectUnsupportedDifficultyAndTooFewFollowUps() throws Exception {
+        QuestionBankImportRequest request = fixtureRequest("valid-draft.json");
+        request.getAtoms().get(0).setDifficulty("easy");
+        request.getAtoms().get(0).getContent().setFollowUpPaths(List.of("仅一条追问"));
+
+        assertThat(service.validateImportPackage(request))
+                .contains("contract-java-hashmap: difficulty must be one of junior|mid|senior|principal")
+                .contains("contract-java-hashmap: content.followUpPaths must contain at least 2 items");
+    }
+
+    @Test
     @DisplayName("DRY_RUN 不写批次、atom 或向量")
     void shouldNotPersistAnythingOnDryRun() throws Exception {
         QuestionBankImportRequest request = fixtureRequest("valid-draft.json");
@@ -144,6 +157,37 @@ class QuestionBankImportContractTest {
     }
 
     @Test
+    @DisplayName("作用域 DRAFT 重复导入已发布稳定 ID 时创建草稿修订，不下线线上原子")
+    void shouldCreateDraftRevisionWhenScopedImportMatchesPublishedAtom() throws Exception {
+        KnowledgeAtom published = publishedAtom("kb30-contract-java-hashmap");
+        published.setId(99L);
+        published.setScope("PRIVATE");
+        published.setOwnerUserId(7L);
+        published.setPositionId(20L);
+        published.setKnowledgeBaseId(30L);
+        published.setPublicationStatus("PUBLISHED");
+        published.setCurrentVersionNo(2);
+        when(atomMapper.selectOne(any())).thenReturn(published);
+        when(versionMapper.selectCount(any())).thenReturn(0L);
+        QuestionBankImportScope scope = new QuestionBankImportScope("PRIVATE", 7L, 20L, 30L, 7L, false);
+
+        QuestionBankImportResult result = service.importBatch(fixtureRequest("valid-draft.json"), scope);
+
+        assertThat(result.getImported()).isEqualTo(1);
+        ArgumentCaptor<KnowledgeAtom> atomCaptor = ArgumentCaptor.forClass(KnowledgeAtom.class);
+        verify(atomMapper).insert(atomCaptor.capture());
+        KnowledgeAtom revision = atomCaptor.getValue();
+        assertThat(revision.getAtomId()).startsWith("kb30-contract-java-hashmap-draft-");
+        assertThat(revision.getStatus()).isEqualTo("DRAFT");
+        assertThat(revision.getPublicationStatus()).isEqualTo("DRAFT");
+        assertThat(revision.getScope()).isEqualTo("PRIVATE");
+        assertThat(revision.getOwnerUserId()).isEqualTo(7L);
+        assertThat(published.getStatus()).isEqualTo("PUBLISHED");
+        verify(atomMapper, never()).updateById(published);
+        verify(qdrantVectorService, never()).upsert(any());
+    }
+
+    @Test
     @DisplayName("普通知识库导入即使包声明 AUTO_PUBLISH 也只落为草稿")
     void shouldForceDraftModeWhenScopedImportCannotAutoPublish() throws Exception {
         when(atomMapper.selectOne(any())).thenReturn(null);
@@ -159,6 +203,27 @@ class QuestionBankImportContractTest {
         verify(atomMapper).insert(atomCaptor.capture());
         assertThat(atomCaptor.getValue().getStatus()).isEqualTo("DRAFT");
         verify(qdrantVectorService, never()).upsert(any());
+    }
+
+    @Test
+    @DisplayName("导入包 sourceEvidence 写入知识原子并保留结构")
+    void shouldPersistSourceEvidenceFromImportPayload() throws Exception {
+        when(atomMapper.selectOne(any())).thenReturn(null);
+        when(versionMapper.selectCount(any())).thenReturn(0L);
+        QuestionBankImportRequest request = fixtureRequest("valid-draft.json");
+        KnowledgeAtomPayload.SourceEvidence evidence = new KnowledgeAtomPayload.SourceEvidence();
+        evidence.setQuote("HashMap 扩容会重新分桶");
+        evidence.setPageOrSection("第 2 节");
+        request.getAtoms().get(0).setSourceEvidence(List.of(evidence));
+
+        QuestionBankImportResult result = service.importBatch(request);
+
+        assertThat(result.getFailed()).isZero();
+        ArgumentCaptor<KnowledgeAtom> atomCaptor = ArgumentCaptor.forClass(KnowledgeAtom.class);
+        verify(atomMapper).insert(atomCaptor.capture());
+        assertThat(atomCaptor.getValue().getSourceEvidenceJson())
+                .contains("HashMap 扩容会重新分桶")
+                .contains("第 2 节");
     }
 
     @Test
@@ -333,6 +398,7 @@ class QuestionBankImportContractTest {
         atom.setCategory("java");
         atom.setPrinciples("principles");
         atom.setStatus("PUBLISHED");
+        atom.setReviewStatus("PASS");
         atom.setVectorStatus("PENDING");
         return atom;
     }

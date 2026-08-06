@@ -11,6 +11,13 @@ import {
   shouldShowKnowledgeWorkspace,
   parseImportPackageText
 } from '../knowledgeWorkspace'
+import {
+  canBuildQuestionBank,
+  getQuestionBankBuildStatusLabel,
+  isQuestionBankCandidateAccepted,
+  isQuestionBankAtomPublishEligible,
+  isQuestionBankBuildInProgress
+} from '../knowledgeWorkspace'
 
 describe('knowledge workspace utils', () => {
   it('keeps public positions read-only', () => {
@@ -104,5 +111,19 @@ describe('knowledge workspace utils', () => {
     expect(canCreatePrivatePosition(userCapabilities)).toBe(true)
     expect(shouldShowKnowledgeWorkspace(closedCapabilities)).toBe(false)
     expect(canCreatePrivatePosition(closedCapabilities)).toBe(false)
+  })
+
+  it('keeps build access private-owner scoped and requires accepted review for import/publish', () => {
+    expect(canBuildQuestionBank({ scope: 'PRIVATE', editable: true, status: 'ACTIVE', knowledgeBase: { id: 1 } })).toBe(true)
+    expect(canBuildQuestionBank({ scope: 'PUBLIC', editable: true, status: 'ACTIVE', knowledgeBase: { id: 1 } })).toBe(false)
+    expect(isQuestionBankCandidateAccepted({ reviewStatus: 'ACCEPTED' })).toBe(true)
+    expect(isQuestionBankCandidateAccepted({ reviewStatus: 'PENDING' })).toBe(false)
+    expect(isQuestionBankAtomPublishEligible({ status: 'DRAFT', reviewStatus: 'PASS' })).toBe(true)
+    expect(isQuestionBankAtomPublishEligible({ status: 'DRAFT', reviewStatus: 'ACCEPTED' })).toBe(false)
+    expect(isQuestionBankAtomPublishEligible({ status: 'DRAFT', reviewStatus: 'NEEDS_REVIEW' })).toBe(false)
+    expect(isQuestionBankBuildInProgress({ status: 'PENDING' })).toBe(true)
+    expect(isQuestionBankBuildInProgress({ status: 'RUNNING' })).toBe(true)
+    expect(isQuestionBankBuildInProgress({ status: 'COMPLETED' })).toBe(false)
+    expect(getQuestionBankBuildStatusLabel('FAILED')).toBe('失败')
   })
 })
