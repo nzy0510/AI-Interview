@@ -567,9 +567,6 @@ const confirmStart = (mode) => {
 }
 
 .page-header {
-  position: sticky;
-  top: 0;
-  z-index: 12;
   display: flex;
   justify-content: space-between;
   align-items: center;
