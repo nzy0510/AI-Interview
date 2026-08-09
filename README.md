@@ -124,9 +124,6 @@ graph LR
 - MySQL 是用户、面试、报告、题库、导入批次和同步状态的业务真相。
 - Qdrant 是可重建的向量索引，不直接承载题库发布状态。
 - embedding-service 只负责文本向量化，默认输出 768 维 multilingual-e5 向量。
-- 前端不直接访问数据库、Redis 或 Qdrant，所有维护动作走后端 API 与用户 ownership / `ADMIN` 角色校验。
-- Agent 工具的用户、岗位和记录作用域由后端绑定，模型不能传入任意 ID；失败后同一面试会话回退稳定规则。
-- 本地 Docker 默认开放账号自有的私有题库维护；公共资源仍只允许 `ADMIN` 修改，私有资源由后端按 owner 独立校验。
 
 ## 项目结构
 
@@ -255,8 +252,9 @@ JWT_SIGN_KEY=your_jwt_signing_key_at_least_32_characters
 APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
 ```
 可以直接在 PowerShell 生成随机值：
-[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 
+```[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+```
 
 ### Docker 部署(基础配置完成后)
 
@@ -286,15 +284,11 @@ docker compose up -d --build
 - MySQL：`localhost:3307`
 - Redis：`localhost:6379`
 
-本地 Compose 的这些端口只监听 `127.0.0.1`，局域网中的其他设备不能直接访问。停止容器但保留账号、题库和面试数据：
-
 ```powershell
 docker compose stop
 ```
 
 首次构建 embedding-service 会下载 PyTorch、sentence-transformers 和 multilingual-e5 模型，耗时取决于网络质量。若切换过 embedding 模型或 Qdrant collection，启动后需要通过知识库 / 题库维护流程重建索引。
-
-未来如果部署到公网，应改用 `docker-compose.prod.yml` 的 `email-verified` 模式，配置独立管理员、SMTP、HTTPS 和强密码；不要直接公开本地默认管理员，也不要把包含该账号的本地 `mysql_data` 原样迁移到公网。
 
 大模型配置说明：
 
@@ -302,9 +296,8 @@ docker compose stop
 - 默认管理员首次登录后，需要进入侧边栏“大模型配置”，新建 DeepSeek 或其他兼容 Provider，填写自己的 API Key，测试连接并启用该配置。
 - 没有有效的启用配置时，文字面试、视频面试、报告生成和 AI Mentor 等用户侧 LLM 功能会引导用户先完成配置。
 - 当前支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 和自定义。
-- 服务端只需要 `APP_LLM_CONFIG_ENCRYPTION_KEY` 这类加密密钥来加密保存用户 API Key；不要在 `.env`、示例配置、日志或文档里写入任何真实供应商密钥。
-- 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置；管理员不能查看用户 API Key 明文。
-- 本地配置默认启用有边界 Agent 和账号自有题库维护；对应变量见 `.env.example` 的 `APP_INTERVIEW_AGENT_*` 与 `APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED`。
+- 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置。
+
 ### RAG 评测工具
 
 ```powershell
