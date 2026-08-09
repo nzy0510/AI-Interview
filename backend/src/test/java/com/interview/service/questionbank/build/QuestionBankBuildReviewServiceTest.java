@@ -47,7 +47,7 @@ class QuestionBankBuildReviewServiceTest {
         when(assembler.toCandidateResponse(candidate)).thenReturn(new QuestionBankBuildCandidateResponse());
         QuestionBankBuildService service = newService(kbMapper, positionMapper, buildMapper, candidateMapper, assembler, mock(KnowledgeWorkspaceService.class));
 
-        QuestionBankBuildCandidateReviewRequest review = new QuestionBankBuildCandidateReviewRequest(); review.setAction("ACCEPT");
+        QuestionBankBuildCandidateReviewRequest review = new QuestionBankBuildCandidateReviewRequest(); review.setAction("ACCEPT"); review.setExpectedReviewRevision(3L);
         QuestionBankBuildCandidateResponse result = service.review(7L, 10L, 99L, 1L, review);
 
         assertThat(candidate.getReviewStatus()).isEqualTo("ACCEPTED"); assertThat(result).isNotNull();
@@ -115,6 +115,7 @@ class QuestionBankBuildReviewServiceTest {
         QuestionBankBuildService service = newService(kbMapper, positionMapper, buildMapper, candidateMapper, assembler, mock(KnowledgeWorkspaceService.class));
         QuestionBankBuildCandidateReviewRequest review = new QuestionBankBuildCandidateReviewRequest();
         review.setAction("SAVE");
+        review.setExpectedReviewRevision(3L);
         review.setPrinciples("人工修订后的回答");
 
         service.review(7L, 10L, 99L, 1L, review);
@@ -123,6 +124,30 @@ class QuestionBankBuildReviewServiceTest {
         assertThat(candidate.getReviewStatus()).isEqualTo("PENDING");
         assertThat(candidate.getReviewReason()).contains("人工修改");
         assertThat(build.getReviewRevision()).isEqualTo(4L);
+    }
+
+    @Test
+    void shouldRejectStaleCandidateReviewRevisionWithoutWritingCandidate() {
+        KnowledgeBaseMapper kbMapper = mock(KnowledgeBaseMapper.class);
+        InterviewPositionMapper positionMapper = mock(InterviewPositionMapper.class);
+        QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
+        when(kbMapper.selectById(10L)).thenReturn(privateKb());
+        when(positionMapper.selectById(20L)).thenReturn(privatePosition());
+        QuestionBankBuild build = new QuestionBankBuild();
+        build.setId(99L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setKnowledgeBaseId(10L);
+        build.setPositionId(20L); build.setStatus("COMPLETED"); build.setStage("READY_FOR_FINAL_REVIEW");
+        build.setReviewRevision(4L);
+        when(buildMapper.selectById(99L)).thenReturn(build);
+        when(candidateMapper.selectOne(any(QueryWrapper.class))).thenReturn(candidate());
+        QuestionBankBuildService service = newService(kbMapper, positionMapper, buildMapper, candidateMapper,
+                mock(QuestionBankBuildResponseAssembler.class), mock(KnowledgeWorkspaceService.class));
+        QuestionBankBuildCandidateReviewRequest review = new QuestionBankBuildCandidateReviewRequest();
+        review.setAction("REJECT"); review.setExpectedReviewRevision(3L);
+
+        assertThatThrownBy(() -> service.review(7L, 10L, 99L, 1L, review))
+                .hasMessageContaining("内容已变化");
+        verify(candidateMapper, never()).updateById(any());
     }
 
     @Test
@@ -150,5 +175,5 @@ class QuestionBankBuildReviewServiceTest {
     private QuestionBankBuildCandidate candidate() { QuestionBankBuildCandidate c = new QuestionBankBuildCandidate(); c.setId(1L); c.setBuildId(99L); c.setOwnerUserId(7L); c.setStableAtomId("stable-1"); c.setSubject("JVM"); c.setCategory("java"); c.setDifficulty("mid"); c.setPrinciples("回答"); c.setFollowUpPathsJson("[\"深入\",\"引导\"]"); c.setSourceRef("notes.md#chunk-0"); c.setSourceEvidenceJson("[{\"quote\":\"evidence\"}]"); c.setReviewStatus("PENDING"); return c; }
     private KnowledgeBase privateKb() { KnowledgeBase kb = new KnowledgeBase(); kb.setId(10L); kb.setScope("PRIVATE"); kb.setOwnerUserId(7L); kb.setPositionId(20L); kb.setStatus("ACTIVE"); return kb; }
     private InterviewPosition privatePosition() { InterviewPosition p = new InterviewPosition(); p.setId(20L); p.setScope("PRIVATE"); p.setOwnerUserId(7L); p.setStatus("ACTIVE"); return p; }
-    private QuestionBankBuildService newService(KnowledgeBaseMapper kb, InterviewPositionMapper position, QuestionBankBuildMapper build, QuestionBankBuildCandidateMapper candidate, QuestionBankBuildResponseAssembler assembler, KnowledgeWorkspaceService workspace) { QuestionBankBuildAccessService accessService = mock(QuestionBankBuildAccessService.class); when(accessService.requireBuildTarget(7L, 10L)).thenReturn(privateKb()); return new QuestionBankBuildService(mock(KnowledgeSourceFileMapper.class), build, candidate, mock(AppJobMapper.class), mock(UserLlmConfigService.class), new QuestionBankBuildProperties(), mock(QuestionBankBuildInputService.class), mock(QuestionBankBuildFileStorage.class), accessService, assembler, mock(QuestionBankBuildCreationService.class)); }
+    private QuestionBankBuildService newService(KnowledgeBaseMapper kb, InterviewPositionMapper position, QuestionBankBuildMapper build, QuestionBankBuildCandidateMapper candidate, QuestionBankBuildResponseAssembler assembler, KnowledgeWorkspaceService workspace) { QuestionBankBuildAccessService accessService = mock(QuestionBankBuildAccessService.class); when(accessService.requireBuildTarget(7L, 10L)).thenReturn(privateKb()); return new QuestionBankBuildService(mock(KnowledgeSourceFileMapper.class), build, candidate, mock(AppJobMapper.class), mock(UserLlmConfigService.class), new QuestionBankBuildProperties(), mock(QuestionBankBuildInputService.class), mock(QuestionBankBuildFileStorage.class), accessService, assembler, mock(QuestionBankBuildCreationService.class), new QuestionBankBuildCandidateValidator()); }
 }

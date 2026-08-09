@@ -28,6 +28,9 @@ public class QuestionBankBuildResponse {
     private Integer autoPassCount;
     private Integer needsHumanCount;
     private Integer autoRejectCount;
+    private Integer repairRound;
+    private Integer repairedCount;
+    private Integer repairFailedCount;
     private Long reviewRevision;
     private String finalizationStatus;
     private List<String> finalAtomIds = new ArrayList<>();

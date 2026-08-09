@@ -16,8 +16,11 @@ import {
   getQuestionBankBuildStageLabel,
   getQuestionBankBuildStatusLabel,
   isQuestionBankCandidateAccepted,
+  isQuestionBankCandidateFinalizable,
+  isQuestionBankCandidateRepairVerified,
   isQuestionBankAtomPublishEligible,
-  isQuestionBankBuildInProgress
+  isQuestionBankBuildInProgress,
+  wasQuestionBankCandidateRepairAttempted
 } from '../knowledgeWorkspace'
 
 describe('knowledge workspace utils', () => {
@@ -125,10 +128,27 @@ describe('knowledge workspace utils', () => {
     expect(isQuestionBankAtomPublishEligible({ status: 'DRAFT', reviewStatus: 'NEEDS_REVIEW' })).toBe(false)
     expect(isQuestionBankBuildInProgress({ status: 'PENDING' })).toBe(true)
     expect(isQuestionBankBuildInProgress({ status: 'RUNNING' })).toBe(true)
+    expect(isQuestionBankBuildInProgress({ status: 'COMPLETED', stage: 'REPAIRING' })).toBe(true)
     expect(isQuestionBankBuildInProgress({ status: 'COMPLETED' })).toBe(false)
     expect(getQuestionBankBuildStatusLabel('FAILED')).toBe('失败')
     expect(getQuestionBankBuildStageLabel('SUPERVISING')).toBe('正在审查处理结果')
+    expect(getQuestionBankBuildStageLabel('REPAIRING')).toBe('修复助手正在修改')
+    expect(getQuestionBankBuildStageLabel('RESUPERVISING')).toBe('正在复查修复结果')
     expect(getQuestionBankBuildStageLabel('READY_FOR_FINAL_REVIEW')).toBe('等待人工终审')
     expect(getQuestionBankBuildStageLabel('INDEXING')).toBe('正在同步检索索引')
+  })
+
+  it('uses one candidate contract for finalization and repair statistics', () => {
+    expect(isQuestionBankCandidateFinalizable({ reviewStatus: 'PENDING', machineReviewStatus: 'AUTO_PASS' })).toBe(true)
+    expect(isQuestionBankCandidateFinalizable({ reviewStatus: 'ACCEPTED', machineReviewStatus: 'NEEDS_HUMAN' })).toBe(true)
+    expect(isQuestionBankCandidateFinalizable({ reviewStatus: 'PENDING', machineReviewStatus: 'NEEDS_HUMAN' })).toBe(false)
+    expect(isQuestionBankCandidateFinalizable({ reviewStatus: 'REJECTED', machineReviewStatus: 'AUTO_PASS' })).toBe(false)
+
+    const verified = { repairAttempts: 1, repairStatus: 'VERIFIED', machineReviewStatus: 'AUTO_PASS' }
+    const exhausted = { repairAttempts: 2, repairStatus: 'EXHAUSTED', machineReviewStatus: 'NEEDS_HUMAN' }
+    expect(wasQuestionBankCandidateRepairAttempted(verified)).toBe(true)
+    expect(wasQuestionBankCandidateRepairAttempted(exhausted)).toBe(true)
+    expect(isQuestionBankCandidateRepairVerified(verified)).toBe(true)
+    expect(isQuestionBankCandidateRepairVerified(exhausted)).toBe(false)
   })
 })

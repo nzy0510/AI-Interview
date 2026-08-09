@@ -40,7 +40,7 @@ class QuestionBankBuildFinalizationServiceTest {
         TransactionTemplate transactionTemplate = transactionTemplate(transactionFinished);
         QuestionBankBuildFinalizationService service = new QuestionBankBuildFinalizationService(
                 buildService, buildMapper, candidateMapper, appJobMapper, appJobService,
-                transactionTemplate, recoveryService);
+                mock(QuestionBankBuildFinalizationPreparationService.class), transactionTemplate, recoveryService);
         QuestionBankBuild build = readyBuild(4L);
         when(buildService.requireOwnedBuild(7L, 10L, 99L)).thenReturn(build);
         when(buildMapper.update(any(), any())).thenReturn(1);
@@ -70,30 +70,38 @@ class QuestionBankBuildFinalizationServiceTest {
     }
 
     @Test
-    void shouldBlockFinalReviewWhileHumanExceptionsRemainUnresolved() {
+    void shouldPublishSelectedAutoPassWhileUnresolvedCandidatesRemainUnselected() {
         QuestionBankBuildService buildService = mock(QuestionBankBuildService.class);
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
+        AppJobService appJobService = mock(AppJobService.class);
+        AppJobRecoveryService recoveryService = mock(AppJobRecoveryService.class);
         QuestionBankBuildFinalizationService service = new QuestionBankBuildFinalizationService(
                 buildService,
                 buildMapper,
                 candidateMapper,
                 mock(AppJobMapper.class),
-                mock(AppJobService.class),
+                appJobService,
+                mock(QuestionBankBuildFinalizationPreparationService.class),
                 transactionTemplate(new AtomicBoolean()),
-                mock(AppJobRecoveryService.class));
+                recoveryService);
         when(buildService.requireOwnedBuild(7L, 10L, 99L)).thenReturn(readyBuild(4L));
+        when(buildMapper.update(any(), any())).thenReturn(1);
         when(candidateMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(
                 candidate(101L, "AUTO_PASS", "PENDING"),
                 candidate(102L, "NEEDS_HUMAN", "PENDING")
         ));
+        doAnswer(invocation -> {
+            AppJob job = invocation.getArgument(0);
+            job.setId(502L);
+            return job;
+        }).when(appJobService).createPendingJob(any(AppJob.class));
         QuestionBankBuildFinalizationRequest request = new QuestionBankBuildFinalizationRequest();
         request.setCandidateIds(List.of(101L));
         request.setExpectedReviewRevision(4L);
 
-        assertThatThrownBy(() -> service.start(7L, 10L, 99L, request))
-                .hasMessageContaining("仍有需要人工处理");
-        verify(buildMapper, org.mockito.Mockito.never()).updateById(any());
+        assertThat(service.start(7L, 10L, 99L, request).getJobId()).isEqualTo(502L);
+        verify(appJobService).createPendingJob(any(AppJob.class));
     }
 
     @Test
@@ -106,6 +114,7 @@ class QuestionBankBuildFinalizationServiceTest {
                 candidateMapper,
                 mock(AppJobMapper.class),
                 mock(AppJobService.class),
+                mock(QuestionBankBuildFinalizationPreparationService.class),
                 transactionTemplate(new AtomicBoolean()),
                 mock(AppJobRecoveryService.class));
         when(buildService.requireOwnedBuild(7L, 10L, 99L)).thenReturn(readyBuild(4L));
@@ -114,11 +123,11 @@ class QuestionBankBuildFinalizationServiceTest {
                 candidate(102L, "UNRECOGNIZED", "PENDING")
         ));
         QuestionBankBuildFinalizationRequest request = new QuestionBankBuildFinalizationRequest();
-        request.setCandidateIds(List.of(101L));
+        request.setCandidateIds(List.of(102L));
         request.setExpectedReviewRevision(4L);
 
         assertThatThrownBy(() -> service.start(7L, 10L, 99L, request))
-                .hasMessageContaining("仍有需要人工处理");
+                .hasMessageContaining("尚未通过机器监督");
     }
 
     @Test
@@ -131,6 +140,7 @@ class QuestionBankBuildFinalizationServiceTest {
                 candidateMapper,
                 mock(AppJobMapper.class),
                 mock(AppJobService.class),
+                mock(QuestionBankBuildFinalizationPreparationService.class),
                 transactionTemplate(new AtomicBoolean()),
                 mock(AppJobRecoveryService.class));
         when(buildService.requireOwnedBuild(7L, 10L, 99L)).thenReturn(readyBuild(4L));
@@ -155,6 +165,7 @@ class QuestionBankBuildFinalizationServiceTest {
                 mock(QuestionBankBuildCandidateMapper.class),
                 appJobMapper,
                 mock(AppJobService.class),
+                mock(QuestionBankBuildFinalizationPreparationService.class),
                 transactionTemplate(new AtomicBoolean()),
                 mock(AppJobRecoveryService.class));
         QuestionBankBuild build = readyBuild(5L);
@@ -163,6 +174,12 @@ class QuestionBankBuildFinalizationServiceTest {
         when(buildService.requireOwnedBuild(7L, 10L, 99L)).thenReturn(build);
         AppJob existing = new AppJob();
         existing.setId(501L);
+        existing.setJobType(QuestionBankBuildFinalizationService.JOB_TYPE);
+        existing.setScope("PRIVATE");
+        existing.setBuildId(99L);
+        existing.setOwnerUserId(7L);
+        existing.setPositionId(20L);
+        existing.setKnowledgeBaseId(10L);
         existing.setPayloadJson("{\"candidateIds\":[101,102]}");
         when(appJobMapper.selectOne(any(QueryWrapper.class))).thenReturn(existing);
         QuestionBankBuildFinalizationRequest same = new QuestionBankBuildFinalizationRequest();

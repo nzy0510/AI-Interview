@@ -32,15 +32,27 @@ public class QuestionBankBuildSupervisionService {
     }
 
     QuestionBankBuildSupervisionResult review(QuestionBankBuildSupervisionContext context) {
-        if (!hasEvidenceInSource(context.candidate().getSourceEvidenceJson(), context.sourceText())) {
-            return QuestionBankBuildSupervisionResult.needsHuman("来源证据无法在原文片段中定位");
-        }
+        QuestionBankBuildSupervisionResult precheck = precheck(context);
+        if (precheck != null) return precheck;
+        return parse(complete(context));
+    }
+
+    QuestionBankBuildSupervisionResult precheck(QuestionBankBuildSupervisionContext context) {
+        return hasEvidenceInSource(context.candidate().getSourceEvidenceJson(), context.sourceText())
+                ? null
+                : QuestionBankBuildSupervisionResult.needsHuman("来源证据无法在原文片段中定位");
+    }
+
+    String complete(QuestionBankBuildSupervisionContext context) {
         QuestionBankSearchResponse similar = questionBankService.searchWithMetadata(searchRequest(context));
-        String raw = llm.complete(
+        return llm.complete(
                 context.runtime(),
                 systemPrompt(),
                 userPrompt(context, similar == null ? List.of() : similar.getResults())
         );
+    }
+
+    QuestionBankBuildSupervisionResult parse(String raw) {
         return parseResult(raw);
     }
 

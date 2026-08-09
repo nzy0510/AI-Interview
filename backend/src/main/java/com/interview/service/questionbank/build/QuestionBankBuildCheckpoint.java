@@ -13,27 +13,35 @@ final class QuestionBankBuildCheckpoint {
     private final Set<Integer> completedChunkIndexes;
     private GenerationInvocation generation;
     private GenerationInvocation lastRejectedGeneration;
+    private SupervisionInvocation supervision;
+    private RepairInvocation repair;
 
     private QuestionBankBuildCheckpoint(Set<Integer> completedChunkIndexes,
-                                        GenerationInvocation generation,
-                                        GenerationInvocation lastRejectedGeneration) {
+                                         GenerationInvocation generation,
+                                         GenerationInvocation lastRejectedGeneration,
+                                         SupervisionInvocation supervision,
+                                         RepairInvocation repair) {
         this.completedChunkIndexes = completedChunkIndexes;
         this.generation = generation;
         this.lastRejectedGeneration = lastRejectedGeneration;
+        this.supervision = supervision;
+        this.repair = repair;
     }
 
     static QuestionBankBuildCheckpoint parse(String json) {
-        if (json == null || json.isBlank()) return new QuestionBankBuildCheckpoint(new HashSet<>(), null, null);
+        if (json == null || json.isBlank()) return new QuestionBankBuildCheckpoint(new HashSet<>(), null, null, null, null);
         try {
             if (json.trim().startsWith("[")) {
-                return new QuestionBankBuildCheckpoint(new HashSet<>(JSON.parseArray(json, Integer.class)), null, null);
+                return new QuestionBankBuildCheckpoint(new HashSet<>(JSON.parseArray(json, Integer.class)), null, null, null, null);
             }
             JSONObject state = JSON.parseObject(json);
             List<Integer> completed = state.getList("completedChunkIndexes", Integer.class);
             return new QuestionBankBuildCheckpoint(
                     new HashSet<>(completed == null ? List.of() : completed),
                     parseInvocation(state.getJSONObject("generation")),
-                    parseInvocation(state.getJSONObject("lastRejectedGeneration")));
+                    parseInvocation(state.getJSONObject("lastRejectedGeneration")),
+                    parseSupervisionInvocation(state.getJSONObject("supervision")),
+                    parseRepairInvocation(state.getJSONObject("repair")));
         } catch (Exception e) {
             throw new IllegalStateException("构建检查点损坏，为避免重复模型调用已停止任务");
         }
@@ -47,6 +55,12 @@ final class QuestionBankBuildCheckpoint {
         }
         if (lastRejectedGeneration != null) {
             state.put("lastRejectedGeneration", invocationMap(lastRejectedGeneration));
+        }
+        if (supervision != null) {
+            state.put("supervision", supervisionInvocationMap(supervision));
+        }
+        if (repair != null) {
+            state.put("repair", repairInvocationMap(repair));
         }
         return JSON.toJSONString(state);
     }
@@ -70,10 +84,44 @@ final class QuestionBankBuildCheckpoint {
         generation = new GenerationInvocation(chunkIndex, retryCount, null);
     }
     void clearGeneration() { generation = null; }
+    SupervisionInvocation supervision() { return supervision; }
+    void startSupervision(long candidateId, int retryCount) {
+        supervision = new SupervisionInvocation(candidateId, retryCount, null);
+    }
+    void persistSupervisionResponse(String response) {
+        if (supervision == null) throw new IllegalStateException("监督调用检查点不存在");
+        supervision = new SupervisionInvocation(
+                supervision.candidateId(), supervision.startedRetryCount(), response);
+    }
+    void clearSupervision() { supervision = null; }
+    RepairInvocation repair() { return repair; }
+    void startRepair(long candidateId, int round, int retryCount) {
+        repair = new RepairInvocation(candidateId, round, retryCount, null);
+    }
+    void persistRepairResponse(String response) {
+        if (repair == null) throw new IllegalStateException("修复调用检查点不存在");
+        repair = new RepairInvocation(repair.candidateId(), repair.round(), repair.startedRetryCount(), response);
+    }
+    void clearRepair() { repair = null; }
 
     private static GenerationInvocation parseInvocation(JSONObject value) {
         return value == null ? null : new GenerationInvocation(
                 value.getIntValue("chunkIndex"),
+                value.getIntValue("startedRetryCount"),
+                value.getString("response"));
+    }
+
+    private static RepairInvocation parseRepairInvocation(JSONObject value) {
+        return value == null ? null : new RepairInvocation(
+                value.getLongValue("candidateId"),
+                value.getIntValue("round"),
+                value.getIntValue("startedRetryCount"),
+                value.getString("response"));
+    }
+
+    private static SupervisionInvocation parseSupervisionInvocation(JSONObject value) {
+        return value == null ? null : new SupervisionInvocation(
+                value.getLongValue("candidateId"),
                 value.getIntValue("startedRetryCount"),
                 value.getString("response"));
     }
@@ -86,6 +134,39 @@ final class QuestionBankBuildCheckpoint {
         return value;
     }
 
+    private static Map<String, Object> repairInvocationMap(RepairInvocation invocation) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("candidateId", invocation.candidateId());
+        value.put("round", invocation.round());
+        value.put("startedRetryCount", invocation.startedRetryCount());
+        value.put("response", invocation.response());
+        return value;
+    }
+
+    private static Map<String, Object> supervisionInvocationMap(SupervisionInvocation invocation) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("candidateId", invocation.candidateId());
+        value.put("startedRetryCount", invocation.startedRetryCount());
+        value.put("response", invocation.response());
+        return value;
+    }
+
     record GenerationInvocation(int chunkIndex, int startedRetryCount, String response) {
+    }
+
+    record SupervisionInvocation(long candidateId, int startedRetryCount, String response) {
+    }
+
+    record RepairInvocation(long candidateId, int round, int startedRetryCount, String response) {
+    }
+}
+
+final class QuestionBankBuildLeaseLostException extends IllegalStateException {
+    QuestionBankBuildLeaseLostException() {
+        super("题库构建作业租约已失效，已停止继续处理");
+    }
+
+    QuestionBankBuildLeaseLostException(Throwable cause) {
+        super("题库构建作业租约已失效，已停止继续处理", cause);
     }
 }

@@ -35,9 +35,11 @@ class QuestionBankLifecycleReviewGateTest {
         KnowledgeAtom pass = draft("pass", "PASS");
         KnowledgeAtom pending = draft("pending", "NEEDS_REVIEW");
         KnowledgeAtom rejected = draft("rejected", "REJECT");
+        KnowledgeAtom missingSource = draft("missing-source", "PASS");
+        missingSource.setSourceRef(" ");
         KnowledgeAtom published = draft("published", "PASS");
         published.setStatus("PUBLISHED");
-        when(atomMapper.selectList(any())).thenReturn(List.of(pass, pending, rejected, published));
+        when(atomMapper.selectList(any())).thenReturn(List.of(pass, pending, rejected, missingSource, published));
         when(qdrantVectorService.upsert(pass)).thenReturn(true);
 
         QuestionBankLifecycleService service = new QuestionBankLifecycleService(
@@ -45,15 +47,16 @@ class QuestionBankLifecycleReviewGateTest {
                 new QuestionBankVectorSyncService(atomMapper, versionMapper, batchMapper, qdrantVectorService));
 
         Map<String, Integer> result = service.publishAtoms(List.of(
-                "pass", "pending", "rejected", "published"));
+                "pass", "pending", "rejected", "missing-source", "published"));
 
-        assertThat(result).containsEntry("matched", 4)
+        assertThat(result).containsEntry("matched", 5)
                 .containsEntry("published", 1)
                 .containsEntry("synced", 1)
-                .containsEntry("skipped", 3);
+                .containsEntry("skipped", 4);
         verify(atomMapper, org.mockito.Mockito.atLeastOnce()).updateById(pass);
         verify(atomMapper, never()).updateById(pending);
         verify(atomMapper, never()).updateById(rejected);
+        verify(atomMapper, never()).updateById(missingSource);
         verify(atomMapper, never()).updateById(published);
         verify(qdrantVectorService).upsert(pass);
     }
@@ -63,7 +66,9 @@ class QuestionBankLifecycleReviewGateTest {
         KnowledgeAtom pass = draft("pass", "PASS");
         KnowledgeAtom pending = draft("pending", "NEEDS_REVIEW");
         KnowledgeAtom rejected = draft("rejected", "REJECT");
-        when(atomMapper.selectList(any())).thenReturn(List.of(pass, pending, rejected));
+        KnowledgeAtom missingEvidence = draft("missing-evidence", "PASS");
+        missingEvidence.setSourceEvidenceJson("[]");
+        when(atomMapper.selectList(any())).thenReturn(List.of(pass, pending, rejected, missingEvidence));
         when(qdrantVectorService.upsert(pass)).thenReturn(true);
 
         QuestionBankLifecycleService service = new QuestionBankLifecycleService(
@@ -73,13 +78,14 @@ class QuestionBankLifecycleReviewGateTest {
         Map<String, Integer> result = service.publishAllDrafts(
                 new QuestionBankImportScope("PRIVATE", 7L, 20L, 30L, 7L, false));
 
-        assertThat(result).containsEntry("matched", 3)
+        assertThat(result).containsEntry("matched", 4)
                 .containsEntry("published", 1)
                 .containsEntry("synced", 1)
-                .containsEntry("skipped", 2);
+                .containsEntry("skipped", 3);
         verify(atomMapper, org.mockito.Mockito.atLeastOnce()).updateById(pass);
         verify(atomMapper, never()).updateById(pending);
         verify(atomMapper, never()).updateById(rejected);
+        verify(atomMapper, never()).updateById(missingEvidence);
     }
 
     @Test
@@ -176,6 +182,8 @@ class QuestionBankLifecycleReviewGateTest {
         atom.setOwnerUserId(7L);
         atom.setPositionId(20L);
         atom.setKnowledgeBaseId(30L);
+        atom.setSourceRef("source.pdf#page=1");
+        atom.setSourceEvidenceJson("[{\"quote\":\"source quote\"}]");
         return atom;
     }
 }

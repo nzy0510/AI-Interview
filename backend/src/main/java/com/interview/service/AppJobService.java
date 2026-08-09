@@ -72,16 +72,19 @@ public class AppJobService {
 
     @Transactional
     public void updateRunningJob(Long jobId, String workerId, String stage, int progress) {
+        if (workerId == null || workerId.isBlank()) {
+            throw new IllegalStateException("运行中作业缺少执行令牌");
+        }
         UpdateWrapper<AppJob> update = new UpdateWrapper<AppJob>()
                 .eq("id", jobId)
                 .eq("status", STATUS_RUNNING)
+                .eq("claimed_by", workerId)
                 .set("stage", stage)
                 .set("progress", progress)
                 .set("locked_until", LocalDateTime.now().plus(RUNNING_LOCK_EXTENSION));
-        if (workerId != null) {
-            update.eq("claimed_by", workerId);
+        if (appJobMapper.update(null, update) != 1) {
+            throw new IllegalStateException("作业执行权已失效");
         }
-        appJobMapper.update(null, update);
     }
 
     @Transactional
@@ -109,7 +112,9 @@ public class AppJobService {
         if (workerId != null) {
             update.eq("claimed_by", workerId);
         }
-        appJobMapper.update(null, update);
+        if (appJobMapper.update(null, update) != 1) {
+            throw new IllegalStateException("作业执行权已失效，不能完成作业");
+        }
     }
 
     @Transactional
@@ -146,7 +151,9 @@ public class AppJobService {
         if (workerId != null) {
             update.eq("claimed_by", workerId);
         }
-        appJobMapper.update(null, update);
+        if (appJobMapper.update(null, update) != 1) {
+            throw new IllegalStateException("作业执行权已失效，不能标记失败");
+        }
     }
 
     @Transactional
@@ -166,8 +173,10 @@ public class AppJobService {
         if (!canRetry(job, userId, admin)) {
             return false;
         }
-        appJobMapper.update(null, new UpdateWrapper<AppJob>()
+        UpdateWrapper<AppJob> update = new UpdateWrapper<AppJob>()
                 .eq("id", jobId)
+                .eq("status", STATUS_FAILED)
+                .eq("retryable", true)
                 .set("status", STATUS_PENDING)
                 .set("progress", 0)
                 .set("result_json", null)
@@ -176,8 +185,13 @@ public class AppJobService {
                 .set("retryable", false)
                 .set("claimed_by", null)
                 .set("locked_until", null)
-                .set("retry_count", job.getRetryCount() == null ? 1 : job.getRetryCount() + 1));
-        return true;
+                .set("retry_count", job.getRetryCount() == null ? 1 : job.getRetryCount() + 1);
+        if (job.getRetryCount() == null) {
+            update.isNull("retry_count");
+        } else {
+            update.eq("retry_count", job.getRetryCount());
+        }
+        return appJobMapper.update(null, update) == 1;
     }
 
     @Transactional
@@ -193,8 +207,9 @@ public class AppJobService {
         List<AppJob> jobs = appJobMapper.selectList(new QueryWrapper<AppJob>()
                 .eq("status", STATUS_RUNNING)
                 .lt("locked_until", now));
+        int recovered = 0;
         for (AppJob job : jobs) {
-            appJobMapper.update(null, new UpdateWrapper<AppJob>()
+            recovered += appJobMapper.update(null, new UpdateWrapper<AppJob>()
                     .eq("id", job.getId())
                     .eq("status", STATUS_RUNNING)
                     .lt("locked_until", now)
@@ -202,7 +217,7 @@ public class AppJobService {
                     .set("claimed_by", null)
                     .set("locked_until", null));
         }
-        return jobs.size();
+        return recovered;
     }
 
     private boolean canRetry(AppJob job, Long userId, boolean admin) {

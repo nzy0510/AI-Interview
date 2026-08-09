@@ -32,9 +32,12 @@ describe('QuestionBankBuildPanel', () => {
     expect(wrapper.text()).toContain('文件 / 上传大小')
     expect(wrapper.text()).not.toContain('预估分块 / 最低调用')
     expect(wrapper.text()).not.toContain('页数与字符量提交后返回')
-    expect(wrapper.findComponent({ name: 'ElSelect' }).props('placeholder')).toBe('生成分类提示（可选）')
+    expect(wrapper.find('details.advanced-settings').attributes('open')).toBeUndefined()
+    expect(wrapper.find('details.advanced-settings').text()).toContain('高级设置')
+    expect(wrapper.findComponent({ name: 'ElSelect' }).props('placeholder')).toBe('不选时使用“通用”')
     expect(wrapper.text()).toContain('不是题库筛选条件')
     expect(wrapper.text()).not.toContain('已有 JSON 导入包')
+    expect(wrapper.findAll('.pipeline-step')).toHaveLength(6)
   })
 
   it('disables deletion while a build is pending or running', () => {
@@ -82,7 +85,9 @@ describe('QuestionBankBuildPanel', () => {
           candidateCount: 7,
           autoPassCount: 5,
           needsHumanCount: 1,
-          autoRejectCount: 1
+          autoRejectCount: 1,
+          repairedCount: 2,
+          repairRound: 1
         }
       },
       global: { plugins: [ElementPlus] }
@@ -90,8 +95,92 @@ describe('QuestionBankBuildPanel', () => {
 
     expect(wrapper.text()).toContain('正在审查处理结果')
     expect(wrapper.text()).toContain('监督通过 5')
-    expect(wrapper.text()).toContain('需人工 1')
+    expect(wrapper.text()).toContain('需关注 1')
     expect(wrapper.text()).toContain('自动排除 1')
+    expect(wrapper.text()).toContain('修复后通过 2')
+    expect(wrapper.text()).toContain('修复轮次 1')
+    expect(wrapper.findAll('.pipeline-step')[2].classes()).toContain('is-active')
     expect(wrapper.text()).not.toContain('逐条确认')
+  })
+
+  it('shows repair and re-supervision as the same user-facing automatic repair step', () => {
+    const wrapper = mount(QuestionBankBuildPanel, {
+      props: {
+        canBuild: true,
+        llmStatus: { resolved: true, hasActiveConfig: true },
+        position: { name: 'Java 后端' },
+        activeBuild: { id: 9, status: 'RUNNING', stage: 'RESUPERVISING', progress: 84 }
+      },
+      global: { plugins: [ElementPlus] }
+    })
+
+    expect(wrapper.text()).toContain('正在复查修复结果')
+    expect(wrapper.findAll('.pipeline-step')[3].classes()).toContain('is-active')
+  })
+
+  it('explains a repair failure at final review without also claiming normal completion', () => {
+    const errorMessage = '第 2 轮修复调用失败：上游模型超时'
+    const wrapper = mount(QuestionBankBuildPanel, {
+      props: {
+        canBuild: true,
+        llmStatus: { resolved: true, hasActiveConfig: true },
+        position: { name: 'Java 后端' },
+        activeBuild: {
+          id: 9,
+          status: 'COMPLETED',
+          stage: 'READY_FOR_FINAL_REVIEW',
+          progress: 100,
+          errorMessage
+        }
+      },
+      global: { plugins: [ElementPlus] }
+    })
+
+    const warning = wrapper.get('[data-testid="final-review-repair-warning"]')
+    expect(warning.text()).toContain('本次修复助手处理失败')
+    expect(warning.text()).toContain(errorMessage)
+    expect(warning.text()).toContain('原有可发布项未受影响')
+    expect(warning.text()).toContain('可到“终审发布”重试修复')
+    expect(wrapper.text()).not.toContain('自动处理已完成')
+    expect(wrapper.find('.error-text').exists()).toBe(false)
+  })
+
+  it('shows partial index failure as a warning instead of a fully completed pipeline', () => {
+    const wrapper = mount(QuestionBankBuildPanel, {
+      props: {
+        canBuild: true,
+        llmStatus: { resolved: true, hasActiveConfig: true },
+        position: { name: 'Java 后端' },
+        activeBuild: {
+          id: 9,
+          status: 'FAILED',
+          stage: 'PUBLISHED_WITH_INDEX_ERRORS',
+          progress: 100,
+          errorMessage: '1 条索引同步失败'
+        }
+      },
+      global: { plugins: [ElementPlus] }
+    })
+
+    const steps = wrapper.findAll('.pipeline-step')
+    expect(steps.slice(0, 5).every((step) => step.classes().includes('is-complete'))).toBe(true)
+    expect(steps[5].classes()).toContain('is-warning')
+    expect(steps[5].classes()).not.toContain('is-complete')
+    expect(wrapper.text()).toContain('数据库已发布，但部分检索索引同步失败')
+  })
+
+  it('does not disguise a failed build as active document parsing', () => {
+    const wrapper = mount(QuestionBankBuildPanel, {
+      props: {
+        canBuild: true,
+        llmStatus: { resolved: true, hasActiveConfig: true },
+        position: { name: 'Java 后端' },
+        activeBuild: { id: 9, status: 'FAILED', stage: 'FAILED', progress: 84, errorMessage: '监督失败' }
+      },
+      global: { plugins: [ElementPlus] }
+    })
+
+    expect(wrapper.findAll('.pipeline-step').some((step) => step.classes().includes('is-active'))).toBe(false)
+    expect(wrapper.text()).toContain('监督失败')
   })
 })

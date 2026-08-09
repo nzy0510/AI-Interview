@@ -64,7 +64,7 @@ class QuestionBankBuildServiceAccessTest {
                 mock(UserLlmConfigService.class), new QuestionBankBuildProperties(),
                 mock(QuestionBankBuildInputService.class), mock(QuestionBankBuildFileStorage.class),
                 accessService, mock(QuestionBankBuildResponseAssembler.class),
-                mock(QuestionBankBuildCreationService.class));
+                mock(QuestionBankBuildCreationService.class), new QuestionBankBuildCandidateValidator());
 
         assertThatThrownBy(() -> service.delete(7L, 10L, 99L))
                 .hasMessageContaining("正在执行");
@@ -107,13 +107,41 @@ class QuestionBankBuildServiceAccessTest {
                 sourceFileMapper, buildMapper, candidateMapper, appJobMapper,
                 mock(UserLlmConfigService.class), new QuestionBankBuildProperties(),
                 mock(QuestionBankBuildInputService.class), storage, accessService,
-                mock(QuestionBankBuildResponseAssembler.class), mock(QuestionBankBuildCreationService.class));
+                mock(QuestionBankBuildResponseAssembler.class), mock(QuestionBankBuildCreationService.class),
+                new QuestionBankBuildCandidateValidator());
 
         service.delete(7L, 10L, 99L);
 
         verify(buildMapper).update(isNull(), any(UpdateWrapper.class));
         verify(buildMapper).deleteById(99L);
         verify(storage).deleteBuild(99L);
+    }
+
+    @Test
+    void shouldRemovePrivateBuildArtifactsWhenDeletingTheirPosition() throws Exception {
+        QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        KnowledgeSourceFileMapper sourceFileMapper = mock(KnowledgeSourceFileMapper.class);
+        QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
+        AppJobMapper appJobMapper = mock(AppJobMapper.class);
+        QuestionBankBuildFileStorage storage = mock(QuestionBankBuildFileStorage.class);
+        QuestionBankBuild build = new QuestionBankBuild();
+        build.setId(99L); build.setOwnerUserId(7L); build.setPositionId(20L); build.setScope("PRIVATE");
+        when(buildMapper.selectList(any())).thenReturn(List.of(build));
+        when(appJobMapper.selectCount(any())).thenReturn(0L);
+        QuestionBankBuildService service = new QuestionBankBuildService(
+                sourceFileMapper, buildMapper, candidateMapper, appJobMapper,
+                mock(UserLlmConfigService.class), new QuestionBankBuildProperties(),
+                mock(QuestionBankBuildInputService.class), storage, mock(QuestionBankBuildAccessService.class),
+                mock(QuestionBankBuildResponseAssembler.class), mock(QuestionBankBuildCreationService.class),
+                new QuestionBankBuildCandidateValidator());
+
+        service.deleteForPosition(7L, 20L);
+
+        verify(storage).deleteBuild(99L);
+        verify(candidateMapper).delete(any());
+        verify(sourceFileMapper).delete(any());
+        verify(appJobMapper).delete(any());
+        verify(buildMapper).delete(any());
     }
 
     private QuestionBankBuildService service(QuestionBankBuildAccessService accessService,
@@ -128,7 +156,8 @@ class QuestionBankBuildServiceAccessTest {
                 mock(QuestionBankBuildCandidateMapper.class), mock(AppJobMapper.class),
                 mock(UserLlmConfigService.class), new QuestionBankBuildProperties(),
                 mock(QuestionBankBuildInputService.class), mock(QuestionBankBuildFileStorage.class),
-                accessService, assembler, mock(QuestionBankBuildCreationService.class));
+                accessService, assembler, mock(QuestionBankBuildCreationService.class),
+                new QuestionBankBuildCandidateValidator());
     }
 
 }

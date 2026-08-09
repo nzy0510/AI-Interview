@@ -14,14 +14,15 @@ const mocks = vi.hoisted(() => ({
   updateAtom: vi.fn(),
   validateImport: vi.fn(),
   importPackage: vi.fn(),
-  listBuilds: vi.fn()
+  listBuilds: vi.fn(),
+  confirm: vi.fn()
 }))
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('@element-plus/icons-vue', () => ({ ArrowLeft: {}, Plus: {}, RefreshRight: {} }))
 vi.mock('element-plus', () => ({
   ElMessage: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
-  ElMessageBox: { confirm: vi.fn() }
+  ElMessageBox: { confirm: mocks.confirm }
 }))
 vi.mock('@/api/llm', () => ({ getLlmConfigStatusAPI: vi.fn().mockResolvedValue({ resolved: true, hasActiveConfig: true }) }))
 vi.mock('@/api/knowledgeWorkspace', () => ({
@@ -130,6 +131,7 @@ describe('KnowledgeWorkspace position loading', () => {
     mocks.searchAtoms.mockResolvedValue({ items: [], total: 0, page: 1, size: 10 })
     mocks.validateImport.mockResolvedValue({ errors: [] })
     mocks.importPackage.mockResolvedValue({ imported: 1 })
+    mocks.confirm.mockResolvedValue('confirm')
   })
 
   it('loads the initiating admins build history for an authorized public position', async () => {
@@ -191,6 +193,35 @@ describe('KnowledgeWorkspace position loading', () => {
     expect(wrapper.findComponent({ name: 'QuestionBankJsonImportCard' }).exists()).toBe(false)
     expect(mocks.getAtom).toHaveBeenCalledWith(7)
     expect(wrapper.findComponent({ name: 'QuestionBankAtomEditDialog' }).props('modelValue')).toBe(true)
+  })
+
+  it('requires explicit confirmation before leaving final review with unsaved edits', async () => {
+    mocks.getWorkspace.mockResolvedValue({ positions: [privatePosition] })
+    mocks.getCoverage.mockResolvedValue({ details: [] })
+    const wrapper = mountWorkspace()
+    await flushPromises()
+
+    await wrapper.findComponent({ name: 'KnowledgeWorkspaceTabs' }).vm.$emit('update:modelValue', 'candidates')
+    await nextTick()
+    wrapper.findComponent({ name: 'QuestionBankCandidateReviewPanel' }).vm.$emit('dirty-change', true)
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="workspace-refresh"]').attributes('disabled')).toBeDefined()
+
+    mocks.confirm.mockRejectedValueOnce(new Error('cancelled'))
+    await wrapper.findComponent({ name: 'KnowledgeWorkspaceTabs' }).vm.$emit('update:modelValue', 'atoms')
+    await flushPromises()
+    expect(wrapper.findComponent({ name: 'QuestionBankCandidateReviewPanel' }).exists()).toBe(true)
+    expect(mocks.confirm).toHaveBeenCalledWith(
+      expect.stringContaining('未保存修改'),
+      '放弃修改？',
+      expect.objectContaining({ confirmButtonText: '放弃修改并切换' })
+    )
+
+    mocks.confirm.mockResolvedValueOnce('confirm')
+    await wrapper.findComponent({ name: 'KnowledgeWorkspaceTabs' }).vm.$emit('update:modelValue', 'atoms')
+    await flushPromises()
+    expect(wrapper.findComponent({ name: 'QuestionBankAtomPanel' }).exists()).toBe(true)
   })
 
   it('does not open an atom from the previously selected knowledge base after switching positions', async () => {

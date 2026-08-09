@@ -37,7 +37,7 @@ public class QuestionBankBuildResponseAssembler {
         response.setSourceFiles(files.stream().map(this::toSourceFile).toList());
         response.setFileCount(files.size()); response.setChunkCount(build.getChunkCount()); response.setEstimatedCallCount(estimatedCallCount(build));
         response.setCompletedChunkCount(build.getCompletedChunkCount()); response.setCandidateCount(build.getCandidateCount()); response.setAcceptedCount(build.getAcceptedCount()); response.setRejectedCount(build.getRejectedCount());
-        response.setAutoPassCount(build.getAutoPassCount()); response.setNeedsHumanCount(build.getNeedsHumanCount()); response.setAutoRejectCount(build.getAutoRejectCount()); response.setReviewRevision(build.getReviewRevision()); response.setFinalizationStatus(build.getFinalizationStatus()); response.setFinalAtomIds(parseStringList(build.getFinalAtomIdsJson()));
+        response.setAutoPassCount(build.getAutoPassCount()); response.setNeedsHumanCount(build.getNeedsHumanCount()); response.setAutoRejectCount(build.getAutoRejectCount()); response.setRepairRound(build.getRepairRound()); response.setRepairedCount(build.getRepairedCount()); response.setRepairFailedCount(build.getRepairFailedCount()); response.setReviewRevision(build.getReviewRevision()); response.setFinalizationStatus(build.getFinalizationStatus()); response.setFinalAtomIds(parseStringList(build.getFinalAtomIdsJson()));
         response.setConfigId(build.getLlmConfigId()); response.setProvider(build.getLlmProvider()); response.setModel(build.getLlmModel()); response.setPromptVersion(build.getPromptVersion());
         response.setErrorMessage(build.getErrorMessage()); response.setFinalizationResult(parseMap(build.getFinalizationResultJson())); response.setFinalizedBy(build.getFinalizedBy()); response.setFinalizedAt(build.getFinalizedAt()); response.setCreateTime(build.getCreateTime()); response.setUpdateTime(build.getUpdateTime());
         return response;
@@ -47,7 +47,9 @@ public class QuestionBankBuildResponseAssembler {
         QuestionBankBuildCandidateResponse response = new QuestionBankBuildCandidateResponse();
         response.setCandidateId(candidate.getId()); response.setStableAtomId(candidate.getStableAtomId()); response.setBuildId(candidate.getBuildId()); response.setChunkIndex(candidate.getChunkIndex()); response.setSourceFileId(candidate.getSourceFileId()); response.setSourceRef(candidate.getSourceRef());
         response.setSourceEvidence(parseEvidence(candidate.getSourceEvidenceJson())); response.setSubject(candidate.getSubject()); response.setCategory(candidate.getCategory()); response.setDifficulty(candidate.getDifficulty()); response.setTags(parseStringList(candidate.getTagsJson())); response.setPrinciples(candidate.getPrinciples()); response.setPitfalls(candidate.getPitfalls()); response.setFollowUpPaths(parseStringList(candidate.getFollowUpPathsJson()));
-        response.setSelfCheck(parseMap(candidate.getSelfCheckJson())); response.setDuplicateHint(candidate.getDuplicateHint()); response.setMachineReviewStatus(candidate.getMachineReviewStatus()); response.setMachineReviewScore(candidate.getMachineReviewScore()); response.setMachineReviewIssues(parseStringList(candidate.getMachineReviewIssuesJson())); response.setMachineSuggestedPatch(parseMap(candidate.getMachineSuggestedPatchJson())); response.setMachineReviewPromptVersion(candidate.getMachineReviewPromptVersion()); response.setMachineReviewAttempts(candidate.getMachineReviewAttempts()); response.setMachineReviewedAt(candidate.getMachineReviewedAt()); response.setReviewStatus(candidate.getReviewStatus()); response.setReviewReason(candidate.getReviewReason()); response.setUpdatedAt(candidate.getUpdatedAt());
+        response.setSelfCheck(parseMap(candidate.getSelfCheckJson())); response.setDuplicateHint(candidate.getDuplicateHint()); response.setMachineReviewStatus(candidate.getMachineReviewStatus()); response.setMachineReviewScore(candidate.getMachineReviewScore()); response.setMachineReviewIssues(parseStringList(candidate.getMachineReviewIssuesJson())); response.setMachineSuggestedPatch(parseMap(candidate.getMachineSuggestedPatchJson())); response.setMachineReviewPromptVersion(candidate.getMachineReviewPromptVersion()); response.setMachineReviewAttempts(candidate.getMachineReviewAttempts()); response.setMachineReviewedAt(candidate.getMachineReviewedAt());
+        List<Map<String, Object>> repairHistory = parseMapList(candidate.getRepairHistoryJson()); response.setRepairStatus(candidate.getRepairStatus()); response.setRepairAttempts(candidate.getRepairAttempts()); response.setRepairRound(candidate.getRepairRound()); response.setRepairInstruction(candidate.getRepairInstruction()); response.setRepairPromptVersion(candidate.getRepairPromptVersion()); response.setRepairHistory(repairHistory); response.setRepairSummary(lastRepairSummary(repairHistory)); response.setRepairedAt(candidate.getRepairedAt());
+        response.setReviewStatus(candidate.getReviewStatus()); response.setReviewReason(candidate.getReviewReason()); response.setUpdatedAt(candidate.getUpdatedAt());
         return response;
     }
 
@@ -84,6 +86,25 @@ public class QuestionBankBuildResponseAssembler {
     private Map<String, Object> parseMap(String json) {
         if (json == null || json.isBlank()) return null;
         try { return JSON.parseObject(json, Map.class); } catch (Exception e) { return null; }
+    }
+
+    private List<Map<String, Object>> parseMapList(String json) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (json == null || json.isBlank()) return result;
+        try {
+            for (Map<?, ?> value : JSON.parseArray(json, Map.class)) {
+                Map<String, Object> normalized = new java.util.LinkedHashMap<>();
+                value.forEach((key, item) -> normalized.put(String.valueOf(key), item));
+                result.add(normalized);
+            }
+        } catch (Exception ignored) { }
+        return result;
+    }
+
+    private String lastRepairSummary(List<Map<String, Object>> history) {
+        if (history == null || history.isEmpty()) return null;
+        Object summary = history.get(history.size() - 1).get("summary");
+        return summary == null ? null : String.valueOf(summary);
     }
 
     private List<KnowledgeAtomPayload.SourceEvidence> parseCoreEvidence(String json) {

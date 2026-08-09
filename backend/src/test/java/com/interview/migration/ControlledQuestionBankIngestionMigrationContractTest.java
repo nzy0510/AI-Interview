@@ -18,6 +18,8 @@ class ControlledQuestionBankIngestionMigrationContractTest {
             "src/main/resources/db/migration/V22__controlled_question_bank_ingestion_pipeline.sql");
     private static final Path UNRESOLVED_COUNT_MIGRATION = Path.of(
             "src/main/resources/db/migration/V23__recompute_unresolved_question_bank_review_counts.sql");
+    private static final Path AUTO_REPAIR_MIGRATION = Path.of(
+            "src/main/resources/db/migration/V24__add_question_bank_auto_repair.sql");
 
     @Test
     void migrationShouldSeparateMachineReviewAndPersistIdempotentFinalization() throws Exception {
@@ -70,6 +72,27 @@ class ControlledQuestionBankIngestionMigrationContractTest {
                 .contains("needs_human_count")
                 .contains("machine_review_status = 'needs_human'")
                 .contains("review_status = 'pending'");
+    }
+
+    @Test
+    void autoRepairMigrationShouldPersistBoundedRepairAuditAndRuntimeSnapshot() throws Exception {
+        String sql = Files.readString(AUTO_REPAIR_MIGRATION)
+                .toLowerCase().replace("`", "").replaceAll("\\s+", " ");
+
+        assertThat(sql)
+                .contains("repair_status")
+                .contains("repair_attempts")
+                .contains("repair_prompt_version")
+                .contains("repair_history_json")
+                .contains("repair_round")
+                .contains("repaired_count")
+                .contains("repair_failed_count")
+                .contains("llm_runtime_fingerprint");
+        assertFields(QuestionBankBuildCandidate.class,
+                "repairStatus", "repairAttempts", "repairRound", "repairInstruction",
+                "repairPromptVersion", "repairHistoryJson", "repairedAt");
+        assertFields(QuestionBankBuild.class,
+                "repairRound", "repairedCount", "repairFailedCount", "llmRuntimeFingerprint");
     }
 
     private void assertFields(Class<?> entityClass, String... names) {

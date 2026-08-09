@@ -218,6 +218,8 @@ public class QdrantVectorService {
                                             Long knowledgeBaseId) {
         List<Object> must = new ArrayList<>();
         must.add(Map.of("key", "status", "match", Map.of("value", "PUBLISHED")));
+        must.add(Map.of("key", "publication_status", "match", Map.of("value", "PUBLISHED")));
+        must.add(Map.of("key", "vector_status", "match", Map.of("value", "SYNCED")));
         String normalizedScope = scope == null || scope.isBlank() ? null : scope.trim().toUpperCase();
         if (normalizedScope != null) {
             must.add(Map.of("key", "scope", "match", Map.of("value", normalizedScope)));

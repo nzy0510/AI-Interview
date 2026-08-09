@@ -40,6 +40,27 @@ export function isQuestionBankCandidateAccepted(candidate) {
   return ['ACCEPTED', 'PASS'].includes(String(candidate?.status || candidate?.reviewStatus || '').toUpperCase())
 }
 
+export function isQuestionBankCandidateFinalizable(candidate) {
+  const reviewStatus = String(candidate?.status || candidate?.reviewStatus || '').toUpperCase()
+  if (reviewStatus === 'REJECTED') return false
+  return reviewStatus === 'ACCEPTED'
+    || (reviewStatus === 'PENDING'
+      && String(candidate?.machineReviewStatus || '').toUpperCase() === 'AUTO_PASS')
+}
+
+export function wasQuestionBankCandidateRepairAttempted(candidate) {
+  return Number(candidate?.repairAttempts || 0) > 0
+    || Boolean(candidate?.repairSummary)
+    || (Array.isArray(candidate?.repairHistory) && candidate.repairHistory.length > 0)
+}
+
+export function isQuestionBankCandidateRepairVerified(candidate) {
+  if (!wasQuestionBankCandidateRepairAttempted(candidate)) return false
+  const repairStatus = String(candidate?.repairStatus || '').toUpperCase()
+  return ['VERIFIED', 'SUCCEEDED', 'COMPLETED'].includes(repairStatus)
+    && String(candidate?.machineReviewStatus || '').toUpperCase() === 'AUTO_PASS'
+}
+
 export function isQuestionBankAtomPublishEligible(atom) {
   const status = String(atom?.status || '').toUpperCase()
   const reviewStatus = String(atom?.reviewStatus || '').toUpperCase()
@@ -48,7 +69,9 @@ export function isQuestionBankAtomPublishEligible(atom) {
 
 export function isQuestionBankBuildInProgress(build) {
   const status = String(build?.status || build || '').toUpperCase()
+  const stage = typeof build === 'object' ? String(build?.stage || '').toUpperCase() : ''
   return ['PENDING', 'RUNNING'].includes(status)
+    || ['QUEUED', 'PARSING', 'GENERATING', 'SUPERVISING', 'REPAIRING', 'RESUPERVISING', 'FINALIZING', 'IMPORTING', 'PUBLISHING', 'INDEXING'].includes(stage)
 }
 
 export function getQuestionBankBuildStatusLabel(status) {
@@ -76,8 +99,11 @@ export function getQuestionBankBuildStatusType(status) {
 export function getQuestionBankBuildStageLabel(stage) {
   const labels = {
     QUEUED: '等待处理',
+    PARSING: '正在解析文档',
     GENERATING: '正在处理文档',
     SUPERVISING: '正在审查处理结果',
+    REPAIRING: '修复助手正在修改',
+    RESUPERVISING: '正在复查修复结果',
     READY_FOR_FINAL_REVIEW: '等待人工终审',
     FINALIZING: '正在执行终审',
     IMPORTING: '正在写入草稿',

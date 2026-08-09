@@ -10,6 +10,7 @@
       "category": "java",
       "difficulty": "mid",
       "tags": ["java"],
+      "sourceEvidence": [{"quote": "第一个题目的标准答案。"}],
       "content": {
         "principles": "第一个题目的标准答案。",
         "pitfalls": "重复 ID 测试题的常见陷阱。",
@@ -22,6 +23,7 @@
       "category": "java",
       "difficulty": "mid",
       "tags": ["java"],
+      "sourceEvidence": [{"quote": "第二个题目的标准答案。"}],
       "content": {
         "principles": "第二个题目的标准答案。",
         "pitfalls": "重复 ID 测试题的常见陷阱。",

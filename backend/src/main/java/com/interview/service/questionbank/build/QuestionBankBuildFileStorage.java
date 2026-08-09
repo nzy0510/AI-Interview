@@ -47,6 +47,10 @@ public class QuestionBankBuildFileStorage {
         return Files.readString(resolve(storageKey), StandardCharsets.UTF_8);
     }
 
+    public byte[] readBytes(String storageKey) throws IOException {
+        return Files.readAllBytes(resolve(storageKey));
+    }
+
     public void deleteBuild(Long buildId) throws IOException {
         Path directory = buildDirectory(buildId);
         if (!Files.exists(directory)) {

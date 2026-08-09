@@ -37,6 +37,13 @@ public class QuestionBankBuildCandidate {
     private String machineReviewPromptVersion;
     private Integer machineReviewAttempts;
     private LocalDateTime machineReviewedAt;
+    private String repairStatus;
+    private Integer repairAttempts;
+    private Integer repairRound;
+    private String repairInstruction;
+    private String repairPromptVersion;
+    private String repairHistoryJson;
+    private LocalDateTime repairedAt;
     private String reviewStatus;
     private String reviewReason;
     private LocalDateTime createdAt;

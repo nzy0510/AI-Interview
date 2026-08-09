@@ -18,6 +18,7 @@ import com.interview.mapper.KnowledgeAtomVersionMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.service.AdminRoleService;
+import com.interview.service.questionbank.build.QuestionBankBuildService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,7 @@ class KnowledgeWorkspaceServiceTest {
     private QdrantVectorService qdrantVectorService;
     private RagRetrievalLogMapper ragLogMapper;
     private QuestionBankAccessProperties accessProperties;
+    private QuestionBankBuildService questionBankBuildService;
     private KnowledgeWorkspaceService service;
 
     @BeforeEach
@@ -66,10 +68,11 @@ class KnowledgeWorkspaceServiceTest {
         ragLogMapper = mock(RagRetrievalLogMapper.class);
         accessProperties = new QuestionBankAccessProperties();
         accessProperties.setUserMaintenanceEnabled(true);
+        questionBankBuildService = mock(QuestionBankBuildService.class);
         service = new KnowledgeWorkspaceService(positionMapper, knowledgeBaseMapper,
                 atomMapper, versionMapper, reviewMapper,
                 appJobMapper, adminRoleService, questionBankService, qdrantVectorService,
-                ragLogMapper, accessProperties);
+                ragLogMapper, accessProperties, questionBankBuildService);
     }
 
     @Test
@@ -307,6 +310,7 @@ class KnowledgeWorkspaceServiceTest {
         service.deletePrivatePosition(7L, 20L);
 
         verify(positionMapper).deleteById(20L);
+        verify(questionBankBuildService).deleteForPosition(7L, 20L);
     }
 
     @Test

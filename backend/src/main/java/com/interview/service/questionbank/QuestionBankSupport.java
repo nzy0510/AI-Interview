@@ -233,7 +233,8 @@ abstract class QuestionBankSupport {
                                    String defaultCategory,
                                    String sourceRef,
                                    String mode,
-                                   QuestionBankImportScope scope) {
+                                   QuestionBankImportScope scope,
+                                   boolean trustedReviewed) {
         KnowledgeAtom atom = new KnowledgeAtom();
         atom.setAtomId(scopedAtomId(payload.getId(), scope));
         atom.setSubject(payload.getSubject().trim());
@@ -252,19 +253,16 @@ abstract class QuestionBankSupport {
         atom.setSourceFileId(payload.getSourceFileId());
         atom.setChecksum(checksum(atom));
         atom.setVectorStatus(QuestionBankService.STATUS_PUBLISHED.equals(atom.getStatus()) ? "PENDING" : "SKIPPED");
-        // Import packages are treated as externally reviewed material. Scoped
-        // imports still remain DRAFT and require an explicit publication action.
-        atom.setReviewStatus("PASS");
-        atom.setReviewReason("导入包人工维护");
-        atom.setReviewConfidence(1.0);
-        atom.setReviewedAt(LocalDateTime.now());
+        atom.setReviewStatus(trustedReviewed ? "PASS" : "NEEDS_REVIEW");
+        atom.setReviewReason(trustedReviewed ? "受控终审导入" : "外部导入包等待人工审核");
+        atom.setReviewConfidence(trustedReviewed ? 1.0 : null);
+        atom.setReviewedAt(trustedReviewed ? LocalDateTime.now() : null);
         if (scope != null) {
             atom.setScope(scope.scope());
             atom.setOwnerUserId(scope.ownerUserId());
             atom.setPositionId(scope.positionId());
             atom.setKnowledgeBaseId(scope.knowledgeBaseId());
-            atom.setReviewedBy(scope.currentUserId());
-            atom.setReviewedAt(LocalDateTime.now());
+            atom.setReviewedBy(trustedReviewed ? scope.currentUserId() : null);
             atom.setPublicationStatus(QuestionBankService.STATUS_PUBLISHED.equals(atom.getStatus())
                     ? QuestionBankService.STATUS_PUBLISHED : QuestionBankService.STATUS_DRAFT);
             if (QuestionBankService.STATUS_PUBLISHED.equals(atom.getStatus())) {
@@ -290,9 +288,13 @@ abstract class QuestionBankSupport {
             return wrapper;
         }
         wrapper.eq("scope", scope.scope())
-                .eq(scope.ownerUserId() != null, "owner_user_id", scope.ownerUserId())
                 .eq("position_id", scope.positionId())
                 .eq("knowledge_base_id", scope.knowledgeBaseId());
+        if (scope.ownerUserId() == null) {
+            wrapper.isNull("owner_user_id");
+        } else {
+            wrapper.eq("owner_user_id", scope.ownerUserId());
+        }
         return wrapper;
     }
 
@@ -332,6 +334,12 @@ abstract class QuestionBankSupport {
             if (atom.getContent() == null || isBlank(atom.getContent().getPrinciples())) {
                 errors.add(atom.getId() + ": content.principles is required");
             }
+            if (isBlank(nonBlank(atom.getSourceRef(), request.getSourceRef()))) {
+                errors.add(atom.getId() + ": sourceRef is required");
+            }
+            if (!hasNonBlankQuote(atom.getSourceEvidence())) {
+                errors.add(atom.getId() + ": sourceEvidence must contain at least one non-empty quote");
+            }
             long followUpCount = atom.getContent() == null || atom.getContent().getFollowUpPaths() == null
                     ? 0
                     : atom.getContent().getFollowUpPaths().stream()
@@ -346,6 +354,39 @@ abstract class QuestionBankSupport {
             if (count > 1) errors.add("duplicate atom id in package: " + id);
         });
         return errors;
+    }
+
+    static boolean hasRequiredSourceEvidence(KnowledgeAtom atom) {
+        return atom != null
+                && atom.getSourceRef() != null
+                && !atom.getSourceRef().isBlank()
+                && hasNonBlankQuote(atom.getSourceEvidenceJson());
+    }
+
+    static void validateRequiredSourceEvidence(KnowledgeAtom atom) {
+        if (atom == null || atom.getSourceRef() == null || atom.getSourceRef().isBlank()) {
+            throw new IllegalArgumentException("来源引用不能为空");
+        }
+        if (!hasNonBlankQuote(atom.getSourceEvidenceJson())) {
+            throw new IllegalArgumentException("来源证据必须至少包含一条非空引文");
+        }
+    }
+
+    private static boolean hasNonBlankQuote(List<KnowledgeAtomPayload.SourceEvidence> evidence) {
+        return evidence != null && evidence.stream()
+                .anyMatch(item -> item != null && item.getQuote() != null && !item.getQuote().isBlank());
+    }
+
+    private static boolean hasNonBlankQuote(String sourceEvidenceJson) {
+        if (sourceEvidenceJson == null || sourceEvidenceJson.isBlank()) {
+            return false;
+        }
+        try {
+            return hasNonBlankQuote(JSON.parseArray(
+                    sourceEvidenceJson, KnowledgeAtomPayload.SourceEvidence.class));
+        } catch (RuntimeException ignored) {
+            return false;
+        }
     }
 
     protected boolean isBlank(String value) {

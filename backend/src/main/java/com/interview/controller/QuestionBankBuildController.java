@@ -7,8 +7,10 @@ import com.interview.dto.questionbank.build.QuestionBankBuildCandidateReviewRequ
 import com.interview.dto.questionbank.build.QuestionBankBuildFinalizationRequest;
 import com.interview.dto.questionbank.build.QuestionBankBuildFinalizationResponse;
 import com.interview.dto.questionbank.build.QuestionBankBuildResponse;
+import com.interview.dto.questionbank.build.QuestionBankBuildRepairRequest;
 import com.interview.service.RequestUserResolver;
 import com.interview.service.questionbank.build.QuestionBankBuildFinalizationService;
+import com.interview.service.questionbank.build.QuestionBankBuildRepairRequestService;
 import com.interview.service.questionbank.build.QuestionBankBuildService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
@@ -30,13 +32,16 @@ import java.util.List;
 public class QuestionBankBuildController {
     private final QuestionBankBuildService buildService;
     private final QuestionBankBuildFinalizationService finalizationService;
+    private final QuestionBankBuildRepairRequestService repairRequestService;
     private final RequestUserResolver requestUserResolver;
 
     public QuestionBankBuildController(QuestionBankBuildService buildService,
                                        QuestionBankBuildFinalizationService finalizationService,
+                                       QuestionBankBuildRepairRequestService repairRequestService,
                                        RequestUserResolver requestUserResolver) {
         this.buildService = buildService;
         this.finalizationService = finalizationService;
+        this.repairRequestService = repairRequestService;
         this.requestUserResolver = requestUserResolver;
     }
 
@@ -98,6 +103,16 @@ public class QuestionBankBuildController {
             @RequestBody QuestionBankBuildFinalizationRequest body,
             HttpServletRequest request) {
         return Result.success(finalizationService.start(
+                currentUserId(request), knowledgeBaseId, buildId, body));
+    }
+
+    @PostMapping("/{buildId}/repair")
+    public Result<QuestionBankBuildResponse> repair(
+            @PathVariable Long knowledgeBaseId,
+            @PathVariable Long buildId,
+            @RequestBody QuestionBankBuildRepairRequest body,
+            HttpServletRequest request) {
+        return Result.success(repairRequestService.start(
                 currentUserId(request), knowledgeBaseId, buildId, body));
     }
 

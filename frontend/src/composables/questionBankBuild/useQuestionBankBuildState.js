@@ -1,4 +1,9 @@
 import { computed, ref } from 'vue'
+import {
+  isQuestionBankCandidateFinalizable,
+  isQuestionBankCandidateRepairVerified,
+  wasQuestionBankCandidateRepairAttempted
+} from '@/utils/knowledgeWorkspace'
 
 export function createQuestionBankBuildState() {
   const builds = ref([])
@@ -16,12 +21,9 @@ export function createQuestionBankBuildState() {
     return !['AUTO_PASS', 'AUTO_REJECT', 'SKIPPED'].includes(
       String(candidate?.machineReviewStatus || '').toUpperCase())
   }))
-  const finalizableCandidates = computed(() => candidates.value.filter((candidate) => {
-    const reviewStatus = String(candidate?.status || candidate?.reviewStatus || '').toUpperCase()
-    if (reviewStatus === 'REJECTED') return false
-    return reviewStatus === 'ACCEPTED'
-      || String(candidate?.machineReviewStatus || '').toUpperCase() === 'AUTO_PASS'
-  }))
+  const finalizableCandidates = computed(() => candidates.value.filter(isQuestionBankCandidateFinalizable))
+  const repairedCandidates = computed(() => candidates.value.filter(wasQuestionBankCandidateRepairAttempted))
+  const successfullyRepairedCandidates = computed(() => candidates.value.filter(isQuestionBankCandidateRepairVerified))
   const buildCompleted = computed(() => ['COMPLETED', 'SUCCEEDED'].includes(
     String(activeBuild.value?.status || '').toUpperCase()))
   const canReview = computed(() => {
@@ -32,7 +34,6 @@ export function createQuestionBankBuildState() {
   const canFinalize = computed(() => Boolean(
     canReview.value
     && String(activeBuild.value?.stage || '').toUpperCase() === 'READY_FOR_FINAL_REVIEW'
-    && exceptionCandidates.value.length === 0
     && finalizableCandidates.value.length > 0
   ))
 
@@ -58,6 +59,8 @@ export function createQuestionBankBuildState() {
     activeCandidates,
     exceptionCandidates,
     finalizableCandidates,
+    repairedCandidates,
+    successfullyRepairedCandidates,
     buildCompleted,
     canReview,
     canFinalize,

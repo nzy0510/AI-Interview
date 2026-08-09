@@ -91,6 +91,22 @@ class QuestionBankImportContractTest {
     }
 
     @Test
+    @DisplayName("外部导入必须包含来源引用和至少一条非空引文")
+    void shouldRejectImportWithoutRequiredSourceEvidence() throws Exception {
+        QuestionBankImportRequest request = fixtureRequest("valid-draft.json");
+        request.setSourceRef(" ");
+        KnowledgeAtomPayload atom = request.getAtoms().get(0);
+        atom.setSourceRef(null);
+        KnowledgeAtomPayload.SourceEvidence blankEvidence = new KnowledgeAtomPayload.SourceEvidence();
+        blankEvidence.setQuote(" ");
+        atom.setSourceEvidence(List.of(blankEvidence));
+
+        assertThat(service.validateImportPackage(request))
+                .contains("contract-java-hashmap: sourceRef is required")
+                .contains("contract-java-hashmap: sourceEvidence must contain at least one non-empty quote");
+    }
+
+    @Test
     @DisplayName("DRY_RUN 不写批次、atom 或向量")
     void shouldNotPersistAnythingOnDryRun() throws Exception {
         QuestionBankImportRequest request = fixtureRequest("valid-draft.json");
@@ -153,7 +169,9 @@ class QuestionBankImportContractTest {
         assertThat(atom.getPositionId()).isEqualTo(20L);
         assertThat(atom.getKnowledgeBaseId()).isEqualTo(30L);
         assertThat(atom.getPublicationStatus()).isEqualTo("DRAFT");
-        assertThat(atom.getReviewStatus()).isEqualTo("PASS");
+        assertThat(atom.getReviewStatus()).isEqualTo("NEEDS_REVIEW");
+        assertThat(atom.getReviewedBy()).isNull();
+        assertThat(atom.getReviewedAt()).isNull();
     }
 
     @Test
@@ -400,6 +418,8 @@ class QuestionBankImportContractTest {
         atom.setStatus("PUBLISHED");
         atom.setReviewStatus("PASS");
         atom.setVectorStatus("PENDING");
+        atom.setSourceRef("contract-fixture.md");
+        atom.setSourceEvidenceJson("[{\"quote\":\"source quote\"}]");
         return atom;
     }
 

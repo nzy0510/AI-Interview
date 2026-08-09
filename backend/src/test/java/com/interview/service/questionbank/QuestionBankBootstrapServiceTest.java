@@ -58,7 +58,8 @@ class QuestionBankBootstrapServiceTest {
 
         ArgumentCaptor<QuestionBankImportRequest> requestCaptor = ArgumentCaptor.forClass(QuestionBankImportRequest.class);
         ArgumentCaptor<QuestionBankImportScope> scopeCaptor = ArgumentCaptor.forClass(QuestionBankImportScope.class);
-        verify(questionBankService, atLeastOnce()).importBatch(requestCaptor.capture(), scopeCaptor.capture());
+        verify(questionBankService, atLeastOnce()).importReviewedBatch(
+                requestCaptor.capture(), scopeCaptor.capture());
         assertThat(requestCaptor.getAllValues())
                 .allSatisfy(request -> assertThat(request.getTargetCategory()).isIn(
                         "Java 后端开发",
@@ -87,7 +88,7 @@ class QuestionBankBootstrapServiceTest {
 
         service.init();
 
-        verify(questionBankService, never()).importBatch(any(), any());
+        verify(questionBankService, never()).importReviewedBatch(any(), any());
     }
 
     @Test
@@ -105,7 +106,7 @@ class QuestionBankBootstrapServiceTest {
         service.init();
 
         verify(batchMapper, atLeastOnce()).delete(any());
-        verify(questionBankService, atLeastOnce()).importBatch(any(), any());
+        verify(questionBankService, atLeastOnce()).importReviewedBatch(any(), any());
     }
 
     @Test

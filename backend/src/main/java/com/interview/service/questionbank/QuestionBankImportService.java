@@ -86,10 +86,20 @@ class QuestionBankImportService extends QuestionBankSupport {
     }
 
     QuestionBankImportResult importBatch(QuestionBankImportRequest request) {
-        return importBatch(request, null);
+        return importBatch(request, null, true);
     }
 
     QuestionBankImportResult importBatch(QuestionBankImportRequest request, QuestionBankImportScope scope) {
+        return importBatch(request, scope, false);
+    }
+
+    QuestionBankImportResult importReviewedBatch(QuestionBankImportRequest request, QuestionBankImportScope scope) {
+        return importBatch(request, scope, true);
+    }
+
+    private QuestionBankImportResult importBatch(QuestionBankImportRequest request,
+                                                 QuestionBankImportScope scope,
+                                                 boolean trustedReviewed) {
         String mode = normalizeMode(request.getMode(), scope);
         List<String> errors = validateImport(request);
         String batchId = request.getBatchId();
@@ -136,7 +146,8 @@ class QuestionBankImportService extends QuestionBankSupport {
         List<String> importedAtomIds = new ArrayList<>();
         for (KnowledgeAtomPayload payload : request.getAtoms()) {
             try {
-                KnowledgeAtom atom = toAtom(payload, request.getTargetCategory(), request.getSourceRef(), mode, scope);
+                KnowledgeAtom atom = toAtom(payload, request.getTargetCategory(), request.getSourceRef(), mode,
+                        scope, trustedReviewed);
                 upsertAtom(atom, "import:" + batchId, scope);
                 imported++;
                 importedAtomIds.add(atom.getAtomId());

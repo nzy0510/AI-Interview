@@ -10,7 +10,14 @@
         </div>
       </div>
       <div class="header-actions">
-        <el-button :icon="RefreshRight" :loading="loading" @click="loadWorkspace">刷新</el-button>
+        <el-button
+          data-testid="workspace-refresh"
+          :icon="RefreshRight"
+          :loading="loading"
+          :disabled="candidateReviewDirty"
+          :title="candidateReviewDirty ? '请先保存或放弃最终审核中的修改' : ''"
+          @click="loadWorkspace"
+        >刷新</el-button>
         <el-button v-if="canCreatePosition" type="primary" :icon="Plus" @click="createDialogVisible = true">新建岗位</el-button>
       </div>
     </header>
@@ -42,7 +49,7 @@
             </div>
           </div>
 
-          <KnowledgeWorkspaceTabs v-model="activeTab" :can-build="canBuildPackage" :candidate-count="candidateBadgeCount" />
+          <KnowledgeWorkspaceTabs :model-value="activeTab" :can-build="canBuildPackage" :candidate-count="candidateBadgeCount" @update:model-value="changeActiveTab" />
 
           <QuestionBankOverviewPanel
             v-if="activeTab === 'overview'"
@@ -98,7 +105,9 @@
             :finalizable-count="buildState.finalizableCandidates.value.length"
             @refresh="loadCandidates"
             @update="updateCandidate"
+            @repair="repairCandidates"
             @finalize="finalizeBuild"
+            @dirty-change="candidateReviewDirty = $event"
           />
 
           <QuestionBankAtomPanel
@@ -203,6 +212,7 @@ const workspaceDescription = computed(() => isPublicMaintenanceMode.value ? '维
 const positions = ref([])
 const activePositionId = ref(null)
 const activeTab = ref('overview')
+const candidateReviewDirty = ref(false)
 const sidebarCollapsed = ref(false)
 const loading = ref(false)
 const creating = ref(false)
@@ -292,7 +302,30 @@ const loadWorkspace = async () => {
   } finally { if (requestId === workspaceRequest) loading.value = false }
 }
 
-const selectPosition = (position) => {
+const confirmDiscardCandidateEdits = async () => {
+  if (!candidateReviewDirty.value) return true
+  try {
+    await ElMessageBox.confirm(
+      '最终审核中还有未保存修改。放弃这些修改后再切换？',
+      '放弃修改？',
+      { type: 'warning', confirmButtonText: '放弃修改并切换', cancelButtonText: '继续编辑' }
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+const changeActiveTab = async (tab) => {
+  if (tab === activeTab.value) return
+  if (activeTab.value === 'candidates' && !await confirmDiscardCandidateEdits()) return
+  candidateReviewDirty.value = false
+  activeTab.value = tab
+}
+
+const selectPosition = async (position) => {
+  if (activeTab.value === 'candidates' && !await confirmDiscardCandidateEdits()) return
+  candidateReviewDirty.value = false
   atomEditorRequest += 1
   atomSaveRequest += 1
   jsonRequest += 1
@@ -386,12 +419,18 @@ const deleteBuild = async () => {
   ElMessage.success('构建批次已删除')
 }
 const loadCandidates = () => buildState.loadCandidates()
-const updateCandidate = async (candidateId, action, fields) => { await buildState.updateCandidate(candidateId, action, fields); ElMessage.success(action === 'ACCEPT' ? '候选已接受' : action === 'REJECT' ? '候选已拒绝' : '修改已保存') }
+const updateCandidate = async (candidateId, action, fields) => { await buildState.updateCandidate(candidateId, action, fields); ElMessage.success(action === 'ACCEPT' ? '已标记为可发布' : action === 'REJECT' ? '已标记为不发布' : '人工修改已保存') }
+const repairCandidates = async (candidateIds, instruction) => {
+  await buildState.repairCandidates(candidateIds, instruction)
+  activeTab.value = 'build'
+  ElMessage.success('修复助手已开始处理，完成后会自动复查')
+}
 const finalizeBuild = async () => {
   const count = buildState.finalizableCandidates.value.length
+  const retainedCount = buildState.exceptionCandidates.value.length
   try {
     await ElMessageBox.confirm(
-      `确认发布本批次 ${count} 条知识原子？系统会先写入草稿，再发布并同步检索索引。`,
+      `确认发布本批次 ${count} 条知识原子？系统会写入数据库并同步检索索引。${retainedCount ? `另有 ${retainedCount} 条需关注项将保留在本批次，不会发布。` : ''}`,
       '批次终审发布',
       { type: 'warning', confirmButtonText: '确认终审并发布' }
     )
@@ -448,7 +487,10 @@ const deletePosition = async () => { if (!activePosition.value) return; try { aw
 
 watch(activePositionId, async () => { await loadActivePositionData(); await buildState.startPolling(); if (!canBuildPackage.value && ['build', 'candidates'].includes(activeTab.value)) activeTab.value = 'overview' })
 watch(activeTab, async (tab) => { sidebarCollapsed.value = tab === 'candidates'; if (tab === 'candidates' && buildState.activeBuildId.value) await buildState.loadCandidates(); if (tab === 'atoms') await loadAtoms() })
-watch(() => buildState.activeBuild.value?.stage, async (stage, previous) => { if (stage === 'PUBLISHED' && previous !== 'PUBLISHED') await loadAtoms() })
+watch(() => buildState.activeBuild.value?.stage, async (stage, previous) => {
+  const publishedStages = ['PUBLISHED', 'PUBLISHED_WITH_INDEX_ERRORS']
+  if (publishedStages.includes(stage) && stage !== previous) await loadAtoms()
+})
 onMounted(async () => { await loadLlmStatus(); await loadWorkspace(); await buildState.startPolling() })
 onUnmounted(() => buildState.stopPolling())
 </script>

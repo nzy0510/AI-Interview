@@ -10,8 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class QuestionBankBuildInputServiceTest {
     private final QuestionBankBuildProperties properties = new QuestionBankBuildProperties();
-    private final QuestionBankBuildInputService service = new QuestionBankBuildInputService(
-            properties, new QuestionBankBuildDocumentExtractor());
+    private final QuestionBankBuildInputService service = new QuestionBankBuildInputService(properties);
 
     @Test
     void shouldRejectMimeAndExtensionMismatch() {

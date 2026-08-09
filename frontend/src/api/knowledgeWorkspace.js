@@ -29,6 +29,30 @@ const asStringList = (value) => {
   }
 }
 
+const asObject = (value) => {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value
+  if (typeof value !== 'string' || !value.trim()) return null
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+const asObjectList = (value) => {
+  if (Array.isArray(value)) return value.filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+  if (typeof value !== 'string' || !value.trim()) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed)
+      ? parsed.filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+      : []
+  } catch {
+    return []
+  }
+}
+
 export function normalizeQuestionBankBuild(raw = {}) {
   const source = raw?.build || raw?.data || raw || {}
   const files = Array.isArray(source.sourceFiles)
@@ -58,6 +82,9 @@ export function normalizeQuestionBankBuild(raw = {}) {
     autoPassCount: asNumber(source.autoPassCount),
     needsHumanCount: asNumber(source.needsHumanCount),
     autoRejectCount: asNumber(source.autoRejectCount),
+    repairedCount: asNumber(source.repairedCount),
+    repairFailedCount: asNumber(source.repairFailedCount),
+    repairRound: asNumber(source.repairRound),
     reviewRevision: asNumber(source.reviewRevision),
     finalizationStatus: asText(source.finalizationStatus, 'NOT_STARTED').toUpperCase(),
     finalAtomIds: asStringList(source.finalAtomIds ?? source.finalAtomIdsJson),
@@ -116,10 +143,17 @@ export function normalizeQuestionBankCandidate(raw = {}) {
     machineReviewStatus: asText(source.machineReviewStatus, 'PENDING').toUpperCase(),
     machineReviewScore: source.machineReviewScore == null ? null : asNumber(source.machineReviewScore),
     machineReviewIssues: asStringList(source.machineReviewIssues ?? source.machineReviewIssuesJson),
-    machineSuggestedPatch: source.machineSuggestedPatch || null,
+    machineSuggestedPatch: asObject(source.machineSuggestedPatch ?? source.machineSuggestedPatchJson),
     machineReviewPromptVersion: asText(source.machineReviewPromptVersion),
     machineReviewAttempts: asNumber(source.machineReviewAttempts),
     machineReviewedAt: source.machineReviewedAt ?? null,
+    repairStatus: asText(source.repairStatus, 'NOT_STARTED').toUpperCase(),
+    repairAttempts: asNumber(source.repairAttempts),
+    repairRound: asNumber(source.repairRound),
+    repairInstruction: asText(source.repairInstruction),
+    repairSummary: asText(source.repairSummary),
+    repairHistory: asObjectList(source.repairHistory ?? source.repairHistoryJson),
+    repairedAt: source.repairedAt ?? null,
     validationIssues: asStringList(source.validationIssues || source.errors || source.machineReviewIssues)
   }
 }
@@ -227,6 +261,20 @@ export const finalizeQuestionBankBuildAPI = (
   data: { candidateIds, expectedReviewRevision },
   ...options
 })
+
+export const repairQuestionBankBuildAPI = (
+  knowledgeBaseId,
+  buildId,
+  candidateIds,
+  instruction,
+  expectedReviewRevision,
+  options = {}
+) => request({
+  url: buildPath(knowledgeBaseId, `/${buildId}/repair`),
+  method: 'post',
+  data: { candidateIds, instruction, expectedReviewRevision },
+  ...options
+}).then(normalizeQuestionBankBuild)
 
 export const retryQuestionBankBuildAPI = (jobId, options = {}) => request({
   url: `/jobs/${jobId}/retry`,

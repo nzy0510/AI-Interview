@@ -15,6 +15,8 @@ import {
   normalizeQuestionBankAtomPage,
   normalizeQuestionBankBuild,
   normalizeQuestionBankCandidate,
+  repairQuestionBankBuildAPI,
+  updateQuestionBankBuildCandidateAPI,
   updateKnowledgeAtomAPI
 } from '../knowledgeWorkspace'
 
@@ -51,6 +53,9 @@ describe('question bank build API adapters', () => {
       autoPassCount: 4,
       needsHumanCount: 1,
       autoRejectCount: 2,
+      repairedCount: 3,
+      repairFailedCount: 1,
+      repairRound: 2,
       finalizationStatus: 'NOT_STARTED'
     })
     expect(build).toMatchObject({
@@ -67,6 +72,9 @@ describe('question bank build API adapters', () => {
       autoPassCount: 4,
       needsHumanCount: 1,
       autoRejectCount: 2,
+      repairedCount: 3,
+      repairFailedCount: 1,
+      repairRound: 2,
       finalizationStatus: 'NOT_STARTED'
     })
 
@@ -81,7 +89,11 @@ describe('question bank build API adapters', () => {
       sourceEvidence: { fileName: 'guide.pdf', page: 2, quote: 'evidence' },
       machineReviewStatus: 'NEEDS_HUMAN',
       machineReviewScore: 72,
-      machineReviewIssues: ['证据不足']
+      machineReviewIssues: ['证据不足'],
+      repairStatus: 'SUCCEEDED',
+      repairAttempts: 1,
+      repairSummary: '补充了来源限定',
+      repairHistory: [{ round: 1, before: { principles: '旧' }, after: { principles: '新' } }]
     })
     expect(candidate).toMatchObject({
       id: 11,
@@ -93,7 +105,11 @@ describe('question bank build API adapters', () => {
       source: { fileName: 'guide.pdf', page: 2, quote: 'evidence' },
       machineReviewStatus: 'NEEDS_HUMAN',
       machineReviewScore: 72,
-      machineReviewIssues: ['证据不足']
+      machineReviewIssues: ['证据不足'],
+      repairStatus: 'SUCCEEDED',
+      repairAttempts: 1,
+      repairSummary: '补充了来源限定',
+      repairHistory: [{ round: 1, before: { principles: '旧' }, after: { principles: '新' } }]
     })
   })
 
@@ -102,6 +118,26 @@ describe('question bank build API adapters', () => {
     expect(request).toHaveBeenCalledWith(expect.objectContaining({
       url: '/knowledge-workspace/knowledge-bases/42/builds/9/candidates',
       method: 'get'
+    }))
+  })
+
+  it('submits candidate edits with the optimistic review revision', async () => {
+    request.mockResolvedValueOnce({ candidateId: 11, buildId: 9, reviewStatus: 'ACCEPTED' })
+
+    await updateQuestionBankBuildCandidateAPI(42, 9, 11, {
+      action: 'ACCEPT',
+      principles: '修正后的内容',
+      expectedReviewRevision: 4
+    })
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      url: '/knowledge-workspace/knowledge-bases/42/builds/9/candidates/11',
+      method: 'put',
+      data: {
+        action: 'ACCEPT',
+        principles: '修正后的内容',
+        expectedReviewRevision: 4
+      }
     }))
   })
 
@@ -136,6 +172,26 @@ describe('question bank build API adapters', () => {
       method: 'post',
       data: {
         candidateIds: [11, 12],
+        expectedReviewRevision: 4
+      }
+    }))
+  })
+
+  it('requests assistant repair with selected candidates, instruction, and optimistic build version', async () => {
+    request.mockResolvedValueOnce({ buildId: 9, status: 'RUNNING', stage: 'REPAIRING', repairRound: 2 })
+
+    await expect(repairQuestionBankBuildAPI(42, 9, [11, 12], '只依据原文修正', 4)).resolves.toMatchObject({
+      id: 9,
+      stage: 'REPAIRING',
+      repairRound: 2
+    })
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      url: '/knowledge-workspace/knowledge-bases/42/builds/9/repair',
+      method: 'post',
+      data: {
+        candidateIds: [11, 12],
+        instruction: '只依据原文修正',
         expectedReviewRevision: 4
       }
     }))

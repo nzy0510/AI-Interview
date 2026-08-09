@@ -178,6 +178,26 @@ class KnowledgeAtomWorkflowServiceTest {
     }
 
     @Test
+    @DisplayName("NEEDS_REVIEW 原子不能通过空补丁晋级 PASS")
+    void shouldRejectEmptyPatchForNeedsReviewAtom() {
+        KnowledgeAtom atom = draftAtom("NEEDS_REVIEW");
+        when(atomMapper.selectById(5L)).thenReturn(atom);
+
+        assertThatThrownBy(() -> service.updateAtom(5L, 7L,
+                new KnowledgeAtomPatch(null, null, null, null, null, null, null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("实际修改");
+        assertThatThrownBy(() -> service.updateAtom(5L, 7L,
+                new KnowledgeAtomPatch(null, null, "MID", null, null, null, null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("实际修改");
+
+        assertThat(atom.getReviewStatus()).isEqualTo("NEEDS_REVIEW");
+        verify(atomMapper, never()).updateById(any());
+        verify(versionMapper, never()).insert(any());
+    }
+
+    @Test
     @DisplayName("管理员对公共已发布原子应用建议补丁时创建草稿修订")
     void shouldCreateDraftRevisionWhenAcceptingPatchForPublishedPublicAtom() {
         KnowledgeAtom published = publicAtom("NEEDS_REVIEW");
@@ -277,6 +297,22 @@ class KnowledgeAtomWorkflowServiceTest {
     }
 
     @Test
+    @DisplayName("PASS 草稿缺少来源证据时仍不可发布")
+    void shouldRejectPublishingWithoutSourceEvidence() {
+        KnowledgeAtom atom = publicAtom("PASS");
+        atom.setSourceEvidenceJson("[]");
+        when(atomMapper.selectById(5L)).thenReturn(atom);
+        when(adminRoleService.isAdmin(7L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.publishAtom(5L, 7L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("来源证据");
+
+        verify(atomMapper, never()).updateById(any());
+        verify(questionBankService, never()).syncAtom(any());
+    }
+
+    @Test
     @DisplayName("发布已生成草稿时写入下一版本，避免与生成版本冲突")
     void shouldRecordPublishAsNextVersionAfterGeneratedDraftVersion() {
         KnowledgeAtom atom = publicAtom("PASS");
@@ -333,6 +369,8 @@ class KnowledgeAtomWorkflowServiceTest {
         atom.setPositionId(12L);
         atom.setKnowledgeBaseId(22L);
         atom.setSourceFileId(10L);
+        atom.setSourceRef("source.pdf#page=2");
+        atom.setSourceEvidenceJson("[{\"quote\":\"source quote\",\"pageOrSection\":\"p.2\"}]");
         atom.setCurrentVersionNo(1);
         return atom;
     }

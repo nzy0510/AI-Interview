@@ -151,6 +151,11 @@ public class QuestionBankService {
         return importService.importBatch(request, scope);
     }
 
+    public QuestionBankImportResult importReviewedBatch(QuestionBankImportRequest request,
+                                                         QuestionBankImportScope scope) {
+        return importService.importReviewedBatch(request, scope);
+    }
+
     public int reindexPublishedAtoms() {
         return vectorSyncService.reindexPublishedAtoms();
     }

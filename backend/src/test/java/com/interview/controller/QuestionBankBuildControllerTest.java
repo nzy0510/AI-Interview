@@ -5,6 +5,7 @@ import com.interview.dto.questionbank.build.QuestionBankBuildFinalizationRespons
 import com.interview.dto.questionbank.build.QuestionBankBuildResponse;
 import com.interview.service.RequestUserResolver;
 import com.interview.service.questionbank.build.QuestionBankBuildFinalizationService;
+import com.interview.service.questionbank.build.QuestionBankBuildRepairRequestService;
 import com.interview.service.questionbank.build.QuestionBankBuildService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
@@ -23,7 +24,8 @@ class QuestionBankBuildControllerTest {
         QuestionBankBuildService service = mock(QuestionBankBuildService.class);
         QuestionBankBuildFinalizationService finalizationService = mock(QuestionBankBuildFinalizationService.class);
         RequestUserResolver resolver = mock(RequestUserResolver.class);
-        QuestionBankBuildController controller = new QuestionBankBuildController(service, finalizationService, resolver);
+        QuestionBankBuildController controller = new QuestionBankBuildController(
+                service, finalizationService, mock(QuestionBankBuildRepairRequestService.class), resolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         when(resolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
         QuestionBankBuildResponse expected = new QuestionBankBuildResponse(); expected.setBuildId(99L);
@@ -40,7 +42,8 @@ class QuestionBankBuildControllerTest {
         QuestionBankBuildService service = mock(QuestionBankBuildService.class);
         QuestionBankBuildFinalizationService finalizationService = mock(QuestionBankBuildFinalizationService.class);
         RequestUserResolver resolver = mock(RequestUserResolver.class);
-        QuestionBankBuildController controller = new QuestionBankBuildController(service, finalizationService, resolver);
+        QuestionBankBuildController controller = new QuestionBankBuildController(
+                service, finalizationService, mock(QuestionBankBuildRepairRequestService.class), resolver);
         MockHttpServletRequest servletRequest = new MockHttpServletRequest();
         when(resolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
         QuestionBankBuildFinalizationRequest body = new QuestionBankBuildFinalizationRequest();

@@ -31,10 +31,12 @@ class QuestionBankBuildFinalizationJobHandlerTest {
         build.setId(99L);
         build.setScope("PRIVATE");
         build.setOwnerUserId(7L);
+        build.setPositionId(20L);
         build.setKnowledgeBaseId(10L);
         build.setStatus("PENDING");
         build.setStage("FINALIZING");
         when(buildMapper.selectById(99L)).thenReturn(build);
+        when(appJobService.extendRunningJobLease(any(), any(), any())).thenReturn(true);
         when(preparation.prepare(99L, 7L, 10L, List.of(101L, 102L)))
                 .thenReturn(List.of("kb10-a", "kb10-b"));
         when(workspace.publishAtoms(any(), any(), any())).thenReturn(Map.of(
@@ -44,7 +46,10 @@ class QuestionBankBuildFinalizationJobHandlerTest {
         AppJob job = new AppJob();
         job.setId(501L);
         job.setBuildId(99L);
+        job.setJobType(QuestionBankBuildFinalizationService.JOB_TYPE);
+        job.setScope("PRIVATE");
         job.setOwnerUserId(7L);
+        job.setPositionId(20L);
         job.setKnowledgeBaseId(10L);
         job.setClaimedBy("worker");
         job.setPayloadJson("{\"candidateIds\":[101,102]}");
@@ -57,6 +62,7 @@ class QuestionBankBuildFinalizationJobHandlerTest {
         assertThat(job.getResultJson()).contains("\"failed\":0");
         verify(workspace).ensureAtomsIndexed(any(), any(), any());
         verify(appJobService).updateRunningJob(501L, "worker", "INDEXING", 90);
+        verify(appJobService).updateRunningJob(501L, "worker", "PUBLISHED", 100);
     }
 
     @Test
@@ -64,11 +70,13 @@ class QuestionBankBuildFinalizationJobHandlerTest {
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
         QuestionBankBuildFinalizationPreparationService preparation = mock(QuestionBankBuildFinalizationPreparationService.class);
         KnowledgeWorkspaceService workspace = mock(KnowledgeWorkspaceService.class);
+        AppJobService appJobService = mock(AppJobService.class);
         QuestionBankBuildFinalizationJobHandler handler = new QuestionBankBuildFinalizationJobHandler(
-                buildMapper, preparation, workspace, mock(AppJobService.class));
+                buildMapper, preparation, workspace, appJobService);
         QuestionBankBuild build = new QuestionBankBuild();
-        build.setId(99L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setKnowledgeBaseId(10L);
+        build.setId(99L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setPositionId(20L); build.setKnowledgeBaseId(10L);
         when(buildMapper.selectById(99L)).thenReturn(build);
+        when(appJobService.extendRunningJobLease(any(), any(), any())).thenReturn(true);
         when(preparation.prepare(99L, 7L, 10L, List.of(101L, 102L)))
                 .thenReturn(List.of("kb10-a", "kb10-b"));
         when(workspace.publishAtoms(any(), any(), any())).thenReturn(Map.of(
@@ -76,7 +84,8 @@ class QuestionBankBuildFinalizationJobHandlerTest {
         when(workspace.ensureAtomsIndexed(any(), any(), any())).thenReturn(Map.of(
                 "matched", 2, "synced", 1, "failed", 0, "skipped", 1));
         AppJob job = new AppJob();
-        job.setId(501L); job.setBuildId(99L); job.setOwnerUserId(7L); job.setKnowledgeBaseId(10L);
+        job.setId(501L); job.setJobType(QuestionBankBuildFinalizationService.JOB_TYPE); job.setScope("PRIVATE");
+        job.setBuildId(99L); job.setOwnerUserId(7L); job.setPositionId(20L); job.setKnowledgeBaseId(10L);
         job.setClaimedBy("worker"); job.setPayloadJson("{\"candidateIds\":[101,102]}");
 
         assertThatThrownBy(() -> handler.handle(job)).hasMessageContaining("未完成");

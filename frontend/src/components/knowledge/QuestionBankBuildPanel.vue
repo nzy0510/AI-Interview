@@ -25,6 +25,19 @@
     </el-alert>
     <el-alert v-else-if="!llmStatus.resolved" title="正在检测大模型配置" type="info" show-icon />
 
+    <ol class="pipeline-steps" aria-label="文档入库进度">
+      <li
+        v-for="(step, index) in pipelineSteps"
+        :key="step.label"
+        class="pipeline-step"
+        :class="{ 'is-active': isPipelineStepActive(index), 'is-complete': isPipelineStepComplete(index), 'is-warning': isPipelineStepWarning(index) }"
+        :aria-current="isPipelineStepActive(index) ? 'step' : undefined"
+      >
+        <span class="pipeline-step__index">{{ isPipelineStepComplete(index) ? '✓' : isPipelineStepWarning(index) ? '!' : index + 1 }}</span>
+        <span><strong>{{ step.label }}</strong><small>{{ step.hint }}</small></span>
+      </li>
+    </ol>
+
     <section class="upload-card" :class="{ 'is-blocked': !canBuild || !llmStatus.hasActiveConfig }">
       <div class="preflight-grid">
         <div><span>目标岗位</span><strong>{{ position?.name || '-' }}</strong></div>
@@ -50,12 +63,16 @@
       </el-upload>
 
       <div class="build-options">
-        <div class="category-option">
-          <el-select v-model="categories" multiple filterable allow-create default-first-option clearable placeholder="生成分类提示（可选）">
-            <el-option v-for="category in categoryOptions" :key="category" :label="category" :value="category" />
-          </el-select>
-          <small>用于提示模型如何归类候选，不是题库筛选条件；不选时使用“通用”。</small>
-        </div>
+        <details class="advanced-settings">
+          <summary>高级设置 <span>可选</span></summary>
+          <div class="category-option">
+            <label>生成分类提示</label>
+            <el-select v-model="categories" multiple filterable allow-create default-first-option clearable placeholder="不选时使用“通用”">
+              <el-option v-for="category in categoryOptions" :key="category" :label="category" :value="category" />
+            </el-select>
+            <small>仅用于提示模型如何归类候选，不是题库筛选条件。</small>
+          </div>
+        </details>
         <el-button
           type="primary"
           :loading="actionLoading === 'start'"
@@ -87,11 +104,13 @@
     <section v-if="activeBuild" class="build-detail-card">
       <div class="section-head"><div><h3>批次 #{{ activeBuild.id }} 运行详情</h3><p class="muted-text">阶段：{{ stageLabel(activeBuild.stage) }}</p></div><div class="detail-actions"><el-button v-if="activeBuild.canRetry && activeBuild.jobId" type="warning" plain :loading="actionLoading === 'retry'" @click="$emit('retry')">重试原任务</el-button><el-button type="danger" plain :disabled="isBuildInProgress || isBuildRetained || actionLoading === 'delete'" :loading="actionLoading === 'delete'" :title="deleteHint" @click="$emit('delete')">删除批次</el-button></div></div>
       <el-progress :percentage="activeBuild.progress" :status="activeBuild.status === 'FAILED' ? 'exception' : undefined" />
-      <div class="detail-grid"><span>解析文件 {{ activeBuild.fileCount || 0 }}</span><span>分块 {{ activeBuild.completedChunkCount || 0 }}/{{ activeBuild.chunkCount || '-' }}</span><span>候选 {{ activeBuild.candidateCount || 0 }}</span><span>监督通过 {{ activeBuild.autoPassCount || 0 }}</span><span>需人工 {{ activeBuild.needsHumanCount || 0 }}</span><span>自动排除 {{ activeBuild.autoRejectCount || 0 }}</span></div>
-      <p v-if="activeBuild.errorMessage" class="error-text">{{ activeBuild.errorMessage }}</p>
+      <div class="detail-grid"><span>解析文件 {{ activeBuild.fileCount || 0 }}</span><span>分块 {{ activeBuild.completedChunkCount || 0 }}/{{ activeBuild.chunkCount || '-' }}</span><span>候选 {{ activeBuild.candidateCount || 0 }}</span><span>监督通过 {{ activeBuild.autoPassCount || 0 }}</span><span>需关注 {{ activeBuild.needsHumanCount || 0 }}</span><span>自动排除 {{ activeBuild.autoRejectCount || 0 }}</span><span>修复后通过 {{ activeBuild.repairedCount || 0 }}</span><span>修复后仍需关注 {{ activeBuild.repairFailedCount || 0 }}</span><span>修复轮次 {{ activeBuild.repairRound || 0 }}</span></div>
+      <p v-if="activeBuild.errorMessage && !hasFinalReviewRepairWarning" class="error-text">{{ activeBuild.errorMessage }}</p>
       <p v-if="isBuildInProgress" class="muted-text delete-hint">构建运行中，暂不能删除；请等待完成或失败后再操作。</p>
-      <p v-if="activeBuild.stage === 'READY_FOR_FINAL_REVIEW'" class="success-note">生成与监督已完成。请到“终审发布”只处理异常项，然后整批发布。</p>
+      <p v-if="hasFinalReviewRepairWarning" class="warning-note" data-testid="final-review-repair-warning">本次修复助手处理失败：{{ activeBuild.errorMessage }}。原有可发布项未受影响，可到“终审发布”重试修复。</p>
+      <p v-else-if="activeBuild.stage === 'READY_FOR_FINAL_REVIEW'" class="success-note">自动处理已完成。请到“终审发布”确认可发布项；剩余需关注项不会阻断其他通过项入库。</p>
       <p v-else-if="activeBuild.stage === 'PUBLISHED'" class="success-note">终审发布完成，知识原子和检索索引均已入库。</p>
+      <p v-else-if="activeBuild.stage === 'PUBLISHED_WITH_INDEX_ERRORS'" class="warning-note">数据库已发布，但部分检索索引同步失败。请使用“重试原任务”继续同步，已发布数据不会重复创建。</p>
     </section>
 
     <!-- 旧 JSON 导入入口暂时隐藏；保留组件调用，便于后续按需恢复。
@@ -131,6 +150,36 @@ const statusType = (status) => getQuestionBankBuildStatusType(status)
 const stageLabel = (stage) => getQuestionBankBuildStageLabel(stage)
 const isBuildInProgress = computed(() => isQuestionBankBuildInProgress(props.activeBuild))
 const isBuildRetained = computed(() => Boolean(props.activeBuild?.finalAtomIds?.length))
+const hasFinalReviewRepairWarning = computed(() => (
+  String(props.activeBuild?.stage || '').toUpperCase() === 'READY_FOR_FINAL_REVIEW'
+  && Boolean(String(props.activeBuild?.errorMessage || '').trim())
+))
+const pipelineSteps = [
+  { label: '解析文档', hint: '提取并切分内容' },
+  { label: '生成原子', hint: '形成候选题目' },
+  { label: '质量监督', hint: '校验依据与质量' },
+  { label: '自动修复', hint: '有问题时修改并复查' },
+  { label: '最终审核', hint: '由你确认发布范围' },
+  { label: '发布入库', hint: '写入数据库并同步索引' }
+]
+const activePipelineStep = computed(() => {
+  const stage = String(props.activeBuild?.stage || '').toUpperCase()
+  const status = String(props.activeBuild?.status || '').toUpperCase()
+  if (!props.activeBuild || stage === 'FAILED' || (status === 'FAILED' && stage !== 'PUBLISHED_WITH_INDEX_ERRORS')) return -1
+  if (['PUBLISHED', 'PUBLISHED_WITH_INDEX_ERRORS'].includes(stage)) return 5
+  if (['FINALIZING', 'IMPORTING', 'PUBLISHING', 'INDEXING'].includes(stage)) return 5
+  if (stage === 'READY_FOR_FINAL_REVIEW') return 4
+  if (['REPAIRING', 'RESUPERVISING'].includes(stage)) return 3
+  if (stage === 'SUPERVISING') return 2
+  if (stage === 'GENERATING') return 1
+  return 0
+})
+const pipelinePublished = computed(() => String(props.activeBuild?.stage || '').toUpperCase() === 'PUBLISHED')
+const pipelineIndexWarning = computed(() => String(props.activeBuild?.stage || '').toUpperCase() === 'PUBLISHED_WITH_INDEX_ERRORS')
+const isPipelineStepActive = (index) => index === activePipelineStep.value && !pipelineIndexWarning.value
+const isPipelineStepComplete = (index) => pipelinePublished.value
+  || (activePipelineStep.value >= 0 && index < activePipelineStep.value)
+const isPipelineStepWarning = (index) => pipelineIndexWarning.value && index === 5
 const deleteHint = computed(() => isBuildInProgress.value
   ? '构建运行中，完成或失败后才可删除'
   : isBuildRetained.value ? '已进入终审发布的批次需保留来源记录' : '')
@@ -185,11 +234,105 @@ const submitBuild = () => {
   font-size: 0.9rem;
 }
 
-.upload-card,
-.build-list-card,
-.build-detail-card,
 .upload-card.is-blocked {
   opacity: 0.72;
+}
+
+.pipeline-steps {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-surface-2);
+  list-style: none;
+}
+
+.pipeline-step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  color: var(--app-text-muted);
+}
+
+.pipeline-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 13px;
+  right: 8px;
+  left: 34px;
+  height: 2px;
+  background: var(--app-border);
+}
+
+.pipeline-step__index {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid var(--app-border);
+  border-radius: 50%;
+  background: var(--app-surface);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.pipeline-step > span:last-child {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  padding-right: 8px;
+  background: var(--app-surface-2);
+}
+
+.pipeline-step strong {
+  color: inherit;
+  font-size: 0.86rem;
+}
+
+.pipeline-step small {
+  line-height: 1.35;
+}
+
+.pipeline-step.is-active {
+  color: var(--app-primary);
+}
+
+.pipeline-step.is-active .pipeline-step__index {
+  border-color: var(--app-primary);
+  background: var(--app-primary);
+  color: #fff;
+}
+
+.pipeline-step.is-complete {
+  color: var(--app-success, #16835b);
+}
+
+.pipeline-step.is-complete .pipeline-step__index {
+  border-color: var(--app-success, #16835b);
+  background: var(--app-success, #16835b);
+  color: #fff;
+}
+
+.pipeline-step.is-warning {
+  color: var(--app-warning, #a56a00);
+}
+
+.pipeline-step.is-warning .pipeline-step__index {
+  border-color: var(--app-warning, #a56a00);
+  background: rgba(208, 139, 45, 0.12);
+  color: var(--app-warning, #a56a00);
+}
+
+.pipeline-step.is-complete:not(:last-child)::after {
+  background: var(--app-success, #16835b);
 }
 
 .llm-blocked-actions {
@@ -252,8 +395,16 @@ const submitBuild = () => {
 }
 
 .category-option {
-  flex: 1;
   min-width: 0;
+  padding: 12px 0 2px;
+}
+
+.category-option label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--app-text);
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .category-option .el-select {
@@ -265,6 +416,28 @@ const submitBuild = () => {
   margin-top: 6px;
   color: var(--app-text-muted);
   font-size: 0.78rem;
+}
+
+.advanced-settings {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-surface-2);
+}
+
+.advanced-settings summary {
+  color: var(--app-text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.advanced-settings summary span {
+  margin-left: 6px;
+  color: var(--app-text-muted);
+  font-size: 0.78rem;
+  font-weight: 400;
 }
 
 .third-party-note {
@@ -327,6 +500,12 @@ const submitBuild = () => {
   color: var(--app-success, #16835b);
 }
 
+.warning-note {
+  margin: 8px 0 0;
+  color: var(--app-warning, #a56a00);
+  font-size: 0.9rem;
+}
+
 @media (max-width: 720px) {
   .build-head,
   .section-head {
@@ -336,6 +515,15 @@ const submitBuild = () => {
   .preflight-grid,
   .detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pipeline-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 8px;
+  }
+
+  .pipeline-step::after {
+    display: none;
   }
 
   .build-options {

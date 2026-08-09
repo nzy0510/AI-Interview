@@ -10,6 +10,7 @@
       "category": "java",
       "difficulty": "mid",
       "tags": ["java"],
+      "sourceEvidence": [{"quote": "缺少标准答案正文时不能导入。"}],
       "content": {
         "pitfalls": "缺少标准答案正文时不能导入。",
         "followUpPaths": ["追问一？", "追问二？"]

@@ -7,6 +7,7 @@ import java.util.List;
 @Data
 public class QuestionBankBuildCandidateReviewRequest {
     private String action;
+    private Long expectedReviewRevision;
     private String subject;
     private String category;
     private String difficulty;

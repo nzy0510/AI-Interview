@@ -32,7 +32,8 @@ class QuestionBankBuildFinalizationPreparationServiceTest {
         QuestionBankBuildResponseAssembler assembler = mock(QuestionBankBuildResponseAssembler.class);
         KnowledgeWorkspaceService workspace = mock(KnowledgeWorkspaceService.class);
         QuestionBankBuildFinalizationPreparationService service = new QuestionBankBuildFinalizationPreparationService(
-                buildMapper, candidateMapper, sourceFileMapper, assembler, workspace);
+                buildMapper, candidateMapper, sourceFileMapper, assembler, workspace,
+                new QuestionBankBuildCandidateValidator());
         QuestionBankBuild build = new QuestionBankBuild();
         build.setId(99L);
         build.setOwnerUserId(7L);
@@ -48,7 +49,7 @@ class QuestionBankBuildFinalizationPreparationServiceTest {
         payload.setSubject("JVM");
         when(assembler.toPayload(candidate)).thenReturn(payload);
         when(assembler.firstCategory(build)).thenReturn("java");
-        when(workspace.importPackage(eq(7L), eq(10L), any(QuestionBankImportRequest.class)))
+        when(workspace.importFinalizedBuildPackage(eq(7L), eq(10L), any(QuestionBankImportRequest.class)))
                 .thenReturn(QuestionBankImportResult.builder()
                         .batchId("question-bank-build-99-final")
                         .received(1)
@@ -74,7 +75,8 @@ class QuestionBankBuildFinalizationPreparationServiceTest {
         QuestionBankBuildResponseAssembler assembler = mock(QuestionBankBuildResponseAssembler.class);
         KnowledgeWorkspaceService workspace = mock(KnowledgeWorkspaceService.class);
         QuestionBankBuildFinalizationPreparationService service = new QuestionBankBuildFinalizationPreparationService(
-                buildMapper, candidateMapper, mock(KnowledgeSourceFileMapper.class), assembler, workspace);
+                buildMapper, candidateMapper, mock(KnowledgeSourceFileMapper.class), assembler, workspace,
+                new QuestionBankBuildCandidateValidator());
         QuestionBankBuild build = new QuestionBankBuild();
         build.setId(99L);
         build.setOwnerUserId(7L);
@@ -94,7 +96,8 @@ class QuestionBankBuildFinalizationPreparationServiceTest {
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         QuestionBankBuildFinalizationPreparationService service = new QuestionBankBuildFinalizationPreparationService(
                 buildMapper, candidateMapper, mock(KnowledgeSourceFileMapper.class),
-                mock(QuestionBankBuildResponseAssembler.class), mock(KnowledgeWorkspaceService.class));
+                mock(QuestionBankBuildResponseAssembler.class), mock(KnowledgeWorkspaceService.class),
+                new QuestionBankBuildCandidateValidator());
         QuestionBankBuild build = new QuestionBankBuild();
         build.setId(99L); build.setOwnerUserId(7L); build.setKnowledgeBaseId(10L);
         when(buildMapper.selectById(99L)).thenReturn(build);

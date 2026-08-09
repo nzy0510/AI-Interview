@@ -6,6 +6,7 @@ import {
   getQuestionBankBuildAPI,
   getQuestionBankBuildCandidatesAPI,
   listQuestionBankBuildsAPI,
+  repairQuestionBankBuildAPI,
   retryQuestionBankBuildAPI,
   updateQuestionBankBuildCandidateAPI
 } from '@/api/knowledgeWorkspace'
@@ -21,6 +22,7 @@ export function useQuestionBankBuild(knowledgeBaseId, apiOverrides = {}) {
     getBuild: getQuestionBankBuildAPI,
     getCandidates: getQuestionBankBuildCandidatesAPI,
     updateCandidate: updateQuestionBankBuildCandidateAPI,
+    repairBuild: repairQuestionBankBuildAPI,
     finalizeBuild: finalizeQuestionBankBuildAPI,
     retryBuildJob: retryQuestionBankBuildAPI,
     deleteBuild: deleteQuestionBankBuildAPI,

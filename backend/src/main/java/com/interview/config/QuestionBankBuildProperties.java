@@ -14,5 +14,7 @@ public class QuestionBankBuildProperties {
     private int chunkOverlapChars = 400;
     private int maxChunks = 50;
     private int maxCandidates = 300;
+    private int maxRepairRounds = 2;
     private String promptVersion = "question-bank-build-v1";
+    private String repairPromptVersion = "question-bank-repair-v1";
 }

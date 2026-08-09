@@ -39,7 +39,7 @@ class QuestionBankBuildCreationServiceTest {
                 jobMapper, buildMapper, transactionTemplate, assembler, mock(AppJobRecoveryService.class));
 
         QuestionBankBuildResponse actual = service.create(
-                7L, knowledgeBase(), runtime(), List.of(), List.of("java"), 1);
+                7L, knowledgeBase(), runtime(), List.of(), List.of("java"));
 
         assertThat(actual).isSameAs(expected);
     }
@@ -56,7 +56,7 @@ class QuestionBankBuildCreationServiceTest {
                 transactionTemplate, mock(QuestionBankBuildResponseAssembler.class), recovery);
 
         QuestionBankBuildResponse actual = service.create(
-                7L, knowledgeBase(), runtime(), List.of(), List.of("java"), 1);
+                7L, knowledgeBase(), runtime(), List.of(), List.of("java"));
 
         assertThat(actual).isSameAs(expected);
         verify(recovery).dispatchJob(8L);

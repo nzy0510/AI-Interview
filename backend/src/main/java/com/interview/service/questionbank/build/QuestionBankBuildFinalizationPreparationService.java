@@ -26,17 +26,20 @@ public class QuestionBankBuildFinalizationPreparationService {
     private final KnowledgeSourceFileMapper sourceFileMapper;
     private final QuestionBankBuildResponseAssembler assembler;
     private final KnowledgeWorkspaceService workspaceService;
+    private final QuestionBankBuildCandidateValidator validator;
 
     public QuestionBankBuildFinalizationPreparationService(QuestionBankBuildMapper buildMapper,
                                                            QuestionBankBuildCandidateMapper candidateMapper,
                                                            KnowledgeSourceFileMapper sourceFileMapper,
                                                            QuestionBankBuildResponseAssembler assembler,
-                                                           KnowledgeWorkspaceService workspaceService) {
+                                                           KnowledgeWorkspaceService workspaceService,
+                                                           QuestionBankBuildCandidateValidator validator) {
         this.buildMapper = buildMapper;
         this.candidateMapper = candidateMapper;
         this.sourceFileMapper = sourceFileMapper;
         this.assembler = assembler;
         this.workspaceService = workspaceService;
+        this.validator = validator;
     }
 
     @Transactional
@@ -64,6 +67,7 @@ public class QuestionBankBuildFinalizationPreparationService {
         if (selected.stream().anyMatch(candidate -> "REJECTED".equalsIgnoreCase(candidate.getReviewStatus()))) {
             throw new IllegalArgumentException("终审不能包含人工拒绝的候选");
         }
+        selected.forEach(validator::validate);
         validateSourceFiles(selected, buildId, userId, knowledgeBaseId);
         for (QuestionBankBuildCandidate candidate : selected) {
             if (!"ACCEPTED".equalsIgnoreCase(candidate.getReviewStatus())) {
@@ -90,7 +94,8 @@ public class QuestionBankBuildFinalizationPreparationService {
         ));
         build.setFinalizationStatus("IMPORTING");
         buildMapper.updateById(build);
-        QuestionBankImportResult imported = workspaceService.importPackage(userId, knowledgeBaseId, request);
+        QuestionBankImportResult imported = workspaceService.importFinalizedBuildPackage(
+                userId, knowledgeBaseId, request);
         if (imported == null || imported.getFailed() > 0 || imported.getImported() != selected.size()
                 || imported.getImportedAtomIds() == null
                 || imported.getImportedAtomIds().size() != selected.size()) {
@@ -105,6 +110,23 @@ public class QuestionBankBuildFinalizationPreparationService {
         build.setFinalizedAt(LocalDateTime.now());
         buildMapper.updateById(build);
         return imported.getImportedAtomIds();
+    }
+
+    public void validateSelection(Long buildId,
+                                  Long userId,
+                                  Long knowledgeBaseId,
+                                  List<Long> candidateIds) {
+        List<QuestionBankBuildCandidate> selected = candidateMapper.selectList(
+                new QueryWrapper<QuestionBankBuildCandidate>()
+                        .eq("build_id", buildId)
+                        .eq("owner_user_id", userId)
+                        .in("id", candidateIds)
+                        .orderByAsc("chunk_index", "id"));
+        if (selected.size() != candidateIds.size()) {
+            throw new IllegalArgumentException("终审候选不存在或不属于当前构建");
+        }
+        selected.forEach(validator::validate);
+        validateSourceFiles(selected, buildId, userId, knowledgeBaseId);
     }
 
     private void validateSourceFiles(List<QuestionBankBuildCandidate> candidates,

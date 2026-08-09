@@ -141,7 +141,7 @@ public class QuestionBankBootstrapService {
                 }
                 request.setMode("AUTO_PUBLISH");
                 request.setTargetCategory(publicPositionNameFor(resource));
-                questionBankService.importBatch(request,
+                questionBankService.importReviewedBatch(request,
                         new QuestionBankImportScope("PUBLIC", null, target.positionId(), target.knowledgeBaseId(), null, true, false));
                 imported++;
             } catch (Exception e) {

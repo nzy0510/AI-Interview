@@ -2,7 +2,6 @@ import {
   normalizeQuestionBankBuild,
   normalizeQuestionBankCandidate
 } from '@/api/knowledgeWorkspace'
-import { isQuestionBankCandidateAccepted } from '@/utils/knowledgeWorkspace'
 
 export function createQuestionBankBuildActions(context) {
   const {
@@ -68,29 +67,28 @@ export function createQuestionBankBuildActions(context) {
     const buildId = activeBuildId.value
     if (!kbId || !buildId || !candidateId) return null
     if (!canReview.value) throw new Error('构建完成后才能审核候选')
+    const expectedReviewRevision = Number(activeBuild.value?.reviewRevision)
+    if (!Number.isSafeInteger(expectedReviewRevision) || expectedReviewRevision < 0) {
+      throw new Error('构建审核版本缺失，请刷新后重试')
+    }
     return runAction(`candidate:${candidateId}`, async () => {
-      const updated = normalizeQuestionBankCandidate(
-        await api.updateCandidate(kbId, buildId, candidateId, { action, ...editable }))
-      if (!isCurrentContext(requestContext) || activeBuildId.value !== buildId) return updated
-      const previous = candidates.value.find((item) => item.id === updated.id)
-      candidates.value = candidates.value.map((item) => item.id === updated.id ? updated : item)
-      const wasAccepted = isQuestionBankCandidateAccepted(previous)
-      const isAccepted = isQuestionBankCandidateAccepted(updated)
-      const wasRejected = previous?.status === 'REJECTED'
-      const isRejected = updated.status === 'REJECTED'
-      const adjustCounts = (build) => build
-        ? {
-          ...build,
-          reviewRevision: Number(build.reviewRevision || 0) + 1,
-          acceptedCount: Math.max(0, Number(build.acceptedCount || 0) + Number(isAccepted) - Number(wasAccepted)),
-          rejectedCount: Math.max(0, Number(build.rejectedCount || 0) + Number(isRejected) - Number(wasRejected))
+      try {
+        const updated = normalizeQuestionBankCandidate(
+          await api.updateCandidate(kbId, buildId, candidateId, {
+            action,
+            ...editable,
+            expectedReviewRevision
+          }))
+        if (!isCurrentContext(requestContext) || activeBuildId.value !== buildId) return updated
+        candidates.value = candidates.value.map((item) => item.id === updated.id ? updated : item)
+        await loadBuild(buildId)
+        return updated
+      } catch (cause) {
+        if (isCurrentContext(requestContext) && activeBuildId.value === buildId) {
+          await Promise.allSettled([context.loadBuild(buildId), context.loadCandidates(buildId)])
         }
-        : build
-      activeBuild.value = adjustCounts(activeBuild.value)
-      builds.value = builds.value.map((item) => item.id === updated.buildId || item.id === buildId
-        ? adjustCounts(item)
-        : item)
-      return updated
+        throw cause
+      }
     })
   }
   const finalizeBuild = async () => {
@@ -98,7 +96,7 @@ export function createQuestionBankBuildActions(context) {
     const { kbId } = requestContext
     const buildId = activeBuildId.value
     if (!kbId || !buildId) throw new Error('请选择构建批次')
-    if (!canFinalize.value) throw new Error('仍有监督异常未处理，或没有可发布的候选原子')
+    if (!canFinalize.value) throw new Error('当前没有可发布的候选原子，或构建尚未进入终审阶段')
     const candidateIds = finalizableCandidates.value.map((candidate) => candidate.id)
     const expectedReviewRevision = Number(activeBuild.value?.reviewRevision)
     if (!Number.isSafeInteger(expectedReviewRevision) || expectedReviewRevision < 0) {
@@ -122,6 +120,41 @@ export function createQuestionBankBuildActions(context) {
       return response
     })
   }
+  const repairCandidates = async (candidateIds = [], instruction = '') => {
+    const requestContext = beginContext()
+    const { kbId } = requestContext
+    const buildId = activeBuildId.value
+    const ids = Array.from(new Set(candidateIds.map((id) => Number(id)).filter(Number.isSafeInteger)))
+    if (!kbId || !buildId) throw new Error('请选择构建批次')
+    if (!canReview.value) throw new Error('构建进入终审阶段后才能请求修复')
+    if (!ids.length) throw new Error('请选择至少一个需关注的候选')
+    const expectedReviewRevision = Number(activeBuild.value?.reviewRevision)
+    if (!Number.isSafeInteger(expectedReviewRevision) || expectedReviewRevision < 0) {
+      throw new Error('构建审核版本缺失，请刷新后重试')
+    }
+    return runAction('repair', async () => {
+      let build
+      try {
+        build = normalizeQuestionBankBuild(await api.repairBuild(
+          kbId,
+          buildId,
+          ids,
+          String(instruction || '').trim(),
+          expectedReviewRevision
+        ))
+      } catch (cause) {
+        if (isCurrentContext(requestContext) && activeBuildId.value === buildId) {
+          await Promise.allSettled([context.loadBuild(buildId), context.loadCandidates(buildId)])
+        }
+        throw cause
+      }
+      if (!isCurrentContext(requestContext) || activeBuildId.value !== buildId) return build
+      activeBuild.value = build
+      builds.value = builds.value.map((item) => item.id === buildId ? build : item)
+      polling.schedule(0)
+      return build
+    })
+  }
   const deleteBuild = async (buildId = activeBuildId.value) => {
     const requestContext = beginContext()
     const { kbId } = requestContext
@@ -136,5 +169,5 @@ export function createQuestionBankBuildActions(context) {
     })
   }
 
-  return { startBuild, retryBuild, updateCandidate, finalizeBuild, deleteBuild }
+  return { startBuild, retryBuild, updateCandidate, repairCandidates, finalizeBuild, deleteBuild }
 }

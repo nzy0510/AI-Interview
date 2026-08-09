@@ -45,31 +45,60 @@ describe('useQuestionBankBuild', () => {
     expect(api.retryBuildJob).toHaveBeenCalledWith(99)
   })
 
-  it('keeps review counts in sync after accept, reject, and save actions', async () => {
+  it('sends the expected review revision and reloads authoritative counts after candidate review', async () => {
     const api = {
       updateCandidate: vi.fn(async (_kbId, _buildId, _candidateId, { action }) => ({
         candidateId: 1,
         buildId: 5,
         reviewStatus: action === 'ACCEPT' ? 'ACCEPTED' : action === 'REJECT' ? 'REJECTED' : 'PENDING'
-      }))
+      })),
+      getBuild: vi.fn()
+        .mockResolvedValueOnce({ buildId: 5, status: 'COMPLETED', stage: 'READY_FOR_FINAL_REVIEW', reviewRevision: 5, acceptedCount: 1, rejectedCount: 0 })
+        .mockResolvedValueOnce({ buildId: 5, status: 'COMPLETED', stage: 'READY_FOR_FINAL_REVIEW', reviewRevision: 6, acceptedCount: 0, rejectedCount: 1 })
+        .mockResolvedValueOnce({ buildId: 5, status: 'COMPLETED', stage: 'READY_FOR_FINAL_REVIEW', reviewRevision: 7, acceptedCount: 0, rejectedCount: 0 })
     }
     const state = useQuestionBankBuild(8, api)
     state.activeBuildId.value = 5
-    state.activeBuild.value = { id: 5, status: 'COMPLETED', candidateCount: 2, acceptedCount: 0, rejectedCount: 0 }
+    state.activeBuild.value = { id: 5, status: 'COMPLETED', stage: 'READY_FOR_FINAL_REVIEW', reviewRevision: 4, candidateCount: 2, acceptedCount: 0, rejectedCount: 0 }
     state.builds.value = [{ id: 5, candidateCount: 2, acceptedCount: 0, rejectedCount: 0 }]
     state.candidates.value = [{ id: 1, status: 'PENDING' }, { id: 2, status: 'PENDING' }]
 
     await state.updateCandidate(1, 'ACCEPT')
-    expect(state.activeBuild.value).toMatchObject({ acceptedCount: 1, rejectedCount: 0 })
+    expect(api.updateCandidate).toHaveBeenLastCalledWith(8, 5, 1, { action: 'ACCEPT', expectedReviewRevision: 4 })
+    expect(state.activeBuild.value).toMatchObject({ reviewRevision: 5, acceptedCount: 1, rejectedCount: 0 })
     expect(state.builds.value[0]).toMatchObject({ acceptedCount: 1, rejectedCount: 0 })
 
     await state.updateCandidate(1, 'REJECT')
-    expect(state.activeBuild.value).toMatchObject({ acceptedCount: 0, rejectedCount: 1 })
+    expect(api.updateCandidate).toHaveBeenLastCalledWith(8, 5, 1, { action: 'REJECT', expectedReviewRevision: 5 })
+    expect(state.activeBuild.value).toMatchObject({ reviewRevision: 6, acceptedCount: 0, rejectedCount: 1 })
     expect(state.builds.value[0]).toMatchObject({ acceptedCount: 0, rejectedCount: 1 })
 
     await state.updateCandidate(1, 'SAVE')
-    expect(state.activeBuild.value).toMatchObject({ acceptedCount: 0, rejectedCount: 0 })
+    expect(api.updateCandidate).toHaveBeenLastCalledWith(8, 5, 1, { action: 'SAVE', expectedReviewRevision: 6 })
+    expect(state.activeBuild.value).toMatchObject({ reviewRevision: 7, acceptedCount: 0, rejectedCount: 0 })
     expect(state.builds.value[0]).toMatchObject({ acceptedCount: 0, rejectedCount: 0 })
+  })
+
+  it('refreshes build revision and candidates after a conflicting candidate review', async () => {
+    const api = {
+      updateCandidate: vi.fn().mockRejectedValue(new Error('构建内容已变化')),
+      getBuild: vi.fn().mockResolvedValue({ buildId: 5, status: 'RUNNING', stage: 'REPAIRING', reviewRevision: 6 }),
+      getCandidates: vi.fn().mockResolvedValue([
+        { candidateId: 1, buildId: 5, reviewStatus: 'PENDING', machineReviewStatus: 'NEEDS_HUMAN' }
+      ])
+    }
+    const state = useQuestionBankBuild(8, api)
+    state.activeBuildId.value = 5
+    state.activeBuild.value = { id: 5, status: 'COMPLETED', stage: 'READY_FOR_FINAL_REVIEW', reviewRevision: 5 }
+    state.candidates.value = [{ id: 1, status: 'PENDING', machineReviewStatus: 'AUTO_PASS' }]
+
+    await expect(state.updateCandidate(1, 'ACCEPT')).rejects.toThrow('构建内容已变化')
+
+    expect(api.updateCandidate).toHaveBeenCalledWith(8, 5, 1, { action: 'ACCEPT', expectedReviewRevision: 5 })
+    expect(api.getBuild).toHaveBeenCalledWith(8, 5)
+    expect(api.getCandidates).toHaveBeenCalledWith(8, 5)
+    expect(state.activeBuild.value).toMatchObject({ stage: 'REPAIRING', reviewRevision: 6 })
+    expect(state.candidates.value[0]).toMatchObject({ machineReviewStatus: 'NEEDS_HUMAN' })
   })
 
   it('allows viewing generated candidates but blocks review until completion', async () => {
@@ -166,7 +195,7 @@ describe('useQuestionBankBuild', () => {
     expect(state.candidates.value.map((candidate) => candidate.id)).toEqual([902])
   })
 
-  it('requires only supervision exceptions to be resolved before explicit final review', async () => {
+  it('publishes finalizable candidates without requiring unresolved attention items to be discarded', async () => {
     const api = {
       getBuild: vi.fn().mockResolvedValue({
         buildId: 5,
@@ -200,12 +229,6 @@ describe('useQuestionBankBuild', () => {
 
     expect(state.exceptionCandidates.value.map((item) => item.id)).toEqual([2, 4])
     expect(state.finalizableCandidates.value.map((item) => item.id)).toEqual([1])
-    expect(state.canFinalize.value).toBe(false)
-
-    state.candidates.value[1] = { ...state.candidates.value[1], status: 'ACCEPTED' }
-    state.candidates.value[3] = { ...state.candidates.value[3], status: 'REJECTED' }
-    expect(state.exceptionCandidates.value).toEqual([])
-    expect(state.finalizableCandidates.value.map((item) => item.id)).toEqual([1, 2])
     expect(state.canFinalize.value).toBe(true)
 
     await state.finalizeBuild()
@@ -213,11 +236,42 @@ describe('useQuestionBankBuild', () => {
     expect(api.finalizeBuild).toHaveBeenCalledWith(
       8,
       5,
-      [1, 2],
+      [1],
       4
     )
     expect(api.getBuild).not.toHaveBeenCalled()
     expect(state.activeBuild.value).toMatchObject({ jobId: 77, stage: 'FINALIZING', status: 'PENDING' })
+  })
+
+  it('starts assistant repair with selected candidates and the current review revision', async () => {
+    const api = {
+      repairBuild: vi.fn().mockResolvedValue({
+        buildId: 5,
+        status: 'RUNNING',
+        stage: 'REPAIRING',
+        reviewRevision: 4,
+        repairRound: 1
+      })
+    }
+    const state = useQuestionBankBuild(8, api)
+    state.activeBuildId.value = 5
+    state.activeBuild.value = {
+      id: 5,
+      buildId: 5,
+      status: 'COMPLETED',
+      stage: 'READY_FOR_FINAL_REVIEW',
+      reviewRevision: 4
+    }
+    state.builds.value = [state.activeBuild.value]
+    state.candidates.value = [
+      { id: 2, candidateId: 2, status: 'PENDING', machineReviewStatus: 'NEEDS_HUMAN' }
+    ]
+
+    await state.repairCandidates([2], '只依据原文修正')
+
+    expect(api.repairBuild).toHaveBeenCalledWith(8, 5, [2], '只依据原文修正', 4)
+    expect(state.activeBuild.value).toMatchObject({ stage: 'REPAIRING', repairRound: 1 })
+    expect(state.canReview.value).toBe(false)
   })
 
   it('polls active stages and automatically loads exceptions when supervision finishes', async () => {
@@ -244,6 +298,33 @@ describe('useQuestionBankBuild', () => {
     expect(state.exceptionCandidates.value.map((item) => item.id)).toEqual([2])
     expect(vi.getTimerCount()).toBe(0)
     state.stopPolling()
+  })
+
+  it('keeps polling through assistant repair and re-supervision, then refreshes candidates', async () => {
+    vi.useFakeTimers()
+    const api = {
+      getBuild: vi.fn()
+        .mockResolvedValueOnce({ buildId: 5, status: 'RUNNING', stage: 'REPAIRING', progress: 78 })
+        .mockResolvedValueOnce({ buildId: 5, status: 'RUNNING', stage: 'RESUPERVISING', progress: 88 })
+        .mockResolvedValueOnce({ buildId: 5, status: 'COMPLETED', stage: 'READY_FOR_FINAL_REVIEW', progress: 100 }),
+      getCandidates: vi.fn().mockResolvedValue([
+        { candidateId: 2, reviewStatus: 'PENDING', machineReviewStatus: 'AUTO_PASS', repairStatus: 'SUCCEEDED', repairAttempts: 1 }
+      ])
+    }
+    const state = useQuestionBankBuild(8, api)
+    state.activeBuildId.value = 5
+    state.activeBuild.value = { id: 5, status: 'RUNNING', stage: 'REPAIRING' }
+
+    await state.startPolling(100)
+    expect(state.activeBuild.value.stage).toBe('REPAIRING')
+    await vi.advanceTimersToNextTimerAsync()
+    expect(state.activeBuild.value.stage).toBe('RESUPERVISING')
+    await vi.advanceTimersToNextTimerAsync()
+
+    expect(state.activeBuild.value.stage).toBe('READY_FOR_FINAL_REVIEW')
+    expect(api.getCandidates).toHaveBeenCalledWith(8, 5)
+    expect(state.repairedCandidates.value.map((candidate) => candidate.id)).toEqual([2])
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it('keeps polling when retry dispatch has not updated the failed build yet', async () => {

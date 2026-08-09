@@ -27,7 +27,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -47,6 +46,7 @@ public class QuestionBankBuildService {
     private final QuestionBankBuildAccessService accessService;
     private final QuestionBankBuildResponseAssembler responseAssembler;
     private final QuestionBankBuildCreationService creationService;
+    private final QuestionBankBuildCandidateValidator candidateValidator;
 
     public QuestionBankBuildService(KnowledgeSourceFileMapper sourceFileMapper,
                                     QuestionBankBuildMapper buildMapper,
@@ -58,7 +58,8 @@ public class QuestionBankBuildService {
                                     QuestionBankBuildFileStorage storage,
                                     QuestionBankBuildAccessService accessService,
                                     QuestionBankBuildResponseAssembler responseAssembler,
-                                    QuestionBankBuildCreationService creationService) {
+                                    QuestionBankBuildCreationService creationService,
+                                    QuestionBankBuildCandidateValidator candidateValidator) {
         this.sourceFileMapper = sourceFileMapper;
         this.buildMapper = buildMapper;
         this.candidateMapper = candidateMapper;
@@ -70,6 +71,7 @@ public class QuestionBankBuildService {
         this.accessService = accessService;
         this.responseAssembler = responseAssembler;
         this.creationService = creationService;
+        this.candidateValidator = candidateValidator;
     }
 
     public QuestionBankBuildResponse create(Long userId,
@@ -80,16 +82,7 @@ public class QuestionBankBuildService {
         UserLlmRuntimeConfig runtime = userLlmConfigService.requireActiveRuntimeConfig(userId);
         List<QuestionBankBuildInputService.PreparedFile> preparedFiles = inputService.prepare(files);
         List<String> normalizedCategories = normalizeCategories(categories);
-        int chunkCount = preparedFiles.stream()
-                .mapToInt(file -> QuestionBankBuildChunker.split(file.text(), properties.getChunkChars(),
-                        properties.getChunkOverlapChars()).size())
-                .sum();
-        if (chunkCount == 0) throw new IllegalArgumentException("文档未提取到可生成的文本");
-        if (chunkCount > properties.getMaxChunks()) {
-            throw new IllegalArgumentException("文档分块数量超过上限 " + properties.getMaxChunks()
-                    + "，请拆分文件后再试");
-        }
-        return creationService.create(userId, knowledgeBase, runtime, preparedFiles, normalizedCategories, chunkCount);
+        return creationService.create(userId, knowledgeBase, runtime, preparedFiles, normalizedCategories);
     }
 
     public List<QuestionBankBuildResponse> list(Long userId, Long knowledgeBaseId) {
@@ -141,6 +134,33 @@ public class QuestionBankBuildService {
         }
     }
 
+    @Transactional
+    public void deleteForPosition(Long userId, Long positionId) {
+        List<QuestionBankBuild> builds = buildMapper.selectList(new QueryWrapper<QuestionBankBuild>()
+                .eq("owner_user_id", userId)
+                .eq("position_id", positionId)
+                .eq("scope", SCOPE_PRIVATE));
+        if (builds.isEmpty()) return;
+        long activeJobs = appJobMapper.selectCount(new QueryWrapper<AppJob>()
+                .eq("owner_user_id", userId)
+                .eq("position_id", positionId)
+                .in("status", AppJobService.STATUS_PENDING, AppJobService.STATUS_RUNNING));
+        if (activeJobs > 0) {
+            throw new IllegalStateException("岗位仍有题库任务正在处理，请完成或等待失败后再删除");
+        }
+        List<Long> buildIds = builds.stream().map(QuestionBankBuild::getId).filter(Objects::nonNull).toList();
+        try {
+            for (Long buildId : buildIds) storage.deleteBuild(buildId);
+        } catch (IOException e) {
+            throw new IllegalStateException("岗位源文档清理失败，已停止删除", e);
+        }
+        if (buildIds.isEmpty()) return;
+        candidateMapper.delete(new QueryWrapper<QuestionBankBuildCandidate>().in("build_id", buildIds));
+        sourceFileMapper.delete(new QueryWrapper<KnowledgeSourceFile>().in("build_id", buildIds));
+        appJobMapper.delete(new QueryWrapper<AppJob>().in("build_id", buildIds));
+        buildMapper.delete(new QueryWrapper<QuestionBankBuild>().in("id", buildIds));
+    }
+
     public List<QuestionBankBuildCandidateResponse> candidates(Long userId, Long knowledgeBaseId, Long buildId) {
         accessService.requireBuildTarget(userId, knowledgeBaseId);
         requireBuild(userId, knowledgeBaseId, buildId);
@@ -164,7 +184,6 @@ public class QuestionBankBuildService {
                 .contains(String.valueOf(build.getStage()).toUpperCase(Locale.ROOT))) {
             throw new IllegalStateException("构建已进入终审阶段，候选内容不允许继续修改");
         }
-        claimReviewRevision(build);
         QuestionBankBuildCandidate candidate = candidateMapper.selectOne(new QueryWrapper<QuestionBankBuildCandidate>()
                 .eq("id", candidateId).eq("build_id", buildId).eq("owner_user_id", userId));
         if (candidate == null) throw new RuntimeException("候选原子不存在或无权访问");
@@ -172,7 +191,7 @@ public class QuestionBankBuildService {
         if (!Set.of("ACCEPT", "REJECT", "SAVE").contains(action)) throw new IllegalArgumentException("审核动作必须是 ACCEPT、REJECT 或 SAVE");
         applyEdits(candidate, request);
         if ("ACCEPT".equals(action)) {
-            validateCandidate(candidate);
+            candidateValidator.validate(candidate);
             candidate.setReviewStatus("ACCEPTED");
             candidate.setReviewReason("人工审核接受");
         } else if ("REJECT".equals(action)) {
@@ -184,6 +203,7 @@ public class QuestionBankBuildService {
             candidate.setMachineReviewStatus("NEEDS_HUMAN");
             candidate.setMachineReviewIssuesJson(JSON.toJSONString(List.of("内容经人工修改，原自动监督结论已失效")));
         }
+        claimReviewRevision(build, request.getExpectedReviewRevision());
         candidateMapper.updateById(candidate);
         refreshCounts(buildId);
         return responseAssembler.toCandidateResponse(candidate);
@@ -206,32 +226,21 @@ public class QuestionBankBuildService {
         if (request.getFollowUpPaths() != null) candidate.setFollowUpPathsJson(JSON.toJSONString(request.getFollowUpPaths()));
     }
 
-    private void validateCandidate(QuestionBankBuildCandidate candidate) {
-        if (blank(candidate.getSubject()) || blank(candidate.getCategory()) || blank(candidate.getDifficulty()) || blank(candidate.getPrinciples())) {
-            throw new IllegalArgumentException("候选原子的主题、分类、难度和原则不能为空");
-        }
-        String difficulty = candidate.getDifficulty().trim().toLowerCase(Locale.ROOT);
-        if (!Set.of("junior", "mid", "senior", "principal").contains(difficulty)) {
-            throw new IllegalArgumentException("difficulty 只能是 junior、mid、senior 或 principal");
-        }
-        candidate.setDifficulty(difficulty);
-        List<String> followUps = candidate.getFollowUpPathsJson() == null ? List.of() : JSON.parseArray(candidate.getFollowUpPathsJson(), String.class);
-        if (followUps.size() < 2 || followUps.stream().anyMatch(this::blank)) throw new IllegalArgumentException("至少需要两条非空追问路径");
-        if (blank(candidate.getSourceRef()) || !hasSourceEvidence(candidate.getSourceEvidenceJson())) throw new IllegalArgumentException("候选原子缺少来源证据");
-    }
-
     QuestionBankBuild requireOwnedBuild(Long userId, Long knowledgeBaseId, Long buildId) {
         accessService.requireBuildTarget(userId, knowledgeBaseId);
         return requireBuild(userId, knowledgeBaseId, buildId);
     }
 
-    private void claimReviewRevision(QuestionBankBuild build) {
+    private void claimReviewRevision(QuestionBankBuild build, Long expectedRevision) {
         long revision = build.getReviewRevision() == null ? 0L : build.getReviewRevision();
+        if (expectedRevision == null || expectedRevision != revision) {
+            throw new IllegalStateException("构建内容已变化，请刷新后重新审核");
+        }
         int claimed = buildMapper.update(null, new UpdateWrapper<QuestionBankBuild>()
                 .eq("id", build.getId())
                 .eq("status", AppJobService.STATUS_COMPLETED)
                 .in("stage", "READY_FOR_REVIEW", "READY_FOR_FINAL_REVIEW")
-                .eq("review_revision", revision)
+                .eq("review_revision", expectedRevision)
                 .setSql("review_revision = review_revision + 1"));
         if (claimed != 1) throw new IllegalStateException("构建内容已变化，请刷新后重新审核");
         build.setReviewRevision(revision + 1);
@@ -248,17 +257,11 @@ public class QuestionBankBuildService {
         update.setNeedsHumanCount((int) candidates.stream().filter(item -> "NEEDS_HUMAN".equals(item.getMachineReviewStatus())
                 && "PENDING".equals(item.getReviewStatus())).count());
         update.setAutoRejectCount((int) candidates.stream().filter(item -> "AUTO_REJECT".equals(item.getMachineReviewStatus())).count());
+        update.setRepairedCount((int) candidates.stream().filter(item -> Set.of("REPAIRED", "VERIFIED")
+                .contains(String.valueOf(item.getRepairStatus()).toUpperCase(Locale.ROOT))).count());
+        update.setRepairFailedCount((int) candidates.stream().filter(item -> Set.of("FAILED", "EXHAUSTED")
+                .contains(String.valueOf(item.getRepairStatus()).toUpperCase(Locale.ROOT))).count());
         buildMapper.updateById(update);
-    }
-
-    private boolean hasSourceEvidence(String json) {
-        if (json == null || json.isBlank()) return false;
-        try {
-            List<Map> evidence = JSON.parseArray(json, Map.class);
-            return evidence != null && evidence.stream().anyMatch(item -> item != null && !blank(String.valueOf(item.get("quote"))));
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     private QuestionBankBuild requireBuild(Long userId, Long knowledgeBaseId, Long buildId) {
@@ -281,6 +284,4 @@ public class QuestionBankBuildService {
                 .map(String::trim).filter(value -> !value.isBlank()).distinct().limit(20).toList();
         return normalized.isEmpty() ? List.of("通用") : normalized;
     }
-
-    private boolean blank(String value) { return value == null || value.isBlank(); }
 }

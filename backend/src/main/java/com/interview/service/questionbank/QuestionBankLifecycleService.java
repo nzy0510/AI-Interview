@@ -67,7 +67,8 @@ class QuestionBankLifecycleService extends QuestionBankSupport {
         int skipped = 0;
         for (KnowledgeAtom atom : atoms) {
             if (!QuestionBankService.STATUS_DRAFT.equalsIgnoreCase(atom.getStatus())
-                    || !"PASS".equalsIgnoreCase(atom.getReviewStatus())) {
+                    || !"PASS".equalsIgnoreCase(atom.getReviewStatus())
+                    || !hasRequiredSourceEvidence(atom)) {
                 skipped++;
                 continue;
             }
@@ -102,7 +103,8 @@ class QuestionBankLifecycleService extends QuestionBankSupport {
         int skipped = 0;
         for (KnowledgeAtom atom : draftAtoms) {
             if (!QuestionBankService.STATUS_DRAFT.equalsIgnoreCase(atom.getStatus())
-                    || !"PASS".equalsIgnoreCase(atom.getReviewStatus())) {
+                    || !"PASS".equalsIgnoreCase(atom.getReviewStatus())
+                    || !hasRequiredSourceEvidence(atom)) {
                 skipped++;
                 continue;
             }

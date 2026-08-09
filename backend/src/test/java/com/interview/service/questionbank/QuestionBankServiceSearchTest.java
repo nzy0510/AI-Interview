@@ -67,6 +67,10 @@ class QuestionBankServiceSearchTest {
         assertThat(response.getResults())
                 .extracting(result -> result.getAtomId())
                 .containsExactly(atom.getAtomId());
+        ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<KnowledgeAtom>> captor =
+                ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.query.QueryWrapper.class);
+        verify(atomMapper).selectList(captor.capture());
+        assertRetrievalGate(captor.getValue());
     }
 
     @Test
@@ -156,6 +160,7 @@ class QuestionBankServiceSearchTest {
         verify(atomMapper).selectList(captor.capture());
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<KnowledgeAtom> wrapper = captor.getValue();
         wrapper.getSqlSegment();
+        assertRetrievalGate(wrapper);
         assertThat(wrapper.getParamNameValuePairs().values())
                 .contains("%RAG%")
                 .doesNotContain("%" + request.getQuery() + "%");
@@ -258,6 +263,21 @@ class QuestionBankServiceSearchTest {
         atom.setDifficulty("MEDIUM");
         atom.setPrinciples("Uses buckets and resolves collisions.");
         atom.setStatus(QuestionBankService.STATUS_PUBLISHED);
+        atom.setPublicationStatus(QuestionBankService.STATUS_PUBLISHED);
+        atom.setReviewStatus("PASS");
+        atom.setVectorStatus("SYNCED");
         return atom;
+    }
+
+    private void assertRetrievalGate(
+            com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<KnowledgeAtom> wrapper) {
+        String sqlSegment = wrapper.getSqlSegment();
+        assertThat(sqlSegment)
+                .containsIgnoringCase("status")
+                .containsIgnoringCase("publication_status")
+                .containsIgnoringCase("review_status")
+                .containsIgnoringCase("vector_status");
+        assertThat(wrapper.getParamNameValuePairs().values())
+                .contains(QuestionBankService.STATUS_PUBLISHED, "PASS", "SYNCED");
     }
 }

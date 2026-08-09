@@ -17,11 +17,9 @@ import java.util.zip.ZipInputStream;
 public class QuestionBankBuildInputService {
     private static final Set<String> EXTENSIONS = Set.of("pdf", "docx", "txt", "md", "markdown");
     private final QuestionBankBuildProperties properties;
-    private final QuestionBankBuildDocumentExtractor extractor;
 
-    public QuestionBankBuildInputService(QuestionBankBuildProperties properties, QuestionBankBuildDocumentExtractor extractor) {
+    public QuestionBankBuildInputService(QuestionBankBuildProperties properties) {
         this.properties = properties;
-        this.extractor = extractor;
     }
 
     public List<PreparedFile> prepare(List<MultipartFile> files) {
@@ -31,9 +29,8 @@ public class QuestionBankBuildInputService {
         for (MultipartFile file : files) {
             validate(file);
             try {
-                byte[] bytes = file.getBytes(); String text = extractor.extract(file.getOriginalFilename(), bytes);
-                if (text.length() > properties.getMaxTextChars()) throw new IllegalArgumentException("文件文本内容超过上限，请拆分后再试");
-                prepared.add(new PreparedFile(file, bytes, text));
+                byte[] bytes = file.getBytes();
+                prepared.add(new PreparedFile(file, bytes));
             } catch (IOException e) { throw new IllegalArgumentException("文件读取失败"); }
         }
         return prepared;
@@ -71,5 +68,5 @@ public class QuestionBankBuildInputService {
     private String extensionOf(String filename) { if (filename == null) return ""; String value = filename.replace('\\', '/'); int dot = value.lastIndexOf('.'); return dot < 0 ? "" : value.substring(dot + 1).toLowerCase(Locale.ROOT); }
     private boolean startsWith(byte[] bytes, byte[] prefix) { if (bytes.length < prefix.length) return false; for (int i = 0; i < prefix.length; i++) if (bytes[i] != prefix[i]) return false; return true; }
 
-    public record PreparedFile(MultipartFile file, byte[] bytes, String text) { }
+    public record PreparedFile(MultipartFile file, byte[] bytes) { }
 }

@@ -27,6 +27,7 @@ import com.interview.mapper.KnowledgeAtomVersionMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.service.AdminRoleService;
+import com.interview.service.questionbank.build.QuestionBankBuildService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +61,7 @@ public class KnowledgeWorkspaceService {
     private final QdrantVectorService qdrantVectorService;
     private final RagRetrievalLogMapper ragLogMapper;
     private final QuestionBankAccessProperties accessProperties;
+    private final QuestionBankBuildService questionBankBuildService;
 
     public KnowledgeWorkspaceService(InterviewPositionMapper positionMapper,
                                      KnowledgeBaseMapper knowledgeBaseMapper,
@@ -71,7 +73,8 @@ public class KnowledgeWorkspaceService {
                                      QuestionBankService questionBankService,
                                      QdrantVectorService qdrantVectorService,
                                      RagRetrievalLogMapper ragLogMapper,
-                                     QuestionBankAccessProperties accessProperties) {
+                                     QuestionBankAccessProperties accessProperties,
+                                     QuestionBankBuildService questionBankBuildService) {
         this.positionMapper = positionMapper;
         this.knowledgeBaseMapper = knowledgeBaseMapper;
         this.atomMapper = atomMapper;
@@ -83,6 +86,7 @@ public class KnowledgeWorkspaceService {
         this.qdrantVectorService = qdrantVectorService;
         this.ragLogMapper = ragLogMapper;
         this.accessProperties = accessProperties;
+        this.questionBankBuildService = questionBankBuildService;
     }
 
     public KnowledgeWorkspaceResponse listWorkspace(Long currentUserId) {
@@ -248,6 +252,7 @@ public class KnowledgeWorkspaceService {
                 || !currentUserId.equals(position.getOwnerUserId())) {
             throw new RuntimeException("无权访问岗位");
         }
+        questionBankBuildService.deleteForPosition(currentUserId, positionId);
         List<KnowledgeAtom> publishedAtoms = atomMapper.selectList(
                 new QueryWrapper<KnowledgeAtom>()
                         .eq("position_id", positionId)
@@ -290,6 +295,13 @@ public class KnowledgeWorkspaceService {
         QuestionBankImportScope scope = importScopeFor(currentUserId, knowledgeBaseId);
         QuestionBankImportRequest safeRequest = forceDraft(request);
         return questionBankService.importBatch(safeRequest, scope);
+    }
+
+    public QuestionBankImportResult importFinalizedBuildPackage(Long currentUserId,
+                                                                 Long knowledgeBaseId,
+                                                                 QuestionBankImportRequest request) {
+        QuestionBankImportScope scope = importScopeFor(currentUserId, knowledgeBaseId);
+        return questionBankService.importReviewedBatch(forceDraft(request), scope);
     }
 
     public QuestionBankPageResponse<QuestionBankAtomListItem> listAtoms(Long currentUserId,

@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -67,6 +68,7 @@ class AppJobServiceTest {
     @Test
     @DisplayName("worker 完成任务时带 claimed_by 条件，避免过期 worker 覆盖新领取状态")
     void completesOnlyTheClaimedRunningJob() {
+        when(appJobMapper.update(isNull(), any())).thenReturn(1);
         service.completeJob(10L, "worker-1", "{\"ok\":true}");
 
         ArgumentCaptor<UpdateWrapper<AppJob>> completedUpdate = updateWrapperCaptor();
@@ -110,6 +112,7 @@ class AppJobServiceTest {
     @Test
     @DisplayName("失败任务会脱敏错误信息，并标记为 FAILED")
     void failsJobWithSanitizedError() {
+        when(appJobMapper.update(isNull(), any())).thenReturn(1);
         service.failJob(11L, "worker-1", "parse", "Bearer abc123 api_key=secret sk-test-123 Authorization: token", true);
 
         ArgumentCaptor<UpdateWrapper<AppJob>> failedUpdate = updateWrapperCaptor();
@@ -127,6 +130,19 @@ class AppJobServiceTest {
     }
 
     @Test
+    @DisplayName("失去执行令牌后不能完成或失败新 worker 的作业")
+    void rejectsTerminalWritesAfterLosingExecutionToken() {
+        when(appJobMapper.update(isNull(), any())).thenReturn(0);
+
+        assertThatThrownBy(() -> service.completeJob(10L, "stale-worker", "{}"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("执行权已失效");
+        assertThatThrownBy(() -> service.failJob(10L, "stale-worker", "stage", "error", true))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("执行权已失效");
+    }
+
+    @Test
     @DisplayName("人工重试仅允许本人重试可重试失败任务")
     void retriesOwnRetryableFailedJob() {
         AppJob failed = new AppJob();
@@ -139,6 +155,7 @@ class AppJobServiceTest {
         failed.setResultJson("{\"done\":false}");
         failed.setFailedStage("parse");
         when(appJobMapper.selectById(12L)).thenReturn(failed);
+        when(appJobMapper.update(isNull(), any())).thenReturn(1);
 
         assertThat(service.retryJob(12L, 88L)).isTrue();
 
@@ -163,6 +180,7 @@ class AppJobServiceTest {
         publicJob.setOwnerUserId(null);
         publicJob.setRetryable(true);
         when(appJobMapper.selectById(22L)).thenReturn(publicJob);
+        when(appJobMapper.update(isNull(), any())).thenReturn(1);
 
         assertThat(service.retryJob(22L, 88L, false)).isFalse();
         assertThat(service.retryJob(22L, 88L, true)).isTrue();
@@ -228,6 +246,7 @@ class AppJobServiceTest {
         expiredRunning.setLockedUntil(LocalDateTime.now().minusMinutes(1));
 
         when(appJobMapper.selectList(any())).thenReturn(List.of(expiredRunning));
+        when(appJobMapper.update(isNull(), any())).thenReturn(1);
 
         assertThat(service.recoverExpiredRunningJobs()).isEqualTo(1);
 

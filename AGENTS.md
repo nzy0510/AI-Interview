@@ -44,8 +44,7 @@
 
 - 修改前必须确认分支和工作区状态。
 - 保护用户和其他 Agent 的未提交改动；不要回滚不是自己造成的改动。
-- 可以根据开发的功能模块自主 commit / push；最终 merge / release 前需要确认。
-- 提交前展示修改文件、commit message 和测试结果。
+- 可以根据开发的功能模块自主 commit / push；
 - commit message 使用 Conventional Commits，例如 `feat:`、`fix:`、`docs:`、`refactor:`、`test:`、`chore:`。
 - `.codegraph/`、`.understand-anything/`、`.worktrees/` 属于本地 Agent / 代码智能工具产物，不应提交到 Git。
 

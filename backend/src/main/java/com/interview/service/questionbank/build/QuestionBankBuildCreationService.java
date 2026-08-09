@@ -73,8 +73,7 @@ public class QuestionBankBuildCreationService {
                                             KnowledgeBase knowledgeBase,
                                             UserLlmRuntimeConfig runtime,
                                             List<QuestionBankBuildInputService.PreparedFile> preparedFiles,
-                                            List<String> normalizedCategories,
-                                            int chunkCount) {
+                                            List<String> normalizedCategories) {
         String idempotencyKey = idempotencyKey(
                 userId,
                 knowledgeBase.getId(),
@@ -94,7 +93,7 @@ public class QuestionBankBuildCreationService {
         QuestionBankBuildResponse response;
         try {
             response = transactionTemplate.execute(status -> persistBuild(
-                    userId, knowledgeBase, runtime, preparedFiles, normalizedCategories, chunkCount, idempotencyKey));
+                    userId, knowledgeBase, runtime, preparedFiles, normalizedCategories, idempotencyKey));
         } catch (DuplicateKeyException e) {
             AppJob duplicate = findJob(idempotencyKey);
             if (duplicate != null && duplicate.getBuildId() != null) {
@@ -119,7 +118,6 @@ public class QuestionBankBuildCreationService {
                                                     UserLlmRuntimeConfig runtime,
                                                     List<QuestionBankBuildInputService.PreparedFile> preparedFiles,
                                                     List<String> normalizedCategories,
-                                                    int chunkCount,
                                                     String idempotencyKey) {
         QuestionBankBuild build = new QuestionBankBuild();
         build.setScope(SCOPE_PRIVATE);
@@ -133,8 +131,9 @@ public class QuestionBankBuildCreationService {
         build.setLlmConfigId(runtime.configId());
         build.setLlmProvider(runtime.provider());
         build.setLlmModel(runtime.modelName());
+        build.setLlmRuntimeFingerprint(QuestionBankBuildRuntimeSnapshot.fingerprint(runtime));
         build.setPromptVersion(properties.getPromptVersion());
-        build.setChunkCount(chunkCount);
+        build.setChunkCount(0);
         build.setCompletedChunkCount(0);
         build.setCandidateCount(0);
         build.setAcceptedCount(0);
@@ -142,6 +141,9 @@ public class QuestionBankBuildCreationService {
         build.setAutoPassCount(0);
         build.setNeedsHumanCount(0);
         build.setAutoRejectCount(0);
+        build.setRepairRound(0);
+        build.setRepairedCount(0);
+        build.setRepairFailedCount(0);
         build.setReviewRevision(0L);
         build.setFinalizationStatus("NOT_STARTED");
         build.setCheckpointJson(JSON.toJSONString(List.of()));
@@ -166,9 +168,6 @@ public class QuestionBankBuildCreationService {
                 QuestionBankBuildFileStorage.StoredFile stored = storage.storeOriginal(build.getId(), prepared.file());
                 KnowledgeSourceFile sourceFile = toSourceFile(build, prepared, stored, userId);
                 sourceFileMapper.insert(sourceFile);
-                sourceFile.setMarkdownStorageKey(storage.storeText(build.getId(), sourceFile.getId(), prepared.text()));
-                sourceFile.setStatus("CONVERTED");
-                sourceFileMapper.updateById(sourceFile);
             }
         } catch (IOException e) {
             throw new IllegalStateException("构建源文件保存失败", e);

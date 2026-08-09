@@ -106,7 +106,10 @@ class QuestionBankSearchService extends QuestionBankSupport {
         List<String> atomIds = hits.stream().map(QdrantVectorService.VectorHit::getAtomId).collect(Collectors.toList());
         QueryWrapper<KnowledgeAtom> wrapper = new QueryWrapper<KnowledgeAtom>()
                 .in("atom_id", atomIds)
-                .eq("status", QuestionBankService.STATUS_PUBLISHED);
+                .eq("status", QuestionBankService.STATUS_PUBLISHED)
+                .eq("publication_status", QuestionBankService.STATUS_PUBLISHED)
+                .eq("review_status", "PASS")
+                .eq("vector_status", "SYNCED");
         applySearchScope(wrapper, request);
         List<KnowledgeAtom> atoms = atomMapper.selectList(wrapper);
         Map<String, KnowledgeAtom> byId = atoms.stream().collect(Collectors.toMap(KnowledgeAtom::getAtomId, a -> a));
@@ -124,6 +127,9 @@ class QuestionBankSearchService extends QuestionBankSupport {
         List<String> terms = fallbackTerms.from(query);
         QueryWrapper<KnowledgeAtom> wrapper = new QueryWrapper<>();
         wrapper.eq("status", QuestionBankService.STATUS_PUBLISHED)
+                .eq("publication_status", QuestionBankService.STATUS_PUBLISHED)
+                .eq("review_status", "PASS")
+                .eq("vector_status", "SYNCED")
                 .in(categories != null && !categories.isEmpty(), "category", categories)
                 .notIn(exclude != null && !exclude.isEmpty(), "atom_id", exclude);
         applySearchScope(wrapper, request);

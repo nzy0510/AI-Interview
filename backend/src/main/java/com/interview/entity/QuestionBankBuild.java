@@ -23,6 +23,7 @@ public class QuestionBankBuild {
     private Long llmConfigId;
     private String llmProvider;
     private String llmModel;
+    private String llmRuntimeFingerprint;
     private String promptVersion;
     private Integer chunkCount;
     private Integer completedChunkCount;
@@ -33,6 +34,9 @@ public class QuestionBankBuild {
     private Integer autoPassCount;
     private Integer needsHumanCount;
     private Integer autoRejectCount;
+    private Integer repairRound;
+    private Integer repairedCount;
+    private Integer repairFailedCount;
     private Long reviewRevision;
     private String finalizationStatus;
     private String finalImportBatchId;

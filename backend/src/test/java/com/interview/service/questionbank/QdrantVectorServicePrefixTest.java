@@ -56,14 +56,18 @@ class QdrantVectorServicePrefixTest {
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
         server.expect(requestTo("http://qdrant/collections/test_atoms/points/search"))
                 .andExpect(jsonPath("$.filter.must[0].key").value("status"))
-                .andExpect(jsonPath("$.filter.must[1].key").value("scope"))
-                .andExpect(jsonPath("$.filter.must[1].match.value").value("PRIVATE"))
-                .andExpect(jsonPath("$.filter.must[2].key").value("owner_user_id"))
-                .andExpect(jsonPath("$.filter.must[2].match.value").value(7))
-                .andExpect(jsonPath("$.filter.must[3].key").value("position_id"))
-                .andExpect(jsonPath("$.filter.must[3].match.value").value(20))
-                .andExpect(jsonPath("$.filter.must[4].key").value("knowledge_base_id"))
-                .andExpect(jsonPath("$.filter.must[4].match.value").value(30))
+                .andExpect(jsonPath("$.filter.must[1].key").value("publication_status"))
+                .andExpect(jsonPath("$.filter.must[1].match.value").value("PUBLISHED"))
+                .andExpect(jsonPath("$.filter.must[2].key").value("vector_status"))
+                .andExpect(jsonPath("$.filter.must[2].match.value").value("SYNCED"))
+                .andExpect(jsonPath("$.filter.must[3].key").value("scope"))
+                .andExpect(jsonPath("$.filter.must[3].match.value").value("PRIVATE"))
+                .andExpect(jsonPath("$.filter.must[4].key").value("owner_user_id"))
+                .andExpect(jsonPath("$.filter.must[4].match.value").value(7))
+                .andExpect(jsonPath("$.filter.must[5].key").value("position_id"))
+                .andExpect(jsonPath("$.filter.must[5].match.value").value(20))
+                .andExpect(jsonPath("$.filter.must[6].key").value("knowledge_base_id"))
+                .andExpect(jsonPath("$.filter.must[6].match.value").value(30))
                 .andRespond(withSuccess("{\"result\":[]}", MediaType.APPLICATION_JSON));
 
         service.search("候选人提到了 RAG", List.of(), List.of(), 20,
@@ -84,11 +88,15 @@ class QdrantVectorServicePrefixTest {
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
         server.expect(requestTo("http://qdrant/collections/test_atoms/points/search"))
                 .andExpect(jsonPath("$.filter.must[0].key").value("status"))
-                .andExpect(jsonPath("$.filter.must[1].key").value("scope"))
-                .andExpect(jsonPath("$.filter.must[1].match.value").value("PUBLIC"))
-                .andExpect(jsonPath("$.filter.must[2].is_empty.key").value("owner_user_id"))
-                .andExpect(jsonPath("$.filter.must[3].key").value("position_id"))
-                .andExpect(jsonPath("$.filter.must[4].key").value("knowledge_base_id"))
+                .andExpect(jsonPath("$.filter.must[1].key").value("publication_status"))
+                .andExpect(jsonPath("$.filter.must[1].match.value").value("PUBLISHED"))
+                .andExpect(jsonPath("$.filter.must[2].key").value("vector_status"))
+                .andExpect(jsonPath("$.filter.must[2].match.value").value("SYNCED"))
+                .andExpect(jsonPath("$.filter.must[3].key").value("scope"))
+                .andExpect(jsonPath("$.filter.must[3].match.value").value("PUBLIC"))
+                .andExpect(jsonPath("$.filter.must[4].is_empty.key").value("owner_user_id"))
+                .andExpect(jsonPath("$.filter.must[5].key").value("position_id"))
+                .andExpect(jsonPath("$.filter.must[6].key").value("knowledge_base_id"))
                 .andRespond(withSuccess("{\"result\":[]}", MediaType.APPLICATION_JSON));
 
         service.search("候选人提到了 RAG", List.of(), List.of(), 20,

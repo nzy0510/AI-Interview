@@ -11,6 +11,12 @@
       "difficulty": "mid",
       "tags": ["java", "hashmap", "collections"],
       "sourceRef": "contract-fixture.md",
+      "sourceEvidence": [
+        {
+          "quote": "HashMap 在容量超过阈值时会触发扩容。",
+          "pageOrSection": "HashMap 扩容机制"
+        }
+      ],
       "content": {
         "principles": "HashMap 在容量超过阈值时会触发扩容，容量通常翻倍，并根据新的桶长度重新计算元素位置。",
         "pitfalls": "只说数组加链表而忽略负载因子、扰动函数和 JDK 8 树化条件，会导致回答不完整。",

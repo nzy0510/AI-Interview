@@ -20,7 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 
 @Service
 public class QuestionBankBuildFinalizationService {
@@ -31,21 +31,24 @@ public class QuestionBankBuildFinalizationService {
     private final QuestionBankBuildCandidateMapper candidateMapper;
     private final AppJobMapper appJobMapper;
     private final AppJobService appJobService;
+    private final QuestionBankBuildFinalizationPreparationService preparationService;
     private final TransactionTemplate transactionTemplate;
     private final AppJobRecoveryService recoveryService;
 
     public QuestionBankBuildFinalizationService(QuestionBankBuildService buildService,
                                                 QuestionBankBuildMapper buildMapper,
                                                 QuestionBankBuildCandidateMapper candidateMapper,
-                                                AppJobMapper appJobMapper,
-                                                AppJobService appJobService,
-                                                TransactionTemplate transactionTemplate,
+                                                 AppJobMapper appJobMapper,
+                                                 AppJobService appJobService,
+                                                 QuestionBankBuildFinalizationPreparationService preparationService,
+                                                 TransactionTemplate transactionTemplate,
                                                 AppJobRecoveryService recoveryService) {
         this.buildService = buildService;
         this.buildMapper = buildMapper;
         this.candidateMapper = candidateMapper;
         this.appJobMapper = appJobMapper;
         this.appJobService = appJobService;
+        this.preparationService = preparationService;
         this.transactionTemplate = transactionTemplate;
         this.recoveryService = recoveryService;
     }
@@ -97,7 +100,6 @@ public class QuestionBankBuildFinalizationService {
                         .eq("build_id", buildId)
                         .eq("owner_user_id", userId)
                         .orderByAsc("chunk_index", "id"));
-        rejectUnresolvedCandidates(candidates);
         List<QuestionBankBuildCandidate> selected = candidates.stream()
                 .filter(candidate -> selectedIds.contains(candidate.getId()))
                 .toList();
@@ -108,6 +110,7 @@ public class QuestionBankBuildFinalizationService {
         if (selected.stream().anyMatch(candidate -> !canFinalize(candidate))) {
             throw new IllegalArgumentException("终审包含尚未通过机器监督或人工接受的候选");
         }
+        preparationService.validateSelection(buildId, userId, knowledgeBaseId, selectedIds);
 
         String idempotencyKey = "question-bank-finalize:" + buildId;
         int claimed = buildMapper.update(null, new UpdateWrapper<QuestionBankBuild>()
@@ -160,6 +163,7 @@ public class QuestionBankBuildFinalizationService {
                 .eq("idempotency_key", "question-bank-finalize:" + build.getId())
                 .last("LIMIT 1"));
         if (existing == null) return null;
+        requireMatchingExistingJob(build, existing);
         List<Long> persistedIds = payloadCandidateIds(existing);
         if (!persistedIds.equals(selectedIds)) {
             throw new IllegalStateException("本批次终审选择与已提交任务不一致");
@@ -167,21 +171,22 @@ public class QuestionBankBuildFinalizationService {
         return new StartResult(response(build, existing.getId(), persistedIds.size()), false);
     }
 
-    private void rejectUnresolvedCandidates(List<QuestionBankBuildCandidate> candidates) {
-        boolean unresolved = candidates.stream().anyMatch(candidate -> {
-            if ("ACCEPTED".equalsIgnoreCase(candidate.getReviewStatus())
-                    || "REJECTED".equalsIgnoreCase(candidate.getReviewStatus())) return false;
-            String status = String.valueOf(candidate.getMachineReviewStatus()).toUpperCase();
-            return !Set.of("AUTO_PASS", "AUTO_REJECT", "SKIPPED").contains(status);
-        });
-        if (unresolved) throw new IllegalStateException("仍有需要人工处理或监督失败的候选，不能终审发布");
-    }
-
     private boolean canFinalize(QuestionBankBuildCandidate candidate) {
         if ("REJECTED".equalsIgnoreCase(candidate.getReviewStatus())) return false;
         return "ACCEPTED".equalsIgnoreCase(candidate.getReviewStatus())
                 || ("PENDING".equalsIgnoreCase(candidate.getReviewStatus())
                 && "AUTO_PASS".equalsIgnoreCase(candidate.getMachineReviewStatus()));
+    }
+
+    private void requireMatchingExistingJob(QuestionBankBuild build, AppJob job) {
+        if (!JOB_TYPE.equals(job.getJobType())
+                || !QuestionBankBuildService.SCOPE_PRIVATE.equalsIgnoreCase(job.getScope())
+                || !Objects.equals(build.getId(), job.getBuildId())
+                || !Objects.equals(build.getOwnerUserId(), job.getOwnerUserId())
+                || !Objects.equals(build.getPositionId(), job.getPositionId())
+                || !Objects.equals(build.getKnowledgeBaseId(), job.getKnowledgeBaseId())) {
+            throw new IllegalStateException("已存在的终审任务与当前构建不匹配");
+        }
     }
 
     private List<Long> payloadCandidateIds(AppJob job) {
@@ -196,7 +201,7 @@ public class QuestionBankBuildFinalizationService {
 
     private List<Long> cleanIds(List<Long> ids) {
         if (ids == null) return List.of();
-        return new LinkedHashSet<>(ids.stream().filter(java.util.Objects::nonNull).toList()).stream().toList();
+        return new LinkedHashSet<>(ids.stream().filter(java.util.Objects::nonNull).toList()).stream().sorted().toList();
     }
 
     private QuestionBankBuildFinalizationResponse response(QuestionBankBuild build,

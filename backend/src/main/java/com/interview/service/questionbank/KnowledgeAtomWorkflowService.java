@@ -52,8 +52,10 @@ public class KnowledgeAtomWorkflowService {
         boolean published = "PUBLISHED".equalsIgnoreCase(atom.getPublicationStatus())
                 || "PUBLISHED".equalsIgnoreCase(atom.getStatus());
         KnowledgeAtom target = published ? cloneAsDraftRevision(atom, currentUserId) : atom;
+        String checksumBeforePatch = checksum(target);
         applyPatch(target, patch);
         validateReviewableAtom(target);
+        requireActualReviewChange(atom, target, checksumBeforePatch);
         target.setReviewStatus("PASS");
         target.setReviewReason("已应用模型建议补丁");
         target.setReviewedBy(currentUserId);
@@ -72,14 +74,18 @@ public class KnowledgeAtomWorkflowService {
         if ("PUBLISHED".equalsIgnoreCase(atom.getPublicationStatus())
                 || "PUBLISHED".equalsIgnoreCase(atom.getStatus())) {
             KnowledgeAtom draft = cloneAsDraftRevision(atom, currentUserId);
+            String checksumBeforePatch = checksum(draft);
             applyPatch(draft, patch);
             validateReviewableAtom(draft);
+            requireActualReviewChange(atom, draft, checksumBeforePatch);
             atomMapper.insert(draft);
             recordVersion(draft, "edit:draft-revision");
             return KnowledgeAtomResponse.from(draft);
         }
+        String checksumBeforePatch = checksum(atom);
         applyPatch(atom, patch);
         validateReviewableAtom(atom);
+        requireActualReviewChange(atom, atom, checksumBeforePatch);
         atom.setReviewStatus("PASS");
         atom.setReviewReason("人工修订后通过");
         atom.setReviewedBy(currentUserId);
@@ -272,6 +278,16 @@ public class KnowledgeAtomWorkflowService {
                 .count();
         if (followUpCount < 2) {
             throw new IllegalArgumentException("请至少填写两条追问路径");
+        }
+        QuestionBankSupport.validateRequiredSourceEvidence(atom);
+    }
+
+    private void requireActualReviewChange(KnowledgeAtom source,
+                                           KnowledgeAtom patched,
+                                           String checksumBeforePatch) {
+        if ("NEEDS_REVIEW".equals(normalizeReviewStatus(source.getReviewStatus()))
+                && checksumBeforePatch.equals(checksum(patched))) {
+            throw new IllegalArgumentException("NEEDS_REVIEW 原子必须提交实际修改后才能通过审核");
         }
     }
 

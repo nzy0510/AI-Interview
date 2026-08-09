@@ -11,12 +11,14 @@ import com.interview.service.AppJobService;
 import com.interview.service.questionbank.KnowledgeWorkspaceService;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
 public class QuestionBankBuildFinalizationJobHandler implements AppJobHandler {
+    private static final Duration JOB_LEASE_TTL = Duration.ofMinutes(15);
     private final QuestionBankBuildMapper buildMapper;
     private final QuestionBankBuildFinalizationPreparationService preparationService;
     private final KnowledgeWorkspaceService workspaceService;
@@ -40,26 +42,40 @@ public class QuestionBankBuildFinalizationJobHandler implements AppJobHandler {
     @Override
     public void handle(AppJob job) {
         QuestionBankBuild build = requireOwnedPrivateBuild(job);
+        if (AppJobService.STATUS_COMPLETED.equalsIgnoreCase(build.getStatus())
+                && "PUBLISHED".equalsIgnoreCase(build.getStage())
+                && "COMPLETED".equalsIgnoreCase(build.getFinalizationStatus())) {
+            job.setStage("PUBLISHED");
+            job.setProgress(100);
+            job.setResultJson(build.getFinalizationResultJson());
+            return;
+        }
         try {
             updateProgress(build, job, "FINALIZING", 20);
             List<Long> candidateIds = candidateIds(job.getPayloadJson());
             if (candidateIds.isEmpty()) {
                 throw new IllegalArgumentException("终审作业缺少候选原子");
             }
+            requireJobLease(job);
             List<String> atomIds = preparationService.prepare(
                     build.getId(), build.getOwnerUserId(), build.getKnowledgeBaseId(), candidateIds);
+            requireJobLease(job);
 
             updateProgress(build, job, "PUBLISHING", 80);
             QuestionBankBulkAtomRequest publishRequest = atomRequest(atomIds);
+            requireJobLease(job);
             Map<String, Integer> publishResult = workspaceService.publishAtoms(
                     build.getOwnerUserId(), build.getKnowledgeBaseId(), publishRequest);
+            requireJobLease(job);
             requireAllAtomsMatched(atomIds, publishResult, "发布");
 
             Map<String, Integer> indexResult = null;
             if (requiresReindex(atomIds, publishResult)) {
                 updateProgress(build, job, "INDEXING", 90);
+                requireJobLease(job);
                 indexResult = workspaceService.ensureAtomsIndexed(
                         build.getOwnerUserId(), build.getKnowledgeBaseId(), atomRequest(atomIds));
+                requireJobLease(job);
                 requireAllAtomsMatched(atomIds, indexResult, "索引");
             }
 
@@ -67,6 +83,7 @@ public class QuestionBankBuildFinalizationJobHandler implements AppJobHandler {
             int failed = number(result, "failed");
             build.setFinalizationResultJson(JSON.toJSONString(result));
             if (failed > 0) {
+                requireJobLease(job);
                 markIndexFailure(build, "仍有 " + failed + " 个知识原子未完成发布或索引，可安全重试该作业");
                 job.setResultJson(build.getFinalizationResultJson());
                 throw new IllegalStateException(build.getErrorMessage());
@@ -77,11 +94,15 @@ public class QuestionBankBuildFinalizationJobHandler implements AppJobHandler {
             build.setProgress(100);
             build.setFinalizationStatus("COMPLETED");
             build.setErrorMessage(null);
+            appJobService.updateRunningJob(job.getId(), job.getClaimedBy(), "PUBLISHED", 100);
             buildMapper.updateById(build);
             job.setStage("PUBLISHED");
             job.setProgress(100);
             job.setResultJson(build.getFinalizationResultJson());
         } catch (RuntimeException e) {
+            if (!hasJobLease(job)) {
+                throw e;
+            }
             if (!"PUBLISHED_WITH_INDEX_ERRORS".equals(build.getStage())) {
                 build.setStatus(AppJobService.STATUS_FAILED);
                 build.setStage(job.getStage() == null ? "FINALIZING" : job.getStage());
@@ -101,7 +122,10 @@ public class QuestionBankBuildFinalizationJobHandler implements AppJobHandler {
         QuestionBankBuild build = buildMapper.selectById(job.getBuildId());
         if (build == null
                 || !QuestionBankBuildService.SCOPE_PRIVATE.equalsIgnoreCase(build.getScope())
+                || !QuestionBankBuildFinalizationService.JOB_TYPE.equals(job.getJobType())
+                || !QuestionBankBuildService.SCOPE_PRIVATE.equalsIgnoreCase(job.getScope())
                 || !job.getOwnerUserId().equals(build.getOwnerUserId())
+                || !java.util.Objects.equals(job.getPositionId(), build.getPositionId())
                 || !job.getKnowledgeBaseId().equals(build.getKnowledgeBaseId())) {
             throw new IllegalArgumentException("终审构建不存在或作用域不匹配");
         }
@@ -109,6 +133,7 @@ public class QuestionBankBuildFinalizationJobHandler implements AppJobHandler {
     }
 
     private void updateProgress(QuestionBankBuild build, AppJob job, String stage, int progress) {
+        appJobService.updateRunningJob(job.getId(), job.getClaimedBy(), stage, progress);
         build.setStatus(AppJobService.STATUS_RUNNING);
         build.setStage(stage);
         build.setProgress(progress);
@@ -116,7 +141,17 @@ public class QuestionBankBuildFinalizationJobHandler implements AppJobHandler {
         buildMapper.updateById(build);
         job.setStage(stage);
         job.setProgress(progress);
-        appJobService.updateRunningJob(job.getId(), job.getClaimedBy(), stage, progress);
+    }
+
+    private void requireJobLease(AppJob job) {
+        if (!hasJobLease(job)) {
+            throw new IllegalStateException("终审作业执行权已失效");
+        }
+    }
+
+    private boolean hasJobLease(AppJob job) {
+        return job != null && job.getId() != null && job.getClaimedBy() != null
+                && appJobService.extendRunningJobLease(job.getId(), job.getClaimedBy(), JOB_LEASE_TTL);
     }
 
     private List<Long> candidateIds(String payloadJson) {
