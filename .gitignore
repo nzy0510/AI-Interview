@@ -164,6 +164,9 @@ backend/mvn_result.txt
 /demo-video/
 /docs/demo-video-*.md
 
+# Source screen recordings are local-only; the README uses GitHub attachments.
+/image/视频/
+
 # Retrieval evaluation raw and generated artifacts
 /output/retrieval-eval/
 /.cache/retrieval-eval/
