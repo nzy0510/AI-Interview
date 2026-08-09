@@ -253,7 +253,8 @@ APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
 ```
 可以直接在 PowerShell 生成随机值：
 
-```[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+```powershell
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
 ### Docker 部署(基础配置完成后)
@@ -297,26 +298,6 @@ docker compose stop
 - 没有有效的启用配置时，文字面试、视频面试、报告生成和 AI Mentor 等用户侧 LLM 功能会引导用户先完成配置。
 - 当前支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 和自定义。
 - 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置。
-
-### RAG 评测工具
-
-```powershell
-python -m pip install -r scripts/retrieval_eval/requirements.txt
-python -m scripts.retrieval_eval.validate_dataset --help
-python -m scripts.retrieval_eval.calculate_metrics --help
-python -m scripts.retrieval_eval.rerank_candidates --help
-```
-
-固定评测集位于：
-
-```text
-backend/src/test/resources/retrieval-eval/
-  ai-model-v1-atoms.jsonl
-  ai-model-v1.jsonl
-  ai-model-v1-metadata.json
-```
-
-原始导出和未审核候选池默认写入 `output/retrieval-eval/`，不提交到 Git。
 
 ## 本地开发验证
 
