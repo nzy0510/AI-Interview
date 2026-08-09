@@ -58,7 +58,7 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 
 ### 展示视频
 
-[观看 InterWise 60 秒产品宣传片（1080p，含背景音乐）](assets/demo/interwise-promo-60s.mp4)
+https://github.com/user-attachments/assets/41830c7b-4c01-4444-b8d9-56a6971cf9a1
 
 从登录、面试准备与模拟训练，到动态 RAG 追问、复盘和 AI Mentor，快速了解完整训练闭环。
 
