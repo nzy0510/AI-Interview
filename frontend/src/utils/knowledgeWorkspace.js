@@ -2,8 +2,8 @@ export const KNOWLEDGE_WORKSPACE_CAPABILITIES_KEY = Symbol('knowledge-workspace-
 
 export const QUESTION_BANK_TABS = [
   { key: 'overview', label: '概览' },
-  { key: 'build', label: '智能构建', privateOnly: true },
-  { key: 'candidates', label: '候选审核', privateOnly: true },
+  { key: 'build', label: '智能构建', requiresBuildAccess: true },
+  { key: 'candidates', label: '终审发布', requiresBuildAccess: true },
   { key: 'atoms', label: '题库原子' }
 ]
 
@@ -30,10 +30,10 @@ export function canMaintainQuestionBank(position) {
 }
 
 export function canBuildQuestionBank(position) {
-  return Boolean(position?.knowledgeBase?.id)
-    && position?.scope === 'PRIVATE'
-    && position?.status !== 'ARCHIVED'
-    && isPositionEditable(position)
+  if (!position?.knowledgeBase?.id || position?.status === 'ARCHIVED') return false
+  if (typeof position?.canBuildQuestionBank === 'boolean') return position.canBuildQuestionBank
+  if (position?.scope === 'PUBLIC') return Boolean(position?.canManageAtoms)
+  return isPositionEditable(position)
 }
 
 export function isQuestionBankCandidateAccepted(candidate) {
@@ -71,6 +71,24 @@ export function getQuestionBankBuildStatusType(status) {
   if (['FAILED', 'ERROR'].includes(normalized)) return 'danger'
   if (['RUNNING', 'PENDING', 'QUEUED'].includes(normalized)) return 'warning'
   return 'info'
+}
+
+export function getQuestionBankBuildStageLabel(stage) {
+  const labels = {
+    QUEUED: '等待处理',
+    GENERATING: '正在处理文档',
+    SUPERVISING: '正在审查处理结果',
+    READY_FOR_FINAL_REVIEW: '等待人工终审',
+    FINALIZING: '正在执行终审',
+    IMPORTING: '正在写入草稿',
+    PUBLISHING: '正在发布入库',
+    INDEXING: '正在同步检索索引',
+    PUBLISHED: '已发布入库',
+    PUBLISHED_WITH_INDEX_ERRORS: '已发布，部分索引待重试',
+    FAILED: '处理失败'
+  }
+  const normalized = String(stage || '').toUpperCase()
+  return labels[normalized] || (normalized ? normalized : '等待后端返回')
 }
 
 export function canPublishQuestionBankAtoms(position) {

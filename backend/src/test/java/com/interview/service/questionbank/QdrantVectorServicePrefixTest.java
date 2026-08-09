@@ -73,6 +73,31 @@ class QdrantVectorServicePrefixTest {
     }
 
     @Test
+    @DisplayName("public search filter requires an empty owner payload")
+    void shouldRequireEmptyOwnerFilterForPublicSearch() {
+        CapturingEmbeddingModel embeddingModel = new CapturingEmbeddingModel();
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        QdrantVectorService service = new QdrantVectorService(embeddingModel, restTemplate);
+        configure(service);
+        server.expect(requestTo("http://qdrant/collections/test_atoms"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://qdrant/collections/test_atoms/points/search"))
+                .andExpect(jsonPath("$.filter.must[0].key").value("status"))
+                .andExpect(jsonPath("$.filter.must[1].key").value("scope"))
+                .andExpect(jsonPath("$.filter.must[1].match.value").value("PUBLIC"))
+                .andExpect(jsonPath("$.filter.must[2].is_empty.key").value("owner_user_id"))
+                .andExpect(jsonPath("$.filter.must[3].key").value("position_id"))
+                .andExpect(jsonPath("$.filter.must[4].key").value("knowledge_base_id"))
+                .andRespond(withSuccess("{\"result\":[]}", MediaType.APPLICATION_JSON));
+
+        service.search("候选人提到了 RAG", List.of(), List.of(), 20,
+                "PUBLIC", null, 20L, 30L);
+
+        server.verify();
+    }
+
+    @Test
     @DisplayName("adds passage prefix when embedding atom text")
     void shouldAddPassagePrefixWhenUpserting() {
         CapturingEmbeddingModel embeddingModel = new CapturingEmbeddingModel();
@@ -93,7 +118,7 @@ class QdrantVectorServicePrefixTest {
     }
 
     @Test
-    @DisplayName("upsert payload includes ownership and publication filters")
+    @DisplayName("upsert payload includes ownership filters and marks the resulting point as synced")
     void shouldIncludeOwnershipPayloadWhenUpserting() {
         CapturingEmbeddingModel embeddingModel = new CapturingEmbeddingModel();
         RestTemplate restTemplate = new RestTemplate();
@@ -118,7 +143,7 @@ class QdrantVectorServicePrefixTest {
                 .andExpect(jsonPath("$.points[0].payload.knowledge_base_id").value(22))
                 .andExpect(jsonPath("$.points[0].payload.source_file_id").value(10))
                 .andExpect(jsonPath("$.points[0].payload.publication_status").value("PUBLISHED"))
-                .andExpect(jsonPath("$.points[0].payload.vector_status").value("PENDING"))
+                .andExpect(jsonPath("$.points[0].payload.vector_status").value("SYNCED"))
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
         assertThat(service.upsert(atom)).isTrue();

@@ -3,29 +3,33 @@
     <div class="candidate-head">
       <div>
         <p class="section-kicker">Candidate Review</p>
-        <h2>候选审核 <el-badge :value="pendingCount" :hidden="pendingCount === 0" /></h2>
-        <p class="section-desc">逐条核对原子内容和来源证据；只有接受的候选才能导入为草稿。</p>
+        <h2>监督异常 <el-badge :value="exceptionCount" :hidden="exceptionCount === 0" /></h2>
+        <p class="section-desc">系统只把监督器无法确定的候选交给人工；异常处理完后，对整批结果做一次终审并发布。</p>
       </div>
       <div class="candidate-head__actions">
         <el-button @click="$emit('refresh')">刷新候选</el-button>
-        <el-button plain :disabled="!canDownload" :loading="actionLoading === 'download'" @click="$emit('download')">下载 JSON 包</el-button>
-        <el-button type="primary" :disabled="!canImport" :loading="actionLoading === 'import'" @click="$emit('import')">导入为草稿</el-button>
+        <el-button data-testid="finalize-build" type="primary" :disabled="!canFinalize" :loading="actionLoading === 'finalize'" @click="$emit('finalize')">终审并发布 {{ finalizableCount }} 条</el-button>
       </div>
     </div>
 
+    <div v-if="candidates.length" class="candidate-filter" role="tablist" aria-label="候选范围">
+      <button type="button" :class="{ 'is-active': filterMode === 'exceptions' }" @click="filterMode = 'exceptions'">监督异常 {{ exceptionCount }}</button>
+      <button type="button" :class="{ 'is-active': filterMode === 'all' }" @click="filterMode = 'all'">全部候选 {{ candidates.length }}</button>
+    </div>
     <el-alert v-if="!candidates.length && !loading" title="当前批次还没有候选原子" type="info" show-icon />
+    <el-alert v-else-if="!visibleCandidates.length && !loading" title="监督异常已全部处理" description="无需逐条检查自动通过项；可直接执行整批终审发布。" type="success" show-icon :closable="false" />
     <el-skeleton v-if="loading" :rows="6" animated />
 
-    <template v-else-if="candidates.length">
+    <template v-else-if="visibleCandidates.length">
       <div class="mobile-pane-switch" role="tablist">
         <button type="button" :class="{ 'is-active': mobilePane === 'content' }" @click="mobilePane = 'content'">内容</button>
         <button type="button" :class="{ 'is-active': mobilePane === 'evidence' }" @click="mobilePane = 'evidence'">来源证据</button>
       </div>
       <div class="review-grid">
         <aside class="candidate-queue" :class="{ 'mobile-hidden': mobilePane !== 'content' }">
-          <div class="queue-head"><strong>候选队列</strong><span>{{ candidates.length }} 条</span></div>
+          <div class="queue-head"><strong>{{ filterMode === 'exceptions' ? '异常队列' : '全部候选' }}</strong><span>{{ visibleCandidates.length }} 条</span></div>
           <button
-            v-for="candidate in candidates"
+            v-for="candidate in visibleCandidates"
             :key="candidate.id"
             type="button"
             class="candidate-item"
@@ -33,7 +37,7 @@
             @click="selectCandidate(candidate)"
           >
             <span class="candidate-item__subject">{{ candidate.subject || '未命名考点' }}</span>
-            <span class="candidate-item__meta"><el-tag size="small" :type="reviewType(candidate.status)" effect="plain">{{ reviewLabel(candidate.status) }}</el-tag><span>{{ candidate.category || '未分类' }}</span></span>
+            <span class="candidate-item__meta"><el-tag size="small" :type="machineReviewType(candidate.machineReviewStatus)" effect="plain">{{ machineReviewLabel(candidate.machineReviewStatus) }}</el-tag><el-tag v-if="candidate.status !== 'PENDING'" size="small" :type="reviewType(candidate.status)" effect="plain">{{ reviewLabel(candidate.status) }}</el-tag><span>{{ candidate.category || '未分类' }}</span></span>
             <span v-if="candidate.duplicateHint" class="candidate-item__hint">疑似重复</span>
           </button>
         </aside>
@@ -50,19 +54,20 @@
         </section>
 
         <aside class="evidence-panel" :class="{ 'mobile-hidden': mobilePane !== 'evidence' }">
-          <div class="editor-head"><h3>来源证据</h3><el-tag v-if="selectedCandidate?.selfCheck" :type="selectedCandidate.selfCheck.passed ? 'success' : 'warning'" effect="plain">自检 {{ selectedCandidate.selfCheck.passed ? '通过' : '需关注' }}</el-tag></div>
+          <div class="editor-head"><h3>来源证据</h3><el-tag v-if="selectedCandidate" :type="machineReviewType(selectedCandidate.machineReviewStatus)" effect="plain">{{ machineReviewLabel(selectedCandidate.machineReviewStatus) }}</el-tag></div>
           <template v-if="selectedCandidate">
-            <dl class="evidence-meta"><div><dt>来源</dt><dd>{{ selectedCandidate.sourceRef || selectedCandidate.source?.fileName || '未标注' }}</dd></div><div v-if="selectedCandidate.source?.page"><dt>页码/章节</dt><dd>{{ selectedCandidate.source.page }}</dd></div><div v-if="selectedCandidate.selfCheck?.confidence != null"><dt>置信度</dt><dd>{{ selectedCandidate.selfCheck.confidence }}</dd></div></dl>
+            <dl class="evidence-meta"><div><dt>来源</dt><dd>{{ selectedCandidate.sourceRef || selectedCandidate.source?.fileName || '未标注' }}</dd></div><div v-if="selectedCandidate.source?.page"><dt>页码/章节</dt><dd>{{ selectedCandidate.source.page }}</dd></div><div v-if="selectedCandidate.machineReviewScore != null"><dt>监督评分</dt><dd>{{ selectedCandidate.machineReviewScore }}</dd></div></dl>
             <blockquote v-for="(evidence, index) in evidenceItems" :key="`${index}-${evidence.quote}`">{{ evidence.quote || '未返回原文摘录' }}<cite>{{ evidence.pageOrSection || evidence.page || '' }}</cite></blockquote>
             <el-alert v-if="selectedCandidate.duplicateHint" title="疑似重复原子" :description="selectedCandidate.duplicateHint" type="warning" :closable="false" />
-            <el-alert v-if="selectedCandidate.validationIssues?.length" title="校验提示" type="error" :closable="false"><ul class="issue-list"><li v-for="issue in selectedCandidate.validationIssues" :key="issue">{{ issue }}</li></ul></el-alert>
+            <el-alert v-if="selectedCandidate.machineReviewIssues?.length" title="监督器提示" type="warning" :closable="false"><ul class="issue-list"><li v-for="issue in selectedCandidate.machineReviewIssues" :key="issue">{{ issue }}</li></ul></el-alert>
+            <div v-if="suggestedPatchText" class="suggested-patch"><strong>监督器建议修改</strong><pre>{{ suggestedPatchText }}</pre></div>
           </template>
           <el-empty v-else description="暂无来源证据" />
         </aside>
       </div>
 
       <footer v-if="selectedCandidate" class="review-actions">
-        <span class="muted-text">{{ canReview ? '保存不会改变审核状态；接受后才可导入。' : '构建完成后才能审核候选。' }}</span>
+        <span class="muted-text">{{ canReview ? '保存修改后仍需人工接受；接受或拒绝会关闭这条异常。' : '构建完成后才能审核候选。' }}</span>
         <div><el-button :disabled="!canReview" :loading="actionLoading.startsWith('candidate:')" @click="submit('SAVE')">保存修改</el-button><el-button type="danger" plain :disabled="!canReview" :loading="actionLoading.startsWith('candidate:')" @click="submit('REJECT')">拒绝</el-button><el-button type="primary" :disabled="!canReview" :loading="actionLoading.startsWith('candidate:')" @click="submit('ACCEPT')">接受候选</el-button></div>
       </footer>
     </template>
@@ -77,21 +82,35 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   actionLoading: { type: String, default: '' },
   canReview: { type: Boolean, default: false },
-  canImport: { type: Boolean, default: false },
-  canDownload: { type: Boolean, default: false }
+  canFinalize: { type: Boolean, default: false },
+  exceptionCount: { type: Number, default: 0 },
+  finalizableCount: { type: Number, default: 0 }
 })
 
-const emit = defineEmits(['refresh', 'update', 'import', 'download'])
+const emit = defineEmits(['refresh', 'update', 'finalize'])
 const selectedId = ref(null)
 const mobilePane = ref('content')
+const filterMode = ref('exceptions')
 const editor = reactive({ subject: '', category: '', difficulty: '', principles: '', pitfalls: '', followUpText: '' })
-const selectedCandidate = computed(() => props.candidates.find((candidate) => candidate.id === selectedId.value) || props.candidates[0] || null)
-const pendingCount = computed(() => props.candidates.filter((candidate) => candidate.status === 'PENDING').length)
+const visibleCandidates = computed(() => filterMode.value === 'all'
+  ? props.candidates
+  : props.candidates.filter((candidate) => {
+    const reviewStatus = String(candidate.status || candidate.reviewStatus || '').toUpperCase()
+    if (['ACCEPTED', 'REJECTED'].includes(reviewStatus)) return false
+    return !['AUTO_PASS', 'AUTO_REJECT', 'SKIPPED'].includes(String(candidate.machineReviewStatus || '').toUpperCase())
+  }))
+const selectedCandidate = computed(() => visibleCandidates.value.find((candidate) => candidate.id === selectedId.value) || visibleCandidates.value[0] || null)
 const evidenceItems = computed(() => {
   const selected = selectedCandidate.value
   if (!selected) return []
   if (Array.isArray(selected.sourceEvidence) && selected.sourceEvidence.length) return selected.sourceEvidence
   return selected.source?.evidence || (selected.source ? [selected.source] : [])
+})
+const suggestedPatchText = computed(() => {
+  const patch = selectedCandidate.value?.machineSuggestedPatch
+  return patch && typeof patch === 'object' && Object.keys(patch).length
+    ? JSON.stringify(patch, null, 2)
+    : ''
 })
 
 const syncEditor = (candidate) => {
@@ -109,9 +128,10 @@ const selectCandidate = (candidate) => {
   syncEditor(candidate)
 }
 
-watch(() => props.candidates, (next) => {
-  if (!next.some((candidate) => candidate.id === selectedId.value)) selectedId.value = next[0]?.id || null
-  syncEditor(next.find((candidate) => candidate.id === selectedId.value) || next[0])
+watch([() => props.candidates, filterMode], ([next]) => {
+  const visible = filterMode.value === 'all' ? next : visibleCandidates.value
+  if (!visible.some((candidate) => candidate.id === selectedId.value)) selectedId.value = visible[0]?.id || null
+  syncEditor(visible.find((candidate) => candidate.id === selectedId.value) || visible[0])
 }, { immediate: true })
 
 const submit = (action) => {
@@ -128,6 +148,8 @@ const submit = (action) => {
 
 const reviewLabel = (status) => ({ PENDING: '待审核', ACCEPTED: '已接受', REJECTED: '已拒绝' }[status] || status || '未知')
 const reviewType = (status) => ({ PENDING: 'warning', ACCEPTED: 'success', REJECTED: 'info' }[status] || 'info')
+const machineReviewLabel = (status) => ({ AUTO_PASS: '监督通过', NEEDS_HUMAN: '需人工判断', AUTO_REJECT: '自动排除', FAILED: '监督失败', PENDING: '等待监督', RUNNING: '正在监督' }[String(status || '').toUpperCase()] || '未监督')
+const machineReviewType = (status) => ({ AUTO_PASS: 'success', NEEDS_HUMAN: 'warning', AUTO_REJECT: 'info', FAILED: 'danger', PENDING: 'info', RUNNING: 'warning' }[String(status || '').toUpperCase()] || 'info')
 </script>
 
 <style scoped>
@@ -177,6 +199,32 @@ const reviewType = (status) => ({ PENDING: 'warning', ACCEPTED: 'success', REJEC
   font-size: 0.9rem;
 }
 
+.candidate-filter {
+  display: inline-flex;
+  width: fit-content;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-surface-2);
+}
+
+.candidate-filter button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--app-text-muted);
+  cursor: pointer;
+}
+
+.candidate-filter button.is-active {
+  background: var(--app-surface);
+  color: var(--app-text);
+  font-weight: 700;
+}
+
 .review-grid {
   display: grid;
   grid-template-columns: minmax(180px, 0.85fr) minmax(300px, 1.5fr) minmax(210px, 0.95fr);
@@ -197,6 +245,13 @@ const reviewType = (status) => ({ PENDING: 'warning', ACCEPTED: 'success', REJEC
 .candidate-queue,
 .evidence-panel {
   overflow: auto;
+}
+
+.candidate-queue {
+  max-height: min(68vh, 720px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .candidate-queue,
@@ -299,6 +354,23 @@ blockquote cite {
   padding-left: 18px;
 }
 
+.suggested-patch {
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface);
+}
+
+.suggested-patch pre {
+  margin: 8px 0 0;
+  overflow: auto;
+  color: var(--app-text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+
 .review-actions {
   align-items: flex-end;
   padding: 12px 0 0;
@@ -370,6 +442,10 @@ blockquote cite {
   .candidate-editor,
   .evidence-panel {
     border: 0;
+  }
+
+  .candidate-queue {
+    max-height: min(52vh, 420px);
   }
 
   .mobile-hidden {

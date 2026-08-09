@@ -6,6 +6,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -14,6 +15,7 @@ import java.nio.file.Paths;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
+@EnableScheduling
 public class AiInterviewApplication {
     public static void main(String[] args) {
         // 本地开发时自动加载项目根目录 .env 到系统属性，Docker 环境跳过

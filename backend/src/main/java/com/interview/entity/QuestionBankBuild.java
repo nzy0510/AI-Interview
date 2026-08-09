@@ -30,6 +30,16 @@ public class QuestionBankBuild {
     private Integer candidateCount;
     private Integer acceptedCount;
     private Integer rejectedCount;
+    private Integer autoPassCount;
+    private Integer needsHumanCount;
+    private Integer autoRejectCount;
+    private Long reviewRevision;
+    private String finalizationStatus;
+    private String finalImportBatchId;
+    private String finalAtomIdsJson;
+    private String finalizationResultJson;
+    private Long finalizedBy;
+    private LocalDateTime finalizedAt;
     private String errorMessage;
     private Long createdBy;
     private LocalDateTime createTime;

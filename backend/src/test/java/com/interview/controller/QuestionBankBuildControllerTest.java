@@ -1,7 +1,10 @@
 package com.interview.controller;
 
+import com.interview.dto.questionbank.build.QuestionBankBuildFinalizationRequest;
+import com.interview.dto.questionbank.build.QuestionBankBuildFinalizationResponse;
 import com.interview.dto.questionbank.build.QuestionBankBuildResponse;
 import com.interview.service.RequestUserResolver;
+import com.interview.service.questionbank.build.QuestionBankBuildFinalizationService;
 import com.interview.service.questionbank.build.QuestionBankBuildService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
@@ -18,8 +21,9 @@ class QuestionBankBuildControllerTest {
     @Test
     void shouldForwardMultipartBuildToOwnerScopedService() {
         QuestionBankBuildService service = mock(QuestionBankBuildService.class);
+        QuestionBankBuildFinalizationService finalizationService = mock(QuestionBankBuildFinalizationService.class);
         RequestUserResolver resolver = mock(RequestUserResolver.class);
-        QuestionBankBuildController controller = new QuestionBankBuildController(service, resolver);
+        QuestionBankBuildController controller = new QuestionBankBuildController(service, finalizationService, resolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
         when(resolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
         QuestionBankBuildResponse expected = new QuestionBankBuildResponse(); expected.setBuildId(99L);
@@ -29,5 +33,26 @@ class QuestionBankBuildControllerTest {
 
         assertThat(result.getData()).isSameAs(expected);
         verify(service).create(eq(7L), eq(55L), anyList(), eq(List.of("java")));
+    }
+
+    @Test
+    void shouldStartExplicitFinalReviewWithAuthenticatedOwnerOnly() {
+        QuestionBankBuildService service = mock(QuestionBankBuildService.class);
+        QuestionBankBuildFinalizationService finalizationService = mock(QuestionBankBuildFinalizationService.class);
+        RequestUserResolver resolver = mock(RequestUserResolver.class);
+        QuestionBankBuildController controller = new QuestionBankBuildController(service, finalizationService, resolver);
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest();
+        when(resolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
+        QuestionBankBuildFinalizationRequest body = new QuestionBankBuildFinalizationRequest();
+        body.setCandidateIds(List.of(101L, 102L));
+        body.setExpectedReviewRevision(4L);
+        QuestionBankBuildFinalizationResponse expected = new QuestionBankBuildFinalizationResponse();
+        expected.setJobId(501L);
+        when(finalizationService.start(7L, 55L, 99L, body)).thenReturn(expected);
+
+        var result = controller.finalizeAndPublish(55L, 99L, body, servletRequest);
+
+        assertThat(result.getData()).isSameAs(expected);
+        verify(finalizationService).start(7L, 55L, 99L, body);
     }
 }

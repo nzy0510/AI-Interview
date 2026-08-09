@@ -12,5 +12,6 @@ public record KnowledgePositionResponse(Long id,
                                         boolean canPublishAtoms,
                                         boolean canReindexAtoms,
                                         boolean canArchiveAtoms,
+                                        boolean canBuildQuestionBank,
                                         KnowledgeBaseResponse knowledgeBase) {
 }

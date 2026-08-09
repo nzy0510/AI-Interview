@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -93,7 +95,7 @@ class KnowledgeWorkspaceControllerTest {
         when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
         KnowledgePositionResponse response = new KnowledgePositionResponse(
                 20L, "PRIVATE", 7L, "算法工程师", "", "ACTIVE", true,
-                true, true, false, false, true, null);
+                true, true, false, false, true, true, null);
         when(workspaceService.createPrivatePosition(any(), any())).thenReturn(response);
 
         mockMvc.perform(post("/api/knowledge-workspace/positions")
@@ -189,7 +191,7 @@ class KnowledgeWorkspaceControllerTest {
     @DisplayName("查询知识库原子使用当前登录用户和当前知识库")
     void shouldListKnowledgeBaseAtomsForCurrentUser() throws Exception {
         when(requestUserResolver.resolveUserId(any(HttpServletRequest.class))).thenReturn(7L);
-        when(workspaceService.listAtoms(any(), any(), any())).thenReturn(QuestionBankPageResponse.of(0, 1, 20, List.of()));
+        when(workspaceService.listAtoms(any(), any(), any())).thenReturn(QuestionBankPageResponse.of(0, 1, 10, List.of()));
 
         mockMvc.perform(post("/api/knowledge-workspace/knowledge-bases/30/atoms/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -197,7 +199,7 @@ class KnowledgeWorkspaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(0));
 
-        verify(workspaceService).listAtoms(any(), any(), any());
+        verify(workspaceService).listAtoms(eq(7L), eq(30L), argThat(request -> request.getSize() == 10));
     }
 
     @Test

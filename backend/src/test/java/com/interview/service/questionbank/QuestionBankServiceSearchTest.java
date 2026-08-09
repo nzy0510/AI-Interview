@@ -194,6 +194,26 @@ class QuestionBankServiceSearchTest {
     }
 
     @Test
+    @DisplayName("public fallback search requires owner_user_id to be null")
+    void shouldRequireNullOwnerForPublicMysqlFallbackSearch() {
+        QuestionBankSearchRequest request = request("HashMap collision handling");
+        request.setScope("PUBLIC");
+        request.setPositionId(20L);
+        request.setKnowledgeBaseId(30L);
+        when(qdrantVectorService.search(any(), any(), any(), anyInt(), any(), any(), any(), any())).thenReturn(List.of());
+        when(atomMapper.selectList(any())).thenReturn(List.of());
+
+        service.searchWithMetadata(request);
+
+        ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<KnowledgeAtom>> captor =
+                ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.query.QueryWrapper.class);
+        verify(atomMapper).selectList(captor.capture());
+        String sqlSegment = captor.getValue().getSqlSegment();
+        assertThat(sqlSegment).containsIgnoringCase("owner_user_id IS NULL");
+        assertThat(captor.getValue().getParamNameValuePairs().values()).contains("PUBLIC", 20L, 30L);
+    }
+
+    @Test
     @DisplayName("structured scoped search does not require legacy position category mapping")
     void shouldNotRequireLegacyCategoryMappingForStructuredScopeSearch() {
         QuestionBankSearchRequest request = request("Linux disk full troubleshooting");

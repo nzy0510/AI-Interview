@@ -30,6 +30,13 @@ public class QuestionBankBuildCandidate {
     private String sourceEvidenceJson;
     private String selfCheckJson;
     private String duplicateHint;
+    private String machineReviewStatus;
+    private Double machineReviewScore;
+    private String machineReviewIssuesJson;
+    private String machineSuggestedPatchJson;
+    private String machineReviewPromptVersion;
+    private Integer machineReviewAttempts;
+    private LocalDateTime machineReviewedAt;
     private String reviewStatus;
     private String reviewReason;
     private LocalDateTime createdAt;

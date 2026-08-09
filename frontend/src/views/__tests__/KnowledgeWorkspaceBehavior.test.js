@@ -8,6 +8,7 @@ import KnowledgeWorkspace from '../KnowledgeWorkspace.vue'
 const mocks = vi.hoisted(() => ({
   getWorkspace: vi.fn(),
   getCoverage: vi.fn(),
+  getPublishedCount: vi.fn(),
   searchAtoms: vi.fn(),
   getAtom: vi.fn(),
   updateAtom: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock('@/api/knowledgeWorkspace', () => ({
   getKnowledgeWorkspaceAPI: mocks.getWorkspace,
   getKnowledgeAtomAPI: mocks.getAtom,
   getPositionCoverageAPI: mocks.getCoverage,
+  getPublishedKnowledgeBaseAtomCountAPI: mocks.getPublishedCount,
   getQuestionBankBuildPackageAPI: vi.fn(),
   importKnowledgeBasePackageAPI: mocks.importPackage,
   publishAllDraftAtomsAPI: vi.fn(),
@@ -50,11 +52,14 @@ vi.mock('@/composables/useQuestionBankBuild', async () => {
       activeBuildId: ref(null),
       activeBuild: ref(null),
       candidates: ref([]),
+      exceptionCandidates: ref([]),
+      finalizableCandidates: ref([]),
       loading: ref(false),
       candidatesLoading: ref(false),
       actionLoading: ref(''),
       canReview: computed(() => false),
       canImport: computed(() => false),
+      canFinalize: computed(() => false),
       loadBuilds: async () => unref(knowledgeBaseId) ? mocks.listBuilds(unref(knowledgeBaseId)) : [],
       loadBuild: vi.fn(),
       loadCandidates: vi.fn(),
@@ -62,7 +67,10 @@ vi.mock('@/composables/useQuestionBankBuild', async () => {
       retryBuild: vi.fn(),
       updateCandidate: vi.fn(),
       importBuild: vi.fn(),
+      finalizeBuild: vi.fn(),
       deleteBuild: vi.fn(),
+      startPolling: vi.fn().mockResolvedValue(null),
+      stopPolling: vi.fn(),
       runAction: vi.fn()
     })
   }
@@ -76,6 +84,7 @@ const publicPosition = {
   editable: false,
   canManageAtoms: true,
   canImportPackage: true,
+  canBuildQuestionBank: true,
   knowledgeBase: { id: 1, name: 'Java 后端题库' }
 }
 const privatePosition = {
@@ -86,6 +95,7 @@ const privatePosition = {
   editable: true,
   canManageAtoms: true,
   canImportPackage: true,
+  canBuildQuestionBank: true,
   knowledgeBase: { id: 15, name: '运维工程师题库' }
 }
 
@@ -96,8 +106,11 @@ const deferred = () => {
 }
 
 const OverviewStub = defineComponent({
-  props: { coverageDetails: { type: Array, default: () => [] } },
-  template: '<div data-test="coverage">{{ coverageDetails.map(item => item.category).join(",") }}</div>'
+  props: {
+    coverageDetails: { type: Array, default: () => [] },
+    publishedCount: { type: Number, default: 0 }
+  },
+  template: '<div><span data-test="coverage">{{ coverageDetails.map(item => item.category).join(",") }}</span><span data-test="published-count">{{ publishedCount }}</span></div>'
 })
 
 const mountWorkspace = () => shallowMount(KnowledgeWorkspace, {
@@ -113,19 +126,33 @@ describe('KnowledgeWorkspace position loading', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.listBuilds.mockResolvedValue([])
-    mocks.searchAtoms.mockResolvedValue({ items: [], total: 0, page: 1, size: 20 })
+    mocks.getPublishedCount.mockResolvedValue(0)
+    mocks.searchAtoms.mockResolvedValue({ items: [], total: 0, page: 1, size: 10 })
     mocks.validateImport.mockResolvedValue({ errors: [] })
     mocks.importPackage.mockResolvedValue({ imported: 1 })
   })
 
-  it('does not request private build history for a public position', async () => {
+  it('loads the initiating admins build history for an authorized public position', async () => {
     mocks.getWorkspace.mockResolvedValue({ positions: [publicPosition] })
     mocks.getCoverage.mockResolvedValue({ details: [] })
 
     mountWorkspace()
     await flushPromises()
 
-    expect(mocks.listBuilds).not.toHaveBeenCalled()
+    expect(mocks.listBuilds).toHaveBeenCalledWith(1)
+    expect(mocks.searchAtoms).toHaveBeenCalledWith(1, expect.objectContaining({ page: 1, size: 10 }))
+  })
+
+  it('shows the full published vector count instead of the current atom page size', async () => {
+    mocks.getWorkspace.mockResolvedValue({ positions: [privatePosition] })
+    mocks.getCoverage.mockResolvedValue({ details: [] })
+    mocks.searchAtoms.mockResolvedValue({ items: Array.from({ length: 10 }, (_, index) => ({ id: index + 1 })), total: 43, page: 1, size: 10 })
+    mocks.getPublishedCount.mockResolvedValue(43)
+
+    const wrapper = mountWorkspace()
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="published-count"]').text()).toBe('43')
   })
 
   it('ignores late coverage responses from the previously selected position', async () => {
@@ -149,7 +176,7 @@ describe('KnowledgeWorkspace position loading', () => {
     expect(wrapper.get('[data-test="coverage"]').text()).toBe('java')
   })
 
-  it('keeps JSON import and atom editing available for a public question bank', async () => {
+  it('hides the legacy JSON entry while keeping atom editing available for a public question bank', async () => {
     mocks.getWorkspace.mockResolvedValue({ positions: [publicPosition] })
     mocks.getCoverage.mockResolvedValue({ details: [] })
     mocks.getAtom.mockResolvedValue({ atomId: 7, subject: 'GC Roots', category: 'jvm' })
@@ -161,7 +188,7 @@ describe('KnowledgeWorkspace position loading', () => {
     await wrapper.findComponent({ name: 'QuestionBankAtomPanel' }).vm.$emit('edit', 7)
     await flushPromises()
 
-    expect(wrapper.findComponent({ name: 'QuestionBankJsonImportCard' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'QuestionBankJsonImportCard' }).exists()).toBe(false)
     expect(mocks.getAtom).toHaveBeenCalledWith(7)
     expect(wrapper.findComponent({ name: 'QuestionBankAtomEditDialog' }).props('modelValue')).toBe(true)
   })

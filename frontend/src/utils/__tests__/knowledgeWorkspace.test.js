@@ -13,6 +13,7 @@ import {
 } from '../knowledgeWorkspace'
 import {
   canBuildQuestionBank,
+  getQuestionBankBuildStageLabel,
   getQuestionBankBuildStatusLabel,
   isQuestionBankCandidateAccepted,
   isQuestionBankAtomPublishEligible,
@@ -113,9 +114,10 @@ describe('knowledge workspace utils', () => {
     expect(canCreatePrivatePosition(closedCapabilities)).toBe(false)
   })
 
-  it('keeps build access private-owner scoped and requires accepted review for import/publish', () => {
-    expect(canBuildQuestionBank({ scope: 'PRIVATE', editable: true, status: 'ACTIVE', knowledgeBase: { id: 1 } })).toBe(true)
-    expect(canBuildQuestionBank({ scope: 'PUBLIC', editable: true, status: 'ACTIVE', knowledgeBase: { id: 1 } })).toBe(false)
+  it('uses the explicit build capability for private owners and public admins', () => {
+    expect(canBuildQuestionBank({ scope: 'PRIVATE', editable: true, canBuildQuestionBank: true, status: 'ACTIVE', knowledgeBase: { id: 1 } })).toBe(true)
+    expect(canBuildQuestionBank({ scope: 'PUBLIC', canBuildQuestionBank: true, status: 'ACTIVE', knowledgeBase: { id: 1 } })).toBe(true)
+    expect(canBuildQuestionBank({ scope: 'PUBLIC', canBuildQuestionBank: false, status: 'ACTIVE', knowledgeBase: { id: 1 } })).toBe(false)
     expect(isQuestionBankCandidateAccepted({ reviewStatus: 'ACCEPTED' })).toBe(true)
     expect(isQuestionBankCandidateAccepted({ reviewStatus: 'PENDING' })).toBe(false)
     expect(isQuestionBankAtomPublishEligible({ status: 'DRAFT', reviewStatus: 'PASS' })).toBe(true)
@@ -125,5 +127,8 @@ describe('knowledge workspace utils', () => {
     expect(isQuestionBankBuildInProgress({ status: 'RUNNING' })).toBe(true)
     expect(isQuestionBankBuildInProgress({ status: 'COMPLETED' })).toBe(false)
     expect(getQuestionBankBuildStatusLabel('FAILED')).toBe('失败')
+    expect(getQuestionBankBuildStageLabel('SUPERVISING')).toBe('正在审查处理结果')
+    expect(getQuestionBankBuildStageLabel('READY_FOR_FINAL_REVIEW')).toBe('等待人工终审')
+    expect(getQuestionBankBuildStageLabel('INDEXING')).toBe('正在同步检索索引')
   })
 })

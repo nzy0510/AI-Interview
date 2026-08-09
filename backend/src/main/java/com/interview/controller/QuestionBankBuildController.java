@@ -2,11 +2,13 @@ package com.interview.controller;
 
 import com.interview.common.Result;
 import com.interview.dto.questionbank.QuestionBankImportRequest;
-import com.interview.dto.questionbank.QuestionBankImportResult;
 import com.interview.dto.questionbank.build.QuestionBankBuildCandidateResponse;
 import com.interview.dto.questionbank.build.QuestionBankBuildCandidateReviewRequest;
+import com.interview.dto.questionbank.build.QuestionBankBuildFinalizationRequest;
+import com.interview.dto.questionbank.build.QuestionBankBuildFinalizationResponse;
 import com.interview.dto.questionbank.build.QuestionBankBuildResponse;
 import com.interview.service.RequestUserResolver;
+import com.interview.service.questionbank.build.QuestionBankBuildFinalizationService;
 import com.interview.service.questionbank.build.QuestionBankBuildService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
@@ -27,10 +29,14 @@ import java.util.List;
 @RequestMapping("/api/knowledge-workspace/knowledge-bases/{knowledgeBaseId}/builds")
 public class QuestionBankBuildController {
     private final QuestionBankBuildService buildService;
+    private final QuestionBankBuildFinalizationService finalizationService;
     private final RequestUserResolver requestUserResolver;
 
-    public QuestionBankBuildController(QuestionBankBuildService buildService, RequestUserResolver requestUserResolver) {
+    public QuestionBankBuildController(QuestionBankBuildService buildService,
+                                       QuestionBankBuildFinalizationService finalizationService,
+                                       RequestUserResolver requestUserResolver) {
         this.buildService = buildService;
+        this.finalizationService = finalizationService;
         this.requestUserResolver = requestUserResolver;
     }
 
@@ -85,11 +91,14 @@ public class QuestionBankBuildController {
         return Result.success(buildService.packageFor(currentUserId(request), knowledgeBaseId, buildId));
     }
 
-    @PostMapping("/{buildId}/import")
-    public Result<QuestionBankImportResult> importBuild(@PathVariable Long knowledgeBaseId,
-                                                        @PathVariable Long buildId,
-                                                        HttpServletRequest request) {
-        return Result.success(buildService.importBuild(currentUserId(request), knowledgeBaseId, buildId));
+    @PostMapping("/{buildId}/finalize-publish")
+    public Result<QuestionBankBuildFinalizationResponse> finalizeAndPublish(
+            @PathVariable Long knowledgeBaseId,
+            @PathVariable Long buildId,
+            @RequestBody QuestionBankBuildFinalizationRequest body,
+            HttpServletRequest request) {
+        return Result.success(finalizationService.start(
+                currentUserId(request), knowledgeBaseId, buildId, body));
     }
 
     private Long currentUserId(HttpServletRequest request) {

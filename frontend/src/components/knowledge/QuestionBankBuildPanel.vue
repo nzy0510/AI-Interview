@@ -3,8 +3,8 @@
     <div class="build-head">
       <div>
         <p class="section-kicker">Question Bank Builder</p>
-        <h2>智能构建</h2>
-        <p class="section-desc">把岗位资料整理成可审核的知识原子候选，不会自动发布。</p>
+        <h2>文档入库流水线</h2>
+        <p class="section-desc">系统按固定步骤解析、生成和质量监督；只有你点击终审后才会发布。</p>
       </div>
       <el-button :loading="loading" @click="$emit('refresh')">刷新任务</el-button>
     </div>
@@ -29,8 +29,8 @@
       <div class="preflight-grid">
         <div><span>目标岗位</span><strong>{{ position?.name || '-' }}</strong></div>
         <div><span>Provider / Model</span><strong>{{ llmDisplay }}</strong></div>
-        <div><span>文件 / 解析摘要</span><strong>{{ fileList.length }} 个（{{ readableSize }}）；页数与字符量提交后返回</strong></div>
-        <div><span>预估分块 / 调用</span><strong>{{ estimatedChunks }} / {{ estimatedCalls }} <small>（提交前估算）</small></strong></div>
+        <div><span>文件 / 上传大小</span><strong>{{ fileList.length }} 个（{{ readableSize }}）；实际分块提交解析后返回</strong></div>
+        <div><span>分块 / 调用规模</span><strong>提交解析后确定</strong></div>
       </div>
 
       <el-upload
@@ -40,7 +40,7 @@
         multiple
         :auto-upload="false"
         :show-file-list="true"
-        accept=".pdf,.docx,.txt,.md,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        accept=".pdf,.docx,.txt,.md,.markdown,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         :disabled="!canBuild || !llmStatus.hasActiveConfig"
         @change="handleFileChange"
       >
@@ -50,9 +50,12 @@
       </el-upload>
 
       <div class="build-options">
-        <el-select v-model="categories" multiple filterable allow-create default-first-option clearable placeholder="分类（可选）">
-          <el-option v-for="category in categoryOptions" :key="category" :label="category" :value="category" />
-        </el-select>
+        <div class="category-option">
+          <el-select v-model="categories" multiple filterable allow-create default-first-option clearable placeholder="生成分类提示（可选）">
+            <el-option v-for="category in categoryOptions" :key="category" :label="category" :value="category" />
+          </el-select>
+          <small>用于提示模型如何归类候选，不是题库筛选条件；不选时使用“通用”。</small>
+        </div>
         <el-button
           type="primary"
           :loading="actionLoading === 'start'"
@@ -63,7 +66,7 @@
         </el-button>
       </div>
 
-      <p class="third-party-note">隐私提示：文档文本将发送至当前 Provider 进行“生成 + 自检”，预计调用量只做提示，不代表实际费用。</p>
+      <p class="third-party-note">隐私提示：文档文本将发送至当前 Provider 进行“知识原子生成 + 质量监督”；实际调用规模由解析分块数与候选数共同决定。</p>
     </section>
 
     <section v-if="builds.length" class="build-list-card">
@@ -77,28 +80,32 @@
         @click="$emit('select-build', build.id)"
       >
         <span class="build-row__main"><strong>#{{ build.id }}</strong><span>{{ build.sourceFiles?.map((file) => file.originalFilename || file.name).join('、') || '未命名文档' }}</span></span>
-        <span class="build-row__meta"><el-tag size="small" :type="statusType(build.status)" effect="plain">{{ statusLabel(build.status) }}</el-tag><span>{{ build.progress }}%</span></span>
+        <span class="build-row__meta"><el-tag size="small" :type="statusType(build.status)" effect="plain">{{ build.stage ? stageLabel(build.stage) : statusLabel(build.status) }}</el-tag><span>{{ build.progress }}%</span></span>
       </button>
     </section>
 
     <section v-if="activeBuild" class="build-detail-card">
-      <div class="section-head"><div><h3>批次 #{{ activeBuild.id }} 运行详情</h3><p class="muted-text">阶段：{{ activeBuild.stage || '等待后端返回' }}</p></div><div class="detail-actions"><el-button v-if="activeBuild.canRetry && activeBuild.jobId" type="warning" plain :loading="actionLoading === 'retry'" @click="$emit('retry')">重试原任务</el-button><el-button type="danger" plain :disabled="isBuildInProgress || actionLoading === 'delete'" :loading="actionLoading === 'delete'" :title="deleteHint" @click="$emit('delete')">删除批次</el-button></div></div>
+      <div class="section-head"><div><h3>批次 #{{ activeBuild.id }} 运行详情</h3><p class="muted-text">阶段：{{ stageLabel(activeBuild.stage) }}</p></div><div class="detail-actions"><el-button v-if="activeBuild.canRetry && activeBuild.jobId" type="warning" plain :loading="actionLoading === 'retry'" @click="$emit('retry')">重试原任务</el-button><el-button type="danger" plain :disabled="isBuildInProgress || isBuildRetained || actionLoading === 'delete'" :loading="actionLoading === 'delete'" :title="deleteHint" @click="$emit('delete')">删除批次</el-button></div></div>
       <el-progress :percentage="activeBuild.progress" :status="activeBuild.status === 'FAILED' ? 'exception' : undefined" />
-      <div class="detail-grid"><span>解析文件 {{ activeBuild.fileCount }}</span><span>分块 {{ activeBuild.completedChunkCount }}/{{ activeBuild.chunkCount || '-' }}</span><span>候选 {{ activeBuild.candidateCount }}</span><span>接受 {{ activeBuild.acceptedCount }}</span></div>
+      <div class="detail-grid"><span>解析文件 {{ activeBuild.fileCount || 0 }}</span><span>分块 {{ activeBuild.completedChunkCount || 0 }}/{{ activeBuild.chunkCount || '-' }}</span><span>候选 {{ activeBuild.candidateCount || 0 }}</span><span>监督通过 {{ activeBuild.autoPassCount || 0 }}</span><span>需人工 {{ activeBuild.needsHumanCount || 0 }}</span><span>自动排除 {{ activeBuild.autoRejectCount || 0 }}</span></div>
       <p v-if="activeBuild.errorMessage" class="error-text">{{ activeBuild.errorMessage }}</p>
       <p v-if="isBuildInProgress" class="muted-text delete-hint">构建运行中，暂不能删除；请等待完成或失败后再操作。</p>
-      <p v-if="['SUCCEEDED', 'COMPLETED'].includes(activeBuild.status)" class="success-note">生成完成。请到“候选审核”逐条确认后再导入。</p>
+      <p v-if="activeBuild.stage === 'READY_FOR_FINAL_REVIEW'" class="success-note">生成与监督已完成。请到“终审发布”只处理异常项，然后整批发布。</p>
+      <p v-else-if="activeBuild.stage === 'PUBLISHED'" class="success-note">终审发布完成，知识原子和检索索引均已入库。</p>
     </section>
 
+    <!-- 旧 JSON 导入入口暂时隐藏；保留组件调用，便于后续按需恢复。
     <QuestionBankJsonImportCard :can-import="canBuild" @import-package="(...args) => $emit('import-package', ...args)" />
+    -->
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
 import { UploadFilled } from '@element-plus/icons-vue'
-import { getQuestionBankBuildStatusLabel, getQuestionBankBuildStatusType, isQuestionBankBuildInProgress } from '@/utils/knowledgeWorkspace'
-import QuestionBankJsonImportCard from '@/components/knowledge/QuestionBankJsonImportCard.vue'
+import { getQuestionBankBuildStageLabel, getQuestionBankBuildStatusLabel, getQuestionBankBuildStatusType, isQuestionBankBuildInProgress } from '@/utils/knowledgeWorkspace'
+// 旧 JSON 导入入口暂时隐藏；保留 import 位置，恢复模板入口时一并启用。
+// import QuestionBankJsonImportCard from '@/components/knowledge/QuestionBankJsonImportCard.vue'
 
 const props = defineProps({
   position: { type: Object, default: null },
@@ -119,12 +126,14 @@ const llmDisplay = computed(() => props.llmStatus.hasActiveConfig
   : '未配置')
 const totalBytes = computed(() => fileList.value.reduce((sum, item) => sum + Number(item.size || item.raw?.size || 0), 0))
 const readableSize = computed(() => totalBytes.value > 1024 * 1024 ? `${(totalBytes.value / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.ceil(totalBytes.value / 1024))} KB`)
-const estimatedChunks = computed(() => Math.max(fileList.value.length, Math.ceil(totalBytes.value / 12000)))
-const estimatedCalls = computed(() => estimatedChunks.value * 2)
 const statusLabel = (status) => getQuestionBankBuildStatusLabel(status)
 const statusType = (status) => getQuestionBankBuildStatusType(status)
+const stageLabel = (stage) => getQuestionBankBuildStageLabel(stage)
 const isBuildInProgress = computed(() => isQuestionBankBuildInProgress(props.activeBuild))
-const deleteHint = computed(() => isBuildInProgress.value ? '构建运行中，完成或失败后才可删除' : '')
+const isBuildRetained = computed(() => Boolean(props.activeBuild?.finalAtomIds?.length))
+const deleteHint = computed(() => isBuildInProgress.value
+  ? '构建运行中，完成或失败后才可删除'
+  : isBuildRetained.value ? '已进入终审发布的批次需保留来源记录' : '')
 
 const handleFileChange = (file, files) => {
   fileList.value = files.filter((item) => !item.status || item.status !== 'fail')
@@ -242,9 +251,20 @@ const submitBuild = () => {
   margin-top: 14px;
 }
 
-.build-options .el-select {
+.category-option {
   flex: 1;
   min-width: 0;
+}
+
+.category-option .el-select {
+  width: 100%;
+}
+
+.category-option small {
+  display: block;
+  margin-top: 6px;
+  color: var(--app-text-muted);
+  font-size: 0.78rem;
 }
 
 .third-party-note {
@@ -294,7 +314,7 @@ const submitBuild = () => {
 
 .detail-grid {
   margin: 14px 0 0;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .error-text {

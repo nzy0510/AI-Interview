@@ -28,7 +28,8 @@ class QuestionBankBuildCreationServiceTest {
         TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
         QuestionBankBuildResponseAssembler assembler = mock(QuestionBankBuildResponseAssembler.class);
         AppJob duplicate = new AppJob(); duplicate.setId(8L); duplicate.setBuildId(9L);
-        QuestionBankBuild build = new QuestionBankBuild(); build.setId(9L);
+        QuestionBankBuild build = new QuestionBankBuild();
+        build.setId(9L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setKnowledgeBaseId(10L);
         QuestionBankBuildResponse expected = new QuestionBankBuildResponse(); expected.setBuildId(9L); expected.setJobId(8L);
         when(jobMapper.selectOne(any())).thenReturn(null, duplicate);
         when(transactionTemplate.execute(any())).thenThrow(new DuplicateKeyException("duplicate"));
@@ -61,6 +62,35 @@ class QuestionBankBuildCreationServiceTest {
         verify(recovery).dispatchJob(8L);
     }
 
+    @Test
+    void shouldIsolateIdempotencyAcrossAdminsAndProviderSnapshots() {
+        QuestionBankBuildCreationService service = service(
+                mock(AppJobMapper.class), mock(QuestionBankBuildMapper.class),
+                mock(TransactionTemplate.class), mock(QuestionBankBuildResponseAssembler.class),
+                mock(AppJobRecoveryService.class));
+
+        UserLlmRuntimeConfig firstSnapshot = runtime("deepseek", "deepseek-v4-flash");
+        UserLlmRuntimeConfig changedProviderSnapshot = runtime("openai", "deepseek-v4-flash");
+        UserLlmRuntimeConfig changedModelSnapshot = runtime("deepseek", "deepseek-v4");
+        UserLlmRuntimeConfig changedEndpointSnapshot = runtime(
+                "deepseek", "https://another-provider.example/v1", "deepseek-v4-flash", 0.0);
+        UserLlmRuntimeConfig changedTemperatureSnapshot = runtime(
+                "deepseek", "http://localhost", "deepseek-v4-flash", 0.7);
+        String firstAdmin = service.idempotencyKey(7L, 10L, firstSnapshot, "v1", List.of(), List.of("java"));
+        String secondAdmin = service.idempotencyKey(8L, 10L, firstSnapshot, "v1", List.of(), List.of("java"));
+        String changedProvider = service.idempotencyKey(7L, 10L, changedProviderSnapshot, "v1", List.of(), List.of("java"));
+        String changedModel = service.idempotencyKey(7L, 10L, changedModelSnapshot, "v1", List.of(), List.of("java"));
+        String changedEndpoint = service.idempotencyKey(7L, 10L, changedEndpointSnapshot, "v1", List.of(), List.of("java"));
+        String changedTemperature = service.idempotencyKey(7L, 10L, changedTemperatureSnapshot, "v1", List.of(), List.of("java"));
+
+        assertThat(firstAdmin)
+                .isNotEqualTo(secondAdmin)
+                .isNotEqualTo(changedProvider)
+                .isNotEqualTo(changedModel)
+                .isNotEqualTo(changedEndpoint)
+                .isNotEqualTo(changedTemperature);
+    }
+
     private QuestionBankBuildCreationService service(AppJobMapper jobMapper,
                                                      QuestionBankBuildMapper buildMapper,
                                                      TransactionTemplate transactionTemplate,
@@ -80,7 +110,15 @@ class QuestionBankBuildCreationServiceTest {
     }
 
     private UserLlmRuntimeConfig runtime() {
+        return runtime("test", "mock");
+    }
+
+    private UserLlmRuntimeConfig runtime(String provider, String modelName) {
+        return runtime(provider, "http://localhost", modelName, 0.0);
+    }
+
+    private UserLlmRuntimeConfig runtime(String provider, String baseUrl, String modelName, double temperature) {
         return new UserLlmRuntimeConfig(
-                3L, 7L, "test", "test", "http://localhost", "mock", "secret", 0.0);
+                3L, 7L, provider, "test", baseUrl, modelName, "secret", temperature);
     }
 }

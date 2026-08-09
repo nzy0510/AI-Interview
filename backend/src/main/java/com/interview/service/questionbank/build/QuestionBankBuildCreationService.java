@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -74,11 +75,20 @@ public class QuestionBankBuildCreationService {
                                             List<QuestionBankBuildInputService.PreparedFile> preparedFiles,
                                             List<String> normalizedCategories,
                                             int chunkCount) {
-        String idempotencyKey = idempotencyKey(knowledgeBase.getId(), preparedFiles, normalizedCategories);
+        String idempotencyKey = idempotencyKey(
+                userId,
+                knowledgeBase.getId(),
+                runtime,
+                properties.getPromptVersion(),
+                preparedFiles,
+                normalizedCategories);
         AppJob existing = findJob(idempotencyKey);
         if (existing != null && existing.getBuildId() != null) {
             QuestionBankBuild existingBuild = buildMapper.selectById(existing.getBuildId());
-            if (existingBuild != null) return responseAssembler.toResponse(existingBuild, existing.getId());
+            if (isOwnedArtifact(existingBuild, userId, knowledgeBase.getId())) {
+                return responseAssembler.toResponse(existingBuild, existing.getId());
+            }
+            throw new IllegalStateException("构建幂等记录与当前用户或题库不匹配");
         }
 
         QuestionBankBuildResponse response;
@@ -89,7 +99,9 @@ public class QuestionBankBuildCreationService {
             AppJob duplicate = findJob(idempotencyKey);
             if (duplicate != null && duplicate.getBuildId() != null) {
                 QuestionBankBuild existingBuild = buildMapper.selectById(duplicate.getBuildId());
-                if (existingBuild != null) return responseAssembler.toResponse(existingBuild, duplicate.getId());
+                if (isOwnedArtifact(existingBuild, userId, knowledgeBase.getId())) {
+                    return responseAssembler.toResponse(existingBuild, duplicate.getId());
+                }
             }
             throw e;
         }
@@ -127,6 +139,11 @@ public class QuestionBankBuildCreationService {
         build.setCandidateCount(0);
         build.setAcceptedCount(0);
         build.setRejectedCount(0);
+        build.setAutoPassCount(0);
+        build.setNeedsHumanCount(0);
+        build.setAutoRejectCount(0);
+        build.setReviewRevision(0L);
+        build.setFinalizationStatus("NOT_STARTED");
         build.setCheckpointJson(JSON.toJSONString(List.of()));
         build.setCreatedBy(userId);
         buildMapper.insert(build);
@@ -202,12 +219,28 @@ public class QuestionBankBuildCreationService {
         return appJobMapper.selectOne(new QueryWrapper<AppJob>().eq("idempotency_key", idempotencyKey));
     }
 
-    private String idempotencyKey(Long knowledgeBaseId,
-                                  List<QuestionBankBuildInputService.PreparedFile> files,
-                                  List<String> categories) {
-        String raw = knowledgeBaseId + "|" + categories + "|"
+    String idempotencyKey(Long userId,
+                          Long knowledgeBaseId,
+                          UserLlmRuntimeConfig runtime,
+                          String promptVersion,
+                          List<QuestionBankBuildInputService.PreparedFile> files,
+                          List<String> categories) {
+        String providerSnapshot = runtime.provider() == null ? "" : runtime.provider().trim().toLowerCase(Locale.ROOT);
+        String baseUrlSnapshot = runtime.baseUrl() == null ? "" : runtime.baseUrl().trim();
+        String modelSnapshot = runtime.modelName() == null ? "" : runtime.modelName().trim();
+        String temperatureSnapshot = runtime.temperature() == null ? "" : runtime.temperature().toString();
+        String raw = userId + "|" + knowledgeBaseId + "|" + runtime.configId() + "|"
+                + providerSnapshot + "|" + baseUrlSnapshot + "|" + modelSnapshot + "|" + temperatureSnapshot + "|"
+                + promptVersion + "|" + categories + "|"
                 + files.stream().map(item -> sha256(item.bytes())).collect(Collectors.joining(","));
         return JOB_TYPE + ":" + shortHash(raw);
+    }
+
+    private boolean isOwnedArtifact(QuestionBankBuild build, Long userId, Long knowledgeBaseId) {
+        return build != null
+                && SCOPE_PRIVATE.equalsIgnoreCase(build.getScope())
+                && userId.equals(build.getOwnerUserId())
+                && knowledgeBaseId.equals(build.getKnowledgeBaseId());
     }
 
     private String shortHash(String value) {

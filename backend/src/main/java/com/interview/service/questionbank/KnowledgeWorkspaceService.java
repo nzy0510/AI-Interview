@@ -327,6 +327,13 @@ public class KnowledgeWorkspaceService {
                 importScopeFor(currentUserId, knowledgeBaseId));
     }
 
+    public java.util.Map<String, Integer> ensureAtomsIndexed(Long currentUserId,
+                                                             Long knowledgeBaseId,
+                                                             QuestionBankBulkAtomRequest request) {
+        return questionBankService.ensureAtomsIndexed(request == null ? List.of() : request.getAtomIds(),
+                importScopeFor(currentUserId, knowledgeBaseId));
+    }
+
     public QuestionBankCapabilitiesResponse getCapabilities(Long currentUserId) {
         requireUser(currentUserId);
         boolean admin = adminRoleService.isAdmin(currentUserId);
@@ -378,6 +385,7 @@ public class KnowledgeWorkspaceService {
                 canMaintain,
                 canPublish,
                 canReindex,
+                canMaintain,
                 canMaintain,
                 knowledgeBaseResponse
         );

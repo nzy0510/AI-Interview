@@ -25,11 +25,20 @@ public class QuestionBankBuildResponse {
     private Integer candidateCount;
     private Integer acceptedCount;
     private Integer rejectedCount;
+    private Integer autoPassCount;
+    private Integer needsHumanCount;
+    private Integer autoRejectCount;
+    private Long reviewRevision;
+    private String finalizationStatus;
+    private List<String> finalAtomIds = new ArrayList<>();
     private Long configId;
     private String provider;
     private String model;
     private String promptVersion;
     private String errorMessage;
+    private Object finalizationResult;
+    private Long finalizedBy;
+    private LocalDateTime finalizedAt;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 

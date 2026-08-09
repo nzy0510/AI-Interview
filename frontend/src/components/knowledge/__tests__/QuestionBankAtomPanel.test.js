@@ -4,6 +4,16 @@ import ElementPlus from 'element-plus'
 import QuestionBankAtomPanel from '../QuestionBankAtomPanel.vue'
 
 describe('QuestionBankAtomPanel', () => {
+  it('defaults pagination to ten rows', async () => {
+    const wrapper = mount(QuestionBankAtomPanel, {
+      props: { total: 11 },
+      global: { plugins: [ElementPlus] }
+    })
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'ElPagination' }).props('pageSize')).toBe(10)
+  })
+
   it('lets an authorized administrator open a knowledge atom for editing', async () => {
     const wrapper = mount(QuestionBankAtomPanel, {
       props: {

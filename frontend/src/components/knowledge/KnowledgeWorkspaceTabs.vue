@@ -6,7 +6,7 @@
       type="button"
       class="workspace-tab"
       :class="{ 'is-active': tab.key === modelValue }"
-      :disabled="tab.privateOnly && !canBuild"
+      :disabled="tab.requiresBuildAccess && !canBuild"
       @click="$emit('update:modelValue', tab.key)"
     >
       <span>{{ tab.label }}</span>
@@ -22,13 +22,12 @@ import { QUESTION_BANK_TABS } from '@/utils/knowledgeWorkspace'
 const props = defineProps({
   modelValue: { type: String, default: 'overview' },
   canBuild: { type: Boolean, default: false },
-  candidateCount: { type: Number, default: 0 },
-  isPublic: { type: Boolean, default: false }
+  candidateCount: { type: Number, default: 0 }
 })
 
 defineEmits(['update:modelValue'])
 
-const visibleTabs = computed(() => QUESTION_BANK_TABS.filter((tab) => !tab.privateOnly || (!props.isPublic && props.canBuild)))
+const visibleTabs = computed(() => QUESTION_BANK_TABS.filter((tab) => !tab.requiresBuildAccess || props.canBuild))
 </script>
 
 <style scoped>

@@ -4,11 +4,15 @@ import com.interview.entity.AppJob;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.TaskScheduler;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.ScheduledFuture;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -25,7 +29,8 @@ class AppJobRecoveryTest {
         TaskExecutor executor = Runnable::run;
         when(appJobService.recoverExpiredRunningJobs()).thenReturn(2);
         when(appJobService.listPendingJobs()).thenReturn(List.of());
-        AppJobRecoveryService recoveryService = new AppJobRecoveryService(appJobService, dispatcher, executor);
+        AppJobRecoveryService recoveryService = new AppJobRecoveryService(
+                appJobService, dispatcher, executor, scheduler());
 
         recoveryService.recoverOnStartup();
 
@@ -42,16 +47,70 @@ class AppJobRecoveryTest {
         TaskExecutor executor = Runnable::run;
         AppJob pending = job("QUESTION_BANK_IMPORT");
         AppJob claimed = job("QUESTION_BANK_IMPORT");
-        claimed.setClaimedBy("app-job-local");
         when(appJobService.listPendingJobs()).thenReturn(List.of(pending));
-        when(appJobService.claimPendingJob(20L, "app-job-local", Duration.ofMinutes(15))).thenReturn(claimed);
-        AppJobRecoveryService recoveryService = new AppJobRecoveryService(appJobService, dispatcher, executor);
+        when(appJobService.claimPendingJob(eq(20L), startsWith("app-job-local:"), eq(Duration.ofMinutes(15))))
+                .thenAnswer(invocation -> {
+                    claimed.setClaimedBy(invocation.getArgument(1));
+                    return claimed;
+                });
+        AppJobRecoveryService recoveryService = new AppJobRecoveryService(
+                appJobService, dispatcher, executor, scheduler());
 
         recoveryService.recoverOnStartup();
 
         verify(appJobService).recoverExpiredRunningJobs();
-        verify(appJobService).claimPendingJob(20L, "app-job-local", Duration.ofMinutes(15));
+        verify(appJobService).claimPendingJob(
+                eq(20L), startsWith("app-job-local:"), eq(Duration.ofMinutes(15)));
         verify(dispatcher).dispatch(claimed);
+    }
+
+    @Test
+    @DisplayName("周期恢复会再次检查过期 RUNNING 并投递 PENDING 作业")
+    void shouldRecoverAndDispatchOnPeriodicSweep() {
+        AppJobService appJobService = mock(AppJobService.class);
+        AppJobDispatcher dispatcher = mock(AppJobDispatcher.class);
+        TaskExecutor executor = Runnable::run;
+        when(appJobService.listPendingJobs()).thenReturn(List.of());
+        AppJobRecoveryService recoveryService = new AppJobRecoveryService(
+                appJobService, dispatcher, executor, scheduler());
+
+        recoveryService.recoverPeriodically();
+
+        verify(appJobService).recoverExpiredRunningJobs();
+        verify(appJobService).listPendingJobs();
+    }
+
+    @Test
+    @DisplayName("作业执行期间按唯一令牌续租并在结束后停止心跳")
+    void shouldHeartbeatTheClaimedExecutionUntilDispatchFinishes() {
+        AppJobService appJobService = mock(AppJobService.class);
+        AppJobDispatcher dispatcher = mock(AppJobDispatcher.class);
+        TaskExecutor executor = Runnable::run;
+        TaskScheduler scheduler = mock(TaskScheduler.class);
+        @SuppressWarnings("unchecked")
+        ScheduledFuture<Object> heartbeat = mock(ScheduledFuture.class);
+        AppJob claimed = job("QUESTION_BANK_IMPORT");
+        when(appJobService.claimPendingJob(eq(20L), startsWith("app-job-local:"), eq(Duration.ofMinutes(15))))
+                .thenAnswer(invocation -> {
+                    claimed.setClaimedBy(invocation.getArgument(1));
+                    return claimed;
+                });
+        when(scheduler.scheduleAtFixedRate(any(Runnable.class), eq(Duration.ofMinutes(1))))
+                .thenAnswer(invocation -> {
+                    ((Runnable) invocation.getArgument(0)).run();
+                    return heartbeat;
+                });
+        when(appJobService.extendRunningJobLease(
+                eq(20L), startsWith("app-job-local:"), eq(Duration.ofMinutes(15)))).thenReturn(true);
+        AppJobRecoveryService recoveryService = new AppJobRecoveryService(
+                appJobService, dispatcher, executor, scheduler);
+
+        recoveryService.dispatchJob(20L);
+
+        verify(appJobService).extendRunningJobLease(
+                eq(20L), startsWith("app-job-local:"), eq(Duration.ofMinutes(15)));
+        verify(dispatcher).dispatch(claimed);
+        verify(heartbeat).cancel(false);
     }
 
     @Test
@@ -114,5 +173,12 @@ class AppJobRecoveryTest {
         job.setJobType(jobType);
         job.setStage("DISPATCH");
         return job;
+    }
+
+    private TaskScheduler scheduler() {
+        TaskScheduler scheduler = mock(TaskScheduler.class);
+        when(scheduler.scheduleAtFixedRate(any(Runnable.class), any(Duration.class)))
+                .thenReturn(mock(ScheduledFuture.class));
+        return scheduler;
     }
 }

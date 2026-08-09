@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 
 import { useQuestionBankBuild } from '../useQuestionBankBuild'
@@ -10,6 +10,8 @@ const deferred = () => {
 }
 
 describe('useQuestionBankBuild', () => {
+  afterEach(() => vi.useRealTimers())
+
   it('loads normalized build state and restores the selected build', async () => {
     const api = {
       listBuilds: vi.fn().mockResolvedValue([{ buildId: 3, status: 'RUNNING', progress: 20 }]),
@@ -24,14 +26,13 @@ describe('useQuestionBankBuild', () => {
     expect(api.getBuild).toHaveBeenCalledWith(8, 3)
   })
 
-  it('retries the same job and never imports before accepted candidates', async () => {
+  it('retries the same build job without creating a second build', async () => {
     const api = {
       createBuild: vi.fn().mockResolvedValue({ buildId: 4, jobId: 99, status: 'QUEUED' }),
       getBuild: vi.fn()
         .mockResolvedValueOnce({ buildId: 4, jobId: 99, status: 'FAILED', errorMessage: 'parse failed' })
         .mockResolvedValueOnce({ buildId: 4, jobId: 99, status: 'RUNNING' }),
       getCandidates: vi.fn().mockResolvedValue([]),
-      importBuild: vi.fn(),
       retryBuildJob: vi.fn().mockResolvedValue({})
     }
     const state = useQuestionBankBuild(8, api)
@@ -42,8 +43,6 @@ describe('useQuestionBankBuild', () => {
     await state.retryBuild()
     expect(api.createBuild).toHaveBeenCalledTimes(1)
     expect(api.retryBuildJob).toHaveBeenCalledWith(99)
-    await expect(state.importBuild()).rejects.toThrow('没有可导入的已接受候选')
-    expect(api.importBuild).not.toHaveBeenCalled()
   })
 
   it('keeps review counts in sync after accept, reject, and save actions', async () => {
@@ -73,11 +72,10 @@ describe('useQuestionBankBuild', () => {
     expect(state.builds.value[0]).toMatchObject({ acceptedCount: 0, rejectedCount: 0 })
   })
 
-  it('allows viewing generated candidates but blocks review and import until completion', async () => {
+  it('allows viewing generated candidates but blocks review until completion', async () => {
     const api = {
       getCandidates: vi.fn().mockResolvedValue([{ candidateId: 1, reviewStatus: 'PENDING' }]),
-      updateCandidate: vi.fn(),
-      importBuild: vi.fn()
+      updateCandidate: vi.fn()
     }
     const state = useQuestionBankBuild(8, api)
     state.activeBuildId.value = 5
@@ -86,9 +84,7 @@ describe('useQuestionBankBuild', () => {
     await expect(state.loadCandidates()).resolves.toHaveLength(1)
     await expect(state.updateCandidate(1, 'ACCEPT')).rejects.toThrow('构建完成后才能审核候选')
     expect(state.canReview.value).toBe(false)
-    expect(state.canImport.value).toBe(false)
     expect(api.updateCandidate).not.toHaveBeenCalled()
-    expect(api.importBuild).not.toHaveBeenCalled()
   })
 
   it('marks build deletion as an action and refreshes the selected build list', async () => {
@@ -168,5 +164,112 @@ describe('useQuestionBankBuild', () => {
     await firstCandidateLoad
 
     expect(state.candidates.value.map((candidate) => candidate.id)).toEqual([902])
+  })
+
+  it('requires only supervision exceptions to be resolved before explicit final review', async () => {
+    const api = {
+      getBuild: vi.fn().mockResolvedValue({
+        buildId: 5,
+        status: 'COMPLETED',
+        stage: 'READY_FOR_FINAL_REVIEW',
+        reviewRevision: 5
+      }),
+      finalizeBuild: vi.fn().mockResolvedValue({
+        buildId: 5,
+        jobId: 77,
+        status: 'PENDING',
+        stage: 'FINALIZING',
+        finalizationStatus: 'NOT_STARTED'
+      })
+    }
+    const state = useQuestionBankBuild(8, api)
+    state.activeBuildId.value = 5
+    state.activeBuild.value = {
+      id: 5,
+      buildId: 5,
+      status: 'COMPLETED',
+      stage: 'READY_FOR_FINAL_REVIEW',
+      reviewRevision: 4
+    }
+    state.candidates.value = [
+      { id: 1, candidateId: 1, status: 'PENDING', machineReviewStatus: 'AUTO_PASS' },
+      { id: 2, candidateId: 2, status: 'PENDING', machineReviewStatus: 'NEEDS_HUMAN' },
+      { id: 3, candidateId: 3, status: 'PENDING', machineReviewStatus: 'AUTO_REJECT' },
+      { id: 4, candidateId: 4, status: 'PENDING', machineReviewStatus: 'UNRECOGNIZED' }
+    ]
+
+    expect(state.exceptionCandidates.value.map((item) => item.id)).toEqual([2, 4])
+    expect(state.finalizableCandidates.value.map((item) => item.id)).toEqual([1])
+    expect(state.canFinalize.value).toBe(false)
+
+    state.candidates.value[1] = { ...state.candidates.value[1], status: 'ACCEPTED' }
+    state.candidates.value[3] = { ...state.candidates.value[3], status: 'REJECTED' }
+    expect(state.exceptionCandidates.value).toEqual([])
+    expect(state.finalizableCandidates.value.map((item) => item.id)).toEqual([1, 2])
+    expect(state.canFinalize.value).toBe(true)
+
+    await state.finalizeBuild()
+
+    expect(api.finalizeBuild).toHaveBeenCalledWith(
+      8,
+      5,
+      [1, 2],
+      4
+    )
+    expect(api.getBuild).not.toHaveBeenCalled()
+    expect(state.activeBuild.value).toMatchObject({ jobId: 77, stage: 'FINALIZING', status: 'PENDING' })
+  })
+
+  it('polls active stages and automatically loads exceptions when supervision finishes', async () => {
+    vi.useFakeTimers()
+    const api = {
+      getBuild: vi.fn()
+        .mockResolvedValueOnce({ buildId: 5, status: 'RUNNING', stage: 'SUPERVISING', progress: 70 })
+        .mockResolvedValueOnce({ buildId: 5, status: 'COMPLETED', stage: 'READY_FOR_FINAL_REVIEW', progress: 100 }),
+      getCandidates: vi.fn().mockResolvedValue([
+        { candidateId: 2, reviewStatus: 'PENDING', machineReviewStatus: 'NEEDS_HUMAN' }
+      ])
+    }
+    const state = useQuestionBankBuild(8, api)
+    state.activeBuildId.value = 5
+    state.activeBuild.value = { id: 5, status: 'PENDING', stage: 'QUEUED' }
+
+    await state.startPolling(100)
+    expect(state.activeBuild.value).toMatchObject({ stage: 'SUPERVISING', progress: 70 })
+
+    await vi.advanceTimersByTimeAsync(100)
+
+    expect(state.activeBuild.value).toMatchObject({ stage: 'READY_FOR_FINAL_REVIEW', progress: 100 })
+    expect(api.getCandidates).toHaveBeenCalledWith(8, 5)
+    expect(state.exceptionCandidates.value.map((item) => item.id)).toEqual([2])
+    expect(vi.getTimerCount()).toBe(0)
+    state.stopPolling()
+  })
+
+  it('keeps polling when retry dispatch has not updated the failed build yet', async () => {
+    vi.useFakeTimers()
+    const api = {
+      retryBuildJob: vi.fn().mockResolvedValue({}),
+      getBuild: vi.fn()
+        .mockResolvedValueOnce({ buildId: 5, jobId: 90, status: 'FAILED', stage: 'FAILED', updateTime: '2026-08-10T01:00:00' })
+        .mockResolvedValueOnce({ buildId: 5, jobId: 90, status: 'FAILED', stage: 'FAILED', updateTime: '2026-08-10T01:00:00' })
+        .mockResolvedValueOnce({ buildId: 5, jobId: 90, status: 'RUNNING', stage: 'GENERATING', progress: 20 })
+        .mockResolvedValueOnce({ buildId: 5, jobId: 90, status: 'COMPLETED', stage: 'READY_FOR_FINAL_REVIEW', progress: 100 }),
+      getCandidates: vi.fn().mockResolvedValue([])
+    }
+    const state = useQuestionBankBuild(8, api)
+    state.activeBuildId.value = 5
+    state.activeBuild.value = { id: 5, jobId: 90, status: 'FAILED', stage: 'FAILED', canRetry: true }
+    await state.startPolling(100)
+
+    await state.retryBuild()
+    expect(state.activeBuild.value.status).toBe('FAILED')
+    expect(vi.getTimerCount()).toBe(1)
+
+    await vi.advanceTimersToNextTimerAsync()
+    expect(state.activeBuild.value.status).toBe('RUNNING')
+    await vi.advanceTimersToNextTimerAsync()
+    expect(state.activeBuild.value.stage).toBe('READY_FOR_FINAL_REVIEW')
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

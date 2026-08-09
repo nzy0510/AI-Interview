@@ -123,7 +123,7 @@ public class QdrantVectorService {
             payload.put("difficulty", atom.getDifficulty());
             payload.put("status", atom.getStatus());
             payload.put("publication_status", atom.getPublicationStatus());
-            payload.put("vector_status", atom.getVectorStatus());
+            payload.put("vector_status", "SYNCED");
             payload.put("scope", atom.getScope());
             payload.put("owner_user_id", atom.getOwnerUserId());
             payload.put("position_id", atom.getPositionId());
@@ -218,11 +218,14 @@ public class QdrantVectorService {
                                             Long knowledgeBaseId) {
         List<Object> must = new ArrayList<>();
         must.add(Map.of("key", "status", "match", Map.of("value", "PUBLISHED")));
-        if (scope != null && !scope.isBlank()) {
-            must.add(Map.of("key", "scope", "match", Map.of("value", scope.trim().toUpperCase())));
+        String normalizedScope = scope == null || scope.isBlank() ? null : scope.trim().toUpperCase();
+        if (normalizedScope != null) {
+            must.add(Map.of("key", "scope", "match", Map.of("value", normalizedScope)));
         }
         if (ownerUserId != null) {
             must.add(Map.of("key", "owner_user_id", "match", Map.of("value", ownerUserId)));
+        } else if ("PUBLIC".equals(normalizedScope)) {
+            must.add(Map.of("is_empty", Map.of("key", "owner_user_id")));
         }
         if (positionId != null) {
             must.add(Map.of("key", "position_id", "match", Map.of("value", positionId)));

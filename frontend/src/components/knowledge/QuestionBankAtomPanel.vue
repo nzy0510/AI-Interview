@@ -46,7 +46,7 @@ const props = defineProps({
   total: { type: Number, default: 0 },
   loading: { type: Boolean, default: false },
   filters: { type: Object, default: () => ({ keyword: '', category: '', status: '' }) },
-  page: { type: Object, default: () => ({ page: 1, size: 20 }) },
+  page: { type: Object, default: () => ({ page: 1, size: 10 }) },
   selectedIds: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
   canPublish: { type: Boolean, default: false },

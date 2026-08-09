@@ -249,6 +249,7 @@ abstract class QuestionBankSupport {
         }
         atom.setStatus("AUTO_PUBLISH".equals(mode) ? QuestionBankService.STATUS_PUBLISHED : QuestionBankService.STATUS_DRAFT);
         atom.setSourceRef(nonBlank(payload.getSourceRef(), sourceRef));
+        atom.setSourceFileId(payload.getSourceFileId());
         atom.setChecksum(checksum(atom));
         atom.setVectorStatus(QuestionBankService.STATUS_PUBLISHED.equals(atom.getStatus()) ? "PENDING" : "SKIPPED");
         // Import packages are treated as externally reviewed material. Scoped

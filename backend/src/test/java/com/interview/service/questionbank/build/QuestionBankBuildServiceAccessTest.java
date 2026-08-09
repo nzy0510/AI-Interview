@@ -1,68 +1,69 @@
 package com.interview.service.questionbank.build;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.interview.config.QuestionBankAccessProperties;
 import com.interview.config.QuestionBankBuildProperties;
-import com.interview.entity.InterviewPosition;
+import com.interview.dto.questionbank.build.QuestionBankBuildResponse;
 import com.interview.entity.KnowledgeBase;
 import com.interview.entity.QuestionBankBuild;
 import com.interview.mapper.AppJobMapper;
-import com.interview.mapper.InterviewPositionMapper;
-import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.KnowledgeSourceFileMapper;
 import com.interview.mapper.QuestionBankBuildCandidateMapper;
 import com.interview.mapper.QuestionBankBuildMapper;
 import com.interview.service.UserLlmConfigService;
-import com.interview.service.questionbank.KnowledgeWorkspaceService;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 class QuestionBankBuildServiceAccessTest {
     @Test
     void shouldRejectBuildAccessForForeignPrivateOwner() {
-        KnowledgeBaseMapper knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
-        KnowledgeBase foreign = new KnowledgeBase(); foreign.setId(10L); foreign.setScope("PRIVATE"); foreign.setOwnerUserId(8L); foreign.setPositionId(20L); foreign.setStatus("ACTIVE");
-        when(knowledgeBaseMapper.selectById(10L)).thenReturn(foreign);
-        QuestionBankBuildService service = service(knowledgeBaseMapper);
+        QuestionBankBuildAccessService accessService = mock(QuestionBankBuildAccessService.class);
+        when(accessService.requireBuildTarget(7L, 10L)).thenThrow(new RuntimeException("无权访问知识库"));
+        QuestionBankBuildService service = service(accessService, mock(QuestionBankBuildMapper.class));
 
         assertThatThrownBy(() -> service.detail(7L, 10L, 99L)).hasMessageContaining("无权访问知识库");
     }
 
     @Test
-    void shouldRejectPublicKnowledgeBaseEvenForAdminIdentity() {
-        KnowledgeBaseMapper knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
-        KnowledgeBase publicBase = new KnowledgeBase(); publicBase.setId(10L); publicBase.setScope("PUBLIC"); publicBase.setPositionId(20L); publicBase.setStatus("ACTIVE");
-        when(knowledgeBaseMapper.selectById(10L)).thenReturn(publicBase);
-        QuestionBankBuildService service = service(knowledgeBaseMapper);
+    void shouldListOnlyTheInitiatingAdminsPrivateBuildArtifactsForAPublicTarget() {
+        QuestionBankBuildAccessService accessService = mock(QuestionBankBuildAccessService.class);
+        QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        QuestionBankBuildResponseAssembler assembler = mock(QuestionBankBuildResponseAssembler.class);
+        KnowledgeBase publicBase = new KnowledgeBase();
+        publicBase.setId(10L); publicBase.setScope("PUBLIC"); publicBase.setPositionId(20L); publicBase.setStatus("ACTIVE");
+        when(accessService.requireBuildTarget(7L, 10L)).thenReturn(publicBase);
+        QuestionBankBuild build = new QuestionBankBuild();
+        build.setId(99L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setKnowledgeBaseId(10L);
+        when(buildMapper.selectList(any())).thenReturn(List.of(build));
+        when(assembler.toResponse(build, null)).thenReturn(new QuestionBankBuildResponse());
+        QuestionBankBuildService service = service(accessService, buildMapper, assembler);
 
-        assertThatThrownBy(() -> service.delete(1L, 10L, 99L)).hasMessageContaining("无权访问知识库");
+        assertThat(service.list(7L, 10L)).hasSize(1);
+        verify(accessService).requireBuildTarget(7L, 10L);
     }
 
     @Test
     void shouldRejectDeletingRunningBuildBeforeAnyDataIsRemoved() {
-        KnowledgeBaseMapper knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
-        InterviewPositionMapper positionMapper = mock(InterviewPositionMapper.class);
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
         KnowledgeSourceFileMapper sourceFileMapper = mock(KnowledgeSourceFileMapper.class);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         AppJobMapper appJobMapper = mock(AppJobMapper.class);
         KnowledgeBase kb = new KnowledgeBase();
         kb.setId(10L); kb.setScope("PRIVATE"); kb.setOwnerUserId(7L); kb.setPositionId(20L); kb.setStatus("ACTIVE");
-        InterviewPosition position = new InterviewPosition();
-        position.setId(20L); position.setScope("PRIVATE"); position.setOwnerUserId(7L); position.setStatus("ACTIVE");
+        QuestionBankBuildAccessService accessService = mock(QuestionBankBuildAccessService.class);
         QuestionBankBuild build = new QuestionBankBuild();
         build.setId(99L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setKnowledgeBaseId(10L); build.setStatus("RUNNING");
-        when(knowledgeBaseMapper.selectById(10L)).thenReturn(kb);
-        when(positionMapper.selectById(20L)).thenReturn(position);
+        when(accessService.requireBuildTarget(7L, 10L)).thenReturn(kb);
         when(buildMapper.selectById(99L)).thenReturn(build);
-        QuestionBankAccessProperties access = new QuestionBankAccessProperties(); access.setUserMaintenanceEnabled(true);
         QuestionBankBuildService service = new QuestionBankBuildService(
-                knowledgeBaseMapper, positionMapper, sourceFileMapper, buildMapper, candidateMapper, appJobMapper,
-                mock(UserLlmConfigService.class), new QuestionBankBuildProperties(), access,
+                sourceFileMapper, buildMapper, candidateMapper, appJobMapper,
+                mock(UserLlmConfigService.class), new QuestionBankBuildProperties(),
                 mock(QuestionBankBuildInputService.class), mock(QuestionBankBuildFileStorage.class),
-                mock(KnowledgeWorkspaceService.class), mock(QuestionBankBuildResponseAssembler.class),
+                accessService, mock(QuestionBankBuildResponseAssembler.class),
                 mock(QuestionBankBuildCreationService.class));
 
         assertThatThrownBy(() -> service.delete(7L, 10L, 99L))
@@ -72,26 +73,40 @@ class QuestionBankBuildServiceAccessTest {
     }
 
     @Test
+    void shouldKeepPublishedBuildsAsAuditableSourceRecords() {
+        QuestionBankBuildAccessService accessService = mock(QuestionBankBuildAccessService.class);
+        QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(accessService.requireBuildTarget(7L, 10L)).thenReturn(new KnowledgeBase());
+        QuestionBankBuild build = new QuestionBankBuild();
+        build.setId(99L); build.setScope("PRIVATE"); build.setOwnerUserId(7L);
+        build.setKnowledgeBaseId(10L); build.setStatus("COMPLETED");
+        build.setFinalizationStatus("COMPLETED"); build.setFinalAtomIdsJson("[\"atom-1\"]");
+        when(buildMapper.selectById(99L)).thenReturn(build);
+        QuestionBankBuildService service = service(accessService, buildMapper);
+
+        assertThatThrownBy(() -> service.delete(7L, 10L, 99L))
+                .hasMessageContaining("保留来源记录");
+        verify(buildMapper, never()).update(isNull(), any(UpdateWrapper.class));
+        verify(buildMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
     void shouldClaimTerminalBuildBeforeDeleting() throws Exception {
-        KnowledgeBaseMapper knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
-        InterviewPositionMapper positionMapper = mock(InterviewPositionMapper.class);
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
         KnowledgeSourceFileMapper sourceFileMapper = mock(KnowledgeSourceFileMapper.class);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         AppJobMapper appJobMapper = mock(AppJobMapper.class);
         QuestionBankBuildFileStorage storage = mock(QuestionBankBuildFileStorage.class);
         KnowledgeBase kb = new KnowledgeBase(); kb.setId(10L); kb.setScope("PRIVATE"); kb.setOwnerUserId(7L); kb.setPositionId(20L); kb.setStatus("ACTIVE");
-        InterviewPosition position = new InterviewPosition(); position.setId(20L); position.setScope("PRIVATE"); position.setOwnerUserId(7L); position.setStatus("ACTIVE");
+        QuestionBankBuildAccessService accessService = mock(QuestionBankBuildAccessService.class);
         QuestionBankBuild build = new QuestionBankBuild(); build.setId(99L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setKnowledgeBaseId(10L); build.setStatus("FAILED");
-        when(knowledgeBaseMapper.selectById(10L)).thenReturn(kb);
-        when(positionMapper.selectById(20L)).thenReturn(position);
+        when(accessService.requireBuildTarget(7L, 10L)).thenReturn(kb);
         when(buildMapper.selectById(99L)).thenReturn(build);
         when(buildMapper.update(isNull(), any(UpdateWrapper.class))).thenReturn(1);
-        QuestionBankAccessProperties access = new QuestionBankAccessProperties(); access.setUserMaintenanceEnabled(true);
         QuestionBankBuildService service = new QuestionBankBuildService(
-                knowledgeBaseMapper, positionMapper, sourceFileMapper, buildMapper, candidateMapper, appJobMapper,
-                mock(UserLlmConfigService.class), new QuestionBankBuildProperties(), access,
-                mock(QuestionBankBuildInputService.class), storage, mock(KnowledgeWorkspaceService.class),
+                sourceFileMapper, buildMapper, candidateMapper, appJobMapper,
+                mock(UserLlmConfigService.class), new QuestionBankBuildProperties(),
+                mock(QuestionBankBuildInputService.class), storage, accessService,
                 mock(QuestionBankBuildResponseAssembler.class), mock(QuestionBankBuildCreationService.class));
 
         service.delete(7L, 10L, 99L);
@@ -101,12 +116,19 @@ class QuestionBankBuildServiceAccessTest {
         verify(storage).deleteBuild(99L);
     }
 
-    private QuestionBankBuildService service(KnowledgeBaseMapper knowledgeBaseMapper) {
-        QuestionBankAccessProperties access = new QuestionBankAccessProperties(); access.setUserMaintenanceEnabled(true);
-        return new QuestionBankBuildService(knowledgeBaseMapper, mock(InterviewPositionMapper.class), mock(KnowledgeSourceFileMapper.class),
-                mock(QuestionBankBuildMapper.class), mock(QuestionBankBuildCandidateMapper.class), mock(AppJobMapper.class),
-                mock(UserLlmConfigService.class), new QuestionBankBuildProperties(), access, mock(QuestionBankBuildInputService.class), mock(QuestionBankBuildFileStorage.class),
-                mock(KnowledgeWorkspaceService.class), mock(QuestionBankBuildResponseAssembler.class), mock(QuestionBankBuildCreationService.class));
+    private QuestionBankBuildService service(QuestionBankBuildAccessService accessService,
+                                             QuestionBankBuildMapper buildMapper) {
+        return service(accessService, buildMapper, mock(QuestionBankBuildResponseAssembler.class));
+    }
+
+    private QuestionBankBuildService service(QuestionBankBuildAccessService accessService,
+                                             QuestionBankBuildMapper buildMapper,
+                                             QuestionBankBuildResponseAssembler assembler) {
+        return new QuestionBankBuildService(mock(KnowledgeSourceFileMapper.class), buildMapper,
+                mock(QuestionBankBuildCandidateMapper.class), mock(AppJobMapper.class),
+                mock(UserLlmConfigService.class), new QuestionBankBuildProperties(),
+                mock(QuestionBankBuildInputService.class), mock(QuestionBankBuildFileStorage.class),
+                accessService, assembler, mock(QuestionBankBuildCreationService.class));
     }
 
 }

@@ -12,5 +12,5 @@ public class QuestionBankAtomQueryRequest {
     private String sourceRef;
     private String batchId;
     private int page = 1;
-    private int size = 20;
+    private int size = 10;
 }

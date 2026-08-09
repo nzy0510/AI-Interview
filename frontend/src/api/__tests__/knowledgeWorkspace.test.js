@@ -7,9 +7,12 @@ vi.mock('@/utils/request', () => ({
 import request from '@/utils/request'
 import {
   createQuestionBankBuildAPI,
+  finalizeQuestionBankBuildAPI,
   getKnowledgeAtomAPI,
+  getPublishedKnowledgeBaseAtomCountAPI,
   getQuestionBankBuildCandidatesAPI,
   normalizeQuestionBankAtom,
+  normalizeQuestionBankAtomPage,
   normalizeQuestionBankBuild,
   normalizeQuestionBankCandidate,
   updateKnowledgeAtomAPI
@@ -44,7 +47,11 @@ describe('question bank build API adapters', () => {
       llm: { configured: true, provider: 'glm', modelName: 'glm-4' },
       sourceFiles: [{ name: 'guide.pdf', pages: 4 }],
       estimatedChunkCount: 3,
-      estimatedCallCount: 6
+      estimatedCallCount: 6,
+      autoPassCount: 4,
+      needsHumanCount: 1,
+      autoRejectCount: 2,
+      finalizationStatus: 'NOT_STARTED'
     })
     expect(build).toMatchObject({
       id: 9,
@@ -56,7 +63,11 @@ describe('question bank build API adapters', () => {
       llmConfigured: true,
       fileCount: 1,
       expectedChunks: 3,
-      estimatedCalls: 6
+      estimatedCalls: 6,
+      autoPassCount: 4,
+      needsHumanCount: 1,
+      autoRejectCount: 2,
+      finalizationStatus: 'NOT_STARTED'
     })
 
     const candidate = normalizeQuestionBankCandidate({
@@ -67,7 +78,10 @@ describe('question bank build API adapters', () => {
         subject: 'GC Roots',
         content: { principles: 'answer', pitfalls: 'trap', followUpPaths: ['why?'] }
       },
-      sourceEvidence: { fileName: 'guide.pdf', page: 2, quote: 'evidence' }
+      sourceEvidence: { fileName: 'guide.pdf', page: 2, quote: 'evidence' },
+      machineReviewStatus: 'NEEDS_HUMAN',
+      machineReviewScore: 72,
+      machineReviewIssues: ['证据不足']
     })
     expect(candidate).toMatchObject({
       id: 11,
@@ -76,7 +90,10 @@ describe('question bank build API adapters', () => {
       principles: 'answer',
       pitfalls: 'trap',
       followUpPaths: ['why?'],
-      source: { fileName: 'guide.pdf', page: 2, quote: 'evidence' }
+      source: { fileName: 'guide.pdf', page: 2, quote: 'evidence' },
+      machineReviewStatus: 'NEEDS_HUMAN',
+      machineReviewScore: 72,
+      machineReviewIssues: ['证据不足']
     })
   })
 
@@ -85,6 +102,42 @@ describe('question bank build API adapters', () => {
     expect(request).toHaveBeenCalledWith(expect.objectContaining({
       url: '/knowledge-workspace/knowledge-bases/42/builds/9/candidates',
       method: 'get'
+    }))
+  })
+
+  it('loads the full published and synced atom count independently from table pagination', async () => {
+    request.mockResolvedValueOnce({ items: [{ id: 1 }], total: 43, page: 1, size: 1 })
+
+    await expect(getPublishedKnowledgeBaseAtomCountAPI(42)).resolves.toBe(43)
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      url: '/knowledge-workspace/knowledge-bases/42/atoms/search',
+      method: 'post',
+      data: {
+        status: 'PUBLISHED',
+        vectorStatus: 'SYNCED',
+        page: 1,
+        size: 1
+      }
+    }))
+  })
+
+  it('defaults atom pages to ten rows when the backend omits pagination metadata', () => {
+    expect(normalizeQuestionBankAtomPage({ items: [] })).toMatchObject({ page: 1, size: 10, total: 0 })
+  })
+
+  it('starts final review with explicit candidate ids and optimistic build version', async () => {
+    request.mockResolvedValueOnce({ buildId: 9, jobId: 88, stage: 'FINALIZING' })
+
+    await finalizeQuestionBankBuildAPI(42, 9, [11, 12], 4)
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      url: '/knowledge-workspace/knowledge-bases/42/builds/9/finalize-publish',
+      method: 'post',
+      data: {
+        candidateIds: [11, 12],
+        expectedReviewRevision: 4
+      }
     }))
   })
 

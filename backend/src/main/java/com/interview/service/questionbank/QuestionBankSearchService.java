@@ -148,11 +148,16 @@ class QuestionBankSearchService extends QuestionBankSupport {
         if (request == null) {
             return;
         }
-        if (!isBlank(request.getScope())) {
-            wrapper.eq("scope", request.getScope().trim().toUpperCase());
+        String normalizedScope = isBlank(request.getScope())
+                ? null
+                : request.getScope().trim().toUpperCase();
+        if (normalizedScope != null) {
+            wrapper.eq("scope", normalizedScope);
         }
         if (request.getOwnerUserId() != null) {
             wrapper.eq("owner_user_id", request.getOwnerUserId());
+        } else if ("PUBLIC".equals(normalizedScope)) {
+            wrapper.isNull("owner_user_id");
         }
         if (request.getPositionId() != null) {
             wrapper.eq("position_id", request.getPositionId());

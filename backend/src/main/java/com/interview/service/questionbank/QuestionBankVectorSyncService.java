@@ -47,6 +47,29 @@ class QuestionBankVectorSyncService extends QuestionBankSupport {
         return resultMap("matched", atoms.size(), "synced", synced, "failed", failed, "skipped", skipped);
     }
 
+    Map<String, Integer> ensureAtomsIndexed(List<String> atomIds, QuestionBankImportScope scope) {
+        List<String> ids = cleanAtomIds(atomIds);
+        if (ids.isEmpty()) return resultMap("matched", 0, "synced", 0, "failed", 0, "skipped", 0);
+        List<KnowledgeAtom> atoms = atomMapper.selectList(
+                applyScope(new QueryWrapper<KnowledgeAtom>().in("atom_id", ids), scope));
+        int synced = 0;
+        int failed = 0;
+        int skipped = 0;
+        for (KnowledgeAtom atom : atoms) {
+            if (!QuestionBankService.STATUS_PUBLISHED.equalsIgnoreCase(atom.getStatus())) {
+                skipped++;
+                continue;
+            }
+            if ("SYNCED".equalsIgnoreCase(atom.getVectorStatus())) {
+                synced++;
+                continue;
+            }
+            if (syncReindexedAtom(atom)) synced++;
+            else failed++;
+        }
+        return resultMap("matched", atoms.size(), "synced", synced, "failed", failed, "skipped", skipped);
+    }
+
     Map<String, Integer> reindexUnsyncedPublishedAtomResult() {
         List<KnowledgeAtom> publishedAtoms = atomMapper.selectList(new QueryWrapper<KnowledgeAtom>()
                 .eq("status", QuestionBankService.STATUS_PUBLISHED)

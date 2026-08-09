@@ -42,7 +42,7 @@
             </div>
           </div>
 
-          <KnowledgeWorkspaceTabs v-model="activeTab" :can-build="canBuildPackage" :is-public="activePosition.scope === 'PUBLIC'" :candidate-count="candidateBadgeCount" />
+          <KnowledgeWorkspaceTabs v-model="activeTab" :can-build="canBuildPackage" :candidate-count="candidateBadgeCount" />
 
           <QuestionBankOverviewPanel
             v-if="activeTab === 'overview'"
@@ -74,11 +74,13 @@
             @import-package="receiveJsonPackage"
           />
 
+          <!-- 旧 JSON 导入入口暂时隐藏；保留组件调用，便于后续按需恢复。
           <QuestionBankJsonImportCard
             v-if="activeTab === 'atoms' && canImportPackage"
             :can-import="canImportPackage"
             @import-package="receiveJsonPackage"
           />
+          -->
 
           <div v-if="['build', 'atoms'].includes(activeTab) && jsonPackage" class="json-preview-card">
             <div><strong>{{ jsonFileName }}</strong><span>已读取，需校验后才能导入。</span></div>
@@ -91,12 +93,12 @@
             :loading="buildState.candidatesLoading.value"
             :action-loading="buildState.actionLoading.value"
             :can-review="buildState.canReview.value"
-            :can-import="buildState.canImport.value"
-            :can-download="canDownloadPackage"
+            :can-finalize="buildState.canFinalize.value"
+            :exception-count="buildState.exceptionCandidates.value.length"
+            :finalizable-count="buildState.finalizableCandidates.value.length"
             @refresh="loadCandidates"
             @update="updateCandidate"
-            @import="importBuild"
-            @download="downloadPackage"
+            @finalize="finalizeBuild"
           />
 
           <QuestionBankAtomPanel
@@ -144,7 +146,7 @@
 </template>
 
 <script setup>
-import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
+import { computed, inject, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, Plus, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -157,7 +159,7 @@ import {
   getKnowledgeWorkspaceAPI,
   getKnowledgeAtomAPI,
   getPositionCoverageAPI,
-  getQuestionBankBuildPackageAPI,
+  getPublishedKnowledgeBaseAtomCountAPI,
   importKnowledgeBasePackageAPI,
   publishAllDraftAtomsAPI,
   publishKnowledgeBaseAtomsAPI,
@@ -189,7 +191,8 @@ import QuestionBankBuildPanel from '@/components/knowledge/QuestionBankBuildPane
 import QuestionBankCandidateReviewPanel from '@/components/knowledge/QuestionBankCandidateReviewPanel.vue'
 import QuestionBankAtomPanel from '@/components/knowledge/QuestionBankAtomPanel.vue'
 import QuestionBankAtomEditDialog from '@/components/knowledge/QuestionBankAtomEditDialog.vue'
-import QuestionBankJsonImportCard from '@/components/knowledge/QuestionBankJsonImportCard.vue'
+// 旧 JSON 导入入口暂时隐藏；保留 import 位置，恢复模板入口时一并启用。
+// import QuestionBankJsonImportCard from '@/components/knowledge/QuestionBankJsonImportCard.vue'
 
 const router = useRouter()
 const workspaceCapabilities = inject(KNOWLEDGE_WORKSPACE_CAPABILITIES_KEY, ref(normalizeKnowledgeWorkspaceCapabilities()))
@@ -215,7 +218,7 @@ const atomEditVisible = ref(false)
 const atomEditSaving = ref(false)
 const editingAtom = ref(null)
 const atomFilters = reactive({ keyword: '', category: '', status: '' })
-const atomPage = reactive({ page: 1, size: 20, total: 0 })
+const atomPage = reactive({ page: 1, size: 10, total: 0 })
 const coverageDetails = ref([])
 const coverageLoading = ref(false)
 const jsonPackage = ref(null)
@@ -237,14 +240,12 @@ const canImportPackage = computed(() => Boolean(activePosition.value?.canImportP
 const canPublishPackageAtoms = computed(() => canPublishQuestionBankAtoms(activePosition.value))
 const canReindexPackageAtoms = computed(() => canReindexQuestionBankAtoms(activePosition.value))
 const canArchivePackageAtoms = computed(() => canArchiveQuestionBankAtoms(activePosition.value))
-const publishedAtomCount = computed(() => atoms.value.filter((atom) => atom.status === 'PUBLISHED').length)
+const publishedAtomCount = ref(0)
 const candidateBadgeCount = computed(() => {
   const build = buildState.activeBuild.value
-  return Math.max(0, Number(build?.candidateCount || 0) - Number(build?.acceptedCount || 0) - Number(build?.rejectedCount || 0))
-})
-const canDownloadPackage = computed(() => {
-  const status = String(buildState.activeBuild.value?.status || '').toUpperCase()
-  return buildState.canImport.value && ['SUCCEEDED', 'COMPLETED'].includes(status)
+  return buildState.candidates.value.length
+    ? buildState.exceptionCandidates.value.length
+    : Math.max(0, Number(build?.needsHumanCount || 0))
 })
 const buildState = useQuestionBankBuild(activeBuildKnowledgeBaseId)
 
@@ -308,16 +309,20 @@ const selectPosition = (position) => {
 const goLlmSettings = () => router.push({ path: '/llm-providers', query: { reason: 'missing-config', source: 'question-bank-build' } })
 
 const loadAtoms = async () => {
-  if (!activeKnowledgeBaseId.value || !canMaintainPackage.value) { atoms.value = []; atomPage.total = 0; atomsLoading.value = false; selectedAtomIds.value = []; return }
+  if (!activeKnowledgeBaseId.value || !canMaintainPackage.value) { atoms.value = []; atomPage.total = 0; publishedAtomCount.value = 0; atomsLoading.value = false; selectedAtomIds.value = []; return }
   const knowledgeBaseId = activeKnowledgeBaseId.value
   atoms.value = []
   atomPage.total = 0
+  publishedAtomCount.value = 0
   selectedAtomIds.value = []
   atomsLoading.value = true
   try {
-    const response = normalizeQuestionBankAtomPage(await searchKnowledgeBaseAtomsAPI(knowledgeBaseId, { ...cleanFilters(), page: atomPage.page, size: atomPage.size }))
+    const [response, publishedCount] = await Promise.all([
+      searchKnowledgeBaseAtomsAPI(knowledgeBaseId, { ...cleanFilters(), page: atomPage.page, size: atomPage.size }),
+      getPublishedKnowledgeBaseAtomCountAPI(knowledgeBaseId)
+    ])
     if (activeKnowledgeBaseId.value !== knowledgeBaseId) return
-    atoms.value = response.items.map(normalizeQuestionBankAtom); atomPage.total = response.total; atomPage.page = response.page; atomPage.size = response.size
+    atoms.value = normalizeQuestionBankAtomPage(response).items.map(normalizeQuestionBankAtom); atomPage.total = response.total; atomPage.page = response.page; atomPage.size = response.size; publishedAtomCount.value = publishedCount
   } finally {
     if (activeKnowledgeBaseId.value === knowledgeBaseId) atomsLoading.value = false
   }
@@ -382,20 +387,20 @@ const deleteBuild = async () => {
 }
 const loadCandidates = () => buildState.loadCandidates()
 const updateCandidate = async (candidateId, action, fields) => { await buildState.updateCandidate(candidateId, action, fields); ElMessage.success(action === 'ACCEPT' ? '候选已接受' : action === 'REJECT' ? '候选已拒绝' : '修改已保存') }
-const importBuild = async () => { await buildState.importBuild(); await loadAtoms(); activeTab.value = 'atoms'; ElMessage.success('已导入为草稿，请在题库原子中复核') }
-const downloadPackage = async () => {
-  if (!canDownloadPackage.value) return
-  await buildState.runAction('download', async () => {
-    const payload = await getQuestionBankBuildPackageAPI(activeKnowledgeBaseId.value, buildState.activeBuildId.value)
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
-    if (typeof URL?.createObjectURL !== 'function') return ElMessage.error('当前浏览器不支持下载，请改用导入为草稿')
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `question-bank-build-${buildState.activeBuildId.value}.json`
-    link.click()
-    URL.revokeObjectURL(url)
-  })
+const finalizeBuild = async () => {
+  const count = buildState.finalizableCandidates.value.length
+  try {
+    await ElMessageBox.confirm(
+      `确认发布本批次 ${count} 条知识原子？系统会先写入草稿，再发布并同步检索索引。`,
+      '批次终审发布',
+      { type: 'warning', confirmButtonText: '确认终审并发布' }
+    )
+  } catch {
+    return
+  }
+  await buildState.finalizeBuild()
+  activeTab.value = 'build'
+  ElMessage.success('终审发布任务已提交，请在构建详情查看进度')
 }
 
 const receiveJsonPackage = (payload, fileName) => {
@@ -441,9 +446,11 @@ const importJsonPackage = async () => {
 const createPosition = async () => { const name = createForm.name.trim(); if (!name) return ElMessage.warning('请填写岗位名称'); creating.value = true; try { const created = await createPrivatePositionAPI({ name, description: createForm.description.trim() }); createForm.name = ''; createForm.description = ''; createDialogVisible.value = false; await loadWorkspace(); activePositionId.value = created.id; ElMessage.success('私有岗位已创建') } finally { creating.value = false } }
 const deletePosition = async () => { if (!activePosition.value) return; try { await ElMessageBox.confirm(`确认删除「${activePosition.value.name}」？该操作不可恢复。`, '删除岗位', { type: 'warning' }) } catch { return }; deleting.value = true; try { await deletePrivatePositionAPI(activePosition.value.id); await loadWorkspace(); ElMessage.success('岗位已删除') } finally { deleting.value = false } }
 
-watch(activePositionId, async () => { await loadActivePositionData(); if (!canBuildPackage.value && ['build', 'candidates'].includes(activeTab.value)) activeTab.value = 'overview' })
+watch(activePositionId, async () => { await loadActivePositionData(); await buildState.startPolling(); if (!canBuildPackage.value && ['build', 'candidates'].includes(activeTab.value)) activeTab.value = 'overview' })
 watch(activeTab, async (tab) => { sidebarCollapsed.value = tab === 'candidates'; if (tab === 'candidates' && buildState.activeBuildId.value) await buildState.loadCandidates(); if (tab === 'atoms') await loadAtoms() })
-onMounted(async () => { await loadLlmStatus(); await loadWorkspace() })
+watch(() => buildState.activeBuild.value?.stage, async (stage, previous) => { if (stage === 'PUBLISHED' && previous !== 'PUBLISHED') await loadAtoms() })
+onMounted(async () => { await loadLlmStatus(); await loadWorkspace(); await buildState.startPolling() })
+onUnmounted(() => buildState.stopPolling())
 </script>
 
 <style scoped>

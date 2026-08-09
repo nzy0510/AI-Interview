@@ -20,6 +20,7 @@ public class AppJobService {
     public static final String STATUS_COMPLETED = "COMPLETED";
     public static final String STATUS_FAILED = "FAILED";
     private static final String SCOPE_PUBLIC = "PUBLIC";
+    private static final Duration RUNNING_LOCK_EXTENSION = Duration.ofMinutes(15);
 
     private static final Pattern SENSITIVE_PATTERN = Pattern.compile(
             "(?i)(Authorization\\s*[:=]\\s*\\S+|Bearer\\s+\\S+|api_key\\s*[:=]\\s*\\S+|sk-[A-Za-z0-9_-]+)"
@@ -56,12 +57,27 @@ public class AppJobService {
     }
 
     @Transactional
+    public boolean extendRunningJobLease(Long jobId, String executionToken, Duration lockTtl) {
+        if (executionToken == null || executionToken.isBlank() || lockTtl == null
+                || lockTtl.isZero() || lockTtl.isNegative()) {
+            return false;
+        }
+        int updated = appJobMapper.update(null, new UpdateWrapper<AppJob>()
+                .eq("id", jobId)
+                .eq("status", STATUS_RUNNING)
+                .eq("claimed_by", executionToken)
+                .set("locked_until", LocalDateTime.now().plus(lockTtl)));
+        return updated == 1;
+    }
+
+    @Transactional
     public void updateRunningJob(Long jobId, String workerId, String stage, int progress) {
         UpdateWrapper<AppJob> update = new UpdateWrapper<AppJob>()
                 .eq("id", jobId)
                 .eq("status", STATUS_RUNNING)
                 .set("stage", stage)
-                .set("progress", progress);
+                .set("progress", progress)
+                .set("locked_until", LocalDateTime.now().plus(RUNNING_LOCK_EXTENSION));
         if (workerId != null) {
             update.eq("claimed_by", workerId);
         }

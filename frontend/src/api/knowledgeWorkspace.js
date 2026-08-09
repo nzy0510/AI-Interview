@@ -55,6 +55,15 @@ export function normalizeQuestionBankBuild(raw = {}) {
     candidateCount: asNumber(source.candidateCount),
     acceptedCount: asNumber(source.acceptedCount),
     rejectedCount: asNumber(source.rejectedCount),
+    autoPassCount: asNumber(source.autoPassCount),
+    needsHumanCount: asNumber(source.needsHumanCount),
+    autoRejectCount: asNumber(source.autoRejectCount),
+    reviewRevision: asNumber(source.reviewRevision),
+    finalizationStatus: asText(source.finalizationStatus, 'NOT_STARTED').toUpperCase(),
+    finalAtomIds: asStringList(source.finalAtomIds ?? source.finalAtomIdsJson),
+    finalizationResult: source.finalizationResult || null,
+    finalizedBy: source.finalizedBy ?? null,
+    finalizedAt: source.finalizedAt ?? null,
     expectedChunks: asNumber(source.expectedChunks ?? source.expectedChunkCount ?? source.estimatedChunkCount ?? source.chunkCount),
     estimatedCalls: asNumber(source.estimatedCalls ?? source.estimatedCallCount),
     errorMessage: asText(source.errorMessage || source.error),
@@ -104,7 +113,14 @@ export function normalizeQuestionBankCandidate(raw = {}) {
     sourceEvidence,
     selfCheck: source.selfCheck || { passed: true, reason: '', confidence: null },
     duplicateHint: source.duplicateHint || source.duplicate || '',
-    validationIssues: source.validationIssues || source.errors || []
+    machineReviewStatus: asText(source.machineReviewStatus, 'PENDING').toUpperCase(),
+    machineReviewScore: source.machineReviewScore == null ? null : asNumber(source.machineReviewScore),
+    machineReviewIssues: asStringList(source.machineReviewIssues ?? source.machineReviewIssuesJson),
+    machineSuggestedPatch: source.machineSuggestedPatch || null,
+    machineReviewPromptVersion: asText(source.machineReviewPromptVersion),
+    machineReviewAttempts: asNumber(source.machineReviewAttempts),
+    machineReviewedAt: source.machineReviewedAt ?? null,
+    validationIssues: asStringList(source.validationIssues || source.errors || source.machineReviewIssues)
   }
 }
 
@@ -140,7 +156,7 @@ export function normalizeQuestionBankAtomPage(payload) {
     items: items.map(normalizeQuestionBankAtom),
     total: asNumber(source.total, items.length),
     page: asNumber(source.page || source.current, 1),
-    size: asNumber(source.size || source.pageSize, items.length || 20)
+    size: asNumber(source.size || source.pageSize, items.length || 10)
   }
 }
 
@@ -199,9 +215,16 @@ export const getQuestionBankBuildPackageAPI = (knowledgeBaseId, buildId, options
   ...options
 })
 
-export const importQuestionBankBuildAPI = (knowledgeBaseId, buildId, options = {}) => request({
-  url: buildPath(knowledgeBaseId, `/${buildId}/import`),
+export const finalizeQuestionBankBuildAPI = (
+  knowledgeBaseId,
+  buildId,
+  candidateIds,
+  expectedReviewRevision,
+  options = {}
+) => request({
+  url: buildPath(knowledgeBaseId, `/${buildId}/finalize-publish`),
   method: 'post',
+  data: { candidateIds, expectedReviewRevision },
   ...options
 })
 
@@ -270,6 +293,15 @@ export const searchKnowledgeBaseAtomsAPI = (knowledgeBaseId, data) => {
     method: 'post',
     data
   }).then(normalizeQuestionBankAtomPage)
+}
+
+export const getPublishedKnowledgeBaseAtomCountAPI = (knowledgeBaseId) => {
+  return searchKnowledgeBaseAtomsAPI(knowledgeBaseId, {
+    status: 'PUBLISHED',
+    vectorStatus: 'SYNCED',
+    page: 1,
+    size: 1
+  }).then((response) => response.total)
 }
 
 export const publishKnowledgeBaseAtomsAPI = (knowledgeBaseId, atomIds) => {

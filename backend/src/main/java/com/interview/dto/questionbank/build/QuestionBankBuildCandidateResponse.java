@@ -25,6 +25,13 @@ public class QuestionBankBuildCandidateResponse {
     private List<String> followUpPaths = new ArrayList<>();
     private Map<String, Object> selfCheck;
     private String duplicateHint;
+    private String machineReviewStatus;
+    private Double machineReviewScore;
+    private List<String> machineReviewIssues = new ArrayList<>();
+    private Map<String, Object> machineSuggestedPatch;
+    private String machineReviewPromptVersion;
+    private Integer machineReviewAttempts;
+    private LocalDateTime machineReviewedAt;
     private String reviewStatus;
     private String reviewReason;
     private LocalDateTime updatedAt;

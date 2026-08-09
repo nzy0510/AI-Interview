@@ -142,6 +142,23 @@ class QuestionBankLifecycleReviewGateTest {
         verify(qdrantVectorService).delete("base");
     }
 
+    @Test
+    void ensuringFinalizedAtomsIndexedMustNotRepeatAlreadySyncedUpserts() {
+        KnowledgeAtom synced = draft("already-synced", "PASS");
+        synced.setStatus("PUBLISHED");
+        synced.setVectorStatus("SYNCED");
+        when(atomMapper.selectList(any())).thenReturn(List.of(synced));
+        QuestionBankVectorSyncService vectorSyncService = new QuestionBankVectorSyncService(
+                atomMapper, versionMapper, batchMapper, qdrantVectorService);
+
+        Map<String, Integer> result = vectorSyncService.ensureAtomsIndexed(
+                List.of("already-synced"),
+                new QuestionBankImportScope("PRIVATE", 7L, 20L, 30L, 7L, false));
+
+        assertThat(result).containsEntry("matched", 1).containsEntry("synced", 1).containsEntry("failed", 0);
+        verify(qdrantVectorService, never()).upsert(any());
+    }
+
     private KnowledgeAtom draft(String atomId, String reviewStatus) {
         KnowledgeAtom atom = new KnowledgeAtom();
         atom.setId((long) atomId.hashCode());

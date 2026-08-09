@@ -131,6 +131,10 @@ public class QuestionBankService {
         return vectorSyncService.reindexAtoms(atomIds, scope);
     }
 
+    public Map<String, Integer> ensureAtomsIndexed(List<String> atomIds, QuestionBankImportScope scope) {
+        return vectorSyncService.ensureAtomsIndexed(atomIds, scope);
+    }
+
     public Map<String, Integer> reindexUnsyncedPublishedAtomResult() {
         return vectorSyncService.reindexUnsyncedPublishedAtomResult();
     }

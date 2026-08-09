@@ -133,11 +133,13 @@ class QuestionBankImportService extends QuestionBankSupport {
         int imported = 0;
         int published = 0;
         int failed = 0;
+        List<String> importedAtomIds = new ArrayList<>();
         for (KnowledgeAtomPayload payload : request.getAtoms()) {
             try {
                 KnowledgeAtom atom = toAtom(payload, request.getTargetCategory(), request.getSourceRef(), mode, scope);
                 upsertAtom(atom, "import:" + batchId, scope);
                 imported++;
+                importedAtomIds.add(atom.getAtomId());
                 if (QuestionBankService.STATUS_PUBLISHED.equals(atom.getStatus())) {
                     if (shouldSyncOnPublish(scope)) {
                         if (vectorSyncService.syncAtom(atom)) published++;
@@ -161,6 +163,7 @@ class QuestionBankImportService extends QuestionBankSupport {
                 .published(published)
                 .failed(failed)
                 .errors(errors)
+                .importedAtomIds(importedAtomIds)
                 .build();
     }
 

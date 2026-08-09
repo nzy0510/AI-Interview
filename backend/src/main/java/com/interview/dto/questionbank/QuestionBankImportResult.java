@@ -17,4 +17,6 @@ public class QuestionBankImportResult {
     private int failed;
     @Builder.Default
     private List<String> errors = new ArrayList<>();
+    @Builder.Default
+    private List<String> importedAtomIds = new ArrayList<>();
 }

@@ -1,5 +1,6 @@
 package com.interview.dto.questionbank;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -14,6 +15,9 @@ public class KnowledgeAtomPayload {
     private List<String> tags = new ArrayList<>();
     private Content content = new Content();
     private String sourceRef;
+    /** Internal provenance link. Public JSON imports cannot set or read this field. */
+    @JsonIgnore
+    private Long sourceFileId;
     /** Structured source snippets returned by the build agent. */
     private List<SourceEvidence> sourceEvidence = new ArrayList<>();
 

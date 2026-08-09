@@ -90,10 +90,12 @@ class KnowledgeWorkspaceServiceTest {
         assertThat(response.positions().get(0).editable()).isFalse();
         assertThat(response.positions().get(0).canImportPackage()).isFalse();
         assertThat(response.positions().get(0).canManageAtoms()).isFalse();
+        assertThat(response.positions().get(0).canBuildQuestionBank()).isFalse();
         assertThat(response.positions().get(1).scope()).isEqualTo("PRIVATE");
         assertThat(response.positions().get(1).editable()).isTrue();
         assertThat(response.positions().get(1).canImportPackage()).isTrue();
         assertThat(response.positions().get(1).canManageAtoms()).isTrue();
+        assertThat(response.positions().get(1).canBuildQuestionBank()).isTrue();
         assertThat(response.positions().get(1).canArchiveAtoms()).isTrue();
         assertThat(response.positions().get(1).canPublishAtoms()).isTrue();
         assertThat(response.positions().get(1).canReindexAtoms()).isTrue();
@@ -117,6 +119,7 @@ class KnowledgeWorkspaceServiceTest {
         assertThat(position.editable()).isFalse();
         assertThat(position.canImportPackage()).isTrue();
         assertThat(position.canManageAtoms()).isTrue();
+        assertThat(position.canBuildQuestionBank()).isTrue();
         assertThat(position.canArchiveAtoms()).isTrue();
         assertThat(position.canPublishAtoms()).isTrue();
         assertThat(position.canReindexAtoms()).isTrue();

@@ -92,6 +92,22 @@ class AppJobServiceTest {
     }
 
     @Test
+    @DisplayName("运行中作业只允许当前执行令牌续租")
+    void renewsOnlyTheLeaseOwnedByTheExecutionToken() {
+        when(appJobMapper.update(isNull(), any())).thenReturn(1);
+
+        assertThat(service.extendRunningJobLease(10L, "worker-1:execution-9", Duration.ofMinutes(15)))
+                .isTrue();
+
+        ArgumentCaptor<UpdateWrapper<AppJob>> leaseUpdate = updateWrapperCaptor();
+        verify(appJobMapper).update(isNull(), leaseUpdate.capture());
+        assertThat(leaseUpdate.getValue().getSqlSegment()).contains("id", "status", "claimed_by");
+        assertThat(leaseUpdate.getValue().getSqlSet()).contains("locked_until");
+        assertThat(leaseUpdate.getValue().getParamNameValuePairs().values())
+                .contains("RUNNING", "worker-1:execution-9");
+    }
+
+    @Test
     @DisplayName("失败任务会脱敏错误信息，并标记为 FAILED")
     void failsJobWithSanitizedError() {
         service.failJob(11L, "worker-1", "parse", "Bearer abc123 api_key=secret sk-test-123 Authorization: token", true);
