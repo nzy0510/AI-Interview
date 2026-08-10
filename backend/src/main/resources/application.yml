@@ -187,7 +187,7 @@ app:
       chunk-overlap-chars: ${APP_KNOWLEDGE_BUILD_CHUNK_OVERLAP_CHARS:400}
       max-chunks: ${APP_KNOWLEDGE_BUILD_MAX_CHUNKS:50}
       max-candidates: ${APP_KNOWLEDGE_BUILD_MAX_CANDIDATES:300}
-      prompt-version: ${APP_KNOWLEDGE_BUILD_PROMPT_VERSION:question-bank-build-v1}
+      prompt-version: ${APP_KNOWLEDGE_BUILD_PROMPT_VERSION:question-bank-build-v2}
   embedding:
     provider: ${APP_EMBEDDING_PROVIDER:all-minilm}
     endpoint: ${APP_EMBEDDING_ENDPOINT:}

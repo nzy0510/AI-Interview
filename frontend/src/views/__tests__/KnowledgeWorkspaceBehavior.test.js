@@ -15,7 +15,8 @@ const mocks = vi.hoisted(() => ({
   validateImport: vi.fn(),
   importPackage: vi.fn(),
   listBuilds: vi.fn(),
-  confirm: vi.fn()
+  confirm: vi.fn(),
+  activeBuildRef: null
 }))
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
@@ -48,10 +49,12 @@ vi.mock('@/api/knowledgeWorkspace', () => ({
 vi.mock('@/composables/useQuestionBankBuild', async () => {
   const { computed, ref } = await import('vue')
   return {
-    useQuestionBankBuild: (knowledgeBaseId) => ({
+    useQuestionBankBuild: (knowledgeBaseId) => {
+      mocks.activeBuildRef = ref(null)
+      return ({
       builds: ref([]),
       activeBuildId: ref(null),
-      activeBuild: ref(null),
+      activeBuild: mocks.activeBuildRef,
       candidates: ref([]),
       exceptionCandidates: ref([]),
       finalizableCandidates: ref([]),
@@ -73,7 +76,8 @@ vi.mock('@/composables/useQuestionBankBuild', async () => {
       startPolling: vi.fn().mockResolvedValue(null),
       stopPolling: vi.fn(),
       runAction: vi.fn()
-    })
+      })
+    }
   }
 })
 
@@ -155,6 +159,24 @@ describe('KnowledgeWorkspace position loading', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-test="published-count"]').text()).toBe('43')
+  })
+
+  it('refreshes coverage when a document build finishes publishing', async () => {
+    mocks.getWorkspace.mockResolvedValue({ positions: [privatePosition] })
+    mocks.getCoverage
+      .mockResolvedValueOnce({ details: [] })
+      .mockResolvedValueOnce({ details: [{ category: '服务注册与发现' }, { category: '配置管理' }] })
+
+    const wrapper = mountWorkspace()
+    await flushPromises()
+    expect(wrapper.get('[data-test="coverage"]').text()).toBe('')
+
+    mocks.activeBuildRef.value = { id: 8, stage: 'PUBLISHED' }
+    await nextTick()
+    await flushPromises()
+
+    expect(mocks.getCoverage).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('[data-test="coverage"]').text()).toBe('服务注册与发现,配置管理')
   })
 
   it('ignores late coverage responses from the previously selected position', async () => {

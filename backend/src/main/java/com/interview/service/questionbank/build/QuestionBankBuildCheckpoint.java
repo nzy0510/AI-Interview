@@ -11,17 +11,23 @@ import java.util.Set;
 
 final class QuestionBankBuildCheckpoint {
     private final Set<Integer> completedChunkIndexes;
+    private PlanningInvocation categoryPlanning;
+    private PlanningInvocation lastRejectedCategoryPlanning;
     private GenerationInvocation generation;
     private GenerationInvocation lastRejectedGeneration;
     private SupervisionInvocation supervision;
     private RepairInvocation repair;
 
     private QuestionBankBuildCheckpoint(Set<Integer> completedChunkIndexes,
+                                         PlanningInvocation categoryPlanning,
+                                         PlanningInvocation lastRejectedCategoryPlanning,
                                          GenerationInvocation generation,
                                          GenerationInvocation lastRejectedGeneration,
                                          SupervisionInvocation supervision,
                                          RepairInvocation repair) {
         this.completedChunkIndexes = completedChunkIndexes;
+        this.categoryPlanning = categoryPlanning;
+        this.lastRejectedCategoryPlanning = lastRejectedCategoryPlanning;
         this.generation = generation;
         this.lastRejectedGeneration = lastRejectedGeneration;
         this.supervision = supervision;
@@ -29,15 +35,17 @@ final class QuestionBankBuildCheckpoint {
     }
 
     static QuestionBankBuildCheckpoint parse(String json) {
-        if (json == null || json.isBlank()) return new QuestionBankBuildCheckpoint(new HashSet<>(), null, null, null, null);
+        if (json == null || json.isBlank()) return new QuestionBankBuildCheckpoint(new HashSet<>(), null, null, null, null, null, null);
         try {
             if (json.trim().startsWith("[")) {
-                return new QuestionBankBuildCheckpoint(new HashSet<>(JSON.parseArray(json, Integer.class)), null, null, null, null);
+                return new QuestionBankBuildCheckpoint(new HashSet<>(JSON.parseArray(json, Integer.class)), null, null, null, null, null, null);
             }
             JSONObject state = JSON.parseObject(json);
             List<Integer> completed = state.getList("completedChunkIndexes", Integer.class);
             return new QuestionBankBuildCheckpoint(
                     new HashSet<>(completed == null ? List.of() : completed),
+                    parsePlanningInvocation(state.getJSONObject("categoryPlanning")),
+                    parsePlanningInvocation(state.getJSONObject("lastRejectedCategoryPlanning")),
                     parseInvocation(state.getJSONObject("generation")),
                     parseInvocation(state.getJSONObject("lastRejectedGeneration")),
                     parseSupervisionInvocation(state.getJSONObject("supervision")),
@@ -50,6 +58,12 @@ final class QuestionBankBuildCheckpoint {
     String toJson() {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("completedChunkIndexes", completedChunkIndexes.stream().sorted().toList());
+        if (categoryPlanning != null) {
+            state.put("categoryPlanning", planningInvocationMap(categoryPlanning));
+        }
+        if (lastRejectedCategoryPlanning != null) {
+            state.put("lastRejectedCategoryPlanning", planningInvocationMap(lastRejectedCategoryPlanning));
+        }
         if (generation != null) {
             state.put("generation", invocationMap(generation));
         }
@@ -66,6 +80,25 @@ final class QuestionBankBuildCheckpoint {
     }
 
     Set<Integer> completedChunkIndexes() { return completedChunkIndexes; }
+    PlanningInvocation categoryPlanning() { return categoryPlanning; }
+    String persistedCategoryPlanningResponse() {
+        return categoryPlanning == null ? null : categoryPlanning.response();
+    }
+    void startCategoryPlanning(int retryCount) {
+        categoryPlanning = new PlanningInvocation(retryCount, null);
+    }
+    void persistCategoryPlanningResponse(String response) {
+        if (categoryPlanning == null) throw new IllegalStateException("分类规划调用检查点不存在");
+        categoryPlanning = new PlanningInvocation(categoryPlanning.startedRetryCount(), response);
+    }
+    void retryRejectedCategoryPlanning(int retryCount) {
+        if (categoryPlanning == null || categoryPlanning.response() == null) {
+            throw new IllegalStateException("无效分类规划响应检查点不存在");
+        }
+        lastRejectedCategoryPlanning = categoryPlanning;
+        categoryPlanning = new PlanningInvocation(retryCount, null);
+    }
+    void clearCategoryPlanning() { categoryPlanning = null; }
     GenerationInvocation generation() { return generation; }
     String persistedResponse(int chunkIndex) {
         return generation != null && generation.chunkIndex() == chunkIndex ? generation.response() : null;
@@ -111,6 +144,12 @@ final class QuestionBankBuildCheckpoint {
                 value.getString("response"));
     }
 
+    private static PlanningInvocation parsePlanningInvocation(JSONObject value) {
+        return value == null ? null : new PlanningInvocation(
+                value.getIntValue("startedRetryCount"),
+                value.getString("response"));
+    }
+
     private static RepairInvocation parseRepairInvocation(JSONObject value) {
         return value == null ? null : new RepairInvocation(
                 value.getLongValue("candidateId"),
@@ -134,6 +173,13 @@ final class QuestionBankBuildCheckpoint {
         return value;
     }
 
+    private static Map<String, Object> planningInvocationMap(PlanningInvocation invocation) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("startedRetryCount", invocation.startedRetryCount());
+        value.put("response", invocation.response());
+        return value;
+    }
+
     private static Map<String, Object> repairInvocationMap(RepairInvocation invocation) {
         Map<String, Object> value = new LinkedHashMap<>();
         value.put("candidateId", invocation.candidateId());
@@ -152,6 +198,9 @@ final class QuestionBankBuildCheckpoint {
     }
 
     record GenerationInvocation(int chunkIndex, int startedRetryCount, String response) {
+    }
+
+    record PlanningInvocation(int startedRetryCount, String response) {
     }
 
     record SupervisionInvocation(long candidateId, int startedRetryCount, String response) {

@@ -43,6 +43,7 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
     private final QuestionBankBuildSupervisionRunner supervisionRunner;
     private final QuestionBankBuildDocumentExtractor extractor;
     private final QuestionBankBuildCandidateValidator validator;
+    private final QuestionBankBuildCategoryPlanner categoryPlanner = new QuestionBankBuildCategoryPlanner();
 
     public QuestionBankBuildJobHandler(QuestionBankBuildMapper buildMapper,
                                        QuestionBankBuildCandidateMapper candidateMapper,
@@ -108,6 +109,10 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
             List<ChunkRef> chunks = loadChunks(build, job, !manualRepair);
             if (chunks.size() > properties.getMaxChunks()) throw new IllegalArgumentException("分块数量超过上限");
             QuestionBankBuildCheckpoint checkpoint = QuestionBankBuildCheckpoint.parse(build.getCheckpointJson());
+            if (!manualRepair && categories(build).isEmpty()) {
+                updateProgress(build, job, "CLASSIFYING", Math.max(10, build.getProgress() == null ? 0 : build.getProgress()));
+                planCategories(build, chunks, runtime, checkpoint, job);
+            }
             Set<Integer> completed = checkpoint.completedChunkIndexes();
             if (manualRepair && completed.size() < chunks.size()) {
                 throw new IllegalStateException("修复任务不能补跑文档生成，请重新创建构建批次");
@@ -234,6 +239,86 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
             throw new IllegalStateException("分块候选恢复不完整，请重试原任务");
         }
         refreshBuildCounts(build, job);
+    }
+
+    private void planCategories(QuestionBankBuild build,
+                                List<ChunkRef> chunks,
+                                UserLlmRuntimeConfig runtime,
+                                QuestionBankBuildCheckpoint checkpoint,
+                                AppJob job) {
+        int retryCount = job.getRetryCount() == null ? 0 : job.getRetryCount();
+        QuestionBankBuildCheckpoint.PlanningInvocation invocation = checkpoint.categoryPlanning();
+        String raw = checkpoint.persistedCategoryPlanningResponse();
+        if (raw == null) {
+            if (invocation != null && retryCount <= invocation.startedRetryCount()) {
+                throw new IllegalStateException("上次分类规划调用结果未确认，为避免重复计费未自动重调；请点击重试明确授权再次调用");
+            }
+            checkpoint.startCategoryPlanning(retryCount);
+            persistCheckpoint(build, checkpoint, chunks.size(), job);
+            requireJobLease(job);
+            raw = llm.complete(runtime, categoryPlanner.systemPrompt(), categoryPlanner.userPrompt(categorySources(chunks)));
+            requireJobLease(job);
+            checkpoint.persistCategoryPlanningResponse(raw);
+            persistCheckpoint(build, checkpoint, chunks.size(), job);
+        }
+        List<String> planned;
+        try {
+            planned = categoryPlanner.parse(raw);
+        } catch (RuntimeException invalidResponse) {
+            invocation = checkpoint.categoryPlanning();
+            if (invocation == null || invocation.response() == null
+                    || retryCount <= invocation.startedRetryCount()) {
+                throw invalidResponse;
+            }
+            checkpoint.retryRejectedCategoryPlanning(retryCount);
+            persistCheckpoint(build, checkpoint, chunks.size(), job);
+            requireJobLease(job);
+            raw = llm.complete(runtime, categoryPlanner.systemPrompt(), categoryPlanner.userPrompt(categorySources(chunks)));
+            requireJobLease(job);
+            checkpoint.persistCategoryPlanningResponse(raw);
+            persistCheckpoint(build, checkpoint, chunks.size(), job);
+            planned = categoryPlanner.parse(raw);
+        }
+        checkpoint.clearCategoryPlanning();
+        persistPlannedCategories(build, checkpoint, planned, chunks.size(), job);
+    }
+
+    private List<QuestionBankBuildCategoryPlanner.SourceExcerpt> categorySources(List<ChunkRef> chunks) {
+        return chunks.stream().map(chunk -> new QuestionBankBuildCategoryPlanner.SourceExcerpt(
+                chunk.sourceFile().getOriginalFilename(), chunk.globalIndex(), chunk.text())).toList();
+    }
+
+    private List<String> categories(QuestionBankBuild build) {
+        if (build.getCategoriesJson() == null || build.getCategoriesJson().isBlank()) return List.of();
+        try {
+            List<String> values = JSON.parseArray(build.getCategoriesJson(), String.class);
+            return values == null ? List.of() : values;
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("构建分类数据损坏，为避免错误归类已停止任务");
+        }
+    }
+
+    private void persistPlannedCategories(QuestionBankBuild build,
+                                          QuestionBankBuildCheckpoint checkpoint,
+                                          List<String> planned,
+                                          int chunkCount,
+                                          AppJob job) {
+        requireJobLease(job);
+        String categoriesJson = JSON.toJSONString(planned);
+        String checkpointJson = checkpoint.toJson();
+        QuestionBankBuild update = new QuestionBankBuild();
+        update.setId(build.getId());
+        update.setCategoriesJson(categoriesJson);
+        update.setCheckpointJson(checkpointJson);
+        update.setChunkCount(chunkCount);
+        update.setCompletedChunkCount(checkpoint.completedChunkIndexes().size());
+        if (buildMapper.updateById(update) != 1) {
+            throw new IllegalStateException("分类规划结果保存失败");
+        }
+        build.setCategoriesJson(categoriesJson);
+        build.setCheckpointJson(checkpointJson);
+        build.setChunkCount(chunkCount);
+        build.setCompletedChunkCount(checkpoint.completedChunkIndexes().size());
     }
 
     private String pendingSelfCheck(int expectedCandidates) {
@@ -565,7 +650,7 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
         for (int ordinal = 0; ordinal < atoms.size(); ordinal++) {
             QuestionBankBuildCandidate candidate = QuestionBankBuildCandidateFactory.create(
                     build, chunk.sourceFile(), chunk.globalIndex(), chunk.localIndex(), atoms.get(ordinal), ordinal);
-            validator.validate(candidate);
+            validator.validate(candidate, categories(build));
             candidates.add(candidate);
         }
         return candidates;

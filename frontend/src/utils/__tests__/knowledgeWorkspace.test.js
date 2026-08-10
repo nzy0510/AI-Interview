@@ -15,6 +15,7 @@ import {
   canBuildQuestionBank,
   getQuestionBankBuildStageLabel,
   getQuestionBankBuildStatusLabel,
+  getQuestionBankCategoryOptions,
   isQuestionBankCandidateAccepted,
   isQuestionBankCandidateFinalizable,
   isQuestionBankCandidateRepairVerified,
@@ -129,13 +130,23 @@ describe('knowledge workspace utils', () => {
     expect(isQuestionBankBuildInProgress({ status: 'PENDING' })).toBe(true)
     expect(isQuestionBankBuildInProgress({ status: 'RUNNING' })).toBe(true)
     expect(isQuestionBankBuildInProgress({ status: 'COMPLETED', stage: 'REPAIRING' })).toBe(true)
+    expect(isQuestionBankBuildInProgress({ status: 'COMPLETED', stage: 'CLASSIFYING' })).toBe(true)
     expect(isQuestionBankBuildInProgress({ status: 'COMPLETED' })).toBe(false)
     expect(getQuestionBankBuildStatusLabel('FAILED')).toBe('失败')
     expect(getQuestionBankBuildStageLabel('SUPERVISING')).toBe('正在审查处理结果')
+    expect(getQuestionBankBuildStageLabel('CLASSIFYING')).toBe('正在规划知识领域')
     expect(getQuestionBankBuildStageLabel('REPAIRING')).toBe('修复助手正在修改')
     expect(getQuestionBankBuildStageLabel('RESUPERVISING')).toBe('正在复查修复结果')
     expect(getQuestionBankBuildStageLabel('READY_FOR_FINAL_REVIEW')).toBe('等待人工终审')
     expect(getQuestionBankBuildStageLabel('INDEXING')).toBe('正在同步检索索引')
+  })
+
+  it('builds category suggestions from the active position instead of a global Java list', () => {
+    expect(getQuestionBankCategoryOptions(
+      [{ category: 'RAG' }, { category: 'Agent' }, { category: 'RAG' }],
+      [{ category: '模型微调' }, { category: 'Agent' }, { category: '  ' }]
+    )).toEqual(['RAG', 'Agent', '模型微调'])
+    expect(getQuestionBankCategoryOptions([], [])).toEqual([])
   })
 
   it('uses one candidate contract for finalization and repair statistics', () => {

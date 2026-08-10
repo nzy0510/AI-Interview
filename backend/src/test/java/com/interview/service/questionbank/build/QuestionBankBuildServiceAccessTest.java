@@ -10,7 +10,10 @@ import com.interview.mapper.KnowledgeSourceFileMapper;
 import com.interview.mapper.QuestionBankBuildCandidateMapper;
 import com.interview.mapper.QuestionBankBuildMapper;
 import com.interview.service.UserLlmConfigService;
+import com.interview.service.UserLlmRuntimeConfig;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,6 +22,41 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 class QuestionBankBuildServiceAccessTest {
+    @Test
+    void shouldRequestAutomaticCategoryPlanningWhenNoCategoriesAreSelected() {
+        QuestionBankBuildAccessService accessService = mock(QuestionBankBuildAccessService.class);
+        QuestionBankBuildInputService inputService = mock(QuestionBankBuildInputService.class);
+        QuestionBankBuildCreationService creationService = mock(QuestionBankBuildCreationService.class);
+        UserLlmConfigService configService = mock(UserLlmConfigService.class);
+        KnowledgeBase knowledgeBase = new KnowledgeBase();
+        knowledgeBase.setId(10L); knowledgeBase.setPositionId(20L); knowledgeBase.setScope("PRIVATE");
+        UserLlmRuntimeConfig runtime = new UserLlmRuntimeConfig(
+                3L, 7L, "test", "test", "http://localhost", "mock", "secret", 0.0);
+        MultipartFile file = mock(MultipartFile.class);
+        List<QuestionBankBuildInputService.PreparedFile> prepared = List.of(
+                new QuestionBankBuildInputService.PreparedFile(file, "notes".getBytes()));
+        QuestionBankBuildResponse expected = new QuestionBankBuildResponse();
+        when(accessService.requireBuildTarget(7L, 10L)).thenReturn(knowledgeBase);
+        when(configService.requireActiveRuntimeConfig(7L)).thenReturn(runtime);
+        when(inputService.prepare(List.of(file))).thenReturn(prepared);
+        when(creationService.create(eq(7L), same(knowledgeBase), same(runtime), same(prepared), anyList()))
+                .thenReturn(expected);
+        QuestionBankBuildService service = new QuestionBankBuildService(
+                mock(KnowledgeSourceFileMapper.class), mock(QuestionBankBuildMapper.class),
+                mock(QuestionBankBuildCandidateMapper.class), mock(AppJobMapper.class),
+                configService, new QuestionBankBuildProperties(), inputService,
+                mock(QuestionBankBuildFileStorage.class), accessService,
+                mock(QuestionBankBuildResponseAssembler.class), creationService,
+                new QuestionBankBuildCandidateValidator());
+
+        QuestionBankBuildResponse actual = service.create(7L, 10L, List.of(file), List.of());
+
+        ArgumentCaptor<List<String>> categories = ArgumentCaptor.forClass(List.class);
+        verify(creationService).create(eq(7L), same(knowledgeBase), same(runtime), same(prepared), categories.capture());
+        assertThat(categories.getValue()).isEmpty();
+        assertThat(actual).isSameAs(expected);
+    }
+
     @Test
     void shouldRejectBuildAccessForForeignPrivateOwner() {
         QuestionBankBuildAccessService accessService = mock(QuestionBankBuildAccessService.class);

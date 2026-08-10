@@ -66,11 +66,11 @@
         <details class="advanced-settings">
           <summary>高级设置 <span>可选</span></summary>
           <div class="category-option">
-            <label>生成分类提示</label>
-            <el-select v-model="categories" multiple filterable allow-create default-first-option clearable placeholder="不选时使用“通用”">
+            <label>分类范围</label>
+            <el-select v-model="categories" multiple filterable allow-create default-first-option clearable placeholder="留空自动识别（推荐）">
               <el-option v-for="category in categoryOptions" :key="category" :label="category" :value="category" />
             </el-select>
-            <small>仅用于提示模型如何归类候选，不是题库筛选条件。</small>
+            <small>默认先分析整批文档并自动规划知识领域；手动选择后，候选只能使用这些分类。</small>
           </div>
         </details>
         <el-button
@@ -104,7 +104,7 @@
     <section v-if="activeBuild" class="build-detail-card">
       <div class="section-head"><div><h3>批次 #{{ activeBuild.id }} 运行详情</h3><p class="muted-text">阶段：{{ stageLabel(activeBuild.stage) }}</p></div><div class="detail-actions"><el-button v-if="activeBuild.canRetry && activeBuild.jobId" type="warning" plain :loading="actionLoading === 'retry'" @click="$emit('retry')">重试原任务</el-button><el-button type="danger" plain :disabled="isBuildInProgress || isBuildRetained || actionLoading === 'delete'" :loading="actionLoading === 'delete'" :title="deleteHint" @click="$emit('delete')">删除批次</el-button></div></div>
       <el-progress :percentage="activeBuild.progress" :status="activeBuild.status === 'FAILED' ? 'exception' : undefined" />
-      <div class="detail-grid"><span>解析文件 {{ activeBuild.fileCount || 0 }}</span><span>分块 {{ activeBuild.completedChunkCount || 0 }}/{{ activeBuild.chunkCount || '-' }}</span><span>候选 {{ activeBuild.candidateCount || 0 }}</span><span>监督通过 {{ activeBuild.autoPassCount || 0 }}</span><span>需关注 {{ activeBuild.needsHumanCount || 0 }}</span><span>自动排除 {{ activeBuild.autoRejectCount || 0 }}</span><span>修复后通过 {{ activeBuild.repairedCount || 0 }}</span><span>修复后仍需关注 {{ activeBuild.repairFailedCount || 0 }}</span><span>修复轮次 {{ activeBuild.repairRound || 0 }}</span></div>
+      <div class="detail-grid"><span>解析文件 {{ activeBuild.fileCount || 0 }}</span><span>分块 {{ activeBuild.completedChunkCount || 0 }}/{{ activeBuild.chunkCount || '-' }}</span><span>分类目录 {{ categoryCatalogLabel }}</span><span>候选 {{ activeBuild.candidateCount || 0 }}</span><span>监督通过 {{ activeBuild.autoPassCount || 0 }}</span><span>需关注 {{ activeBuild.needsHumanCount || 0 }}</span><span>自动排除 {{ activeBuild.autoRejectCount || 0 }}</span><span>修复后通过 {{ activeBuild.repairedCount || 0 }}</span><span>修复后仍需关注 {{ activeBuild.repairFailedCount || 0 }}</span><span>修复轮次 {{ activeBuild.repairRound || 0 }}</span></div>
       <p v-if="activeBuild.errorMessage && !hasFinalReviewRepairWarning" class="error-text">{{ activeBuild.errorMessage }}</p>
       <p v-if="isBuildInProgress" class="muted-text delete-hint">构建运行中，暂不能删除；请等待完成或失败后再操作。</p>
       <p v-if="hasFinalReviewRepairWarning" class="warning-note" data-testid="final-review-repair-warning">本次修复助手处理失败：{{ activeBuild.errorMessage }}。原有可发布项未受影响，可到“终审发布”重试修复。</p>
@@ -156,7 +156,7 @@ const hasFinalReviewRepairWarning = computed(() => (
 ))
 const pipelineSteps = [
   { label: '解析文档', hint: '提取并切分内容' },
-  { label: '生成原子', hint: '形成候选题目' },
+  { label: '生成原子', hint: '规划分类并形成候选' },
   { label: '质量监督', hint: '校验依据与质量' },
   { label: '自动修复', hint: '有问题时修改并复查' },
   { label: '最终审核', hint: '由你确认发布范围' },
@@ -171,7 +171,7 @@ const activePipelineStep = computed(() => {
   if (stage === 'READY_FOR_FINAL_REVIEW') return 4
   if (['REPAIRING', 'RESUPERVISING'].includes(stage)) return 3
   if (stage === 'SUPERVISING') return 2
-  if (stage === 'GENERATING') return 1
+  if (['CLASSIFYING', 'GENERATING'].includes(stage)) return 1
   return 0
 })
 const pipelinePublished = computed(() => String(props.activeBuild?.stage || '').toUpperCase() === 'PUBLISHED')
@@ -183,6 +183,13 @@ const isPipelineStepWarning = (index) => pipelineIndexWarning.value && index ===
 const deleteHint = computed(() => isBuildInProgress.value
   ? '构建运行中，完成或失败后才可删除'
   : isBuildRetained.value ? '已进入终审发布的批次需保留来源记录' : '')
+const categoryCatalogLabel = computed(() => {
+  const resolved = Array.isArray(props.activeBuild?.categories)
+    ? props.activeBuild.categories.map((item) => String(item || '').trim()).filter(Boolean)
+    : []
+  if (resolved.length) return resolved.join('、')
+  return String(props.activeBuild?.stage || '').toUpperCase() === 'CLASSIFYING' ? '自动规划中' : '待自动规划'
+})
 
 const handleFileChange = (file, files) => {
   fileList.value = files.filter((item) => !item.status || item.status !== 'fail')

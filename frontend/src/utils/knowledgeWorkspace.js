@@ -71,7 +71,19 @@ export function isQuestionBankBuildInProgress(build) {
   const status = String(build?.status || build || '').toUpperCase()
   const stage = typeof build === 'object' ? String(build?.stage || '').toUpperCase() : ''
   return ['PENDING', 'RUNNING'].includes(status)
-    || ['QUEUED', 'PARSING', 'GENERATING', 'SUPERVISING', 'REPAIRING', 'RESUPERVISING', 'FINALIZING', 'IMPORTING', 'PUBLISHING', 'INDEXING'].includes(stage)
+    || ['QUEUED', 'PARSING', 'CLASSIFYING', 'GENERATING', 'SUPERVISING', 'REPAIRING', 'RESUPERVISING', 'FINALIZING', 'IMPORTING', 'PUBLISHING', 'INDEXING'].includes(stage)
+}
+
+export function getQuestionBankCategoryOptions(coverageDetails = [], atoms = []) {
+  const categories = [...coverageDetails, ...atoms]
+    .map((item) => String(item?.category || '').trim())
+    .filter(Boolean)
+  const unique = new Map()
+  categories.forEach((category) => {
+    const key = category.toLocaleLowerCase()
+    if (!unique.has(key)) unique.set(key, category)
+  })
+  return [...unique.values()]
 }
 
 export function getQuestionBankBuildStatusLabel(status) {
@@ -100,6 +112,7 @@ export function getQuestionBankBuildStageLabel(stage) {
   const labels = {
     QUEUED: '等待处理',
     PARSING: '正在解析文档',
+    CLASSIFYING: '正在规划知识领域',
     GENERATING: '正在处理文档',
     SUPERVISING: '正在审查处理结果',
     REPAIRING: '修复助手正在修改',

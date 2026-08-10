@@ -34,10 +34,45 @@ describe('QuestionBankBuildPanel', () => {
     expect(wrapper.text()).not.toContain('页数与字符量提交后返回')
     expect(wrapper.find('details.advanced-settings').attributes('open')).toBeUndefined()
     expect(wrapper.find('details.advanced-settings').text()).toContain('高级设置')
-    expect(wrapper.findComponent({ name: 'ElSelect' }).props('placeholder')).toBe('不选时使用“通用”')
-    expect(wrapper.text()).toContain('不是题库筛选条件')
+    expect(wrapper.findComponent({ name: 'ElSelect' }).props('placeholder')).toBe('留空自动识别（推荐）')
+    expect(wrapper.text()).toContain('默认先分析整批文档并自动规划知识领域')
+    expect(wrapper.text()).toContain('手动选择后，候选只能使用这些分类')
     expect(wrapper.text()).not.toContain('已有 JSON 导入包')
     expect(wrapper.findAll('.pipeline-step')).toHaveLength(6)
+  })
+
+  it('shows category planning as part of atom generation and exposes the resolved catalog', () => {
+    const wrapper = mount(QuestionBankBuildPanel, {
+      props: {
+        canBuild: true,
+        llmStatus: { resolved: true, hasActiveConfig: true },
+        position: { name: '云原生工程师' },
+        activeBuild: {
+          id: 10,
+          status: 'RUNNING',
+          stage: 'CLASSIFYING',
+          progress: 12,
+          categories: []
+        }
+      },
+      global: { plugins: [ElementPlus] }
+    })
+
+    expect(wrapper.text()).toContain('正在规划知识领域')
+    expect(wrapper.text()).toContain('分类目录 自动规划中')
+    expect(wrapper.findAll('.pipeline-step')[1].classes()).toContain('is-active')
+
+    return wrapper.setProps({
+      activeBuild: {
+        id: 10,
+        status: 'RUNNING',
+        stage: 'GENERATING',
+        progress: 24,
+        categories: ['服务治理', '配置管理']
+      }
+    }).then(() => {
+      expect(wrapper.text()).toContain('分类目录 服务治理、配置管理')
+    })
   })
 
   it('disables deletion while a build is pending or running', () => {

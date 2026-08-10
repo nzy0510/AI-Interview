@@ -188,6 +188,7 @@ import {
   isQuestionBankBuildInProgress,
   isPublicOnlyMaintenanceMode,
   isPositionEditable,
+  getQuestionBankCategoryOptions,
   KNOWLEDGE_WORKSPACE_CAPABILITIES_KEY,
   normalizeKnowledgeWorkspaceCapabilities
 } from '@/utils/knowledgeWorkspace'
@@ -239,7 +240,7 @@ let workspaceRequest = 0
 let atomEditorRequest = 0
 let atomSaveRequest = 0
 let jsonRequest = 0
-const categoryOptions = ['java', 'jvm', 'spring', 'mysql', 'redis', '分布式系统', '操作系统', '网络']
+const categoryOptions = computed(() => getQuestionBankCategoryOptions(coverageDetails.value, atoms.value))
 
 const activePosition = computed(() => positions.value.find((position) => position.id === activePositionId.value) || positions.value[0] || null)
 const activeKnowledgeBaseId = computed(() => activePosition.value?.knowledgeBase?.id || null)
@@ -397,7 +398,7 @@ const saveAtomEdit = async (patch) => {
   } finally { if (requestId === atomSaveRequest) atomEditSaving.value = false }
 }
 
-const runAtomAction = async (action, callback) => { atomActionLoading.value = action; try { await callback(); await loadAtoms() } finally { atomActionLoading.value = '' } }
+const runAtomAction = async (action, callback) => { atomActionLoading.value = action; try { await callback(); await Promise.all([loadAtoms(), loadCoverage()]) } finally { atomActionLoading.value = '' } }
 const publishSelectedAtoms = (ids) => runAtomAction('publish', async () => { const result = await publishKnowledgeBaseAtomsAPI(activeKnowledgeBaseId.value, ids); ElMessage.success(`已发布 ${result?.published || 0} 条`) })
 const reindexSelectedAtoms = (ids) => runAtomAction('reindex', async () => { const result = await reindexKnowledgeBaseAtomsAPI(activeKnowledgeBaseId.value, ids); ElMessage.success(`重建索引完成：成功 ${result?.synced || 0} 条`) })
 const archiveSelectedAtoms = async (ids) => { try { await ElMessageBox.confirm(`确认归档所选 ${ids.length} 条原子？`, '归档原子', { type: 'warning' }) } catch { return }; await runAtomAction('archive', async () => { await archiveKnowledgeBaseAtomsAPI(activeKnowledgeBaseId.value, ids); ElMessage.success('已归档所选原子') }) }
@@ -430,16 +431,16 @@ const finalizeBuild = async () => {
   const retainedCount = buildState.exceptionCandidates.value.length
   try {
     await ElMessageBox.confirm(
-      `确认发布本批次 ${count} 条知识原子？系统会写入数据库并同步检索索引。${retainedCount ? `另有 ${retainedCount} 条需关注项将保留在本批次，不会发布。` : ''}`,
-      '批次终审发布',
-      { type: 'warning', confirmButtonText: '确认终审并发布' }
+      `系统已自动选择本批次全部 ${count} 条可发布知识原子，将一次性写入数据库并同步检索索引。${retainedCount ? `另有 ${retainedCount} 条需关注项将保留在本批次，不会发布。` : ''}`,
+      '一键批量发布',
+      { type: 'warning', confirmButtonText: '确认发布全部' }
     )
   } catch {
     return
   }
   await buildState.finalizeBuild()
   activeTab.value = 'build'
-  ElMessage.success('终审发布任务已提交，请在构建详情查看进度')
+  ElMessage.success(`已提交 ${count} 条知识原子的批量发布任务`)
 }
 
 const receiveJsonPackage = (payload, fileName) => {
@@ -486,10 +487,10 @@ const createPosition = async () => { const name = createForm.name.trim(); if (!n
 const deletePosition = async () => { if (!activePosition.value) return; try { await ElMessageBox.confirm(`确认删除「${activePosition.value.name}」？该操作不可恢复。`, '删除岗位', { type: 'warning' }) } catch { return }; deleting.value = true; try { await deletePrivatePositionAPI(activePosition.value.id); await loadWorkspace(); ElMessage.success('岗位已删除') } finally { deleting.value = false } }
 
 watch(activePositionId, async () => { await loadActivePositionData(); await buildState.startPolling(); if (!canBuildPackage.value && ['build', 'candidates'].includes(activeTab.value)) activeTab.value = 'overview' })
-watch(activeTab, async (tab) => { sidebarCollapsed.value = tab === 'candidates'; if (tab === 'candidates' && buildState.activeBuildId.value) await buildState.loadCandidates(); if (tab === 'atoms') await loadAtoms() })
+watch(activeTab, async (tab) => { sidebarCollapsed.value = tab === 'candidates'; if (tab === 'candidates' && buildState.activeBuildId.value) await buildState.loadCandidates(); if (tab === 'atoms') await loadAtoms(); if (tab === 'overview') await loadCoverage() })
 watch(() => buildState.activeBuild.value?.stage, async (stage, previous) => {
   const publishedStages = ['PUBLISHED', 'PUBLISHED_WITH_INDEX_ERRORS']
-  if (publishedStages.includes(stage) && stage !== previous) await loadAtoms()
+  if (publishedStages.includes(stage) && stage !== previous) await Promise.all([loadAtoms(), loadCoverage()])
 })
 onMounted(async () => { await loadLlmStatus(); await loadWorkspace(); await buildState.startPolling() })
 onUnmounted(() => buildState.stopPolling())

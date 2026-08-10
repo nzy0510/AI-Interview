@@ -19,15 +19,6 @@
         >
           让修复助手处理 {{ attentionCandidates.length }} 条
         </el-button>
-        <el-button
-          data-testid="finalize-build"
-          type="primary"
-          :disabled="!canFinalize || editorDirty"
-          :loading="actionLoading === 'finalize'"
-          @click="$emit('finalize')"
-        >
-          确认发布 {{ finalizableCount }} 条
-        </el-button>
       </div>
     </div>
 
@@ -38,6 +29,24 @@
       <div class="is-primary"><span>助手处理过</span><strong>{{ repairedCandidates.length }}</strong></div>
       <div class="is-success"><span>修复后通过</span><strong>{{ successfullyRepairedCandidates.length }}</strong></div>
     </div>
+
+    <section v-if="candidates.length" class="batch-finalize" data-testid="batch-publish-bar">
+      <div>
+        <strong>{{ finalizableCount ? `已自动选中 ${finalizableCount} 条可发布原子` : '当前没有可发布原子' }}</strong>
+        <p>机器监督通过和人工确认的候选会自动纳入本次终审，无需逐条确认。</p>
+        <span v-if="exceptionCount">其余 {{ exceptionCount }} 条需关注项将保留在批次中，不会发布。</span>
+      </div>
+      <el-button
+        data-testid="finalize-build"
+        type="primary"
+        size="large"
+        :disabled="!canFinalize || editorDirty"
+        :loading="actionLoading === 'finalize'"
+        @click="$emit('finalize')"
+      >
+        {{ finalizableCount ? `一键发布全部 ${finalizableCount} 条` : '暂无可发布项' }}
+      </el-button>
+    </section>
 
     <el-alert
       v-if="exceptionCount > 0 && finalizableCount > 0"
@@ -168,7 +177,8 @@
           >让助手修改这条</el-button>
           <el-button :disabled="!canReview" :loading="actionLoading.startsWith('candidate:')" @click="submit('SAVE')">保存人工修改</el-button>
           <el-button type="danger" plain :disabled="!canReview" :loading="actionLoading.startsWith('candidate:')" @click="submit('REJECT')">不发布</el-button>
-          <el-button type="primary" :disabled="!canReview" :loading="actionLoading.startsWith('candidate:')" @click="submit('ACCEPT')">确认可发布</el-button>
+          <el-tag v-if="isQuestionBankCandidateFinalizable(selectedCandidate)" data-testid="batch-included" type="success" effect="plain">已纳入本次批量发布</el-tag>
+          <el-button v-else type="primary" :disabled="!canReview" :loading="actionLoading.startsWith('candidate:')" @click="submit('ACCEPT')">确认可发布</el-button>
         </div>
       </footer>
     </template>
@@ -406,6 +416,12 @@ watch(editorDirty, (dirty) => emit('dirty-change', dirty), { immediate: true })
 .review-summary .is-success strong { color: var(--app-success, #16835b); }
 .review-summary .is-warning strong { color: var(--app-warning, #a56a00); }
 .review-summary .is-primary strong { color: var(--app-primary); }
+.batch-finalize { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 18px; border: 1px solid rgba(58, 56, 139, 0.28); border-radius: var(--app-radius-md); background: rgba(58, 56, 139, 0.06); }
+.batch-finalize > div { display: grid; gap: 5px; }
+.batch-finalize strong { color: var(--app-text); font-size: 1rem; }
+.batch-finalize p { margin: 0; color: var(--app-text-muted); line-height: 1.5; }
+.batch-finalize span { color: var(--app-warning, #a56a00); font-size: 0.84rem; }
+.batch-finalize .el-button { min-width: 190px; }
 .candidate-filter { display: inline-flex; width: fit-content; gap: 4px; padding: 4px; border: 1px solid var(--app-border); border-radius: var(--app-radius-md); background: var(--app-surface-2); }
 .candidate-filter button { min-height: 32px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--app-text-muted); cursor: pointer; }
 .candidate-filter button.is-active { background: var(--app-surface); color: var(--app-text); font-weight: 700; }
@@ -457,9 +473,9 @@ blockquote cite { display: block; margin-top: 8px; color: var(--app-text-muted);
 @media (max-width: 1080px) { .review-grid { grid-template-columns: minmax(200px, 0.8fr) minmax(0, 1.2fr); grid-template-rows: minmax(0, 1fr) minmax(200px, 0.8fr); } .evidence-panel { grid-column: 1 / -1; border-top: 1px solid var(--app-border); } }
 @media (max-width: 720px) { .review-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
-  .candidate-head, .review-actions { align-items: stretch; flex-direction: column; }
+  .candidate-head, .batch-finalize, .review-actions { align-items: stretch; flex-direction: column; }
   .candidate-head__actions, .review-actions > div { width: 100%; }
-  .candidate-head__actions .el-button, .review-actions > div .el-button { flex: 1; }
+  .candidate-head__actions .el-button, .batch-finalize .el-button, .review-actions > div .el-button { flex: 1; width: 100%; }
   .candidate-filter { display: flex; width: auto; }
   .candidate-filter button { flex: 1; padding: 0 8px; }
   .dirty-warning { align-items: stretch; flex-direction: column; }

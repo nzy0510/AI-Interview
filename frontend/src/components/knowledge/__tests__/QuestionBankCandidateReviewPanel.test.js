@@ -37,21 +37,27 @@ describe('QuestionBankCandidateReviewPanel', () => {
     expect(wrapper.text()).toContain('需关注 1')
     expect(wrapper.text()).toContain('助手处理 0')
     expect(wrapper.text()).toContain('全部 2')
-    expect(wrapper.text()).toContain('确认发布 1 条')
+    expect(wrapper.text()).toContain('一键发布全部 1 条')
     expect(wrapper.find('[data-testid="finalize-build"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('allows publishing finalizable candidates while unresolved attention items remain', async () => {
+  it('offers one-click batch publishing without requiring per-candidate confirmation', async () => {
     const wrapper = mountPanel({
       canReview: true,
       canFinalize: true,
       exceptionCount: 1,
-      finalizableCount: 3,
+      finalizableCount: 2,
       candidates: [
         { id: 1, status: 'PENDING', machineReviewStatus: 'AUTO_PASS', subject: 'GC Roots' },
+        { id: 3, status: 'ACCEPTED', machineReviewStatus: 'NEEDS_HUMAN', subject: '人工确认项' },
         { id: 2, status: 'PENDING', machineReviewStatus: 'NEEDS_HUMAN', subject: '需关注项' }
       ]
     })
+
+    expect(wrapper.text()).toContain('无需逐条确认')
+    expect(wrapper.text()).toContain('一键发布全部 2 条')
+    expect(wrapper.text()).toContain('已纳入本次批量发布')
+    expect(wrapper.findAll('button').some((button) => button.text() === '确认可发布')).toBe(false)
 
     await wrapper.find('[data-testid="finalize-build"]').trigger('click')
 

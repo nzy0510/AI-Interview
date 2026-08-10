@@ -16,7 +16,7 @@ export function createQuestionBankBuildPolling({
     const status = String(build?.status || '').toUpperCase()
     const stage = String(build?.stage || '').toUpperCase()
     return ['PENDING', 'RUNNING'].includes(status)
-      || ['QUEUED', 'PARSING', 'GENERATING', 'SUPERVISING', 'REPAIRING', 'RESUPERVISING', 'FINALIZING', 'IMPORTING', 'PUBLISHING', 'INDEXING'].includes(stage)
+      || ['QUEUED', 'PARSING', 'CLASSIFYING', 'GENERATING', 'SUPERVISING', 'REPAIRING', 'RESUPERVISING', 'FINALIZING', 'IMPORTING', 'PUBLISHING', 'INDEXING'].includes(stage)
   }
   const schedule = (delay = pollingInterval) => {
     if (pollingTimer) clearTimeout(pollingTimer)

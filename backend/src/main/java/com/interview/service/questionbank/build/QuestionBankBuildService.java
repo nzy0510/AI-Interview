@@ -191,7 +191,7 @@ public class QuestionBankBuildService {
         if (!Set.of("ACCEPT", "REJECT", "SAVE").contains(action)) throw new IllegalArgumentException("审核动作必须是 ACCEPT、REJECT 或 SAVE");
         applyEdits(candidate, request);
         if ("ACCEPT".equals(action)) {
-            candidateValidator.validate(candidate);
+            candidateValidator.validate(candidate, buildCategories(build));
             candidate.setReviewStatus("ACCEPTED");
             candidate.setReviewReason("人工审核接受");
         } else if ("REJECT".equals(action)) {
@@ -279,9 +279,19 @@ public class QuestionBankBuildService {
     }
 
     private List<String> normalizeCategories(List<String> categories) {
-        if (categories == null) return List.of("通用");
+        if (categories == null) return List.of();
         List<String> normalized = categories.stream().filter(Objects::nonNull).flatMap(value -> java.util.Arrays.stream(value.split(",")))
                 .map(String::trim).filter(value -> !value.isBlank()).distinct().limit(20).toList();
-        return normalized.isEmpty() ? List.of("通用") : normalized;
+        return normalized;
+    }
+
+    private List<String> buildCategories(QuestionBankBuild build) {
+        if (build.getCategoriesJson() == null || build.getCategoriesJson().isBlank()) return List.of();
+        try {
+            List<String> categories = JSON.parseArray(build.getCategoriesJson(), String.class);
+            return categories == null ? List.of() : categories;
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("构建分类数据损坏，请重新创建构建批次");
+        }
     }
 }

@@ -57,6 +57,31 @@ class QuestionBankBuildReviewServiceTest {
     }
 
     @Test
+    void shouldRejectHumanAcceptedCategoryOutsideTheBuildCatalog() {
+        KnowledgeBaseMapper kbMapper = mock(KnowledgeBaseMapper.class);
+        InterviewPositionMapper positionMapper = mock(InterviewPositionMapper.class);
+        QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
+        when(kbMapper.selectById(10L)).thenReturn(privateKb());
+        when(positionMapper.selectById(20L)).thenReturn(privatePosition());
+        QuestionBankBuild build = new QuestionBankBuild();
+        build.setId(99L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setKnowledgeBaseId(10L);
+        build.setPositionId(20L); build.setStatus("COMPLETED"); build.setStage("READY_FOR_FINAL_REVIEW");
+        build.setCategoriesJson("[\"类加载机制\",\"内存管理\"]"); build.setReviewRevision(3L);
+        when(buildMapper.selectById(99L)).thenReturn(build);
+        when(candidateMapper.selectOne(any(QueryWrapper.class))).thenReturn(candidate());
+        QuestionBankBuildService service = newService(kbMapper, positionMapper, buildMapper, candidateMapper,
+                mock(QuestionBankBuildResponseAssembler.class), mock(KnowledgeWorkspaceService.class));
+        QuestionBankBuildCandidateReviewRequest review = new QuestionBankBuildCandidateReviewRequest();
+        review.setAction("ACCEPT"); review.setExpectedReviewRevision(3L); review.setCategory("通用");
+
+        assertThatThrownBy(() -> service.review(7L, 10L, 99L, 1L, review))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("不在本批次分类范围");
+        verify(candidateMapper, never()).updateById(any());
+    }
+
+    @Test
     void shouldRejectLegacyPackageExportForControlledBuild() {
         KnowledgeBaseMapper kbMapper = mock(KnowledgeBaseMapper.class); InterviewPositionMapper positionMapper = mock(InterviewPositionMapper.class); QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class); QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class); QuestionBankBuildResponseAssembler assembler = mock(QuestionBankBuildResponseAssembler.class); KnowledgeWorkspaceService workspace = mock(KnowledgeWorkspaceService.class);
         when(kbMapper.selectById(10L)).thenReturn(privateKb()); when(positionMapper.selectById(20L)).thenReturn(privatePosition()); QuestionBankBuild build = new QuestionBankBuild(); build.setId(99L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setKnowledgeBaseId(10L); build.setPositionId(20L); build.setStatus("COMPLETED"); build.setCategoriesJson("[\"java\"]"); when(buildMapper.selectById(99L)).thenReturn(build);

@@ -32,6 +32,21 @@ public class QuestionBankBuildCandidateValidator {
         }
     }
 
+    public void validate(QuestionBankBuildCandidate candidate, List<String> allowedCategories) {
+        validate(candidate);
+        if (allowedCategories == null || allowedCategories.isEmpty()) {
+            throw new IllegalArgumentException("本批次尚未生成有效分类目录");
+        }
+        String category = candidate.getCategory().trim();
+        for (String allowed : allowedCategories) {
+            if (allowed != null && category.equalsIgnoreCase(allowed.trim())) {
+                candidate.setCategory(allowed.trim());
+                return;
+            }
+        }
+        throw new IllegalArgumentException("候选原子分类不在本批次分类范围内: " + category);
+    }
+
     private List<String> stringList(String json) {
         if (json == null || json.isBlank()) return List.of();
         try {

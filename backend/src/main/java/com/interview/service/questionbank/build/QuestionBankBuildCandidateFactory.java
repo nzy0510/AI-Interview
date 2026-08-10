@@ -25,7 +25,7 @@ final class QuestionBankBuildCandidateFactory {
                                              int ordinal) {
         JSONObject content = atom.getJSONObject("content");
         String subject = firstNonBlank(atom.getString("subject"), atom.getString("question"));
-        String category = firstNonBlank(atom.getString("category"), firstCategory(build));
+        String category = atom.getString("category");
         String difficulty = firstNonBlank(atom.getString("difficulty"), "mid");
         String principles = firstNonBlank(content == null ? null : content.getString("principles"), atom.getString("principles"));
         String pitfalls = firstNonBlank(content == null ? null : content.getString("pitfalls"), atom.getString("pitfalls"));
@@ -34,8 +34,8 @@ final class QuestionBankBuildCandidateFactory {
         if (followUps.isEmpty()) followUps = parseStringList(atom.get("followUpPaths"));
         if (followUps.isEmpty()) followUps = parseStringList(atom.get("follow_up_paths"));
         List<String> tags = parseStringList(atom.get("tags"));
-        if (blank(subject) || blank(principles) || followUps.size() < 2) {
-            throw new IllegalStateException("模型原子缺少必填字段或追问路径");
+        if (blank(subject) || blank(category) || blank(principles) || followUps.size() < 2) {
+            throw new IllegalStateException("候选原子的主题、分类、难度和原则不能为空，且至少需要两条追问路径");
         }
         Object evidenceValue = atom.get("sourceEvidence");
         if (evidenceValue == null) evidenceValue = atom.get("source_evidence");
@@ -111,15 +111,6 @@ final class QuestionBankBuildCandidateFactory {
             result.add(item);
         }
         return result;
-    }
-
-    private static String firstCategory(QuestionBankBuild build) {
-        try {
-            List<String> list = JSON.parseArray(build.getCategoriesJson(), String.class);
-            return list.isEmpty() ? "通用" : list.get(0);
-        } catch (Exception e) {
-            return "通用";
-        }
     }
 
     private static String firstNonBlank(String first, String fallback) { return blank(first) ? fallback : first; }

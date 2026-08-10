@@ -40,6 +40,108 @@ class QuestionBankBuildJobHandlerTest {
     }
 
     @Test
+    void shouldPlanCategoriesBeforeGeneratingAtomsWhenBuildUsesAutomaticMode() throws Exception {
+        QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.update(isNull(), any(UpdateWrapper.class))).thenReturn(1);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
+        QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
+        KnowledgeSourceFileMapper sourceFileMapper = mock(KnowledgeSourceFileMapper.class);
+        QuestionBankBuildFileStorage storage = mock(QuestionBankBuildFileStorage.class);
+        UserLlmConfigService configService = mock(UserLlmConfigService.class);
+        QuestionBankBuildLlm llm = mock(QuestionBankBuildLlm.class);
+        AppJobService appJobService = mock(AppJobService.class);
+        QuestionBankBuildSupervisionService supervision = mock(QuestionBankBuildSupervisionService.class);
+        QuestionBankBuildJobHandler handler = handler(
+                buildMapper, candidateMapper, sourceFileMapper, storage,
+                new QuestionBankBuildProperties(), configService, llm, appJobService, supervision);
+        QuestionBankBuild build = new QuestionBankBuild();
+        build.setId(28L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setLlmConfigId(3L);
+        build.setStatus("PENDING"); build.setStage("QUEUED"); build.setCheckpointJson("[]");
+        build.setCategoriesJson("[]");
+        when(buildMapper.selectById(28L)).thenReturn(build);
+        KnowledgeSourceFile source = new KnowledgeSourceFile();
+        source.setId(38L); source.setFileHash("hash38"); source.setOriginalFilename("jvm-notes.md");
+        source.setMarkdownStorageKey("builds/28/text/38.txt"); source.setStatus("CONVERTED");
+        when(sourceFileMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(source));
+        when(storage.readText(source.getMarkdownStorageKey()))
+                .thenReturn("类加载器遵循双亲委派；堆内存用于保存对象实例；垃圾回收器负责回收不可达对象。");
+        UserLlmRuntimeConfig runtime = new UserLlmRuntimeConfig(
+                3L, 7L, "test", "test", "http://localhost", "mock", "secret", 0.0);
+        when(configService.requireOwnedRuntimeConfig(7L, 3L)).thenReturn(runtime);
+        when(llm.complete(any(), anyString(), anyString())).thenAnswer(invocation -> {
+            String systemPrompt = invocation.getArgument(1);
+            if (systemPrompt.contains("知识领域分类规划器")) {
+                assertThat(build.getStage()).isEqualTo("CLASSIFYING");
+                return "{\"categories\":[\"类加载机制\",\"内存管理\",\"垃圾回收\"]}";
+            }
+            assertThat(systemPrompt).contains("知识原子生成器");
+            assertThat(JSON.parseArray(build.getCategoriesJson(), String.class))
+                    .containsExactly("类加载机制", "内存管理", "垃圾回收");
+            return """
+                    {"atoms":[{"subject":"JVM 类加载","category":"类加载机制","difficulty":"mid","tags":["JVM"],
+                      "content":{"principles":"双亲委派","pitfalls":"混淆阶段","followUpPaths":["深入追问","引导追问"]},
+                      "sourceEvidence":[{"quote":"类加载器遵循双亲委派"}]}]}
+                    """;
+        });
+        AtomicReference<QuestionBankBuildCandidate> persisted = new AtomicReference<>();
+        when(candidateMapper.selectList(any(QueryWrapper.class))).thenAnswer(invocation ->
+                persisted.get() == null ? List.of() : List.of(persisted.get()));
+        doAnswer(invocation -> {
+            QuestionBankBuildCandidate inserted = invocation.getArgument(0);
+            inserted.setId(91L); persisted.set(inserted); return 1;
+        }).when(candidateMapper).insert(any(QuestionBankBuildCandidate.class));
+        when(candidateMapper.selectCount(any(QueryWrapper.class))).thenAnswer(
+                invocation -> persisted.get() == null ? 0L : 1L);
+        stubSupervision(supervision, new QuestionBankBuildSupervisionResult(
+                "AUTO_PASS", 0.95, List.of(), Map.of(), null, "{}"));
+        AppJob job = new AppJob(); job.setId(116L); job.setBuildId(28L); job.setClaimedBy("worker");
+        bindArtifacts(build, source, job);
+
+        handler.handle(job);
+
+        assertThat(persisted.get().getCategory()).isEqualTo("类加载机制");
+        assertThat(build.getStage()).isEqualTo("READY_FOR_FINAL_REVIEW");
+        verify(llm, times(2)).complete(any(), anyString(), anyString());
+    }
+
+    @Test
+    void shouldNotRepeatAnUnconfirmedCategoryPlanningCallDuringAutomaticRecovery() throws Exception {
+        QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.update(isNull(), any(UpdateWrapper.class))).thenReturn(1);
+        QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
+        KnowledgeSourceFileMapper sourceFileMapper = mock(KnowledgeSourceFileMapper.class);
+        QuestionBankBuildFileStorage storage = mock(QuestionBankBuildFileStorage.class);
+        UserLlmConfigService configService = mock(UserLlmConfigService.class);
+        QuestionBankBuildLlm llm = mock(QuestionBankBuildLlm.class);
+        AppJobService appJobService = mock(AppJobService.class);
+        QuestionBankBuildSupervisionService supervision = mock(QuestionBankBuildSupervisionService.class);
+        QuestionBankBuildJobHandler handler = handler(
+                buildMapper, candidateMapper, sourceFileMapper, storage,
+                new QuestionBankBuildProperties(), configService, llm, appJobService, supervision);
+        QuestionBankBuildCheckpoint checkpoint = QuestionBankBuildCheckpoint.parse(null);
+        checkpoint.startCategoryPlanning(0);
+        QuestionBankBuild build = new QuestionBankBuild();
+        build.setId(29L); build.setScope("PRIVATE"); build.setOwnerUserId(7L); build.setLlmConfigId(3L);
+        build.setStatus("RUNNING"); build.setStage("CLASSIFYING"); build.setCategoriesJson("[]");
+        build.setCheckpointJson(checkpoint.toJson());
+        when(buildMapper.selectById(29L)).thenReturn(build);
+        KnowledgeSourceFile source = new KnowledgeSourceFile();
+        source.setId(39L); source.setOriginalFilename("notes.md");
+        source.setMarkdownStorageKey("builds/29/text/39.txt"); source.setStatus("CONVERTED");
+        when(sourceFileMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(source));
+        when(storage.readText(source.getMarkdownStorageKey())).thenReturn("配置中心与服务注册");
+        when(configService.requireOwnedRuntimeConfig(7L, 3L)).thenReturn(
+                new UserLlmRuntimeConfig(3L, 7L, "test", "test", "http://localhost", "mock", "secret", 0.0));
+        AppJob job = new AppJob(); job.setId(117L); job.setBuildId(29L); job.setClaimedBy("worker"); job.setRetryCount(0);
+        bindArtifacts(build, source, job);
+
+        assertThatThrownBy(() -> handler.handle(job))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("避免重复计费未自动重调");
+        verifyNoInteractions(llm, supervision);
+    }
+
+    @Test
     void shouldRefreshMachineReviewCountsBeforeReviewingTheNextCandidate() {
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
@@ -227,6 +329,20 @@ class QuestionBankBuildJobHandlerTest {
         assertThatThrownBy(() -> service.parse(validCandidate(74L, 33L), raw))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("修复助手结果不是有效 JSON");
+    }
+
+    @Test
+    void repairParserShouldRejectCategoryOutsideTheBuildCatalog() {
+        QuestionBankBuildRepairService service = new QuestionBankBuildRepairService(
+                mock(QuestionBankBuildLlm.class), new QuestionBankBuildCandidateValidator());
+        String raw = """
+                {"action":"UPDATE","summary":"调整分类","candidate":{"category":"通用"}}
+                """;
+
+        assertThatThrownBy(() -> service.parse(
+                validCandidate(74L, 33L), raw, List.of("类加载机制", "内存管理")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("不在本批次分类范围");
     }
 
     @Test
@@ -707,13 +823,14 @@ class QuestionBankBuildJobHandlerTest {
         when(appJobService.extendRunningJobLease(eq(302L), eq("worker"), any())).thenReturn(true);
         QuestionBankBuildCheckpoint checkpoint = QuestionBankBuildCheckpoint.parse(null);
         checkpoint.startRepair(81L, 1, 0); checkpoint.persistRepairResponse("bad");
-        when(repairService.parse(candidate, "bad")).thenThrow(new IllegalStateException("修复结果不是有效 JSON"));
+        when(repairService.parse(eq(candidate), eq("bad"), anyList()))
+                .thenThrow(new IllegalStateException("修复结果不是有效 JSON"));
         when(repairService.complete(any())).thenAnswer(invocation -> {
             assertThat(JSON.parseObject(build.getCheckpointJson())
                     .getJSONObject("repair").getIntValue("startedRetryCount")).isEqualTo(1);
             return "good";
         });
-        when(repairService.parse(candidate, "good")).thenReturn(new QuestionBankBuildRepairResult(
+        when(repairService.parse(eq(candidate), eq("good"), anyList())).thenReturn(new QuestionBankBuildRepairResult(
                 "UPDATE", "JVM 类加载", "jvm", "mid", List.of("JVM"),
                 "双亲委派", "混淆加载阶段", List.of("深入追问", "引导追问"), "已修复", "good"));
         stubSupervision(supervision, new QuestionBankBuildSupervisionResult(
@@ -746,7 +863,7 @@ class QuestionBankBuildJobHandlerTest {
         when(candidateMapper.update(any(QuestionBankBuildCandidate.class), any(UpdateWrapper.class))).thenReturn(1);
         when(appJobService.extendRunningJobLease(eq(303L), eq("worker"), any())).thenReturn(true);
         when(repairService.complete(any())).thenReturn("drop");
-        when(repairService.parse(selected, "drop")).thenReturn(new QuestionBankBuildRepairResult(
+        when(repairService.parse(eq(selected), eq("drop"), anyList())).thenReturn(new QuestionBankBuildRepairResult(
                 "DROP", null, null, null, List.of(), null, null, List.of(), "重复", "drop"));
         AppJob job = new AppJob(); job.setId(303L); job.setClaimedBy("worker"); job.setRetryCount(0);
         new QuestionBankBuildSupervisionRunner(buildMapper, candidateMapper, appJobService,
@@ -938,6 +1055,7 @@ class QuestionBankBuildJobHandlerTest {
     private void bindArtifacts(QuestionBankBuild build, KnowledgeSourceFile source, AppJob job) {
         if (build.getPositionId() == null) build.setPositionId(20L);
         if (build.getKnowledgeBaseId() == null) build.setKnowledgeBaseId(10L);
+        if (build.getCategoriesJson() == null) build.setCategoriesJson("[\"jvm\",\"java\"]");
         if (build.getLlmRuntimeFingerprint() == null
                 && build.getLlmProvider() == null && build.getLlmModel() == null) {
             build.setLlmRuntimeFingerprint(QuestionBankBuildRuntimeSnapshot.fingerprint(

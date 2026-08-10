@@ -144,7 +144,7 @@ final class QuestionBankBuildSupervisionRunner {
                 continue;
             }
             try {
-                validator.validate(candidate);
+                validateCandidate(build, candidate);
             } catch (RuntimeException e) {
                 markMachineNeedsHuman(candidate, sanitize(e.getMessage()));
                 completed++;
@@ -249,7 +249,7 @@ final class QuestionBankBuildSupervisionRunner {
         String raw = invocation == null ? null : invocation.response();
         if (raw != null) {
             try {
-                applyRepairResult(candidate, parseRepairResponse(candidate, raw), round);
+                applyRepairResult(build, candidate, parseRepairResponse(build, candidate, raw), round);
                 checkpoint.clearRepair();
                 persistCheckpoint(build, checkpoint, job);
                 refreshBuildCounts(build, job);
@@ -273,7 +273,7 @@ final class QuestionBankBuildSupervisionRunner {
         requireJobLease(job);
         checkpoint.persistRepairResponse(raw);
         persistCheckpoint(build, checkpoint, job);
-        applyRepairResult(candidate, parseRepairResponse(candidate, raw), round);
+        applyRepairResult(build, candidate, parseRepairResponse(build, candidate, raw), round);
         checkpoint.clearRepair();
         persistCheckpoint(build, checkpoint, job);
         refreshBuildCounts(build, job);
@@ -313,9 +313,10 @@ final class QuestionBankBuildSupervisionRunner {
         return supervisionService.parse(raw);
     }
 
-    private QuestionBankBuildRepairResult parseRepairResponse(QuestionBankBuildCandidate candidate,
+    private QuestionBankBuildRepairResult parseRepairResponse(QuestionBankBuild build,
+                                                               QuestionBankBuildCandidate candidate,
                                                                String raw) {
-        return repairService.parse(candidate, raw);
+        return repairService.parse(candidate, raw, buildCategories(build));
     }
 
     private void requireNonEmptyResponse(String raw, String stage) {
@@ -324,7 +325,8 @@ final class QuestionBankBuildSupervisionRunner {
         }
     }
 
-    private void applyRepairResult(QuestionBankBuildCandidate candidate,
+    private void applyRepairResult(QuestionBankBuild build,
+                                   QuestionBankBuildCandidate candidate,
                                    QuestionBankBuildRepairResult result,
                                    int round) {
         Map<String, Object> before = contentSnapshot(candidate);
@@ -339,7 +341,7 @@ final class QuestionBankBuildSupervisionRunner {
             candidate.setDifficulty(result.difficulty()); candidate.setTagsJson(JSON.toJSONString(result.tags()));
             candidate.setPrinciples(result.principles()); candidate.setPitfalls(result.pitfalls());
             candidate.setFollowUpPathsJson(JSON.toJSONString(result.followUpPaths()));
-            validator.validate(candidate);
+            validateCandidate(build, candidate);
             Map<String, Object> after = contentSnapshot(candidate);
             appendRepairHistory(candidate, round, result.summary(), issues, before, after, changedFields(before, after));
             candidate.setMachineReviewStatus("PENDING");
@@ -366,6 +368,22 @@ final class QuestionBankBuildSupervisionRunner {
         update.setRepairHistoryJson(candidate.getRepairHistoryJson());
         update.setRepairedAt(candidate.getRepairedAt());
         updatePendingCandidate(candidate, update);
+    }
+
+    private void validateCandidate(QuestionBankBuild build, QuestionBankBuildCandidate candidate) {
+        List<String> allowed = buildCategories(build);
+        if (allowed.isEmpty()) validator.validate(candidate);
+        else validator.validate(candidate, allowed);
+    }
+
+    private List<String> buildCategories(QuestionBankBuild build) {
+        if (build == null || build.getCategoriesJson() == null || build.getCategoriesJson().isBlank()) return List.of();
+        try {
+            List<String> values = JSON.parseArray(build.getCategoriesJson(), String.class);
+            return values == null ? List.of() : values;
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("构建分类数据损坏，为避免错误归类已停止任务");
+        }
     }
 
     private boolean markRepairRunning(QuestionBankBuildCandidate candidate, int round) {
