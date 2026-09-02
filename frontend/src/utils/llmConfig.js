@@ -32,7 +32,8 @@ export const llmProviderPresets = [
     label: 'OrcaRouter',
     baseUrl: 'https://api.orcarouter.ai/v1',
     modelName: 'deepseek/deepseek-chat',
-    description: '统一接入多个模型厂商；模型名称使用 provider/model 格式。'
+    description: '统一接入多个模型厂商；模型名称使用 provider/model 格式。',
+    signupUrl: 'https://www.orcarouter.ai/ref/ref_ab37f4dab3512456458e'
   },
   {
     value: 'custom',

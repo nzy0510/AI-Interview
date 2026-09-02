@@ -30,7 +30,7 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 | Qdrant | 向量检索 |
 | Flyway | 9.22.3 |
 | PDFBox | 简历 PDF 解析 |
-| OpenAI-compatible Chat API | 用户自配 DeepSeek / Kimi / GLM / Qwen / 自定义兼容模型 |
+| OpenAI-compatible Chat API | 用户自配 DeepSeek / Kimi / GLM / Qwen / OrcaRouter / 自定义兼容模型 |
 | multilingual-e5-base | Docker 默认 embedding 模型 |
 
 ### 前端
@@ -275,7 +275,7 @@ Windows 本地部署统一使用该脚本。脚本会选择 Docker Desktop 的 `
 登录后的首次使用顺序：
 
 1. 打开侧边栏“大模型配置”。
-2. 选择 DeepSeek，填写自己的 API Key。
+2. 选择 DeepSeek、OrcaRouter 或其他兼容 Provider，填写自己的 API Key。
 3. 点击“测试连接”，测试成功后保存并启用。
 4. 可直接选择内置岗位开始模拟面试，也可进入“岗位 / 题库维护”新增自己的私有岗位并导入题库。
 
@@ -306,8 +306,14 @@ Docker Desktop 因系统内存压力异常退出、出现 `dockerInference` stal
 - 项目不提供系统兜底 API Key，也不依赖全局 `DEEPSEEK_API_KEY` 作为普通用户兜底。
 - 默认管理员首次登录后，需要进入侧边栏“大模型配置”，新建 DeepSeek 或其他兼容 Provider，填写自己的 API Key，测试连接并启用该配置。
 - 没有有效的启用配置时，文字面试、视频面试、报告生成和 AI Mentor 等用户侧 LLM 功能会引导用户先完成配置。
-- 当前支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen 和自定义。
+- 当前支持 OpenAI-compatible Provider 预设与自定义兼容端点，文档默认覆盖 DeepSeek、Kimi/Moonshot、GLM/Zhipu、Qwen、OrcaRouter 和自定义。
 - 用户可以保存多个 Provider 配置，但同一时间只能启用一个 active 配置。
+
+OrcaRouter 配置：
+
+1. 通过[项目推广链接注册或登录 OrcaRouter](https://www.orcarouter.ai/ref/ref_ab37f4dab3512456458e)，在控制台创建 API Key。
+2. 在“大模型配置”中选择 OrcaRouter，填写 API Key；Base URL 默认为 `https://api.orcarouter.ai/v1`。
+3. 模型名称使用 `provider/model` 格式；免费测试可填写 `deepseek/deepseek-v4-flash-free`，具体可用模型以 OrcaRouter 控制台为准。
 
 ## 本地开发验证
 

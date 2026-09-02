@@ -3,7 +3,7 @@
 ## 未发布
 
 ### 新增
-- 大模型配置新增 OrcaRouter 可选 Provider 预设，默认使用官方 OpenAI-compatible 端点和固定的 `deepseek/deepseek-chat` 模型标识；现有 Provider 与当前启用配置保持不变。
+- 大模型配置新增 OrcaRouter 可选 Provider 预设，默认使用官方 OpenAI-compatible 端点和固定的 `deepseek/deepseek-chat` 模型标识，并在配置页与 README 提供项目推广注册链接；现有 Provider 与当前启用配置保持不变。
 
 ### 变更
 - AI Mentor 改为按当前可见岗位独立生成诊断、风险提醒、行动建议和知识覆盖；岗位切换、缓存与面试结束后的后台刷新均使用结构化岗位 ID，不再跨岗位聚合训练记录。

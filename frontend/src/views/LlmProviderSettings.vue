@@ -146,6 +146,16 @@
               <strong>{{ currentPreset.label }}</strong>
             </div>
             <p>{{ currentPreset.description }}</p>
+            <el-link
+              v-if="currentPreset.signupUrl"
+              class="preset-signup-link"
+              :href="currentPreset.signupUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              type="primary"
+            >
+              注册 OrcaRouter / 获取 API Key
+            </el-link>
           </div>
 
           <el-form label-position="top" class="provider-form">
@@ -675,6 +685,10 @@ onMounted(() => {
 
 .preset-summary strong {
   font-size: 16px;
+}
+
+.preset-signup-link {
+  margin-top: 10px;
 }
 
 .provider-form {

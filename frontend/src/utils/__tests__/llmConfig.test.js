@@ -5,6 +5,7 @@ import {
   createLlmConfigDraft,
   createUnknownLlmConfigStatus,
   deriveLlmConfigStatus,
+  getLlmProviderPreset,
   getLlmProviderLabel,
   isLlmConfigActive,
   isLlmTestSuccess,
@@ -23,11 +24,13 @@ describe('llm config utils', () => {
 
   it('creates an OrcaRouter draft with the official OpenAI-compatible endpoint', () => {
     const draft = createLlmConfigDraft('orcarouter')
+    const preset = getLlmProviderPreset('orcarouter')
 
     expect(draft.provider).toBe('orcarouter')
     expect(draft.displayName).toBe('OrcaRouter')
     expect(draft.baseUrl).toBe('https://api.orcarouter.ai/v1')
     expect(draft.modelName).toBe('deepseek/deepseek-chat')
+    expect(preset.signupUrl).toBe('https://www.orcarouter.ai/ref/ref_ab37f4dab3512456458e')
   })
 
   it('applies provider preset without clobbering custom display name', () => {
