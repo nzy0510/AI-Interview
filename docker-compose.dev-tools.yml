@@ -1,0 +1,8 @@
+services:
+  redis:
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
+
+  qdrant:
+    ports:
+      - "127.0.0.1:${QDRANT_HOST_PORT:-16333}:6333"

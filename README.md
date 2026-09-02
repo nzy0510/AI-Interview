@@ -240,13 +240,13 @@ graph TD
 
 ```powershell
 Copy-Item .env.example .env
-Copy-Item docker-compose.example.yml docker-compose.yml
 ```
 
-至少修改 `.env` 中的数据库密码、JWT 签名密钥、用户 API Key 加密密钥和统计盐值：
+至少修改 `.env` 中的数据库用户密码、MySQL root 密码、JWT 签名密钥、用户 API Key 加密密钥和统计盐值：
 
 ```env
 DB_PASSWORD=your_mysql_password
+MYSQL_ROOT_PASSWORD=your_mysql_root_password
 APP_LLM_CONFIG_ENCRYPTION_KEY=your_base64_or_high_entropy_encryption_key
 JWT_SIGN_KEY=your_jwt_signing_key_at_least_32_characters
 APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
@@ -260,8 +260,10 @@ APP_ANALYTICS_HASH_SALT=your_strong_analytics_hash_salt
 ### Docker 部署(基础配置完成后)
 
 ```powershell
-docker compose up -d --build
+.\scripts\deploy-local.ps1
 ```
+
+Windows 本地部署统一使用该脚本。脚本会选择 Docker Desktop 的 `desktop-linux` context、校验 Compose、构建失败时利用持久缓存自动重试一次，并在启动后等待前端 API 可用；不要手工设置 `DOCKER_HOST`。
 
 容器全部启动后，打开 `http://localhost`，使用本地默认管理员登录：
 
@@ -281,15 +283,23 @@ docker compose up -d --build
 
 - 前端：`http://localhost`
 - 后端：`http://localhost:8080`
-- Qdrant：`http://localhost:6333`
 - MySQL：`localhost:3307`
-- Redis：`localhost:6379`
+
+Redis 和 Qdrant 默认只对 Compose 内网开放，避免 Windows/WSL 动态端口保留导致本地启动失败。需要从宿主机调试时显式启用调试端口：
 
 ```powershell
-docker compose stop
+.\scripts\deploy-local.ps1 -ExposeDataServices
+```
+
+此时默认使用 Redis `localhost:16379`、Qdrant `http://localhost:16333`；也可通过 `-RedisHostPort`、`-QdrantHostPort` 指定其他未占用端口。
+
+```powershell
+docker --context desktop-linux compose -f docker-compose.example.yml stop
 ```
 
 首次构建 embedding-service 会下载 PyTorch、sentence-transformers 和 multilingual-e5 模型，耗时取决于网络质量。若切换过 embedding 模型或 Qdrant collection，启动后需要通过知识库 / 题库维护流程重建索引。
+
+Docker Desktop 因系统内存压力异常退出、出现 `dockerInference` stale socket，或 BuildKit 返回 `EOF` 时，不要执行 factory reset。先退出占用大量内存的程序并重启 Docker Desktop，再重新运行部署脚本；后端 Maven 下载缓存会跨失败保留。详细处置见 [本地 Docker 部署与故障恢复](docs/local-docker-deployment.md)。
 
 大模型配置说明：
 

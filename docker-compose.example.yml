@@ -4,7 +4,7 @@ services:
     container_name: interview-db
     environment:
       MYSQL_DATABASE: ai_interview_ds
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_USER: ${DB_USERNAME:-nzy333}
       MYSQL_PASSWORD: ${DB_PASSWORD}
     ports:
@@ -24,8 +24,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: interview-redis
-    ports:
-      - "127.0.0.1:6379:6379"
     volumes:
       - ./redis_data:/data
     networks:
@@ -34,8 +32,6 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     container_name: interview-qdrant
-    ports:
-      - "127.0.0.1:6333:6333"
     volumes:
       - ./qdrant_data:/qdrant/storage
     networks:

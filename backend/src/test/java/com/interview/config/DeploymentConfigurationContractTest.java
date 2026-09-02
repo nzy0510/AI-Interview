@@ -78,7 +78,45 @@ class DeploymentConfigurationContractTest {
     void shouldKeepLocalDockerAuthenticationAndPortsSafe() throws IOException {
         assertLocalDockerContract(Path.of("..", "docker-compose.example.yml"));
         assertThat(Files.readString(Path.of("..", ".env.example")))
-                .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=true");
+                .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=true")
+                .contains("MYSQL_ROOT_PASSWORD=your_mysql_root_password");
+    }
+
+    @Test
+    @DisplayName("本地数据服务默认只在 Compose 网络暴露，可选调试端口避开 Windows 常见保留区")
+    void shouldKeepDataServicePortsInternalByDefault() throws IOException {
+        String compose = Files.readString(Path.of("..", "docker-compose.example.yml"));
+        assertThat(serviceBlock(compose, "  redis:", "  qdrant:"))
+                .doesNotContain("ports:");
+        assertThat(serviceBlock(compose, "  qdrant:", "  embedding-service:"))
+                .doesNotContain("ports:");
+
+        assertThat(Files.readString(Path.of("..", "docker-compose.dev-tools.yml")))
+                .contains("127.0.0.1:${REDIS_HOST_PORT:-16379}:6379")
+                .contains("127.0.0.1:${QDRANT_HOST_PORT:-16333}:6333");
+    }
+
+    @Test
+    @DisplayName("后端镜像构建跨失败保留 Maven 依赖缓存")
+    void shouldPersistMavenBuildCacheAcrossRetries() throws IOException {
+        assertThat(Files.readString(Path.of("Dockerfile")))
+                .contains("# syntax=docker/dockerfile:1.7")
+                .contains("--mount=type=cache,target=/root/.m2/repository,sharing=locked mvn dependency:go-offline -B")
+                .contains("--mount=type=cache,target=/root/.m2/repository,sharing=locked mvn clean package -DskipTests");
+    }
+
+    @Test
+    @DisplayName("Windows 本地部署脚本固定 Docker Desktop context 并重试构建")
+    void shouldProvideReliableWindowsDeploymentScript() throws IOException {
+        assertThat(Files.readString(Path.of("..", "scripts", "deploy-local.ps1")))
+                .contains("Remove-Item Env:DOCKER_HOST")
+                .contains("desktop-linux")
+                .contains("docker-compose.example.yml")
+                .contains("Assert-LocalSecretsConfigured")
+                .contains("MYSQL_ROOT_PASSWORD")
+                .contains("RedisHostPort and QdrantHostPort must be different")
+                .contains("compose", "build", "up", "--no-build")
+                .contains("for ($attempt = 1; $attempt -le 2; $attempt++)");
     }
 
     @Test
@@ -154,13 +192,20 @@ class DeploymentConfigurationContractTest {
         assertThat(Files.readString(path))
                 .as(path.toString())
                 .contains("APP_AUTH_MODE: ${APP_AUTH_MODE:-local-admin}")
+                .contains("MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}")
                 .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED: ${APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED:-true}")
                 .contains("MAIL_USERNAME: ${MAIL_USERNAME:-}")
                 .contains("MAIL_PASSWORD: ${MAIL_PASSWORD:-}")
                 .contains("127.0.0.1:80:80")
                 .contains("127.0.0.1:8080:8080")
-                .contains("127.0.0.1:3307:3306")
-                .contains("127.0.0.1:6379:6379")
-                .contains("127.0.0.1:6333:6333");
+                .contains("127.0.0.1:3307:3306");
+    }
+
+    private String serviceBlock(String compose, String serviceHeader, String nextServiceHeader) {
+        int start = compose.indexOf(serviceHeader);
+        int end = compose.indexOf(nextServiceHeader, start + serviceHeader.length());
+        assertThat(start).as(serviceHeader + " start").isGreaterThanOrEqualTo(0);
+        assertThat(end).as(nextServiceHeader + " start").isGreaterThan(start);
+        return compose.substring(start, end);
     }
 }

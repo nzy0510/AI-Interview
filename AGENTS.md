@@ -71,6 +71,8 @@ APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=true
 
 本机浏览器端到端验收默认使用用户已登录并保存凭据的 `nzy333` 账号，不使用 `admin` 代替业务用户。
 
+Windows 本地完整部署统一从仓库根目录运行 `./scripts/deploy-local.ps1`。不要手工设置 `DOCKER_HOST`；脚本固定使用 Docker Desktop `desktop-linux` context、保留 BuildKit/Maven 缓存并在构建失败时自动重试一次。Redis 与 Qdrant 默认只在 Compose 网络内开放；只有宿主机调试时才使用 `-ExposeDataServices` 暴露可配置端口。
+
 ## 验收说明
 
 - 涉及前端页面改动时，一定要操控内置浏览器进行实际页面验收，不合格则返工，成功后才交付。
