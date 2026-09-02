@@ -2,6 +2,16 @@
 
 ## 未发布
 
+### 新增
+- 大模型配置新增 OrcaRouter 可选 Provider 预设，默认使用官方 OpenAI-compatible 端点和固定的 `deepseek/deepseek-chat` 模型标识；现有 Provider 与当前启用配置保持不变。
+
+### 变更
+- AI Mentor 改为按当前可见岗位独立生成诊断、风险提醒、行动建议和知识覆盖；岗位切换、缓存与面试结束后的后台刷新均使用结构化岗位 ID，不再跨岗位聚合训练记录。
+- Windows 本地 Docker 部署统一使用可重试脚本和持久 Maven 构建缓存；Redis、Qdrant 默认只在容器网络开放，避免 Docker context 路径转换与系统动态端口保留导致重建失败。
+
+### 修复
+- AI Mentor 的 Provider 返回无效内容或请求失败时改为展示岗位级加载失败，不再错误显示为“暂无面试数据”；同时为 Mentor 请求使用与后端模型调用匹配的专用超时。
+
 ## v1.5.0 - 2026-08-13
 
 ### 新增
