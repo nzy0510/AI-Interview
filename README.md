@@ -313,7 +313,7 @@ OrcaRouter 配置：
 
 1. 通过[项目推广链接注册或登录 OrcaRouter](https://www.orcarouter.ai/ref/ref_ab37f4dab3512456458e)，在控制台创建 API Key。
 2. 在“大模型配置”中选择 OrcaRouter，填写 API Key；Base URL 默认为 `https://api.orcarouter.ai/v1`。
-3. 模型名称使用 `provider/model` 格式；免费测试可填写 `deepseek/deepseek-v4-flash-free`，具体可用模型以 OrcaRouter 控制台为准。
+3. 默认模型为免费路由 `orcarouter/free`。当前免费选项还包括 `qwen/qwen3.8-27b-free`、`tencent/hy3-free` 和 `deepseek/deepseek-v4-flash-free`；具体可用模型以 OrcaRouter 控制台为准。
 
 ## 本地开发验证
 

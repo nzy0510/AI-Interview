@@ -43,7 +43,7 @@ class UserLlmConfigServiceTest {
         assertThat(presets).anySatisfy(preset -> {
             assertThat(preset.getProvider()).isEqualTo("orcarouter");
             assertThat(preset.getBaseUrl()).isEqualTo("https://api.orcarouter.ai/v1");
-            assertThat(preset.getModelName()).isEqualTo("deepseek/deepseek-chat");
+            assertThat(preset.getModelName()).isEqualTo("orcarouter/free");
         });
     }
 
