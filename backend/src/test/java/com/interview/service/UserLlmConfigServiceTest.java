@@ -2,6 +2,7 @@ package com.interview.service;
 
 import com.interview.dto.llm.LlmConfigRequest;
 import com.interview.dto.llm.LlmConfigResponse;
+import com.interview.dto.llm.LlmProviderPresetResponse;
 import com.interview.entity.UserLlmConfig;
 import com.interview.exception.LlmProviderRequiredException;
 import com.interview.mapper.UserLlmConfigMapper;
@@ -11,6 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,6 +31,21 @@ class UserLlmConfigServiceTest {
 
     @Mock
     private UserLlmModelFactory modelFactory;
+
+    @Test
+    @DisplayName("Provider 预设包含 OrcaRouter 官方兼容端点")
+    void shouldExposeOrcaRouterPreset() {
+        ApiKeyCryptoService cryptoService = new ApiKeyCryptoService("0123456789abcdef0123456789abcdef");
+        UserLlmConfigService service = new UserLlmConfigService(mapper, cryptoService, modelFactory);
+
+        List<LlmProviderPresetResponse> presets = service.presets();
+
+        assertThat(presets).anySatisfy(preset -> {
+            assertThat(preset.getProvider()).isEqualTo("orcarouter");
+            assertThat(preset.getBaseUrl()).isEqualTo("https://api.orcarouter.ai/v1");
+            assertThat(preset.getModelName()).isEqualTo("deepseek/deepseek-chat");
+        });
+    }
 
     @Test
     @DisplayName("新增配置时加密存储 API Key 且响应只返回脱敏摘要")

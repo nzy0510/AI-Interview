@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.interview.dto.MentorInsightResponse;
 import com.interview.dto.MentorInsightResponse.*;
+import com.interview.config.QuestionBankAccessProperties;
 import com.interview.entity.InterviewPosition;
 import com.interview.entity.InterviewRecord;
 import com.interview.entity.InterviewTurn;
@@ -59,6 +60,9 @@ public class MentorService {
     @Autowired
     private UserLlmModelFactory userLlmModelFactory;
 
+    @Autowired
+    private QuestionBankAccessProperties questionBankAccessProperties;
+
     @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -66,71 +70,63 @@ public class MentorService {
     private AppEventService appEventService;
 
     /** 内存缓存回退（Redis 不可用时使用，TTL 12小时） */
-    private final Map<Long, MentorInsightResponse> localCache = new java.util.concurrent.ConcurrentHashMap<>();
-    private final Map<Long, Long> localCacheExpiry = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, MentorInsightResponse> localCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Long> localCacheExpiry = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Object> generationLocks = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Long> cacheGenerations = new java.util.concurrent.ConcurrentHashMap<>();
     private static final long LOCAL_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
     private static final String CACHE_KEY_PREFIX = "mentor:insight:";
     private static final long CACHE_TTL_HOURS = 24;
 
     /**
-     * 获取 AI Mentor 洞察报告（含缓存）。
+     * 获取指定岗位的 AI Mentor 洞察报告。
      */
-    public MentorInsightResponse getInsight(Long userId) {
-        return getInsight(userId, false);
-    }
-
-    /**
-     * 获取 AI Mentor 洞察报告，可按需绕过缓存并重新生成。
-     */
-    public MentorInsightResponse getInsight(Long userId, boolean forceRefresh) {
+    public MentorInsightResponse getInsight(Long userId, Long positionId, boolean forceRefresh) {
+        if (positionId == null || positionId <= 0) {
+            throw new IllegalArgumentException("请选择岗位后查看 AI Mentor 分析");
+        }
+        InterviewPosition position = requireVisiblePosition(userId, positionId);
         userLlmConfigService.ensureActiveProvider(userId);
-        if (forceRefresh) {
-            evictCache(userId);
+        String cacheKey = cacheKey(userId, positionId);
+        long observedGeneration = cacheGenerations.getOrDefault(cacheKey, 0L);
+        Object generationLock = generationLocks.computeIfAbsent(cacheKey, ignored -> new Object());
+        synchronized (generationLock) {
+            if (forceRefresh && cacheGenerations.getOrDefault(cacheKey, 0L) == observedGeneration) {
+                evictCache(cacheKey);
+            }
+            MentorInsightResponse cached = getCached(cacheKey);
+            if (cached != null) return cached;
+
+            MentorInsightResponse report = new MentorInsightResponse();
+            report.setKnowledgeCoverage(buildKnowledgeCoverage(userId, positionId));
+
+            List<InterviewRecord> history = getHistory(userId, positionId);
+            if (history.isEmpty()) {
+                report.setDiagnosis(emptyDiagnosis());
+                report.setRiskAlerts(Collections.emptyList());
+                report.setActions(Collections.emptyList());
+            } else {
+                String aiOutput = callMentorLLM(
+                        userId, positionId, position.getName(), history, report.getKnowledgeCoverage());
+                parseAiOutput(aiOutput, report);
+            }
+
+            report.setGeneratedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            saveCache(cacheKey, report);
+            cacheGenerations.merge(cacheKey, 1L, Long::sum);
+            return report;
         }
-        // 尝试缓存命中
-        MentorInsightResponse cached = getCached(userId);
-        if (cached != null) return cached;
-
-        // 构建报告
-        MentorInsightResponse report = new MentorInsightResponse();
-
-        // 1. 知识领域覆盖（无需 LLM，全局汇总）
-        report.setKnowledgeCoverage(buildKnowledgeCoverage(userId, null));
-
-        // 2. 聚合面试历史
-        List<InterviewRecord> history = getHistory(userId);
-        if (history.isEmpty()) {
-            report.setDiagnosis(emptyDiagnosis());
-            report.setRiskAlerts(Collections.emptyList());
-            report.setActions(Collections.emptyList());
-        } else {
-            // 3. AI 分析
-            String aiOutput = callMentorLLM(userId, history, report.getKnowledgeCoverage());
-            parseAiOutput(aiOutput, report);
-        }
-
-        report.setGeneratedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-
-        // 写入缓存
-        saveCache(userId, report);
-        return report;
     }
 
     /**
-     * 仅获取知识覆盖数据（快速，无 LLM 调用）。
-     */
-    public MentorInsightResponse getKnowledgeCoverageOnly(Long userId) {
-        return getKnowledgeCoverageOnly(userId, null);
-    }
-
-    /**
-     * 仅获取知识覆盖数据，按 positionId 过滤（null 则不限制岗位）。
+     * 仅获取当前岗位的知识覆盖数据。
      */
     public MentorInsightResponse getKnowledgeCoverageOnly(Long userId, Long positionId) {
-        if (positionId != null) {
-            requireVisiblePosition(userId, positionId);
+        if (positionId == null || positionId <= 0) {
+            throw new IllegalArgumentException("请选择岗位后查看知识覆盖");
         }
+        requireVisiblePosition(userId, positionId);
         MentorInsightResponse report = new MentorInsightResponse();
         report.setKnowledgeCoverage(buildKnowledgeCoverage(userId, positionId));
         report.setGeneratedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
@@ -144,7 +140,7 @@ public class MentorService {
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         totalQuery.select("category, COUNT(*) as total")
                 .eq("status", "PUBLISHED")
-                .eq(positionId != null, "position_id", positionId)
+                .eq("position_id", positionId)
                 .groupBy("category");
         List<Map<String, Object>> totalRows = atomMapper.selectMaps(totalQuery);
 
@@ -188,7 +184,7 @@ public class MentorService {
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         turnQuery.select("retrieved_atom_ids")
                 .eq("user_id", userId)
-                .eq(positionId != null, "position_id", positionId)
+                .eq("position_id", positionId)
                 .isNotNull("retrieved_atom_ids");
         List<InterviewTurn> deliveredTurns = interviewTurnMapper.selectList(turnQuery);
 
@@ -219,7 +215,7 @@ public class MentorService {
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         deliveredAtomQuery.select("atom_id", "category")
                 .eq("status", "PUBLISHED")
-                .eq(positionId != null, "position_id", positionId)
+                .eq("position_id", positionId)
                 .in("atom_id", deliveredAtomIds);
         List<KnowledgeAtom> deliveredAtoms = atomMapper.selectList(deliveredAtomQuery);
 
@@ -242,7 +238,7 @@ public class MentorService {
         return Math.round(value * 10.0) / 10.0;
     }
 
-    private void requireVisiblePosition(Long userId, Long positionId) {
+    private InterviewPosition requireVisiblePosition(Long userId, Long positionId) {
         if (userId == null) {
             throw new RuntimeException("未登录：缺少用户身份");
         }
@@ -251,27 +247,36 @@ public class MentorService {
                 && SCOPE_PUBLIC.equalsIgnoreCase(position.getScope())
                 && STATUS_ACTIVE.equalsIgnoreCase(position.getStatus());
         boolean privateOwnerActive = position != null
+                && (questionBankAccessProperties == null
+                    || questionBankAccessProperties.isUserMaintenanceEnabled())
                 && SCOPE_PRIVATE.equalsIgnoreCase(position.getScope())
                 && userId.equals(position.getOwnerUserId())
                 && STATUS_ACTIVE.equalsIgnoreCase(position.getStatus());
         if (!publicActive && !privateOwnerActive) {
             throw new RuntimeException("岗位不存在或无权访问");
         }
+        return position;
     }
 
-    private List<InterviewRecord> getHistory(Long userId) {
+    private List<InterviewRecord> getHistory(Long userId, Long positionId) {
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<InterviewRecord> query =
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         query.eq("user_id", userId)
+             .eq("position_id", positionId)
              .isNotNull("score")
              .orderByDesc("create_time")
              .last("LIMIT 10");
         return recordMapper.selectList(query);
     }
 
-    private String callMentorLLM(Long userId, List<InterviewRecord> history, KnowledgeCoverage coverage) {
+    private String callMentorLLM(Long userId, Long positionId, String positionName,
+                                 List<InterviewRecord> history, KnowledgeCoverage coverage) {
         // 构造简洁的面试历史摘要
-        StringBuilder historySummary = new StringBuilder();
+        StringBuilder historySummary = new StringBuilder("目标岗位: ")
+                .append(positionName)
+                .append("\n岗位知识覆盖: ")
+                .append(JSON.toJSONString(coverage))
+                .append("\n");
         for (int i = 0; i < history.size(); i++) {
             InterviewRecord r = history.get(i);
             historySummary.append(String.format("%d. %s | 得分:%d | %s | %s\n",
@@ -328,7 +333,7 @@ public class MentorService {
             Response<AiMessage> response = chatModel.generate(messages);
             if (appEventService != null) {
                 appEventService.recordSystemEvent(userId, "MENTOR_GENERATE", "ai",
-                        Map.of("historyCount", history.size()), true, null);
+                        Map.of("historyCount", history.size(), "positionId", positionId), true, null);
             }
             return response.content().text()
                     .replace("```json", "").replace("```", "").trim();
@@ -338,7 +343,7 @@ public class MentorService {
             String sanitized = sanitizeErrorMessage(e.getMessage());
             if (appEventService != null) {
                 appEventService.recordSystemEvent(userId, "DEEPSEEK_MENTOR_FAILED", "system",
-                        Map.of("historyCount", history.size()), false, sanitized);
+                        Map.of("historyCount", history.size(), "positionId", positionId), false, sanitized);
             }
             throw e;
         }
@@ -347,16 +352,21 @@ public class MentorService {
     private void parseAiOutput(String raw, MentorInsightResponse report) {
         try {
             JSONObject obj = JSON.parseObject(raw);
+            if (obj == null) {
+                throw new IllegalArgumentException("响应不是有效的 JSON 对象");
+            }
 
             // Diagnosis
             JSONObject diagObj = obj.getJSONObject("diagnosis");
-            if (diagObj != null) {
-                Diagnosis diag = new Diagnosis();
-                diag.setOverview(diagObj.getString("overview"));
-                diag.setStrengths(toStrList(diagObj.getJSONArray("strengths")));
-                diag.setWeaknesses(toStrList(diagObj.getJSONArray("weaknesses")));
-                report.setDiagnosis(diag);
+            if (diagObj == null || diagObj.getString("overview") == null
+                    || diagObj.getString("overview").isBlank()) {
+                throw new IllegalArgumentException("响应缺少 diagnosis.overview");
             }
+            Diagnosis diag = new Diagnosis();
+            diag.setOverview(diagObj.getString("overview"));
+            diag.setStrengths(toStrList(diagObj.getJSONArray("strengths")));
+            diag.setWeaknesses(toStrList(diagObj.getJSONArray("weaknesses")));
+            report.setDiagnosis(diag);
 
             // Risk alerts
             com.alibaba.fastjson2.JSONArray riskArr = obj.getJSONArray("riskAlerts");
@@ -390,9 +400,7 @@ public class MentorService {
 
         } catch (Exception e) {
             log.warn("AI Mentor 解析失败: {}", e.getMessage());
-            report.setDiagnosis(emptyDiagnosis());
-            report.setRiskAlerts(Collections.emptyList());
-            report.setActions(Collections.emptyList());
+            throw new IllegalStateException("AI Mentor 返回内容格式无效", e);
         }
     }
 
@@ -413,12 +421,11 @@ public class MentorService {
         return d;
     }
 
-    @SuppressWarnings("unchecked")
-    private MentorInsightResponse getCached(Long userId) {
+    private MentorInsightResponse getCached(String cacheKey) {
         // Redis 优先
         if (redisTemplate != null) {
             try {
-                Object raw = redisTemplate.opsForValue().get(CACHE_KEY_PREFIX + userId);
+                Object raw = redisTemplate.opsForValue().get(cacheKey);
                 if (raw instanceof String s) {
                     return JSON.parseObject(s, MentorInsightResponse.class);
                 }
@@ -427,40 +434,44 @@ public class MentorService {
             }
         }
         // 内存缓存回退
-        Long expiry = localCacheExpiry.get(userId);
+        Long expiry = localCacheExpiry.get(cacheKey);
         if (expiry != null && System.currentTimeMillis() < expiry) {
-            return localCache.get(userId);
+            return localCache.get(cacheKey);
         }
         if (expiry != null) {
-            localCache.remove(userId);
-            localCacheExpiry.remove(userId);
+            localCache.remove(cacheKey);
+            localCacheExpiry.remove(cacheKey);
         }
         return null;
     }
 
-    private void saveCache(Long userId, MentorInsightResponse report) {
+    private void saveCache(String cacheKey, MentorInsightResponse report) {
         if (redisTemplate != null) {
             try {
-                redisTemplate.opsForValue().set(CACHE_KEY_PREFIX + userId,
+                redisTemplate.opsForValue().set(cacheKey,
                         JSON.toJSONString(report), CACHE_TTL_HOURS, TimeUnit.HOURS);
             } catch (Exception e) {
                 log.trace("Redis 缓存写入跳过: {}", e.getMessage());
             }
         }
-        localCache.put(userId, report);
-        localCacheExpiry.put(userId, System.currentTimeMillis() + LOCAL_TTL_MS);
+        localCache.put(cacheKey, report);
+        localCacheExpiry.put(cacheKey, System.currentTimeMillis() + LOCAL_TTL_MS);
     }
 
-    private void evictCache(Long userId) {
+    private void evictCache(String cacheKey) {
         if (redisTemplate != null) {
             try {
-                redisTemplate.delete(CACHE_KEY_PREFIX + userId);
+                redisTemplate.delete(cacheKey);
             } catch (Exception e) {
                 log.trace("Redis 缓存删除跳过: {}", e.getMessage());
             }
         }
-        localCache.remove(userId);
-        localCacheExpiry.remove(userId);
+        localCache.remove(cacheKey);
+        localCacheExpiry.remove(cacheKey);
+    }
+
+    private String cacheKey(Long userId, Long positionId) {
+        return CACHE_KEY_PREFIX + userId + ":" + positionId;
     }
 
     private String sanitizeErrorMessage(String message) {

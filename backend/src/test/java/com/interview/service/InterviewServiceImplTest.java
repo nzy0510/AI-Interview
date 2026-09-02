@@ -363,6 +363,7 @@ class InterviewServiceImplTest {
         record.setId(12L);
         record.setUserId(1L);
         record.setPosition("AI 大模型工程师");
+        record.setPositionId(101L);
         record.setPhase(InterviewPhase.TECHNICAL.name());
         when(interviewRecordMapper.selectOne(any())).thenReturn(record);
         when(sessionStore.load(12L)).thenReturn(new ArrayList<>(List.of(
@@ -372,7 +373,31 @@ class InterviewServiceImplTest {
 
         interviewService.endInterview(1L, 12L, 0, null);
 
-        verify(mentorTaskExecutor).execute(any(Runnable.class));
+        ArgumentCaptor<Runnable> mentorTask = ArgumentCaptor.forClass(Runnable.class);
+        verify(mentorTaskExecutor).execute(mentorTask.capture());
+        mentorTask.getValue().run();
+        verify(mentorService).getInsight(1L, 101L, true);
+    }
+
+    @Test
+    @DisplayName("空对话结束后不计为已评分历史且不刷新 Mentor 缓存")
+    void shouldNotWarmMentorCacheWhenFinishingEmptyInterview() {
+        InterviewRecord record = new InterviewRecord();
+        record.setId(14L);
+        record.setUserId(1L);
+        record.setPosition("Java 后端开发");
+        record.setPositionId(101L);
+        record.setPhase(InterviewPhase.TECHNICAL.name());
+        when(interviewRecordMapper.selectOne(any())).thenReturn(record);
+        when(sessionStore.load(14L)).thenReturn(new ArrayList<>());
+        when(sessionStore.loadUsedAtoms(14L)).thenReturn(List.of());
+
+        FinishInterviewResponse response = interviewService.finishInterview(1L, 14L, 0, null);
+
+        assertThat(response.getReportStatus()).isEqualTo("COMPLETED");
+        assertThat(response.getRecord().getScore()).isNull();
+        verify(mentorTaskExecutor, never()).execute(any());
+        verifyNoInteractions(mentorService);
     }
 
     @Test

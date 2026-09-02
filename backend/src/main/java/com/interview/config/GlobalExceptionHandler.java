@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * 全局异常处理器：拦截所有 Controller 抛出的异常，统一返回前端可识别的 Result 格式
@@ -45,6 +46,16 @@ public class GlobalExceptionHandler {
         response.setStatus(HttpStatus.BAD_REQUEST.value());
         recordException(request, "BAD_REQUEST", e.getMessage());
         return Result.error(400, e.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public Result<String> handleArgumentTypeMismatch(MethodArgumentTypeMismatchException e,
+                                                     HttpServletResponse response,
+                                                     HttpServletRequest request) {
+        response.setStatus(HttpStatus.BAD_REQUEST.value());
+        String message = "请求参数格式不正确";
+        recordException(request, "BAD_REQUEST", message);
+        return Result.error(400, message);
     }
 
     /**

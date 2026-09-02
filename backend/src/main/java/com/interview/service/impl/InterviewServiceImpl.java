@@ -643,7 +643,7 @@ public class InterviewServiceImpl implements InterviewService {
 
         if (historyMessages.isEmpty()) {
             log.warn("对话历史为空，跳过 AI 评估 (recordId={})", recordId);
-            record.setScore(0);
+            record.setScore(null);
             record.setFeedback("面试对话为空，无法生成评估报告。请确保面试过程中有完整的对话记录。");
             interviewRecordMapper.updateById(record);
             return FinishInterviewResponse.of(record, null, "COMPLETED");
@@ -653,22 +653,33 @@ public class InterviewServiceImpl implements InterviewService {
         interviewRecordMapper.updateById(record);
         AppJob reportJob = createReportJob(record);
 
-        // 后台预计算 AI Mentor 缓存，避免 Dashboard 首次访问触发 LLM 阻塞
-        final Long uid = record.getUserId();
-        try {
-            mentorTaskExecutor.execute(() -> {
-                try {
-                    mentorService.getInsight(uid);
-                    log.info("AI Mentor 缓存已更新 userId={}", uid);
-                } catch (Exception e) {
-                    log.warn("AI Mentor 后台缓存更新失败 userId={}: {}", uid, e.getMessage());
-                }
-            });
-        } catch (RuntimeException e) {
-            log.warn("AI Mentor 缓存任务提交失败 userId={}: {}", uid, e.getMessage());
-        }
+        refreshMentorCache(record);
 
         return FinishInterviewResponse.of(record, reportJob.getId(), "PENDING");
+    }
+
+    private void refreshMentorCache(InterviewRecord record) {
+        // 后台预计算当前岗位的 AI Mentor 缓存，避免首次访问触发 LLM 阻塞
+        final Long uid = record.getUserId();
+        final Long mentorPositionId = record.getPositionId();
+        if (mentorPositionId == null) {
+            log.warn("跳过 AI Mentor 缓存更新：面试记录缺少岗位 ID recordId={}", record.getId());
+        } else {
+            try {
+                mentorTaskExecutor.execute(() -> {
+                    try {
+                        mentorService.getInsight(uid, mentorPositionId, true);
+                        log.info("AI Mentor 缓存已更新 userId={}, positionId={}", uid, mentorPositionId);
+                    } catch (Exception e) {
+                        log.warn("AI Mentor 后台缓存更新失败 userId={}, positionId={}: {}",
+                                uid, mentorPositionId, e.getMessage());
+                    }
+                });
+            } catch (RuntimeException e) {
+                log.warn("AI Mentor 缓存任务提交失败 userId={}, positionId={}: {}",
+                        uid, mentorPositionId, e.getMessage());
+            }
+        }
     }
 
     private AppJob ensureReportJob(InterviewRecord record) {

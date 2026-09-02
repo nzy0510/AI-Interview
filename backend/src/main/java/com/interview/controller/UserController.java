@@ -96,24 +96,26 @@ public class UserController {
     }
 
     /**
-     * 知识覆盖统计（快速，仅查数据库，不调 LLM）。
-     * 可选 positionId 参数按岗位过滤；不传则返回全局汇总。
+     * 当前岗位的知识覆盖统计（快速，仅查数据库，不调 LLM）。
      */
     @GetMapping("/knowledge-coverage")
     public Result<MentorInsightResponse> knowledgeCoverage(HttpServletRequest request,
                                                             @RequestParam(required = false) Long positionId) {
+        requireMentorPositionId(positionId);
         Long userId = (Long) request.getAttribute("currentUserId");
         MentorInsightResponse insight = mentorService.getKnowledgeCoverageOnly(userId, positionId);
         return Result.success(insight);
     }
 
     /**
-     * AI Mentor 洞察报告（含 LLM 分析，24小时缓存）
+     * AI Mentor 岗位洞察报告（含 LLM 分析，24小时缓存）
      */
     @GetMapping("/mentor-insight")
-    public Result<MentorInsightResponse> mentorInsight(HttpServletRequest request) {
+    public Result<MentorInsightResponse> mentorInsight(@RequestParam(required = false) Long positionId,
+                                                        HttpServletRequest request) {
+        requireMentorPositionId(positionId);
         Long userId = (Long) request.getAttribute("currentUserId");
-        MentorInsightResponse insight = mentorService.getInsight(userId);
+        MentorInsightResponse insight = mentorService.getInsight(userId, positionId, false);
         return Result.success(insight);
     }
 
@@ -121,10 +123,18 @@ public class UserController {
      * 强制刷新 AI Mentor 洞察报告，绕过 24 小时缓存。
      */
     @PostMapping("/mentor-insight/refresh")
-    public Result<MentorInsightResponse> refreshMentorInsight(HttpServletRequest request) {
+    public Result<MentorInsightResponse> refreshMentorInsight(@RequestParam(required = false) Long positionId,
+                                                               HttpServletRequest request) {
+        requireMentorPositionId(positionId);
         Long userId = (Long) request.getAttribute("currentUserId");
-        MentorInsightResponse insight = mentorService.getInsight(userId, true);
+        MentorInsightResponse insight = mentorService.getInsight(userId, positionId, true);
         return Result.success(insight);
+    }
+
+    private void requireMentorPositionId(Long positionId) {
+        if (positionId == null || positionId <= 0) {
+            throw new IllegalArgumentException("请选择岗位后查看 AI Mentor 分析");
+        }
     }
 
     /** 更新用户资料（昵称/邮箱） */

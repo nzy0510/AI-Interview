@@ -3,6 +3,7 @@ package com.interview.controller;
 import com.interview.common.Result;
 import com.interview.dto.RegisterDTO;
 import com.interview.dto.ResetPasswordDTO;
+import com.interview.dto.MentorInsightResponse;
 import com.interview.entity.User;
 import com.interview.service.AdminRoleService;
 import com.interview.service.AuthModeService;
@@ -12,6 +13,8 @@ import com.interview.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Map;
 
@@ -23,6 +26,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class UserControllerTest {
 
@@ -115,5 +121,68 @@ class UserControllerTest {
         assertThatThrownBy(() -> controller.getCurrentUser(request))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("登录已失效，请重新登录");
+    }
+
+    @Test
+    void mentorInsightRequiresAndForwardsPositionId() {
+        UserController controller = new UserController();
+        MentorService mentorService = mock(MentorService.class);
+        ReflectionTestUtils.setField(controller, "mentorService", mentorService);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("currentUserId", 7L);
+        MentorInsightResponse insight = new MentorInsightResponse();
+        when(mentorService.getInsight(7L, 20L, false)).thenReturn(insight);
+
+        Result<MentorInsightResponse> result = controller.mentorInsight(20L, request);
+
+        assertThat(result.getData()).isSameAs(insight);
+        verify(mentorService).getInsight(7L, 20L, false);
+        assertThatThrownBy(() -> controller.mentorInsight(null, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("请选择岗位");
+    }
+
+    @Test
+    void mentorInsightRejectsNonNumericPositionIdWithHttp400() throws Exception {
+        UserController controller = new UserController();
+        ReflectionTestUtils.setField(controller, "mentorService", mock(MentorService.class));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new com.interview.config.GlobalExceptionHandler())
+                .build();
+
+        mockMvc.perform(get("/api/user/mentor-insight")
+                        .param("positionId", "not-a-number")
+                        .requestAttr("currentUserId", 7L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400));
+    }
+
+    @Test
+    void refreshMentorInsightOnlyRefreshesRequestedPosition() {
+        UserController controller = new UserController();
+        MentorService mentorService = mock(MentorService.class);
+        ReflectionTestUtils.setField(controller, "mentorService", mentorService);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("currentUserId", 7L);
+
+        controller.refreshMentorInsight(21L, request);
+
+        verify(mentorService).getInsight(7L, 21L, true);
+    }
+
+    @Test
+    void knowledgeCoverageRequiresAndForwardsPositionId() {
+        UserController controller = new UserController();
+        MentorService mentorService = mock(MentorService.class);
+        ReflectionTestUtils.setField(controller, "mentorService", mentorService);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("currentUserId", 7L);
+
+        controller.knowledgeCoverage(request, 20L);
+
+        verify(mentorService).getKnowledgeCoverageOnly(7L, 20L);
+        assertThatThrownBy(() -> controller.knowledgeCoverage(request, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("请选择岗位");
     }
 }

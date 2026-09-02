@@ -47,6 +47,7 @@ public class UserLlmConfigService {
                 new LlmProviderPresetResponse("kimi", "Kimi / Moonshot", "https://api.moonshot.cn/v1", "moonshot-v1-8k", 0.7),
                 new LlmProviderPresetResponse("glm", "GLM / Zhipu", "https://open.bigmodel.cn/api/paas/v4", "glm-4-flash", 0.7),
                 new LlmProviderPresetResponse("qwen", "Qwen", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus", 0.7),
+                new LlmProviderPresetResponse("orcarouter", "OrcaRouter", "https://api.orcarouter.ai/v1", "deepseek/deepseek-chat", 0.7),
                 new LlmProviderPresetResponse("custom", "自定义 OpenAI-compatible", "", "", 0.7)
         );
     }
