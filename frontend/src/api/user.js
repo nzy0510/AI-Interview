@@ -48,16 +48,26 @@ export const resetPasswordAPI = (data) => {
     });
 };
 
-export const getMentorInsightAPI = () => {
-    return request({ url: '/user/mentor-insight', method: 'get' });
+export const getMentorInsightAPI = (positionId) => {
+    return request({
+        url: '/user/mentor-insight',
+        method: 'get',
+        params: { positionId },
+        timeout: 70000
+    });
 };
 
-export const refreshMentorInsightAPI = () => {
-    return request({ url: '/user/mentor-insight/refresh', method: 'post' });
+export const refreshMentorInsightAPI = (positionId) => {
+    return request({
+        url: '/user/mentor-insight/refresh',
+        method: 'post',
+        params: { positionId },
+        timeout: 70000
+    });
 };
 
-export const getKnowledgeCoverageAPI = (params) => {
-    return request({ url: '/user/knowledge-coverage', method: 'get', params });
+export const getKnowledgeCoverageAPI = (positionId) => {
+    return request({ url: '/user/knowledge-coverage', method: 'get', params: { positionId } });
 };
 
 export const getCurrentUserAPI = () => {

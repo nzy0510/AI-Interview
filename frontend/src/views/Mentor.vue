@@ -10,17 +10,62 @@
         </div>
       </div>
       <div class="header-actions">
+        <el-select
+          v-model="selectedPositionId"
+          class="position-select"
+          placeholder="选择岗位"
+          :loading="positionLoading"
+          :disabled="!positionOptions.length"
+          @change="onPositionChange"
+        >
+          <el-option
+            v-for="position in positionOptions"
+            :key="position.id"
+            :label="position.name"
+            :value="position.id"
+          >
+            <span>{{ position.name }}</span>
+            <span class="option-meta">
+              {{ position.scope === 'PRIVATE' ? '我的岗位' : '公共岗位' }} · {{ position.historyCount || 0 }} 场
+            </span>
+          </el-option>
+        </el-select>
         <el-button v-if="showLlmConfigPrompt" type="primary" plain @click="goLlmSettings">
           去配置
         </el-button>
-        <el-button :icon="RefreshRight" :loading="refreshing" :disabled="showLlmConfigPrompt" @click="refreshMentor">
+        <el-button
+          :icon="RefreshRight"
+          :loading="refreshing"
+          :disabled="showLlmConfigPrompt || !selectedPositionId || loading"
+          @click="refreshMentor"
+        >
           刷新分析
         </el-button>
       </div>
     </header>
 
     <el-main class="page-body">
-      <section v-if="showLlmConfigPrompt" class="surface-card section-shell warning-shell">
+      <section v-if="positionLoadError" class="surface-card section-shell warning-shell">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Load Failed</p>
+            <h2 class="section-title">岗位列表加载失败</h2>
+            <p class="section-desc">暂时无法读取可见岗位，请稍后重新进入页面。</p>
+          </div>
+        </div>
+      </section>
+
+      <section v-else-if="!positionLoading && !positionOptions.length" class="surface-card section-shell warning-shell">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Position Required</p>
+            <h2 class="section-title">暂无可用岗位</h2>
+            <p class="section-desc">请先在岗位 / 题库维护中创建岗位，或联系管理员恢复公共岗位。</p>
+          </div>
+        </div>
+      </section>
+
+      <section v-else-if="showLlmConfigPrompt" class="surface-card section-shell warning-shell">
         <div class="section-head">
           <div>
             <p class="section-kicker">LLM Required</p>
@@ -30,7 +75,20 @@
         </div>
       </section>
 
-      <el-empty v-if="!mentorInsight && !loading && !showLlmConfigPrompt" description="完成首次面试后，AI Mentor 将为你生成个性化分析报告" />
+      <el-skeleton v-if="loading && selectedPositionId && !showLlmConfigPrompt" :rows="6" animated />
+
+      <el-alert
+        v-else-if="loadError && !showLlmConfigPrompt"
+        :title="loadError"
+        type="error"
+        show-icon
+        :closable="false"
+      />
+
+      <el-empty
+        v-else-if="!mentorInsight && !loading && !showLlmConfigPrompt && positionOptions.length"
+        description="当前岗位暂无 Mentor 分析"
+      />
 
       <template v-if="mentorInsight && !showLlmConfigPrompt">
         <!-- Diagnosis -->
@@ -105,12 +163,15 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getLlmConfigStatusAPI } from '@/api/llm'
+import { getHistoryListAPI } from '@/api/interview'
+import { getVisiblePositionsAPI } from '@/api/position'
 import { getMentorInsightAPI, refreshMentorInsightAPI } from '@/api/user'
+import { resolveMentorPosition } from '@/utils/mentor'
 import {
   buildLlmConfigRouteQuery,
   createUnknownLlmConfigStatus,
@@ -119,11 +180,20 @@ import {
 } from '@/utils/llmConfig'
 
 const router = useRouter()
+const route = useRoute()
 const mentorInsight = ref(null)
 const refreshing = ref(false)
 const loading = ref(true)
+const loadError = ref('')
+const positionLoading = ref(true)
+const positionLoadError = ref('')
+const positionOptions = ref([])
+const interviewHistory = ref([])
+const selectedPositionId = ref(null)
 const llmStatus = ref(createUnknownLlmConfigStatus())
 const showLlmConfigPrompt = computed(() => llmStatus.value.resolved && !llmStatus.value.hasActiveConfig)
+let mentorRequestVersion = 0
+let routeSyncReady = false
 
 const goLlmSettings = () => {
   router.push({ path: '/llm-providers', query: buildLlmConfigRouteQuery('mentor') })
@@ -138,14 +208,22 @@ const loadLlmStatus = async () => {
   }
 }
 
-const loadMentorData = async () => {
+const loadMentorData = async (positionId = selectedPositionId.value) => {
+  if (!positionId) {
+    loading.value = false
+    return
+  }
+  const requestVersion = ++mentorRequestVersion
   loading.value = true
+  loadError.value = ''
+  mentorInsight.value = null
   try {
-    const data = await getMentorInsightAPI()
-    if (data) {
-      mentorInsight.value = { ...mentorInsight.value, ...data }
+    const data = await getMentorInsightAPI(positionId)
+    if (requestVersion === mentorRequestVersion && selectedPositionId.value === positionId) {
+      mentorInsight.value = data || null
     }
   } catch (error) {
+    if (requestVersion !== mentorRequestVersion || selectedPositionId.value !== positionId) return
     if (isMissingLlmConfigError(error)) {
       llmStatus.value = {
         resolved: true,
@@ -155,9 +233,31 @@ const loadMentorData = async () => {
         activeModelName: '',
         activeDisplayName: ''
       }
+    } else {
+      loadError.value = '当前岗位的 AI Mentor 分析加载失败，请稍后重试。'
+    }
+  } finally {
+    if (requestVersion === mentorRequestVersion && selectedPositionId.value === positionId) {
+      loading.value = false
     }
   }
-  loading.value = false
+}
+
+const onPositionChange = async (positionId) => {
+  const normalizedId = Number(positionId)
+  if (!Number.isFinite(normalizedId) || normalizedId <= 0) return
+  selectedPositionId.value = normalizedId
+  const navigationVersion = ++mentorRequestVersion
+  refreshing.value = false
+  mentorInsight.value = null
+  loadError.value = ''
+  await router.replace({ path: '/mentor', query: { positionId: normalizedId } })
+  if (navigationVersion !== mentorRequestVersion || selectedPositionId.value !== normalizedId) return
+  if (showLlmConfigPrompt.value) {
+    loading.value = false
+    return
+  }
+  await loadMentorData(normalizedId)
 }
 
 const refreshMentor = async () => {
@@ -165,26 +265,84 @@ const refreshMentor = async () => {
     goLlmSettings()
     return
   }
+  const positionId = selectedPositionId.value
+  if (!positionId) return
+  const requestVersion = ++mentorRequestVersion
   refreshing.value = true
+  loadError.value = ''
   try {
-    const data = await refreshMentorInsightAPI()
-    if (data) {
+    const data = await refreshMentorInsightAPI(positionId)
+    if (requestVersion === mentorRequestVersion && selectedPositionId.value === positionId && data) {
       mentorInsight.value = data
+      ElMessage.success('当前岗位的 AI Mentor 分析已刷新')
     }
-    ElMessage.success('AI Mentor 分析已刷新')
   } catch {
-    ElMessage.error('刷新失败，请稍后重试')
+    if (requestVersion === mentorRequestVersion && selectedPositionId.value === positionId) {
+      ElMessage.error('刷新失败，请稍后重试')
+    }
+  } finally {
+    if (requestVersion === mentorRequestVersion) refreshing.value = false
   }
-  refreshing.value = false
 }
 
 onMounted(async () => {
-  await loadLlmStatus()
+  const [positionsResult, historyResult] = await Promise.allSettled([
+    getVisiblePositionsAPI({ silent: true }),
+    getHistoryListAPI(),
+    loadLlmStatus()
+  ])
+  positionOptions.value = positionsResult.status === 'fulfilled' ? (positionsResult.value || []) : []
+  positionLoadError.value = positionsResult.status === 'rejected'
+    ? '岗位列表加载失败'
+    : ''
+  const history = historyResult.status === 'fulfilled' ? (historyResult.value || []) : []
+  interviewHistory.value = history
+  const selected = resolveMentorPosition(positionOptions.value, route.query.positionId, history)
+  selectedPositionId.value = selected?.id || null
+  positionLoading.value = false
+
+  if (!selectedPositionId.value) {
+    loading.value = false
+    return
+  }
+  if (Number(route.query.positionId) !== selectedPositionId.value) {
+    await router.replace({ path: '/mentor', query: { positionId: selectedPositionId.value } })
+  }
+  if (showLlmConfigPrompt.value) {
+    loading.value = false
+    routeSyncReady = true
+    return
+  }
+  routeSyncReady = true
+  await loadMentorData(selectedPositionId.value)
+})
+
+watch(() => route.query.positionId, async (routePositionId) => {
+  if (!routeSyncReady) return
+  const selected = resolveMentorPosition(positionOptions.value, routePositionId, interviewHistory.value)
+  const normalizedId = Number(selected?.id) || null
+  if (!normalizedId) {
+    selectedPositionId.value = null
+    mentorInsight.value = null
+    loading.value = false
+    return
+  }
+  if (Number(routePositionId) !== normalizedId) {
+    await router.replace({ path: '/mentor', query: { positionId: normalizedId } })
+    return
+  }
+  if (selectedPositionId.value === normalizedId) return
+
+  selectedPositionId.value = normalizedId
+  ++mentorRequestVersion
+  refreshing.value = false
+  mentorInsight.value = null
+  loadError.value = ''
   if (showLlmConfigPrompt.value) {
     loading.value = false
     return
   }
-  loadMentorData()
+  await loadMentorData(normalizedId)
 })
 </script>
 
@@ -208,6 +366,8 @@ onMounted(async () => {
 
 .brand-cluster { display: flex; align-items: center; gap: 16px; min-width: 0; }
 .header-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.position-select { width: min(320px, 42vw); }
+.option-meta { margin-left: 12px; color: #8a8984; font-size: 12px; }
 .icon-button { flex: 0 0 auto; }
 .header-copy { min-width: 0; }
 
@@ -333,5 +493,6 @@ onMounted(async () => {
 
 @media (max-width: 640px) {
   .mentor-header, .page-body { padding-left: 16px; padding-right: 16px; }
+  .position-select { width: 100%; }
 }
 </style>

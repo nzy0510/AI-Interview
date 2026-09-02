@@ -58,7 +58,7 @@
             <div class="overview-value">{{ resumeStatusValue }}</div>
           </div>
           <div class="overview-card" data-tone="accent">
-            <span class="overview-label">知识覆盖</span>
+            <span class="overview-label">当前岗位覆盖</span>
             <div class="overview-value">{{ knowledgeCats }}<span class="overview-unit">领域</span></div>
           </div>
         </div>
@@ -187,6 +187,7 @@ import {
   normalizeLlmConfigStatus
 } from '@/utils/llmConfig'
 import { normalizeVisibleInterviewPositions } from '@/utils/interviewEntry'
+import { resolveMentorPosition } from '@/utils/mentor'
 import { interviewSetupDefaults } from '@/mock/setup'
 
 const router = useRouter()
@@ -196,6 +197,7 @@ const historyTotal = ref(0)
 const latestScore = ref('--')
 const knowledgeCats = ref('--')
 const recentInterviews = ref([])
+const interviewHistory = ref([])
 const mentorInsight = ref(null)
 const llmStatus = ref(createUnknownLlmConfigStatus())
 const workspacePositions = ref([])
@@ -229,7 +231,15 @@ const lastActiveText = computed(() => {
   return formatTime(recentInterviews.value[0].createTime)
 })
 
+const mentorPosition = computed(() => resolveMentorPosition(
+  workspacePositions.value,
+  null,
+  interviewHistory.value,
+  false
+))
+
 const displayTitle = computed(() => {
+  if (mentorPosition.value) return `${mentorPosition.value.name}方向`
   if (recentInterviews.value.length === 0) return '准备首次面试'
   return `${recentInterviews.value[0].position}方向`
 })
@@ -243,6 +253,7 @@ const loadHistory = async () => {
   try {
     const list = await getHistoryListAPI()
     if (list && list.length) {
+      interviewHistory.value = list
       recentInterviews.value = list.slice(0, 3)
       historyTotal.value = list.length
       const latest = list[0]
@@ -269,9 +280,11 @@ const loadNickname = async () => {
 }
 
 const loadMentor = async () => {
+  const positionId = mentorPosition.value?.id
+  if (!positionId) return
   // 快速加载知识覆盖数（纯 DB 查询，不调 LLM）
   try {
-    const cov = await getKnowledgeCoverageAPI()
+    const cov = await getKnowledgeCoverageAPI(positionId)
     if (cov?.knowledgeCoverage?.details?.length) {
       knowledgeCats.value = String(cov.knowledgeCoverage.details.length)
     }
@@ -279,7 +292,7 @@ const loadMentor = async () => {
   if (showLlmConfigPrompt.value) return
   // 异步加载 AI 洞察（含 LLM，可能慢但不阻塞页面）
   try {
-    const data = await getMentorInsightAPI()
+    const data = await getMentorInsightAPI(positionId)
     if (data) mentorInsight.value = data
   } catch { /* Mentor unavailable */ }
 }

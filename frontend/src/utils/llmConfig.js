@@ -28,6 +28,13 @@ export const llmProviderPresets = [
     description: '适合阿里云百炼兼容接入，默认使用北京地域兼容地址。'
   },
   {
+    value: 'orcarouter',
+    label: 'OrcaRouter',
+    baseUrl: 'https://api.orcarouter.ai/v1',
+    modelName: 'deepseek/deepseek-chat',
+    description: '统一接入多个模型厂商；模型名称使用 provider/model 格式。'
+  },
+  {
     value: 'custom',
     label: '自定义兼容源',
     baseUrl: 'https://api.openai.com/v1',

@@ -184,10 +184,13 @@ export function useHistoryData({ redrawChart, selectedRecord } = {}) {
   }
 
   const fetchCoverage = async () => {
+    if (!activePositionId.value) {
+      knowledgeCoverage.value = null
+      return
+    }
     coverageLoading.value = true
     try {
-      const params = activePositionId.value ? { positionId: activePositionId.value } : undefined
-      const insight = await getKnowledgeCoverageAPI(params)
+      const insight = await getKnowledgeCoverageAPI(activePositionId.value)
       knowledgeCoverage.value = insight?.knowledgeCoverage || null
     } catch {
       knowledgeCoverage.value = null

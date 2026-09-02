@@ -21,6 +21,15 @@ describe('llm config utils', () => {
     expect(draft.baseUrl).toBe('https://api.moonshot.cn/v1')
   })
 
+  it('creates an OrcaRouter draft with the official OpenAI-compatible endpoint', () => {
+    const draft = createLlmConfigDraft('orcarouter')
+
+    expect(draft.provider).toBe('orcarouter')
+    expect(draft.displayName).toBe('OrcaRouter')
+    expect(draft.baseUrl).toBe('https://api.orcarouter.ai/v1')
+    expect(draft.modelName).toBe('deepseek/deepseek-chat')
+  })
+
   it('applies provider preset without clobbering custom display name', () => {
     const updated = applyProviderPreset({
       provider: 'deepseek',
