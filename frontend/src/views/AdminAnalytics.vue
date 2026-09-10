@@ -110,6 +110,7 @@ const loadSummary = async () => {
 
 onMounted(() => {
   localStorage.removeItem(LEGACY_TOKEN_KEY)
+  loadSummary()
 })
 </script>
 
