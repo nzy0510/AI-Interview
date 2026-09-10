@@ -128,7 +128,6 @@ class QuestionBankImportContractTest {
     @DisplayName("DRAFT 导入写入稳定的 golden atom，不同步 Qdrant")
     void shouldImportDraftAtomAsGoldenShape() throws Exception {
         when(atomMapper.selectOne(any())).thenReturn(null);
-        when(versionMapper.selectCount(any())).thenReturn(0L);
 
         QuestionBankImportResult result = service.importBatch(fixtureRequest("valid-draft.json"));
 
@@ -154,7 +153,6 @@ class QuestionBankImportContractTest {
     @DisplayName("知识库作用域导入会写入当前用户私有题库归属字段")
     void shouldImportDraftAtomWithKnowledgeBaseScope() throws Exception {
         when(atomMapper.selectOne(any())).thenReturn(null);
-        when(versionMapper.selectCount(any())).thenReturn(0L);
         QuestionBankImportScope scope = new QuestionBankImportScope("PRIVATE", 7L, 20L, 30L, 7L, false);
 
         QuestionBankImportResult result = service.importBatch(fixtureRequest("valid-draft.json"), scope);
@@ -186,7 +184,6 @@ class QuestionBankImportContractTest {
         published.setPublicationStatus("PUBLISHED");
         published.setCurrentVersionNo(2);
         when(atomMapper.selectOne(any())).thenReturn(published);
-        when(versionMapper.selectCount(any())).thenReturn(0L);
         QuestionBankImportScope scope = new QuestionBankImportScope("PRIVATE", 7L, 20L, 30L, 7L, false);
 
         QuestionBankImportResult result = service.importBatch(fixtureRequest("valid-draft.json"), scope);
@@ -209,7 +206,6 @@ class QuestionBankImportContractTest {
     @DisplayName("普通知识库导入即使包声明 AUTO_PUBLISH 也只落为草稿")
     void shouldForceDraftModeWhenScopedImportCannotAutoPublish() throws Exception {
         when(atomMapper.selectOne(any())).thenReturn(null);
-        when(versionMapper.selectCount(any())).thenReturn(0L);
         QuestionBankImportScope scope = new QuestionBankImportScope("PRIVATE", 7L, 20L, 30L, 7L, false);
         QuestionBankImportRequest request = fixtureRequest("valid-auto-publish.json");
 
@@ -227,7 +223,6 @@ class QuestionBankImportContractTest {
     @DisplayName("导入包 sourceEvidence 写入知识原子并保留结构")
     void shouldPersistSourceEvidenceFromImportPayload() throws Exception {
         when(atomMapper.selectOne(any())).thenReturn(null);
-        when(versionMapper.selectCount(any())).thenReturn(0L);
         QuestionBankImportRequest request = fixtureRequest("valid-draft.json");
         KnowledgeAtomPayload.SourceEvidence evidence = new KnowledgeAtomPayload.SourceEvidence();
         evidence.setQuote("HashMap 扩容会重新分桶");
@@ -277,7 +272,6 @@ class QuestionBankImportContractTest {
     @DisplayName("AUTO_PUBLISH 导入会发布 atom 并同步 Qdrant")
     void shouldPublishAndSyncAutoPublishedAtom() throws Exception {
         when(atomMapper.selectOne(any())).thenReturn(null);
-        when(versionMapper.selectCount(any())).thenReturn(0L);
         AtomicReference<String> vectorStatusAtUpsert = new AtomicReference<>();
         when(qdrantVectorService.upsert(any())).thenAnswer(invocation -> {
             KnowledgeAtom atom = invocation.getArgument(0);
@@ -326,7 +320,6 @@ class QuestionBankImportContractTest {
     void shouldKeepRetryableStateWhenArchiveDeleteFails() {
         KnowledgeAtom atom = publishedAtom("contract-java-hashmap");
         when(atomMapper.selectList(any())).thenReturn(List.of(atom));
-        when(versionMapper.selectCount(any())).thenReturn(0L);
         when(qdrantVectorService.delete(atom.getAtomId())).thenReturn(false);
         List<String> statusesAtUpdate = new ArrayList<>();
         doAnswer(invocation -> {
@@ -378,7 +371,9 @@ class QuestionBankImportContractTest {
     @DisplayName("版本号并发冲突时重新分配版本号")
     void shouldRetryVersionAllocationAfterDuplicateKey() throws Exception {
         when(atomMapper.selectOne(any())).thenReturn(null);
-        when(versionMapper.selectCount(any())).thenReturn(0L, 1L);
+        KnowledgeAtomVersion concurrentVersion = new KnowledgeAtomVersion();
+        concurrentVersion.setVersionNo(1);
+        when(versionMapper.selectOne(any())).thenReturn(null, concurrentVersion);
         when(versionMapper.insert(any()))
                 .thenThrow(new DuplicateKeyException("duplicate atom version"))
                 .thenReturn(1);
@@ -391,6 +386,8 @@ class QuestionBankImportContractTest {
         assertThat(captor.getAllValues())
                 .extracting(KnowledgeAtomVersion::getVersionNo)
                 .containsExactly(1, 2);
+        assertThat(JSON.parseObject(captor.getValue().getSnapshotJson(), KnowledgeAtom.class)
+                .getCurrentVersionNo()).isEqualTo(2);
     }
 
     private void assertGoldenAtom(KnowledgeAtom atom) throws IOException {

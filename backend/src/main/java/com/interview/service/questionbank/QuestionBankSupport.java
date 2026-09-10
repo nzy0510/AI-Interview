@@ -2,6 +2,7 @@ package com.interview.service.questionbank;
 
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.interview.dto.questionbank.KnowledgeAtomPayload;
 import com.interview.dto.questionbank.QuestionBankAtomListItem;
 import com.interview.dto.questionbank.QuestionBankAtomQueryRequest;
@@ -183,15 +184,14 @@ abstract class QuestionBankSupport {
             if (scope != null && !matchesScope(existing, scope)) {
                 throw new IllegalStateException("atom id conflicts outside current knowledge base: " + atom.getAtomId());
             }
+            atom.setCurrentVersionNo(existing.getCurrentVersionNo());
             if (shouldCreateDraftRevision(atom, existing, scope)) {
                 atom.setAtomId(existing.getAtomId() + "-draft-" + UUID.randomUUID());
-                atom.setCurrentVersionNo((existing.getCurrentVersionNo() == null
-                        ? 1 : existing.getCurrentVersionNo()) + 1);
                 atomMapper.insert(atom);
             } else {
                 atom.setId(existing.getId());
                 atom.setCreateTime(existing.getCreateTime());
-                atomMapper.updateById(atom);
+                updateAtomContent(atomMapper, atom);
             }
         } else {
             atomMapper.insert(atom);
@@ -210,22 +210,59 @@ abstract class QuestionBankSupport {
     }
 
     protected void recordVersion(KnowledgeAtom atom, String reason) {
+        recordVersion(atomMapper, versionMapper, atom, reason);
+    }
+
+    static void updateAtomContent(KnowledgeAtomMapper atomMapper, KnowledgeAtom atom) {
+        Integer currentVersion = atom.getCurrentVersionNo();
+        // MyBatis-Plus skips null fields, so stale content writes cannot reset the version counter.
+        atom.setCurrentVersionNo(null);
+        try {
+            atomMapper.updateById(atom);
+        } finally {
+            atom.setCurrentVersionNo(currentVersion);
+        }
+    }
+
+    static void recordVersion(KnowledgeAtomMapper atomMapper,
+                              KnowledgeAtomVersionMapper versionMapper,
+                              KnowledgeAtom atom, String reason) {
+        int currentVersion = atom.getCurrentVersionNo() == null ? 0 : atom.getCurrentVersionNo();
         for (int attempt = 0; attempt < 3; attempt++) {
-            Long count = versionMapper.selectCount(new QueryWrapper<KnowledgeAtomVersion>()
-                    .eq("atom_id", atom.getAtomId()));
+            // Lock an existing primary-key row, never an empty version-history range.
+            KnowledgeAtom stored = atomMapper.selectOne(new QueryWrapper<KnowledgeAtom>()
+                    .select("current_version_no")
+                    .eq("id", atom.getId())
+                    .last("FOR UPDATE"));
+            KnowledgeAtomVersion latest = versionMapper.selectOne(new QueryWrapper<KnowledgeAtomVersion>()
+                    .select("version_no")
+                    .eq("atom_id", atom.getAtomId())
+                    .orderByDesc("version_no")
+                    .last("LIMIT 1"));
+            int storedVersion = stored == null || stored.getCurrentVersionNo() == null
+                    ? 0 : stored.getCurrentVersionNo();
+            // A fresh import already has the schema default 1 but has not saved its first snapshot yet.
+            if (currentVersion == 0 && latest == null && storedVersion == 1) storedVersion = 0;
+            int nextVersion = Math.max(Math.max(currentVersion, storedVersion),
+                    latest == null ? 0 : latest.getVersionNo()) + 1;
+            atom.setCurrentVersionNo(nextVersion);
             KnowledgeAtomVersion version = new KnowledgeAtomVersion();
             version.setAtomId(atom.getAtomId());
-            version.setVersionNo((count == null ? 0 : count.intValue()) + 1);
+            version.setVersionNo(nextVersion);
             version.setSnapshotJson(JSON.toJSONString(atom));
             version.setChangeReason(reason);
             try {
                 versionMapper.insert(version);
-                return;
             } catch (DuplicateKeyException e) {
                 if (attempt == 2) throw e;
-                log.debug("Knowledge atom version raced, retrying: atomId={}, version={}",
-                        atom.getAtomId(), version.getVersionNo());
+                continue;
             }
+            // Only advance the version column; a later concurrent snapshot must not be overwritten.
+            atomMapper.update(null, new UpdateWrapper<KnowledgeAtom>()
+                    .eq("id", atom.getId())
+                    .lt("current_version_no", nextVersion)
+                    .set("current_version_no", nextVersion));
+            return;
         }
     }
 

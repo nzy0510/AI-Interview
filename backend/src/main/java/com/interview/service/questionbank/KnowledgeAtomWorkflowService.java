@@ -4,7 +4,6 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.interview.config.QuestionBankAccessProperties;
 import com.interview.entity.KnowledgeAtom;
-import com.interview.entity.KnowledgeAtomVersion;
 import com.interview.mapper.KnowledgeAtomMapper;
 import com.interview.mapper.KnowledgeAtomVersionMapper;
 import com.interview.service.AdminRoleService;
@@ -62,7 +61,7 @@ public class KnowledgeAtomWorkflowService {
         target.setReviewedAt(LocalDateTime.now());
         target.setSuggestedPatchJson(null);
         if (published) atomMapper.insert(target);
-        else atomMapper.updateById(target);
+        else QuestionBankSupport.updateAtomContent(atomMapper, target);
         recordVersion(target, "review:accept-patch");
         return KnowledgeAtomResponse.from(target);
     }
@@ -91,7 +90,7 @@ public class KnowledgeAtomWorkflowService {
         atom.setReviewedBy(currentUserId);
         atom.setReviewedAt(LocalDateTime.now());
         atom.setSuggestedPatchJson(null);
-        atomMapper.updateById(atom);
+        QuestionBankSupport.updateAtomContent(atomMapper, atom);
         recordVersion(atom, "edit:draft");
         return KnowledgeAtomResponse.from(atom);
     }
@@ -172,14 +171,13 @@ public class KnowledgeAtomWorkflowService {
     }
 
     private boolean publishDraftAtom(KnowledgeAtom atom, Long currentUserId, String reason) {
-        atom.setCurrentVersionNo((atom.getCurrentVersionNo() == null ? 1 : atom.getCurrentVersionNo()) + 1);
         atom.setStatus("PUBLISHED");
         atom.setPublicationStatus("PUBLISHED");
         atom.setVectorStatus("PENDING");
         atom.setVectorErrorMessage(null);
         atom.setPublishedBy(currentUserId);
         atom.setPublishedAt(LocalDateTime.now());
-        atomMapper.updateById(atom);
+        QuestionBankSupport.updateAtomContent(atomMapper, atom);
         recordVersion(atom, reason);
         boolean synced = questionBankService.syncAtom(atom);
         if (synced) {
@@ -189,12 +187,7 @@ public class KnowledgeAtomWorkflowService {
     }
 
     private void recordVersion(KnowledgeAtom atom, String reason) {
-        KnowledgeAtomVersion version = new KnowledgeAtomVersion();
-        version.setAtomId(atom.getAtomId());
-        version.setVersionNo(atom.getCurrentVersionNo() == null ? 1 : atom.getCurrentVersionNo());
-        version.setSnapshotJson(JSON.toJSONString(atom));
-        version.setChangeReason(reason);
-        versionMapper.insert(version);
+        QuestionBankSupport.recordVersion(atomMapper, versionMapper, atom, reason);
     }
 
     private KnowledgeAtom cloneAsDraftRevision(KnowledgeAtom atom, Long currentUserId) {
@@ -217,7 +210,7 @@ public class KnowledgeAtomWorkflowService {
         draft.setKnowledgeBaseId(atom.getKnowledgeBaseId());
         draft.setSourceFileId(atom.getSourceFileId());
         draft.setSourceEvidenceJson(atom.getSourceEvidenceJson());
-        draft.setCurrentVersionNo((atom.getCurrentVersionNo() == null ? 1 : atom.getCurrentVersionNo()) + 1);
+        draft.setCurrentVersionNo(atom.getCurrentVersionNo());
         draft.setReviewStatus("PASS");
         draft.setReviewReason("人工修订后通过");
         draft.setReviewConfidence(atom.getReviewConfidence());
