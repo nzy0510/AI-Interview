@@ -1,11 +1,20 @@
 package com.interview.config;
 
+import com.zaxxer.hikari.HikariConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.web.ServerProperties;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
+import org.springframework.core.env.SystemEnvironmentPropertySource;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -127,6 +136,60 @@ class DeploymentConfigurationContractTest {
                 .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED: ${APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED:-false}");
         assertThat(Files.readString(Path.of("..", ".env.prod.example")))
                 .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=false");
+    }
+
+    @Test
+    @DisplayName("HTTPS 入口直接向后端传递可信 IP 并保留请求体上限")
+    void shouldKeepHttpsIngressAndClientIpBoundary() throws IOException {
+        assertThat(Files.readString(Path.of("..", "Caddyfile")))
+                .contains("https://{$DOMAIN_NAME}")
+                .contains("@backend path /api /api/* /uploads /uploads/*")
+                .contains("handle @backend", "reverse_proxy backend:8080")
+                .contains("header_up X-Real-IP {remote_host}")
+                .contains("max_size 22020096", "flush_interval -1")
+                .contains("reverse_proxy frontend:80")
+                .doesNotContain("auto_https disable")
+                .doesNotContainPattern("(?m)^\\s*:80\\s*\\{");
+    }
+
+    @Test
+    @DisplayName("小内存覆盖保留数据持久化并将连接与线程预算绑定到现有框架")
+    void shouldBindSmallRuntimeLimitsWithoutChangingDataOrAuthentication() throws IOException {
+        Map<?, ?> compose = new Yaml().load(Files.readString(Path.of("..", "docker-compose.small.yml")));
+        Map<?, ?> services = (Map<?, ?>) compose.get("services");
+        assertThat(services.keySet().stream().map(Object::toString).toList())
+                .containsExactlyInAnyOrder("backend", "db", "redis", "frontend", "caddy");
+        long totalMebibytes = 0;
+        for (Object value : services.values()) {
+            Map<?, ?> service = (Map<?, ?>) value;
+            String memoryLimit = service.get("mem_limit").toString();
+            assertThat(memoryLimit).matches("\\d+m");
+            totalMebibytes += Long.parseLong(memoryLimit.substring(0, memoryLimit.length() - 1));
+            assertThat(service.keySet().stream().map(Object::toString).toList())
+                    .doesNotContain("volumes", "ports", "image", "build");
+        }
+        assertThat(totalMebibytes).isEqualTo(1344);
+
+        Map<?, ?> backend = (Map<?, ?>) services.get("backend");
+        Map<?, ?> configuredEnvironment = (Map<?, ?>) backend.get("environment");
+        Map<String, Object> environment = new HashMap<>();
+        configuredEnvironment.forEach((key, value) -> environment.put(key.toString(), value));
+        assertThat(environment).doesNotContainKeys("APP_AUTH_MODE", "APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED");
+        assertThat(environment.get("JAVA_TOOL_OPTIONS").toString()).contains("-Xmx320m", "-XX:+ExitOnOutOfMemoryError");
+        Binder binder = new Binder(ConfigurationPropertySources.from(
+                new SystemEnvironmentPropertySource("small-systemEnvironment", environment)));
+        HikariConfig hikari = binder.bind("spring.datasource.hikari", Bindable.of(HikariConfig.class)).get();
+        ServerProperties server = binder.bind("server", Bindable.of(ServerProperties.class)).get();
+        assertThat(hikari.getMaximumPoolSize()).isEqualTo(5);
+        assertThat(hikari.getMinimumIdle()).isEqualTo(1);
+        assertThat(server.getTomcat().getThreads().getMax()).isEqualTo(50);
+        assertThat(server.getTomcat().getThreads().getMinSpare()).isEqualTo(5);
+
+        Map<?, ?> db = (Map<?, ?>) services.get("db");
+        assertThat(db.get("command").toString())
+                .contains("--innodb-buffer-pool-size=128M", "--max-connections=20", "--temptable-max-ram=32M");
+        Map<?, ?> redis = (Map<?, ?>) services.get("redis");
+        assertThat(redis.get("command").toString()).contains("--appendonly, yes", "--maxmemory, 32mb", "noeviction");
     }
 
     private void assertDefaults(Path path) throws IOException {

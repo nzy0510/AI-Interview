@@ -1,17 +1,18 @@
-{
-    auto_https disable_redirects
-}
+https://{$DOMAIN_NAME} {
+    encode zstd gzip
 
-:80 {
-    handle {
-        reverse_proxy frontend:80 {
+    @backend path /api /api/* /uploads /uploads/*
+    handle @backend {
+        # Match Nginx's 21 MiB limit when API traffic bypasses the static server.
+        request_body {
+            max_size 22020096
+        }
+        reverse_proxy backend:8080 {
+            # Caddy is the public ingress; discard client-supplied IP claims.
+            header_up X-Real-IP {remote_host}
             flush_interval -1
         }
     }
-}
-
-https://{$DOMAIN_NAME} {
-    encode zstd gzip
 
     handle {
         reverse_proxy frontend:80 {

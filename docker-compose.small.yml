@@ -1,0 +1,43 @@
+# Apply after docker-compose.prod.yml and docker-compose.external.yml.
+# Starting limits for 2 GiB testing, not a measured capacity guarantee.
+# Build images elsewhere; these limits apply to runtime containers only.
+x-bounded-logging: &bounded-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  backend:
+    logging: *bounded-logging
+    mem_limit: 640m
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx320m -XX:+ExitOnOutOfMemoryError"
+      SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: "5"
+      SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: "1"
+      SERVER_TOMCAT_THREADS_MAX: "50"
+      SERVER_TOMCAT_THREADS_MINSPARE: "5"
+
+  db:
+    logging: *bounded-logging
+    mem_limit: 512m
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --innodb-buffer-pool-size=128M
+      - --max-connections=20
+      - --temptable-max-ram=32M
+
+  redis:
+    logging: *bounded-logging
+    mem_limit: 96m
+    # Preserve AOF and live session/rate-limit keys; reject writes when full.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "32mb", "--maxmemory-policy", "noeviction"]
+
+  frontend:
+    logging: *bounded-logging
+    mem_limit: 48m
+
+  caddy:
+    logging: *bounded-logging
+    mem_limit: 48m

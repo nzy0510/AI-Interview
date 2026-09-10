@@ -8,9 +8,26 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("ChatConfig embedding model")
 class ChatConfigEmbeddingModelTest {
+
+    @Test
+    void shouldRejectUnknownProviderInsteadOfLoadingALocalModel() {
+        ChatConfig config = new ChatConfig();
+        ReflectionTestUtils.setField(config, "embeddingProvider", "misspelled-provider");
+        assertThatThrownBy(config::embeddingModel).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void shouldRequireCredentialsForOpenAiCompatibleEmbeddings() {
+        ChatConfig config = new ChatConfig();
+        ReflectionTestUtils.setField(config, "embeddingProvider", "openai-compatible");
+        assertThatThrownBy(config::embeddingModel)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.embedding.base-url");
+    }
 
     @Test
     @DisplayName("uses local AllMiniLM embedding by default")

@@ -154,6 +154,9 @@ interview:
 app:
   auth:
     mode: ${APP_AUTH_MODE:email-verified}
+  bootstrap-admin:
+    username: ${APP_BOOTSTRAP_ADMIN_USERNAME:}
+    email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
   analytics:
     hash-salt: ${APP_ANALYTICS_HASH_SALT:}
   rate-limit:
@@ -191,6 +194,11 @@ app:
   embedding:
     provider: ${APP_EMBEDDING_PROVIDER:all-minilm}
     endpoint: ${APP_EMBEDDING_ENDPOINT:}
+    base-url: ${APP_EMBEDDING_BASE_URL:}
+    api-key: ${APP_EMBEDDING_API_KEY:}
+    model: ${APP_EMBEDDING_MODEL:text-embedding-v4}
+    dimensions: ${APP_EMBEDDING_DIMENSIONS:768}
+    batch-size: ${APP_EMBEDDING_BATCH_SIZE:10}
     query-prefix: ${APP_EMBEDDING_QUERY_PREFIX:}
     passage-prefix: ${APP_EMBEDDING_PASSAGE_PREFIX:}
     connect-timeout-ms: ${APP_EMBEDDING_CONNECT_TIMEOUT_MS:3000}
@@ -201,6 +209,8 @@ question-bank:
   qdrant:
     enabled: ${QDRANT_ENABLED:true}
     url: ${QDRANT_URL:http://localhost:6333}
+    api-key: ${QDRANT_API_KEY:}
+    initialize-payload-indexes: ${QDRANT_INITIALIZE_PAYLOAD_INDEXES:false}
     collection: ${QDRANT_COLLECTION:interview_atoms}
     vector-size: ${QDRANT_VECTOR_SIZE:384}
     connect-timeout-ms: ${QDRANT_CONNECT_TIMEOUT_MS:3000}

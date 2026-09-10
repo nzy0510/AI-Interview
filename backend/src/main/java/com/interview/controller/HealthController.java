@@ -1,16 +1,15 @@
 package com.interview.controller;
 
 import com.interview.common.Result;
+import com.interview.service.questionbank.QdrantVectorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.RedisCallback;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,6 +19,7 @@ import java.util.Map;
 public class HealthController {
 
     private final JdbcTemplate jdbcTemplate;
+    private final QdrantVectorService qdrantVectorService;
 
     @Autowired(required = false)
     private StringRedisTemplate stringRedisTemplate;
@@ -27,11 +27,9 @@ public class HealthController {
     @Value("${question-bank.qdrant.enabled:true}")
     private boolean qdrantEnabled;
 
-    @Value("${question-bank.qdrant.url:http://localhost:6333}")
-    private String qdrantUrl;
-
-    public HealthController(JdbcTemplate jdbcTemplate) {
+    public HealthController(JdbcTemplate jdbcTemplate, QdrantVectorService qdrantVectorService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.qdrantVectorService = qdrantVectorService;
     }
 
     @GetMapping
@@ -66,15 +64,6 @@ public class HealthController {
 
     private String qdrantStatus() {
         if (!qdrantEnabled) return "DISABLED";
-        try {
-            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-            factory.setConnectTimeout(1000);
-            factory.setReadTimeout(1000);
-            RestTemplate restTemplate = new RestTemplate(factory);
-            restTemplate.getForObject(qdrantUrl + "/healthz", String.class);
-            return "UP";
-        } catch (Exception e) {
-            return "DOWN";
-        }
+        return qdrantVectorService.isAvailable() ? "UP" : "DOWN";
     }
 }

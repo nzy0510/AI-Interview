@@ -1,0 +1,8 @@
+# Apply last when running images built on the development machine or CI.
+services:
+  backend:
+    build: !reset null
+    image: interwise/backend:${INTERWISE_IMAGE_TAG:?Set the verified image release tag}
+  frontend:
+    build: !reset null
+    image: interwise/frontend:${INTERWISE_IMAGE_TAG:?Set the verified image release tag}

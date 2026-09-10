@@ -11,9 +11,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
@@ -36,6 +39,14 @@ public class QdrantVectorService {
 
     @Value("${question-bank.qdrant.url:http://localhost:6333}")
     private String qdrantUrl;
+
+    @Value("${question-bank.qdrant.api-key:}")
+    private String apiKey = "";
+
+    @Value("${question-bank.qdrant.initialize-payload-indexes:false}")
+    private boolean initializePayloadIndexes;
+
+    private volatile boolean payloadIndexesReady;
 
     @Value("${question-bank.qdrant.collection:interview_atoms}")
     private String collectionName;
@@ -67,20 +78,30 @@ public class QdrantVectorService {
     }
 
     public boolean ensureCollection() {
+        return ensureCollection(true);
+    }
+
+    public boolean isAvailable() {
+        try {
+            return ensureCollection(false);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private boolean ensureCollection(boolean allowInitialization) {
         if (!enabled) return false;
         try {
-            Map<?, ?> collection = restTemplate.getForObject(
-                    endpoint("/collections/" + collectionName), Map.class);
+            Map<?, ?> collection = restTemplate.exchange(endpoint("/collections/" + collectionName),
+                    HttpMethod.GET, new HttpEntity<>(requestHeaders()), Map.class).getBody();
             Integer actualVectorSize = extractVectorSize(collection);
             if (actualVectorSize != null && actualVectorSize != vectorSize) {
                 throw new IllegalStateException("Qdrant collection " + collectionName
                         + " vector size mismatch: expected " + vectorSize
                         + ", actual " + actualVectorSize);
             }
-            return true;
-        } catch (IllegalStateException e) {
-            throw e;
-        } catch (RestClientException ignored) {
+        } catch (HttpClientErrorException.NotFound e) {
+            if (!allowInitialization) return false;
             try {
                 Map<String, Object> body = Map.of(
                         "vectors", Map.of(
@@ -89,13 +110,34 @@ public class QdrantVectorService {
                         )
                 );
                 restTemplate.put(endpoint("/collections/" + collectionName), jsonEntity(body));
+                payloadIndexesReady = false;
                 log.info("Qdrant collection initialized: {}", collectionName);
-                return true;
-            } catch (RestClientException e) {
-                log.warn("Qdrant collection initialization skipped: {}", e.getMessage());
+            } catch (RestClientException creationError) {
+                log.warn("Qdrant collection initialization failed: {}", failureSummary(creationError));
                 return false;
             }
+        } catch (RestClientException e) {
+            log.warn("Qdrant collection check failed: {}", failureSummary(e));
+            return false;
         }
+        try {
+            if (allowInitialization && initializePayloadIndexes) ensurePayloadIndexes();
+            return true;
+        } catch (RestClientException e) {
+            log.warn("Qdrant payload index initialization failed: {}", failureSummary(e));
+            return false;
+        }
+    }
+
+    private synchronized void ensurePayloadIndexes() {
+        if (payloadIndexesReady) return;
+        for (String field : List.of("atom_id", "category", "status", "publication_status", "vector_status", "scope",
+                "owner_user_id", "position_id", "knowledge_base_id")) {
+            String schema = field.endsWith("_id") && !"atom_id".equals(field) ? "integer" : "keyword";
+            restTemplate.put(endpoint("/collections/" + collectionName + "/index?wait=true"),
+                    jsonEntity(Map.of("field_name", field, "field_schema", schema)));
+        }
+        payloadIndexesReady = true;
     }
 
     private Integer extractVectorSize(Map<?, ?> collection) {
@@ -140,7 +182,7 @@ public class QdrantVectorService {
                     jsonEntity(Map.of("points", List.of(point))));
             return true;
         } catch (Exception e) {
-            log.warn("Qdrant upsert failed for atom {}: {}", atom.getAtomId(), e.getMessage());
+            log.warn("Qdrant upsert failed for atom {}: {}", atom.getAtomId(), failureSummary(e));
             return false;
         }
     }
@@ -153,7 +195,7 @@ public class QdrantVectorService {
                     jsonEntity(body), Map.class);
             return true;
         } catch (Exception e) {
-            log.warn("Qdrant delete failed for atom {}: {}", atomId, e.getMessage());
+            log.warn("Qdrant delete failed for atom {}: {}", atomId, failureSummary(e));
             return false;
         }
     }
@@ -173,7 +215,7 @@ public class QdrantVectorService {
                                   Long positionId,
                                   Long knowledgeBaseId) {
         if (!enabled || query == null || query.isBlank()) return List.of();
-        if (!ensureCollection()) {
+        if (!ensureCollection(false)) {
             throw new IllegalStateException("Qdrant collection is unavailable");
         }
         try {
@@ -205,8 +247,8 @@ public class QdrantVectorService {
             }
             return hits;
         } catch (Exception e) {
-            log.warn("Qdrant search failed: {}", e.getMessage());
-            throw new IllegalStateException("Qdrant vector search failed", e);
+            log.warn("Qdrant search failed: {}", failureSummary(e));
+            throw new IllegalStateException("Qdrant vector search failed");
         }
     }
 
@@ -279,9 +321,19 @@ public class QdrantVectorService {
     }
 
     private HttpEntity<Map<String, Object>> jsonEntity(Map<String, Object> body) {
+        return new HttpEntity<>(body, requestHeaders());
+    }
+
+    private HttpHeaders requestHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        return new HttpEntity<>(body, headers);
+        if (apiKey != null && !apiKey.isBlank()) headers.set("api-key", apiKey.trim());
+        return headers;
+    }
+
+    private String failureSummary(Exception error) {
+        return error instanceof RestClientResponseException response
+                ? "HTTP " + response.getStatusCode().value() : error.getClass().getSimpleName();
     }
 
     @Data

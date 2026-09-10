@@ -1,5 +1,7 @@
 [CmdletBinding()]
 param(
+    [switch]$ExternalServices,
+    [string]$ExternalEnvFile = '.env.external.local',
     [switch]$ExposeDataServices,
     [ValidateRange(1, 65535)]
     [int]$RedisHostPort = 16379,
@@ -17,7 +19,7 @@ function Get-LocalEnvironmentValues {
     param([string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        throw 'Missing .env. Copy .env.example to .env and replace every required placeholder before deploying.'
+        throw "Missing environment file: $Path. Copy the corresponding example and configure it before deploying."
     }
 
     $values = @{}
@@ -94,6 +96,20 @@ try {
     $fileValues = Get-LocalEnvironmentValues -Path (Join-Path $projectRoot '.env')
     Assert-LocalSecretsConfigured -FileValues $fileValues
 
+    if ($ExternalServices) {
+        if ($ExposeDataServices) {
+            throw 'ExternalServices cannot be combined with ExposeDataServices because there is no local Qdrant service.'
+        }
+        $externalValues = Get-LocalEnvironmentValues -Path $ExternalEnvFile
+        foreach ($setting in @('APP_EMBEDDING_BASE_URL', 'APP_EMBEDDING_API_KEY', 'QDRANT_URL', 'QDRANT_API_KEY', 'QDRANT_COLLECTION')) {
+            $settingValue = Get-EffectiveEnvironmentValue -Name $setting -FileValues $externalValues
+            if ([string]::IsNullOrWhiteSpace($settingValue) -or $settingValue -match '(?i)replace_with|your-workspace|your-cluster') {
+                throw "$setting is missing or still contains an example value in the external services configuration."
+            }
+        }
+        $composeArgs += @('--env-file', '.env', '--env-file', $ExternalEnvFile, '-f', 'docker-compose.external.yml')
+    }
+
     if ($ExposeDataServices) {
         if ($RedisHostPort -eq $QdrantHostPort) {
             throw 'RedisHostPort and QdrantHostPort must be different when data services are exposed.'
@@ -159,6 +175,15 @@ try {
     if (-not $ready) {
         & docker @dockerContextArgs @composeArgs logs --tail 100 backend frontend
         throw 'Services started, but the frontend API readiness check did not return HTTP 200.'
+    }
+
+    if ($ExternalServices) {
+        # Stop only the replaced services; retain their containers and all stored data.
+        & docker @dockerContextArgs compose -f docker-compose.example.yml stop qdrant embedding-service
+        if ($LASTEXITCODE -ne 0) {
+            throw 'External services mode started, but the old local vector services could not be stopped.'
+        }
+        Write-Warning 'External services mode does not migrate existing vectors. Verify the new collection before using semantic retrieval.'
     }
 
     Write-Host 'InterWise local deployment is ready at http://127.0.0.1'

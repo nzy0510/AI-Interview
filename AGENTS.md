@@ -73,6 +73,8 @@ APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=true
 
 Windows 本地完整部署统一从仓库根目录运行 `./scripts/deploy-local.ps1`。不要手工设置 `DOCKER_HOST`；脚本固定使用 Docker Desktop `desktop-linux` context、保留 BuildKit/Maven 缓存并在构建失败时自动重试一次。Redis 与 Qdrant 默认只在 Compose 网络内开放；只有宿主机调试时才使用 `-ExposeDataServices` 暴露可配置端口。
 
+本地已切换外部 embedding / Qdrant 时，使用 `./scripts/deploy-local.ps1 -ExternalServices` 和私有 `.env.external.local`，保留本地认证与完整题库权限；不要在后续重建时无意切回旧向量服务。数据迁移说明见 `docs/deployment/external-services.md`。
+
 ## 验收说明
 
 - 涉及前端页面改动时，一定要操控内置浏览器进行实际页面验收，不合格则返工，成功后才交付。

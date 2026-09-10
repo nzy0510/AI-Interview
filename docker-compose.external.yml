@@ -1,0 +1,38 @@
+# Apply after docker-compose.example.yml or docker-compose.prod.yml (Compose 2.24.4+).
+# Keep authentication and question-bank permissions from the base configuration.
+services:
+  qdrant: !reset null
+  embedding-service: !reset null
+
+  backend:
+    # Use the frontend API proxy; a separate host port is unnecessary in this mode.
+    ports: !reset []
+    depends_on:
+      qdrant: !reset null
+      embedding-service: !reset null
+    environment:
+      APP_EMBEDDING_PROVIDER: openai-compatible
+      APP_EMBEDDING_BASE_URL: ${APP_EMBEDDING_BASE_URL:?Set the external embedding base URL}
+      APP_EMBEDDING_API_KEY: ${APP_EMBEDDING_API_KEY:?Set the external embedding API key}
+      APP_EMBEDDING_MODEL: ${APP_EMBEDDING_MODEL:-text-embedding-v4}
+      APP_EMBEDDING_DIMENSIONS: ${QDRANT_VECTOR_SIZE:-768}
+      APP_EMBEDDING_BATCH_SIZE: ${APP_EMBEDDING_BATCH_SIZE:-10}
+      APP_EMBEDDING_ENDPOINT: ""
+      APP_EMBEDDING_QUERY_PREFIX: ""
+      APP_EMBEDDING_PASSAGE_PREFIX: ""
+      QDRANT_ENABLED: "true"
+      QDRANT_URL: ${QDRANT_URL:?Set the remote Qdrant URL}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:?Set the remote Qdrant API key}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:?Set a separate collection for this environment}
+      QDRANT_VECTOR_SIZE: ${QDRANT_VECTOR_SIZE:-768}
+      QDRANT_INITIALIZE_PAYLOAD_INDEXES: "true"
+      # Index migration is explicit; starting the app must not bill for a bulk rebuild.
+      QUESTION_BANK_SEED_FROM_JSON: "false"
+      QUESTION_BANK_REINDEX_ON_STARTUP: "false"
+      APP_BOOTSTRAP_ADMIN_USERNAME: ${APP_BOOTSTRAP_ADMIN_USERNAME:-}
+      APP_BOOTSTRAP_ADMIN_EMAIL: ${APP_BOOTSTRAP_ADMIN_EMAIL:-}
+      APP_KNOWLEDGE_BUILD_MAX_FILE_SIZE_BYTES: ${APP_KNOWLEDGE_BUILD_MAX_FILE_SIZE_BYTES:-20971520}
+      APP_KNOWLEDGE_BUILD_MAX_FILES: ${APP_KNOWLEDGE_BUILD_MAX_FILES:-10}
+      APP_KNOWLEDGE_BUILD_MAX_TEXT_CHARS: ${APP_KNOWLEDGE_BUILD_MAX_TEXT_CHARS:-1000000}
+      APP_KNOWLEDGE_BUILD_MAX_CHUNKS: ${APP_KNOWLEDGE_BUILD_MAX_CHUNKS:-50}
+      APP_KNOWLEDGE_BUILD_MAX_CANDIDATES: ${APP_KNOWLEDGE_BUILD_MAX_CANDIDATES:-300}
