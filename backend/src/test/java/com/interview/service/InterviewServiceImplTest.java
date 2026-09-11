@@ -26,7 +26,6 @@ import com.interview.service.impl.InterviewServiceImpl;
 import com.interview.service.orchestration.InterviewAction;
 import com.interview.service.orchestration.InterviewOrchestrator;
 import com.interview.service.orchestration.InterviewTurnPlan;
-import com.interview.service.orchestration.OrchestrationMode;
 import com.interview.service.orchestration.RuleBasedInterviewOrchestrator;
 import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
@@ -763,93 +762,57 @@ class InterviewServiceImplTest {
         assertThat(turnCaptor.getValue().getOrchestrationMode()).isEqualTo("RULE");
         assertThat(turnCaptor.getValue().getDecisionAction()).isEqualTo("CONTINUE_PHASE");
         assertThat(turnCaptor.getValue().getDecisionJson())
-                .contains("\"summary\"", "\"tools\"");
+                .contains("\"evidenceAtomIds\"", "\"consumedAtomIds\"");
     }
 
     @Test
-    @DisplayName("persists sanitized Agent decision metadata after a successful stream")
-    void shouldPersistAgentDecisionMetadata() {
-        stubChatStream(33L, InterviewPhase.TECHNICAL);
-        InterviewOrchestrator agentOrchestrator = mock(InterviewOrchestrator.class);
-        when(agentOrchestrator.plan(any())).thenReturn(new InterviewTurnPlan(
-                InterviewPhase.TECHNICAL,
-                InterviewAction.DEEPEN,
-                OrchestrationMode.AGENT,
-                "agent system prompt",
-                "safe evidence",
-                List.of("atom-agent"),
-                List.of("atom-agent"),
-                List.of("searchPositionKnowledge"),
-                "继续深挖当前知识点",
-                null));
-        ReflectionTestUtils.setField(interviewService, "interviewOrchestrator", agentOrchestrator);
+    @DisplayName("题库证据中的决策文案不改变正常回答的规则动作")
+    void shouldNotInferDecisionFromQuotedRetrievalEvidence() {
+        stubChatStream(38L, InterviewPhase.TECHNICAL);
+        when(questionBankService.searchWithMetadata(any())).thenReturn(QuestionBankSearchResponse.builder()
+                .results(List.of(QuestionBankSearchResult.builder()
+                        .atomId("quoted-decision")
+                        .category("AI大模型")
+                        .score(0.9)
+                        .promptContext("示例日志包含：本轮检索决策：补救追问")
+                        .build()))
+                .strategy("QDRANT_VECTOR")
+                .build());
 
-        interviewService.chatStream(1L, 33L, "请继续");
+        interviewService.chatStream(1L, 38L, "先检索相关知识，再根据证据生成问题");
 
         ArgumentCaptor<InterviewTurn> turnCaptor = ArgumentCaptor.forClass(InterviewTurn.class);
         verify(interviewTurnMapper).insert(turnCaptor.capture());
-        assertThat(turnCaptor.getValue().getOrchestrationMode()).isEqualTo("AGENT");
-        assertThat(turnCaptor.getValue().getDecisionAction()).isEqualTo("DEEPEN");
+        assertThat(turnCaptor.getValue().getDecisionAction()).isEqualTo("CONTINUE_PHASE");
+        verify(sessionStore).addUsedAtoms(38L, List.of("quoted-decision"));
+    }
+
+    @Test
+    @DisplayName("补救追问保留证据快照，但不提前消耗知识点")
+    void shouldPersistRemedialEvidenceWithoutConsumingAtoms() {
+        stubChatStream(33L, InterviewPhase.TECHNICAL);
+        when(questionBankService.searchWithMetadata(any())).thenReturn(QuestionBankSearchResponse.builder()
+                .results(List.of(QuestionBankSearchResult.builder()
+                        .atomId("atom-remedial")
+                        .category("AI大模型")
+                        .score(0.9)
+                        .promptContext("safe evidence")
+                        .build()))
+                .strategy("QDRANT_VECTOR")
+                .build());
+
+        interviewService.chatStream(1L, 33L, "我不会");
+
+        ArgumentCaptor<InterviewTurn> turnCaptor = ArgumentCaptor.forClass(InterviewTurn.class);
+        verify(interviewTurnMapper).insert(turnCaptor.capture());
+        assertThat(turnCaptor.getValue().getOrchestrationMode()).isEqualTo("RULE");
+        assertThat(turnCaptor.getValue().getDecisionAction()).isEqualTo("REMEDIATE");
+        assertThat(turnCaptor.getValue().getRetrievedAtomIds()).contains("atom-remedial");
+        assertThat(turnCaptor.getValue().getContextSnapshotJson()).contains("safe evidence");
         assertThat(turnCaptor.getValue().getDecisionJson())
-                .contains("searchPositionKnowledge", "atom-agent", "继续深挖当前知识点")
-                .doesNotContain("agent system prompt", "safe evidence");
-        verify(sessionStore).addUsedAtoms(33L, List.of("atom-agent"));
-    }
-
-    @Test
-    @DisplayName("Agent 回退事件只暴露安全原因分类，不暴露内部 reasonCode")
-    void shouldExposeOnlySafeFallbackCategory() {
-        Map<String, String> categories = Map.of(
-                "AGENT_TIMEOUT", "TIMEOUT",
-                "AGENT_PROVIDER_UNAVAILABLE", "PROVIDER",
-                "AGENT_TOOL_FAILURE", "TOOL",
-                "AGENT_INVALID_JSON", "OUTPUT",
-                "AGENT_MODEL_FAILURE", "MODEL",
-                "AGENT_SCHEDULING_FAILURE", "SYSTEM");
-
-        categories.forEach((reasonCode, category) -> {
-            InterviewTurnPlan plan = new InterviewTurnPlan(
-                    InterviewPhase.TECHNICAL,
-                    InterviewAction.CONTINUE_PHASE,
-                    OrchestrationMode.RULE_FALLBACK,
-                    "fallback prompt",
-                    "",
-                    List.of(),
-                    List.of(),
-                    List.of(),
-                    "已切换稳定策略",
-                    reasonCode);
-
-            @SuppressWarnings("unchecked")
-            Map<String, Object> event = ReflectionTestUtils.invokeMethod(
-                    interviewService, "orchestrationEvent", plan);
-
-            assertThat(event)
-                    .containsEntry("fallbackCategory", category)
-                    .doesNotContainKey("fallbackReasonCode");
-        });
-    }
-
-    @Test
-    @DisplayName("非回退编排不发送降级原因分类")
-    void shouldNotExposeFallbackCategoryOutsideFallbackMode() {
-        InterviewTurnPlan plan = new InterviewTurnPlan(
-                InterviewPhase.TECHNICAL,
-                InterviewAction.DEEPEN,
-                OrchestrationMode.AGENT,
-                "agent prompt",
-                "",
-                List.of(),
-                List.of(),
-                List.of(),
-                "继续深挖",
-                "AGENT_TIMEOUT");
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> event = ReflectionTestUtils.invokeMethod(
-                interviewService, "orchestrationEvent", plan);
-
-        assertThat(event).doesNotContainKey("fallbackCategory");
+                .contains("atom-remedial", "\"consumedAtomIds\":[]")
+                .doesNotContain("safe evidence", "tools", "fallbackReasonCode");
+        verify(sessionStore).addUsedAtoms(33L, List.of());
     }
 
     @Test
@@ -878,23 +841,19 @@ class InterviewServiceImplTest {
     }
 
     @Test
-    @DisplayName("流式生成失败时不提前提交 Agent 规划的下一阶段")
+    @DisplayName("流式生成失败时不提前提交规则计划的下一阶段")
     void shouldNotPersistPlannedPhaseWhenStreamFails() {
         InterviewRecord record = stubChatStreamWithoutStreaming(34L, InterviewPhase.TECHNICAL);
         record.setPhase(InterviewPhase.TECHNICAL.name());
-        InterviewOrchestrator agentOrchestrator = mock(InterviewOrchestrator.class);
-        when(agentOrchestrator.plan(any())).thenReturn(new InterviewTurnPlan(
+        InterviewOrchestrator orchestrator = mock(InterviewOrchestrator.class);
+        when(orchestrator.plan(any())).thenReturn(new InterviewTurnPlan(
                 InterviewPhase.HR,
-                InterviewAction.MOVE_TO_HR,
-                OrchestrationMode.AGENT,
+                InterviewAction.CONTINUE_PHASE,
                 "hr system prompt",
                 "",
                 List.of(),
-                List.of(),
-                List.of(),
-                "进入 HR 面试",
-                null));
-        ReflectionTestUtils.setField(interviewService, "interviewOrchestrator", agentOrchestrator);
+                List.of()));
+        ReflectionTestUtils.setField(interviewService, "interviewOrchestrator", orchestrator);
         doAnswer(invocation -> {
             StreamingResponseHandler<AiMessage> handler = invocation.getArgument(1);
             handler.onError(new IllegalStateException("stream failed"));

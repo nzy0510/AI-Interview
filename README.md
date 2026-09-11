@@ -1,13 +1,13 @@
 # InterWise AI 模拟面试系统
 
-InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把有边界的面试 Agent、简历画像、文字面试、视频面试、数据库题库、动态 RAG 追问、面试复盘和 AI Mentor 打通到同一条学习闭环中，重点解决“只会单轮问答、题库与模拟面试割裂、追问缺少依据、训练结果难以复盘”的问题。
+InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把规则驱动的面试流程、简历画像、文字面试、视频面试、数据库题库、动态 RAG 追问、面试复盘和 AI Mentor 打通到同一条学习闭环中，重点解决“只会单轮问答、题库与模拟面试割裂、追问缺少依据、训练结果难以复盘”的问题。
 
 后端基于 `Spring Boot 3 + MyBatis-Plus + LangChain4j + MySQL + Redis + Qdrant`，前端基于 `Vue 3 + Vite + Element Plus`。Docker 部署默认使用独立 `embedding-service` 加载 `intfloat/multilingual-e5-base`，通过 Qdrant 为面试追问提供可重建的语义索引。
 
 ## 项目亮点
 
-- 动态面试 RAG：不是传统知识库问答式“用户问题 -> 检索 -> 摘要回答”，而是在技术阶段由受控 Agent 按需检索，或由稳定规则在技术 / HR 阶段检索，把候选人回答、岗位、阶段、历史已问知识点和召回结果转成“下一问决策信号”。
-- 有边界的单轮 Agent：技术面每轮可按需调用岗位知识、当前简历和学习覆盖三个只读工具，自主选择深挖、补救、换题、项目追问或阶段切换；工具次数、作用域、输出格式和失败回退均受服务端约束。
+- 动态面试 RAG：在规则计算出的技术 / HR 阶段检索岗位题库，把候选人真实回答、历史已用知识点和召回结果转成下一问的证据与提示。
+- 稳定规则编排：服务端状态机推进阶段，检索规则明确选择自然推进、补救或换题，再由用户启用的模型流式生成下一问。
 - 模拟面试与题库打通：MySQL 保存可审核、可发布、可归档的知识原子，Qdrant 只作为可重建的语义索引；只有 `PUBLISHED + PASS + SYNCED` Atom 才能进入面试追问链路。
 - 追问路径更贴近真实面试：检索按岗位、知识库及公共 / 私有 owner 作用域隔离，结合低信息回答、弱召回、连续回避、已用 Atom 排除等信号，决定补救追问、切换知识点或继续深挖；难度用于面试 Prompt，不冒充检索过滤条件。
 - 多模式训练闭环：支持文字面试、视频面试、简历画像、历史报告、AI Mentor 分析和知识覆盖率复盘。
@@ -107,24 +107,22 @@ flowchart LR
     Web -->|"REST / SSE"| API["Spring Boot API"]
 
     API --> Auth["JWT / 权限 / 用户 LLM 配置"]
-    API --> Orchestrator["InterviewOrchestrator"]
+    API --> Orchestrator["稳定规则面试编排"]
     API --> Pipeline["受控题库入库流水线"]
     API --> Review["报告 / 岗位级 AI Mentor"]
 
-    Orchestrator --> Agent["技术轮规划 Agent"]
-    Orchestrator --> Rule["阶段状态机 / 稳定规则"]
-    Agent --> Tools["岗位知识 / 当前简历 / 岗位覆盖<br/>服务端绑定的只读工具"]
+    Orchestrator --> Rule["阶段状态机"]
+    Orchestrator --> Retrieval["当前岗位 RAG<br/>回答信号 / 证据门槛 / 消费排重"]
     Orchestrator --> Generator["流式下一问生成"]
 
     Pipeline --> Jobs["解析 / 分类 / 生成 / 监督 / 修复 / 终审"]
-    Agent --> LLM["当前用户启用的<br/>OpenAI-compatible Provider"]
-    Generator --> LLM
+    Generator --> LLM["当前用户启用的<br/>OpenAI-compatible Provider"]
     Jobs --> LLM
 
     API --> MySQL[("MySQL<br/>业务真相 / app_job")]
     API --> Redis[("Redis<br/>会话 / 限流 / Mentor 缓存")]
-    Tools --> MySQL
-    Tools --> Qdrant[("Qdrant<br/>可重建语义索引")]
+    Retrieval --> MySQL
+    Retrieval --> Qdrant[("Qdrant<br/>可重建语义索引")]
     Jobs --> MySQL
     API -->|"请求 query / passage 向量"| Embed["embedding-service<br/>multilingual-e5-base"]
     API -->|"检索 / upsert / delete"| Qdrant
@@ -146,7 +144,7 @@ flowchart LR
 │   ├── src/main/java/com/interview/
 │   │   ├── controller/              # REST API
 │   │   ├── service/                 # 面试、简历、Mentor、RAG、题库服务
-│   │   │   └── orchestration/       # Agent 契约、只读工具与稳定规则回退
+│   │   │   └── orchestration/       # 稳定规则编排与单轮计划
 │   │   ├── entity/                  # MySQL 实体
 │   │   └── config/                  # LLM、Redis、Embedding、JWT 等配置
 │   └── src/main/resources/db/migration/
@@ -155,7 +153,7 @@ flowchart LR
 ├── embedding-service/               # FastAPI multilingual-e5 向量服务
 ├── scripts/question_bank_import.py  # 本机题库导入包生成脚本
 ├── skills/interview-question-bank/  # 本机题库维护 skill
-├── docs/adr/                        # Agent 与题库流水线架构决策
+├── docs/adr/                        # 面试与题库流水线架构决策
 ├── docs/rag-chain-summary.md        # 当前 RAG 链路与实现边界
 ├── image                            # 系统架构图与 RAG 流程图
 ├── docker-compose.example.yml       # 本地 Compose 模板
@@ -170,7 +168,7 @@ flowchart LR
 
 - 文字面试：SSE 流式生成，按面试阶段推进，支持技术追问、HR 软技能阶段和结束总结。
 - 视频面试：摄像头与语音交互入口，结合浏览器能力进行更接近真实场景的训练。
-- 面试 Agent：技术阶段先生成受约束的下一问计划，再驱动真实 Prompt 和阶段；页面展示安全决策摘要，异常时不中断整场面试。
+- 规则驱动追问：按阶段和回答信号形成下一问计划，保留有作用域的 RAG 证据、补救提示和换题规则。
 - 大模型配置：用户可以在侧边栏配置自己的大模型 Provider，并用加密保存的 API Key 驱动面试、报告和 AI Mentor 等用户侧 LLM 功能。
 - 岗位/题库维护：本地账号可新增自己的私有岗位并维护私有题库；所有 `ADMIN` 角色拥有一致的公共题库维护能力，同时也能维护各自的私有内容。
 - 面试准备：选择岗位、难度、重点方向和简历信息，为后续追问提供上下文。
@@ -183,25 +181,22 @@ flowchart LR
 - AI Mentor：按当前可见岗位聚合历史面试、知识覆盖率和风险点，独立生成训练建议，避免跨岗位混合诊断。
 - 知识覆盖：当前以岗位下 `PUBLISHED` Atom 为分母，以成功生成轮次中实际进入面试上下文的去重 Atom 为分子，避免把“仅召回”误算为已考察；它表示知识暴露 / 考察覆盖，不表示候选人已经掌握。
 
-## 有边界 Agent 与动态 RAG
+## 稳定规则与动态 RAG
 
-每轮先由 `InterviewOrchestrator` 形成一个可验证计划。进入技术阶段后，规划 Agent 可以按需调用三个由服务端绑定作用域的只读工具，最终只能返回限定动作；动作和证据会进入实际下一问 Prompt。开场、HR、收尾、Agent 关闭或 Agent 不可用时，系统继续走稳定规则。稳定规则在下一阶段为技术 / HR 时执行题库检索，因此 RAG 不依赖 Agent 可用性。
+每轮由唯一的 `RuleBasedInterviewOrchestrator` 形成下一问计划。`InterviewTurnPlanner` 先计算阶段，技术 / HR 阶段再执行题库检索；检索规则依据真实最新回答和召回结果，返回 `CONTINUE_PHASE`、`REMEDIATE` 或 `SWITCH_TOPIC`，并把相应提示与证据交给流式生成模型。
 
 ```mermaid
 flowchart LR
-    Answer["候选人最新回答"] --> Orchestrator["InterviewOrchestrator"]
-    Orchestrator -->|"当前阶段为 TECHNICAL<br/>且 Agent 可用"| Agent["Tool Calling 规划 Agent"]
-    Agent -->|"按需，最多 3 次"| Knowledge["岗位知识检索"]
-    Agent --> Resume["当前岗位简历证据"]
-    Agent --> Coverage["同岗位学习覆盖"]
-    Agent --> Plan["限定动作 + 安全证据"]
-    Orchestrator -->|"非技术阶段 / 关闭 / 回退"| Rule["阶段状态机 + 稳定规则"]
-    Plan --> Prompt["实际下一问 Prompt / 阶段"]
-    Rule --> Prompt
+    Answer["候选人最新回答"] --> Orchestrator["RuleBasedInterviewOrchestrator"]
+    Orchestrator --> Phase["InterviewTurnPlanner<br/>计算下一阶段"]
+    Phase --> Check{"TECHNICAL / HR？"}
+    Check -->|"是"| Knowledge["当前岗位检索<br/>结构化动作 + 证据"]
+    Check -->|"否"| Prompt["下一问 Prompt / 阶段"]
+    Knowledge --> Prompt
     Prompt --> SSE["当前用户 Provider 流式生成"]
 ```
 
-单轮工具调用上限为 3。输出必须符合严格 JSON 契约；提前进入 HR 有轮次门槛。首次规划超时只让当前轮回退并在下一技术轮重试；连续第二次超时，或发生 Provider、工具、JSON 契约等其他规划失败后，本场固定使用稳定规则。持久化与前端事件只包含模式、动作、工具名、安全摘要和证据原子 ID，不保存思维链或原始 Provider 错误。详细取舍见 [ADR 0001](docs/adr/0001-bounded-interview-agent.md)。
+阶段由服务端规则推进，动作直接来自结构化检索结果，不再从中文 Prompt 反推。比赛版的 Tool Calling 规划、自动回退、专用配置和页面决策条已移除。新轮次继续保存规则动作和证据，历史记录保留兼容读取。详细取舍见 [ADR 0004](docs/adr/0004-stable-rule-interview.md)。
 
 ### 动态 RAG 链路
 
@@ -211,11 +206,7 @@ InterWise 的 RAG 不是独立知识库问答模块，而是嵌入模拟面试�
 
 ```mermaid
 flowchart TD
-    Source{"谁触发检索"}
-    Source -->|"Agent 按需调用"| AgentQuery["上一问 + Agent 的受控检索 query"]
-    Source -->|"稳定规则"| RuleQuery["上一问 + 候选人当前回答"]
-    AgentQuery --> Scope["岗位 / 知识库 / PUBLIC 或 owner 作用域<br/>阶段分类 + usedAtomIds 排除"]
-    RuleQuery --> Scope
+    RuleQuery["上一轮 AI 问题 + 候选人真实最新回答"] --> Scope["岗位 / 知识库 / PUBLIC 或 owner 作用域<br/>阶段分类 + usedAtomIds 排除"]
     Scope --> Search["Qdrant 动态召回"]
     Search --> Verify["按 atom_id 回查 MySQL<br/>PUBLISHED + PASS + SYNCED"]
     Search -->|"异常或无有效命中"| Fallback["MySQL LIKE fallback<br/>同一业务条件，score=0"]
@@ -231,7 +222,7 @@ flowchart TD
     Prompt --> Log["模型流式生成完成后提交阶段、会话与轮次记录"]
 ```
 
-召回结果不会直接展示成“参考答案”，而是影响 AI 面试官下一轮追问方式。MySQL fallback 返回的候选分数为 0，只用于降级记录，不会越过分数门槛注入 Prompt。只有流式问题成功生成后，会话才追加真正消耗的 Atom，结构化轮次才保存实际进入 Prompt 的证据 Atom，并供岗位级覆盖与 AI Mentor 复盘；请求级、候选级日志用于检索观测与离线评测，不能替代已落库的轮次记录。这里的完成指模型生成完成，记录保存发生在发送 SSE `done` 之前，不保证浏览器已完整收到问题。
+召回结果不会直接展示成“参考答案”，而是影响 AI 面试官下一轮追问方式。MySQL fallback 返回的候选分数为 0，只用于降级记录，不会越过分数门槛注入 Prompt。单轮计划分别保存进入 Prompt 的 `evidenceAtomIds` 和用于本场排重的 `consumedAtomIds`：高置信补救可以有证据但不消费。只有模型流式完成后，才提交阶段、历史与会话消费，并保存 `interview_turn` 问答和证据快照，供岗位级覆盖、报告与 AI Mentor 复盘。请求级、候选级日志不能替代已落库轮次；记录保存发生在发送 SSE `done` 之前，不保证浏览器已完整收到问题。
 
 ### 题库与 RAG
 
@@ -356,7 +347,8 @@ python -m unittest discover -s tests
 ## 相关文档
 
 - [领域上下文](CONTEXT.md)
-- [ADR 0001：有边界的单轮面试 Agent](docs/adr/0001-bounded-interview-agent.md)
+- [ADR 0004：采用稳定规则面试主线](docs/adr/0004-stable-rule-interview.md)
+- [ADR 0001：有边界的单轮面试 Agent（已取代）](docs/adr/0001-bounded-interview-agent.md)
 - [ADR 0002：应用内受控题库构建](docs/adr/0002-in-app-question-bank-build-agent.md)
 - [ADR 0003：受控文档入库流水线](docs/adr/0003-controlled-question-bank-ingestion-pipeline.md)
 - [RAG 链路总结](docs/rag-chain-summary.md)

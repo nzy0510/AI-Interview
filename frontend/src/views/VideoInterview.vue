@@ -23,10 +23,6 @@
       </div>
     </header>
 
-    <div v-if="orchestrationDecision" class="vi-orchestration-strip">
-      <InterviewOrchestrationIndicator :decision="orchestrationDecision" dark />
-    </div>
-
     <main class="vi-main" v-show="!showReport">
       <div class="camera-stage">
         <video ref="videoRef" autoplay muted playsinline class="camera-video" />
@@ -80,8 +76,6 @@ import { startInterviewAPI, finishInterviewAPI, discardInterviewAPI } from '@/ap
 import { getPreferenceAPI } from '@/api/user'
 import { initModels, analyzeFrame, getEmotionSummary, EMOTION_LABELS } from '@/utils/emotionAnalyzer'
 import { userKey } from '@/utils/auth'
-import { useInterviewOrchestration } from '@/composables/useInterviewOrchestration'
-import InterviewOrchestrationIndicator from '@/components/interview/InterviewOrchestrationIndicator.vue'
 import InterviewReportOverlay from '@/components/interview/InterviewReportOverlay.vue'
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
 import { buildLlmConfigRouteQuery, isMissingLlmConfigError } from '@/utils/llmConfig'
@@ -95,7 +89,7 @@ import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFa
 import { trackEvent } from '@/utils/analytics'
 import { getAnonymousId } from '@/utils/visitor'
 import { renderSafeMarkdown } from '@/utils/markdown'
-import { parseInterviewSseData } from '@/utils/interviewOrchestration'
+import { parseInterviewSseData } from '@/utils/interviewSse'
 
 const router = useRouter()
 const route = useRoute()
@@ -120,11 +114,6 @@ const isSpeaking = ref(false)
 const showReport = ref(false)
 const currentAiText = ref('')
 const currentPhase = ref('OPENING')
-const {
-  orchestrationDecision,
-  setOrchestrationDecision,
-  resetOrchestrationDecision
-} = useInterviewOrchestration()
 const totalRounds = ref(0)
 const hrOverridden = ref(false)
 const currentAgent = ref('面试组长')
@@ -323,7 +312,6 @@ function sendToAI(message) {
   isListening.value = false
   currentAiText.value = ''
   pendingEndType = null
-  resetOrchestrationDecision()
 
   // Determine current agent based on round count
   if (totalRounds.value === 0) currentAgent.value = '面试组长'
@@ -350,11 +338,6 @@ function sendToAI(message) {
       source.close()
       if (eventSource === source) eventSource = null
       startListening()
-      return
-    }
-
-    if (parsedEvent.kind === 'orchestration') {
-      setOrchestrationDecision(parsedEvent.data)
       return
     }
 
@@ -744,12 +727,6 @@ function animateRadar() {
   flex: 0 0 auto;
 }
 
-.vi-orchestration-strip {
-  flex: 0 0 auto;
-  padding: 10px 28px 0;
-  background: rgba(16, 18, 26, 0.72);
-}
-
 .header-left,
 .header-right {
   display: flex;
@@ -914,7 +891,6 @@ function animateRadar() {
 
 @media (max-width: 860px) {
   .vi-header,
-  .vi-orchestration-strip,
   .vi-main {
     padding-left: 16px;
     padding-right: 16px;

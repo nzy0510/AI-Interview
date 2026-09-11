@@ -33,7 +33,6 @@ import com.interview.service.orchestration.InterviewMessageSnapshot;
 import com.interview.service.orchestration.InterviewOrchestrator;
 import com.interview.service.orchestration.InterviewTurnPlan;
 import com.interview.service.orchestration.InterviewTurnRequest;
-import com.interview.service.orchestration.OrchestrationMode;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -348,7 +347,6 @@ public class InterviewServiceImpl implements InterviewService {
                     record, userId, chatHistory, message, usedAtomIds, tailoredQuestions));
             List<String> contextAtomIds = turnPlan.consumedAtomIds();
             try {
-                emitter.send(JSON.toJSONString(orchestrationEvent(turnPlan)));
                 emitter.send(JSON.toJSONString(Map.of("phase", turnPlan.phase().name())));
             } catch (IOException e) {
                 activeInterviewTurns.remove(recordId);
@@ -459,7 +457,6 @@ public class InterviewServiceImpl implements InterviewService {
                 record.getPositionId(),
                 record.getPosition(),
                 currentPhase(record.getPhase()),
-                chatHistory.size() / 2 + 1,
                 record.getDifficultyLevel(),
                 parseStringList(record.getFocusAreas()),
                 history,
@@ -484,33 +481,6 @@ public class InterviewServiceImpl implements InterviewService {
         } catch (RuntimeException e) {
             return List.of();
         }
-    }
-
-    private Map<String, Object> orchestrationEvent(InterviewTurnPlan plan) {
-        Map<String, Object> event = new LinkedHashMap<>();
-        event.put("type", "orchestration");
-        event.put("mode", plan.orchestrationMode().name());
-        event.put("action", plan.action().name());
-        event.put("summary", plan.publicSummary());
-        event.put("tools", plan.toolsUsed());
-        if (plan.orchestrationMode() == OrchestrationMode.RULE_FALLBACK) {
-            event.put("fallbackCategory", fallbackCategory(plan.fallbackReasonCode()));
-        }
-        return event;
-    }
-
-    private String fallbackCategory(String reasonCode) {
-        if (reasonCode == null) {
-            return "SYSTEM";
-        }
-        return switch (reasonCode) {
-            case "AGENT_TIMEOUT" -> "TIMEOUT";
-            case "AGENT_PROVIDER_UNAVAILABLE" -> "PROVIDER";
-            case "AGENT_TOOL_LIMIT", "AGENT_TOOL_FAILURE" -> "TOOL";
-            case "AGENT_INVALID_JSON", "AGENT_UNKNOWN_ACTION" -> "OUTPUT";
-            case "AGENT_MODEL_FAILURE" -> "MODEL";
-            default -> "SYSTEM";
-        };
     }
 
     private String truncate(String value, int maxLength) {
@@ -736,15 +706,11 @@ public class InterviewServiceImpl implements InterviewService {
                 ? null
                 : JSON.toJSONString(Map.of("promptContext", contextSnapshot)));
         turn.setRetrievalStrategy("SCOPED_RAG");
-        turn.setOrchestrationMode(orchestrationPlan.orchestrationMode().name());
+        turn.setOrchestrationMode("RULE");
         turn.setDecisionAction(orchestrationPlan.action().name());
         Map<String, Object> decision = new LinkedHashMap<>();
-        decision.put("tools", orchestrationPlan.toolsUsed());
-        decision.put("summary", orchestrationPlan.publicSummary());
         decision.put("evidenceAtomIds", orchestrationPlan.evidenceAtomIds());
-        if (orchestrationPlan.fallbackReasonCode() != null) {
-            decision.put("fallbackReasonCode", orchestrationPlan.fallbackReasonCode());
-        }
+        decision.put("consumedAtomIds", orchestrationPlan.consumedAtomIds());
         turn.setDecisionJson(JSON.toJSONString(decision));
         try {
             interviewTurnMapper.insert(turn);

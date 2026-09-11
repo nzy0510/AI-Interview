@@ -11,6 +11,7 @@ import com.interview.mapper.InterviewPositionMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.mapper.RagRetrievalRequestLogMapper;
+import com.interview.service.orchestration.InterviewAction;
 import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -68,6 +69,8 @@ class InterviewRetrievalServiceTest {
                 .contains("补救追问")
                 .contains("RAG context");
         assertThat(retrieval.contextAtomIds()).isEmpty();
+        assertThat(retrieval.promptAtomIds()).containsExactly("rag-flow");
+        assertThat(retrieval.action()).isEqualTo(InterviewAction.REMEDIATE);
     }
 
     @Test
@@ -84,6 +87,7 @@ class InterviewRetrievalServiceTest {
                 .contains("切换知识点")
                 .doesNotContain("RAG context");
         assertThat(retrieval.contextAtomIds()).isEmpty();
+        assertThat(retrieval.action()).isEqualTo(InterviewAction.SWITCH_TOPIC);
 
         ArgumentCaptor<RagRetrievalLog> hitCaptor = ArgumentCaptor.forClass(RagRetrievalLog.class);
         verify(hitLogMapper).insert(hitCaptor.capture());
@@ -104,6 +108,7 @@ class InterviewRetrievalServiceTest {
                 .contains("RAG context")
                 .doesNotContain("补救追问", "切换知识点");
         assertThat(retrieval.contextAtomIds()).containsExactly("rag-flow");
+        assertThat(retrieval.action()).isEqualTo(InterviewAction.CONTINUE_PHASE);
     }
 
     @Test
@@ -120,6 +125,7 @@ class InterviewRetrievalServiceTest {
                 .contains("召回置信度不足")
                 .doesNotContain("RAG context");
         assertThat(retrieval.contextAtomIds()).isEmpty();
+        assertThat(retrieval.action()).isEqualTo(InterviewAction.CONTINUE_PHASE);
     }
 
     @Test
@@ -139,6 +145,7 @@ class InterviewRetrievalServiceTest {
                 .contains("切换知识点")
                 .doesNotContain("RAG context");
         assertThat(retrieval.contextAtomIds()).isEmpty();
+        assertThat(retrieval.action()).isEqualTo(InterviewAction.SWITCH_TOPIC);
     }
 
     @Test

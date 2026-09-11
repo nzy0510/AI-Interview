@@ -171,11 +171,6 @@ app:
   llm:
     report-timeout-seconds: ${APP_LLM_REPORT_TIMEOUT_SECONDS:180}
     report-batch-size: ${APP_LLM_REPORT_BATCH_SIZE:3}
-  interview-agent:
-    enabled: ${APP_INTERVIEW_AGENT_ENABLED:true}
-    planning-timeout-seconds: ${APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS:35}
-    max-tool-calls: ${APP_INTERVIEW_AGENT_MAX_TOOL_CALLS:3}
-    fallback-enabled: ${APP_INTERVIEW_AGENT_FALLBACK_ENABLED:true}
   question-bank:
     user-maintenance-enabled: ${APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED:false}
   embedding:

@@ -11,7 +11,6 @@ public record InterviewTurnRequest(
         Long positionId,
         String positionName,
         InterviewPhase currentPhase,
-        int turnIndex,
         String difficultyLevel,
         List<String> focusAreas,
         List<InterviewMessageSnapshot> recentHistory,

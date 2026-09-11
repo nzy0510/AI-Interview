@@ -24,16 +24,12 @@ public class SessionStore {
     private static final String CHAT_KEY_PREFIX = "interview:chat:";
     private static final String TAILORED_KEY_PREFIX = "interview:tailored:";
     private static final String USED_ATOMS_KEY_PREFIX = "interview:used_atoms:";
-    private static final String AGENT_DISABLED_KEY_PREFIX = "interview:agent_disabled:";
-    private static final String AGENT_TIMEOUT_COUNT_KEY_PREFIX = "interview:agent_timeout_count:";
     private static final long SESSION_TTL_HOURS = 2;
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final Map<Long, List<ChatMessage>> localChatCache = new ConcurrentHashMap<>();
     private final Map<Long, List<String>> localTailoredCache = new ConcurrentHashMap<>();
     private final Map<Long, List<String>> localUsedAtomsCache = new ConcurrentHashMap<>();
-    private final Map<Long, String> localAgentDisabledCache = new ConcurrentHashMap<>();
-    private final Map<Long, Integer> localAgentTimeoutCountCache = new ConcurrentHashMap<>();
     private volatile boolean redisAvailable = true;
 
     public SessionStore(RedisTemplate<String, Object> redisTemplate) {
@@ -116,15 +112,11 @@ public class SessionStore {
         localChatCache.remove(recordId);
         localTailoredCache.remove(recordId);
         localUsedAtomsCache.remove(recordId);
-        localAgentDisabledCache.remove(recordId);
-        localAgentTimeoutCountCache.remove(recordId);
         if (isRedisReady()) {
             try {
                 redisTemplate.delete(CHAT_KEY_PREFIX + recordId);
                 redisTemplate.delete(TAILORED_KEY_PREFIX + recordId);
                 redisTemplate.delete(USED_ATOMS_KEY_PREFIX + recordId);
-                redisTemplate.delete(AGENT_DISABLED_KEY_PREFIX + recordId);
-                redisTemplate.delete(AGENT_TIMEOUT_COUNT_KEY_PREFIX + recordId);
             } catch (Exception ignored) {}
         }
     }
@@ -190,64 +182,5 @@ public class SessionStore {
         }
         List<String> cached = localUsedAtomsCache.get(recordId);
         return cached != null ? new ArrayList<>(cached) : new ArrayList<>();
-    }
-
-    public void disableAgent(Long recordId, String reasonCode) {
-        String safeReason = reasonCode == null || reasonCode.isBlank() ? "AGENT_UNAVAILABLE" : reasonCode;
-        localAgentDisabledCache.put(recordId, safeReason);
-        if (isRedisReady()) {
-            try {
-                redisTemplate.opsForValue().set(AGENT_DISABLED_KEY_PREFIX + recordId, safeReason,
-                        SESSION_TTL_HOURS, TimeUnit.HOURS);
-            } catch (Exception e) {
-                log.trace("Redis Agent 状态写入跳过: {}", e.getMessage());
-            }
-        }
-    }
-
-    public String loadAgentDisabledReason(Long recordId) {
-        if (isRedisReady()) {
-            try {
-                Object raw = redisTemplate.opsForValue().get(AGENT_DISABLED_KEY_PREFIX + recordId);
-                if (raw != null) {
-                    String reason = String.valueOf(raw);
-                    localAgentDisabledCache.put(recordId, reason);
-                    return reason;
-                }
-            } catch (Exception e) {
-                log.trace("Redis Agent 状态读取跳过: {}", e.getMessage());
-            }
-        }
-        return localAgentDisabledCache.get(recordId);
-    }
-
-    public int incrementAgentTimeoutCount(Long recordId) {
-        int timeoutCount = localAgentTimeoutCountCache.merge(recordId, 1, Integer::sum);
-        if (isRedisReady()) {
-            try {
-                Long redisCount = redisTemplate.opsForValue()
-                        .increment(AGENT_TIMEOUT_COUNT_KEY_PREFIX + recordId);
-                if (redisCount != null) {
-                    timeoutCount = redisCount.intValue();
-                    localAgentTimeoutCountCache.put(recordId, timeoutCount);
-                }
-                redisTemplate.expire(AGENT_TIMEOUT_COUNT_KEY_PREFIX + recordId,
-                        SESSION_TTL_HOURS, TimeUnit.HOURS);
-            } catch (Exception e) {
-                log.trace("Redis Agent 超时计数写入跳过");
-            }
-        }
-        return timeoutCount;
-    }
-
-    public void clearAgentTimeoutCount(Long recordId) {
-        localAgentTimeoutCountCache.remove(recordId);
-        if (isRedisReady()) {
-            try {
-                redisTemplate.delete(AGENT_TIMEOUT_COUNT_KEY_PREFIX + recordId);
-            } catch (Exception e) {
-                log.trace("Redis Agent 超时计数清理跳过");
-            }
-        }
     }
 }

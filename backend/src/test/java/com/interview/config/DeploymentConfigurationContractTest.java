@@ -33,30 +33,12 @@ class DeploymentConfigurationContractTest {
     }
 
     @Test
-    @DisplayName("比赛功能开关在运行配置与部署示例中保持一致")
-    void shouldKeepCompetitionFeatureFlagsAligned() throws IOException {
-        assertCompetitionFeatureFlags(Path.of("src", "main", "resources", "application.yml"));
-        assertCompetitionFeatureFlags(Path.of("src", "main", "resources", "application.yml.example"));
-        assertCompetitionFeatureFlags(Path.of("..", "docker-compose.example.yml"));
-        assertCompetitionFeatureFlags(Path.of("..", "docker-compose.prod.yml"));
-    }
-
-    @Test
-    @DisplayName("Agent 单轮规划预算默认保持为 35 秒")
-    void shouldKeepAgentPlanningTimeoutBudgetAligned() throws IOException {
-        assertThat(new InterviewAgentProperties().getPlanningTimeoutSeconds()).isEqualTo(35);
-        assertAgentPlanningTimeout(Path.of("src", "main", "resources", "application.yml"),
-                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS:35");
-        assertAgentPlanningTimeout(Path.of("src", "main", "resources", "application.yml.example"),
-                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS:35");
-        assertAgentPlanningTimeout(Path.of("..", ".env.example"),
-                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS=35");
-        assertAgentPlanningTimeout(Path.of("..", ".env.prod.example"),
-                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS=35");
-        assertAgentPlanningTimeout(Path.of("..", "docker-compose.example.yml"),
-                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS:-35");
-        assertAgentPlanningTimeout(Path.of("..", "docker-compose.prod.yml"),
-                "APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS:-35");
+    @DisplayName("题库维护开关在运行配置与部署示例中保持一致")
+    void shouldKeepQuestionBankFeatureFlagsAligned() throws IOException {
+        assertQuestionBankFeatureFlags(Path.of("src", "main", "resources", "application.yml"));
+        assertQuestionBankFeatureFlags(Path.of("src", "main", "resources", "application.yml.example"));
+        assertQuestionBankFeatureFlags(Path.of("..", "docker-compose.example.yml"));
+        assertQuestionBankFeatureFlags(Path.of("..", "docker-compose.prod.yml"));
     }
 
     @Test
@@ -159,20 +141,10 @@ class DeploymentConfigurationContractTest {
                 .contains("vector-size: ${QDRANT_VECTOR_SIZE:384}");
     }
 
-    private void assertCompetitionFeatureFlags(Path path) throws IOException {
+    private void assertQuestionBankFeatureFlags(Path path) throws IOException {
         assertThat(Files.readString(path))
                 .as(path.toString())
-                .contains("APP_INTERVIEW_AGENT_ENABLED")
-                .contains("APP_INTERVIEW_AGENT_PLANNING_TIMEOUT_SECONDS")
-                .contains("APP_INTERVIEW_AGENT_MAX_TOOL_CALLS")
-                .contains("APP_INTERVIEW_AGENT_FALLBACK_ENABLED")
                 .contains("APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED");
-    }
-
-    private void assertAgentPlanningTimeout(Path path, String expectedDefault) throws IOException {
-        assertThat(Files.readString(path))
-                .as(path.toString())
-                .contains(expectedDefault);
     }
 
     private void assertNginxUploadLimit(Path path) throws IOException {
