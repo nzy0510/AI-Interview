@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InterWise 系统架构图</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:1800px;height:1180px;overflow:hidden}body{font-family:"Microsoft YaHei","Noto Sans CJK SC",sans-serif;background:#f5f8fc;color:#122033;padding:42px 52px}.page{height:100%;display:flex;flex-direction:column;gap:24px}.head{border-top:10px solid #2477f3;padding-top:20px}.head:after{content:"";position:absolute;left:52%;right:52px;top:42px;height:10px;background:#16b9a5}.title{font-size:46px;font-weight:700;letter-spacing:.3px}.subtitle{margin-top:10px;font-size:22px;color:#5f7088}.row{display:grid;gap:22px}.top{grid-template-columns:1.02fr 1.32fr 1.6fr 1.02fr}.bottom{grid-template-columns:1.25fr 1fr 1fr 1.1fr 1.3fr}.panel{background:#fff;border:2px solid #d7e1ef;border-radius:18px;padding:22px;min-width:0}.panel h2{font-size:28px;margin:0 0 16px}.card{border:2px solid #b9c9df;border-radius:14px;padding:15px 17px;margin-top:12px;background:#f8fbff}.card h3{font-size:22px;margin:0 0 7px}.card p{font-size:17px;line-height:1.48;margin:0;color:#596d86}.blue{background:#eaf4ff;border-color:#4aa3ff}.green{background:#ebfbf2;border-color:#43ce7c}.orange{background:#fff5e6;border-color:#ffad45}.purple{background:#f3edff;border-color:#9a7bff}.teal{background:#e9fbf8;border-color:#30c2ad}.rose{background:#fff0f3;border-color:#ff8292}.arrow{display:flex;align-items:center;justify-content:center;color:#60738c;font-size:31px;font-weight:700}.flow{display:grid;grid-template-columns:1fr 42px 1fr 42px 1fr;align-items:stretch}.flow .card{margin:0}.wide{grid-column:1/-1}.core-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.core-grid .card{margin:0}.provider{height:100%;display:flex;flex-direction:column}.provider .card:last-child{flex:1}.data h2{font-size:26px}.data .card{height:150px}.footer{margin-top:auto;background:#10233f;color:#e9f1fb;border-radius:14px;padding:16px 22px;font-size:18px;line-height:1.55}.footer strong{color:#78c8ff}.pill{display:inline-block;border-radius:999px;background:#e7eef8;color:#3b536e;padding:3px 10px;font-size:15px;margin:3px 4px 0 0}.mini{font-size:15px;color:#6c7c91;margin-top:8px}.lane{display:flex;gap:10px;align-items:center}.lane .card{flex:1}.lane .arrow{width:30px;flex:0 0 30px}.section-note{font-size:16px;color:#63768e;margin-top:12px;line-height:1.45}
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="head">
+    <div class="title">InterWise 当前系统架构</div>
+    <div class="subtitle">Vue 3 + Spring Boot + 有边界面试 Agent + 受控题库流水线 + multilingual-e5 / Qdrant</div>
+  </header>
+
+  <section class="row top">
+    <div class="panel">
+      <h2>用户与授权</h2>
+      <div class="card blue"><h3>训练用户</h3><p>登录 · 岗位简历 · 文字/视频面试<br>私有岗位与题库 owner</p></div>
+      <div class="card green"><h3>ADMIN 角色</h3><p>普通私有能力 + 公共 starter 题库维护<br>统一经过 JWT 与角色授权</p></div>
+    </div>
+
+    <div class="panel">
+      <h2>交付与前端</h2>
+      <div class="card purple"><h3>本地 Nginx / 可选 Caddy HTTPS</h3><p>静态资源 · API 反向代理<br>生产 HTTPS profile 可选启用</p></div>
+      <div class="card blue"><h3>Vue 3 工作台</h3><p>准备 · 面试 · 简历 · 历史报告<br>岗位级 Mentor · 知识库/题库</p></div>
+      <div class="mini">浏览器通过 REST / SSE 访问后端；摄像头、语音等能力留在客户端。</div>
+    </div>
+
+    <div class="panel">
+      <h2>Spring Boot 核心</h2>
+      <div class="core-grid">
+        <div class="card blue"><h3>API 与治理</h3><p>JWT · USER/ADMIN<br>owner 作用域 · 限流 · 反馈</p></div>
+        <div class="card green"><h3>用户 LLM 配置</h3><p>Provider 配置与 Key 加密<br>无系统兜底 API Key</p></div>
+        <div class="card orange"><h3>面试编排</h3><p>Tool Calling 规划 Agent<br>三只读工具 · 六限定动作</p></div>
+        <div class="card purple"><h3>稳定规则</h3><p>阶段状态机 · RAG 决策<br>超时/异常可恢复回退</p></div>
+        <div class="card teal"><h3>题库构建</h3><p>解析 · 分类 · 生成 · 监督<br>修复 · 终审 · 发布 · 索引</p></div>
+        <div class="card rose"><h3>复盘服务</h3><p>初步评估 · 异步详细报告<br>岗位级覆盖与 AI Mentor</p></div>
+      </div>
+    </div>
+
+    <div class="panel provider">
+      <h2>模型服务</h2>
+      <div class="card orange"><h3>用户启用的 Provider</h3><p>OpenAI-compatible Chat API<br>DeepSeek / Kimi / GLM / Qwen<br>OrcaRouter / 自定义端点</p></div>
+      <div class="card teal"><h3>调用边界</h3><p>面试、报告、Mentor、题库构建均使用执行用户的 active 配置；模型不拥有发布与跨 owner 权限。</p></div>
+    </div>
+  </section>
+
+  <section class="panel wide">
+    <h2>持久化、异步作业与语义索引</h2>
+    <div class="row bottom data">
+      <div class="card blue"><h3>MySQL 8</h3><p>业务真相：账号、岗位、简历画像、面试/轮次、Atom、审核发布、RAG 日志、报告与 <code>app_job</code></p></div>
+      <div class="card green"><h3>Redis 7</h3><p>面试会话、已用 Atom、限流状态、岗位级 Mentor 缓存</p></div>
+      <div class="card purple"><h3>异步 Worker</h3><p>本地 TaskExecutor<br>执行令牌 · 租约 · 重试 · 启动恢复</p></div>
+      <div class="card teal"><h3>embedding-service</h3><p>仅负责文本向量化<br>multilingual-e5-base · 768 维<br>不直接访问 Qdrant</p></div>
+      <div class="card rose"><h3>Qdrant</h3><p>后端负责检索 / upsert / delete<br>可重建语义索引，命中后仍回查 MySQL</p></div>
+    </div>
+    <div class="section-note">题库原始文档保存在独立 <strong>knowledge-storage</strong> 并绑定构建 owner；简历 PDF 解析后保存岗位级结构化画像，不把原文件作为 RAG 文档库。</div>
+  </section>
+
+  <footer class="footer">
+    <strong>正式 RAG 门禁：</strong>作用域必须匹配 <code>scope + owner + position + knowledge_base</code>，且 Atom 同时满足 <code>PUBLISHED + PASS + SYNCED</code>。<br>
+    <strong>职责边界：</strong>后端分别向 embedding-service 请求向量、向 Qdrant 读写索引；先提交 MySQL 业务状态，再通过可重试步骤同步外部索引。
+  </footer>
+</main>
+</body>
+</html>
