@@ -170,41 +170,14 @@ final class QuestionBankBuildSupervisionRunner {
                                     QuestionBankBuildSupervisionContext context,
                                     AppJob job,
                                     QuestionBankBuildCheckpoint checkpoint) {
-        QuestionBankBuildCheckpoint.SupervisionInvocation invocation = checkpoint.supervision();
-        if (invocation != null && invocation.candidateId() != candidate.getId()) {
-            throw new IllegalStateException("监督调用检查点与当前候选不一致");
-        }
-        int retryCount = job.getRetryCount() == null ? 0 : job.getRetryCount();
-        String raw = invocation == null ? null : invocation.response();
-        if (raw != null) {
-            try {
-                applyMachineResult(candidate, parseSupervisionResponse(raw));
-                checkpoint.clearSupervision();
-                persistCheckpoint(build, checkpoint, job);
-                return;
-            } catch (RuntimeException invalidResponse) {
-                if (retryCount <= invocation.startedRetryCount()) throw invalidResponse;
-            }
-        } else if (invocation != null && retryCount <= invocation.startedRetryCount()) {
-            throw new IllegalStateException("上次质量监督结果未确认，为避免重复计费已停止；请点击重试");
-        }
-
-        checkpoint.startSupervision(candidate.getId(), retryCount);
-        persistCheckpoint(build, checkpoint, job);
-        if (!markMachineRunning(candidate)) {
-            checkpoint.clearSupervision();
-            persistCheckpoint(build, checkpoint, job);
-            return;
-        }
-        requireJobLease(job);
-        raw = supervisionService.complete(context);
-        requireJobLease(job);
-        checkpoint.persistSupervisionResponse(raw);
-        persistCheckpoint(build, checkpoint, job);
-        QuestionBankBuildSupervisionResult result = parseSupervisionResponse(raw);
-        applyMachineResult(candidate, result);
-        checkpoint.clearSupervision();
-        persistCheckpoint(build, checkpoint, job);
+        QuestionBankBuildModelCall call = new QuestionBankBuildModelCall(
+                build, job, checkpoint, buildMapper, appJobService);
+        call.execute(QuestionBankBuildModelCall.Key.supervision(candidate.getId()),
+                () -> markMachineRunning(candidate), () -> supervisionService.complete(context),
+                this::parseSupervisionResponse, (result, finished) -> {
+                    applyMachineResult(candidate, result);
+                    call.persist(finished);
+                });
     }
 
     private void resumeSupervisionIfNeeded(QuestionBankBuild build,
@@ -221,8 +194,8 @@ final class QuestionBankBuildSupervisionRunner {
             throw new IllegalStateException("监督调用检查点对应的候选不存在或不在本次处理范围");
         }
         if (machineReviewCompleted(candidate)) {
-            checkpoint.clearSupervision();
-            persistCheckpoint(build, checkpoint, job);
+            new QuestionBankBuildModelCall(build, job, checkpoint, buildMapper, appJobService)
+                    .finish(QuestionBankBuildModelCall.Key.supervision(candidate.getId()));
             return;
         }
         String sourceText = sourceTextByChunk.get(candidate.getChunkIndex());
@@ -239,43 +212,17 @@ final class QuestionBankBuildSupervisionRunner {
                                  AppJob job,
                                  QuestionBankBuildCheckpoint checkpoint,
                                  int round) {
-        QuestionBankBuildCheckpoint.RepairInvocation invocation = checkpoint.repair();
-        if (invocation != null && (invocation.candidateId() != candidate.getId() || invocation.round() != round)) {
-            throw new IllegalStateException("修复调用检查点与当前候选不一致");
-        }
-        int retryCount = job.getRetryCount() == null ? 0 : job.getRetryCount();
         QuestionBankBuildRepairContext context = new QuestionBankBuildRepairContext(
                 build, candidate, sourceText, runtime, round);
-        String raw = invocation == null ? null : invocation.response();
-        if (raw != null) {
-            try {
-                applyRepairResult(build, candidate, parseRepairResponse(build, candidate, raw), round);
-                checkpoint.clearRepair();
-                persistCheckpoint(build, checkpoint, job);
-                refreshBuildCounts(build, job);
-                return;
-            } catch (RuntimeException invalidResponse) {
-                if (retryCount <= invocation.startedRetryCount()) throw invalidResponse;
-            }
-        } else if (invocation != null && retryCount <= invocation.startedRetryCount()) {
-            throw new IllegalStateException("上次修复调用结果未确认，为避免重复计费未自动重调；请点击重试明确授权再次调用");
-        }
-
-        checkpoint.startRepair(candidate.getId(), round, retryCount);
-        persistCheckpoint(build, checkpoint, job);
-        if (!markRepairRunning(candidate, round)) {
-            checkpoint.clearRepair();
-            persistCheckpoint(build, checkpoint, job);
-            return;
-        }
-        requireJobLease(job);
-        raw = repairService.complete(context);
-        requireJobLease(job);
-        checkpoint.persistRepairResponse(raw);
-        persistCheckpoint(build, checkpoint, job);
-        applyRepairResult(build, candidate, parseRepairResponse(build, candidate, raw), round);
-        checkpoint.clearRepair();
-        persistCheckpoint(build, checkpoint, job);
+        List<String> allowedCategories = buildCategories(build);
+        QuestionBankBuildModelCall call = new QuestionBankBuildModelCall(
+                build, job, checkpoint, buildMapper, appJobService);
+        call.execute(QuestionBankBuildModelCall.Key.repair(candidate.getId(), round),
+                () -> markRepairRunning(candidate, round), () -> repairService.complete(context),
+                raw -> repairService.parse(candidate, raw, allowedCategories), (result, finished) -> {
+                    applyRepairResult(build, candidate, result, round);
+                    call.persist(finished);
+                });
         refreshBuildCounts(build, job);
     }
 
@@ -293,8 +240,8 @@ final class QuestionBankBuildSupervisionRunner {
             throw new IllegalStateException("修复调用检查点对应的候选不存在");
         }
         if (hasHumanDecision(candidate) || repairCheckpointAlreadyApplied(candidate, invocation.round())) {
-            checkpoint.clearRepair();
-            persistCheckpoint(build, checkpoint, job);
+            new QuestionBankBuildModelCall(build, job, checkpoint, buildMapper, appJobService)
+                    .finish(QuestionBankBuildModelCall.Key.repair(candidate.getId(), invocation.round()));
             return;
         }
         String sourceText = sourceTextByChunk.get(candidate.getChunkIndex());
@@ -311,12 +258,6 @@ final class QuestionBankBuildSupervisionRunner {
     private QuestionBankBuildSupervisionResult parseSupervisionResponse(String raw) {
         requireNonEmptyResponse(raw, "质量监督");
         return supervisionService.parse(raw);
-    }
-
-    private QuestionBankBuildRepairResult parseRepairResponse(QuestionBankBuild build,
-                                                               QuestionBankBuildCandidate candidate,
-                                                               String raw) {
-        return repairService.parse(candidate, raw, buildCategories(build));
     }
 
     private void requireNonEmptyResponse(String raw, String stage) {
@@ -578,17 +519,6 @@ final class QuestionBankBuildSupervisionRunner {
         buildMapper.updateById(update);
         job.setStage(stage);
         job.setProgress(progress);
-    }
-
-    private void persistCheckpoint(QuestionBankBuild build,
-                                   QuestionBankBuildCheckpoint checkpoint,
-                                   AppJob job) {
-        requireJobLease(job);
-        build.setCheckpointJson(checkpoint.toJson());
-        QuestionBankBuild update = new QuestionBankBuild();
-        update.setId(build.getId());
-        update.setCheckpointJson(build.getCheckpointJson());
-        buildMapper.updateById(update);
     }
 
     private void ensureBuildExecutable(Long buildId) {

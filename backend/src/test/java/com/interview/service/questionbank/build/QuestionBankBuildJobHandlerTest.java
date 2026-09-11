@@ -1,33 +1,41 @@
 package com.interview.service.questionbank.build;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.interview.config.QuestionBankBuildProperties;
 import com.interview.entity.AppJob;
+import com.interview.entity.KnowledgeBase;
 import com.interview.entity.KnowledgeSourceFile;
 import com.interview.entity.QuestionBankBuild;
 import com.interview.entity.QuestionBankBuildCandidate;
+import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.KnowledgeSourceFileMapper;
 import com.interview.mapper.QuestionBankBuildCandidateMapper;
 import com.interview.mapper.QuestionBankBuildMapper;
 import com.interview.service.AppJobService;
 import com.interview.service.UserLlmConfigService;
 import com.interview.service.UserLlmRuntimeConfig;
+import com.interview.service.questionbank.QuestionBankService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataAccessResourceFailureException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -144,6 +152,7 @@ class QuestionBankBuildJobHandlerTest {
     @Test
     void shouldRefreshMachineReviewCountsBeforeReviewingTheNextCandidate() {
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         AppJobService appJobService = mock(AppJobService.class);
         QuestionBankBuildSupervisionService supervisionService = mock(QuestionBankBuildSupervisionService.class);
@@ -184,6 +193,7 @@ class QuestionBankBuildJobHandlerTest {
     @Test
     void shouldRepairAndResuperviseCandidateBeforeFinalReview() {
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         AppJobService appJobService = mock(AppJobService.class);
         QuestionBankBuildSupervisionService supervisionService = mock(QuestionBankBuildSupervisionService.class);
@@ -232,6 +242,7 @@ class QuestionBankBuildJobHandlerTest {
     @Test
     void shouldFailClosedOnInvalidRepairResponseWithoutAutomaticPaidRetry() {
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         AppJobService appJobService = mock(AppJobService.class);
         QuestionBankBuildSupervisionService supervisionService = mock(QuestionBankBuildSupervisionService.class);
@@ -269,6 +280,7 @@ class QuestionBankBuildJobHandlerTest {
     @Test
     void shouldTreatEmptyRepairResponseAsDeterministicFailureAndRecallOnlyAfterExplicitRetry() {
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         AppJobService appJobService = mock(AppJobService.class);
         QuestionBankBuildSupervisionService supervision = mock(QuestionBankBuildSupervisionService.class);
@@ -645,6 +657,7 @@ class QuestionBankBuildJobHandlerTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "not-json",
+            "{\"atoms\":[null]}",
             "{\"atoms\":[{\"subject\":\"完整题目\",\"content\":{\"principles\":\"有效回答\",\"followUpPaths\":[\"深入\",\"引导\"]}},{\"subject\":\"字段不完整的题目\",\"content\":{\"principles\":\"有效回答\",\"followUpPaths\":[\"只有一条\"]}}]}"
     })
     void shouldRetryPersistedInvalidGenerationOnlyAfterExplicitRetry(String invalidGeneration) throws Exception {
@@ -762,9 +775,246 @@ class QuestionBankBuildJobHandlerTest {
         verifyNoInteractions(llm);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"categoryPlanning", "generation", "supervision", "repair"})
+    void shouldRecoverAllModelNodesFromLegacySavedResponses(String stage) throws Exception {
+        RecoveryFixture fixture = new RecoveryFixture(stage);
+
+        fixture.handler.handle(fixture.job);
+
+        verify(fixture.llm, never()).complete(any(), contains(fixture.prompt), anyString());
+        assertThat(fixture.persistedCheckpoint().containsKey(stage)).isFalse();
+        assertThat(fixture.persistedCheckpoint().getList("completedChunkIndexes", Integer.class)).containsExactly(0);
+        assertThat(fixture.build.getStage()).isEqualTo("READY_FOR_FINAL_REVIEW");
+        if ("categoryPlanning".equals(stage)) {
+            ArgumentCaptor<QuestionBankBuild> updates = ArgumentCaptor.forClass(QuestionBankBuild.class);
+            verify(fixture.buildMapper, atLeastOnce()).updateById(updates.capture());
+            QuestionBankBuild categoryCommit = updates.getAllValues().stream()
+                    .filter(update -> update.getCategoriesJson() != null).findFirst().orElseThrow();
+            assertThat(JSON.parseArray(categoryCommit.getCategoriesJson(), String.class)).containsExactly("jvm", "java");
+            assertThat(JSON.parseObject(categoryCommit.getCheckpointJson()).containsKey(stage)).isFalse();
+        }
+    }
+
+    @Test
+    void shouldRetrySavedStructurallyInvalidSupervisionResponseOnlyAfterAuthorization() throws Exception {
+        RecoveryFixture fixture = new RecoveryFixture("supervision");
+        String invalid = "```json\nnull\n```";
+        JSONObject saved = fixture.persistedCheckpoint();
+        saved.getJSONObject(fixture.stage).put("response", invalid);
+        fixture.seedCheckpoint(saved);
+        fixture.job.setRetryCount(0);
+
+        assertThatThrownBy(() -> fixture.handler.handle(fixture.job)).isInstanceOf(RuntimeException.class);
+        verifyNoInteractions(fixture.llm);
+        assertThat(fixture.persistedCheckpoint().getJSONObject(fixture.stage).getString("response")).isEqualTo(invalid);
+
+        fixture.job.setRetryCount(1);
+        doReturn(fixture.response).when(fixture.llm).complete(any(), contains(fixture.prompt), anyString());
+        fixture.handler.handle(fixture.job);
+
+        verify(fixture.llm, times(1)).complete(any(), contains(fixture.prompt), anyString());
+        assertThat(fixture.persistedCheckpoint().containsKey(fixture.stage)).isFalse();
+    }
+
+    @Test
+    void shouldPreserveRejectedPlanningResponseBeforeAnAuthorizedRecall() throws Exception {
+        RecoveryFixture fixture = new RecoveryFixture("categoryPlanning");
+        JSONObject saved = fixture.persistedCheckpoint();
+        saved.getJSONObject(fixture.stage).put("response", "{}");
+        fixture.seedCheckpoint(saved);
+        doAnswer(invocation -> {
+            JSONObject started = fixture.persistedCheckpoint();
+            assertThat(started.getJSONObject(fixture.stage).getIntValue("startedRetryCount")).isEqualTo(1);
+            assertThat(started.getJSONObject("lastRejectedCategoryPlanning").getString("response")).isEqualTo("{}");
+            return fixture.response;
+        }).when(fixture.llm).complete(any(), contains(fixture.prompt), anyString());
+
+        fixture.handler.handle(fixture.job);
+
+        verify(fixture.llm, times(1)).complete(any(), contains(fixture.prompt), anyString());
+        assertThat(fixture.persistedCheckpoint().getJSONObject("lastRejectedCategoryPlanning").getString("response"))
+                .isEqualTo("{}");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"start", "response", "completion"})
+    void shouldStopWithoutPaidRecallWhenCheckpointPersistenceFails(String point) throws Exception {
+        RecoveryFixture fixture = new RecoveryFixture("generation");
+        fixture.removeSavedResponse();
+        String raw = "response".equals(point) ? "not-json" : fixture.response;
+        doReturn(raw).when(fixture.llm).complete(any(), contains(fixture.prompt), anyString());
+        DataAccessResourceFailureException writeFailure = new DataAccessResourceFailureException("checkpoint write failed");
+        when(fixture.buildMapper.updateById(any(QuestionBankBuild.class))).thenAnswer(invocation -> {
+            QuestionBankBuild update = invocation.getArgument(0);
+            if (update.getCheckpointJson() != null) {
+                JSONObject state = JSON.parseObject(update.getCheckpointJson());
+                JSONObject call = state.getJSONObject(fixture.stage);
+                boolean atFailure = switch (point) {
+                    case "start" -> call != null && call.getString("response") == null;
+                    case "response" -> call != null && call.getString("response") != null;
+                    default -> call == null;
+                };
+                if (atFailure) {
+                    if ("start".equals(point)) return 0;
+                    throw writeFailure;
+                }
+            }
+            return fixture.store(update);
+        });
+
+        Throwable failure = catchThrowable(() -> fixture.handler.handle(fixture.job));
+
+        if ("start".equals(point)) assertThat(failure).hasMessageContaining("检查点保存失败");
+        else assertThat(failure).isSameAs(writeFailure);
+        int paidCalls = "start".equals(point) ? 0 : 1;
+        verify(fixture.llm, times(paidCalls)).complete(any(), contains(fixture.prompt), anyString());
+        assertThat(fixture.build.getCheckpointJson()).isEqualTo(fixture.storedCheckpoint.get());
+        JSONObject saved = fixture.persistedCheckpoint().getJSONObject(fixture.stage);
+        if ("completion".equals(point)) {
+            assertThat(saved.getString("response")).isEqualTo(raw);
+            assertThat(fixture.persistedCheckpoint().getList("completedChunkIndexes", Integer.class)).isEmpty();
+            when(fixture.buildMapper.updateById(any(QuestionBankBuild.class)))
+                    .thenAnswer(invocation -> fixture.store(invocation.getArgument(0)));
+            fixture.handler.handle(fixture.job);
+            verify(fixture.candidateMapper, times(1)).insert(any(QuestionBankBuildCandidate.class));
+            verify(fixture.llm, times(1)).complete(any(), contains(fixture.prompt), anyString());
+        } else {
+            assertThat(saved.getString("response")).isNull();
+            verify(fixture.candidateMapper, never()).insert(any());
+            if ("response".equals(point)) {
+                assertThatThrownBy(() -> fixture.handler.handle(fixture.job)).hasMessageContaining("避免重复计费");
+                verify(fixture.llm, times(1)).complete(any(), contains(fixture.prompt), anyString());
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"beforeInvoke", "afterInvoke", "beforeApply"})
+    void shouldStopAtModelCallBoundariesWhenExecutionLeaseIsLost(String point) throws Exception {
+        RecoveryFixture fixture = new RecoveryFixture("supervision");
+        if (!"beforeApply".equals(point)) fixture.removeSavedResponse();
+        if ("beforeInvoke".equals(point)) {
+            when(fixture.candidateMapper.update(any(QuestionBankBuildCandidate.class), any(UpdateWrapper.class)))
+                    .thenAnswer(invocation -> { fixture.leaseValid.set(false); return 1; });
+        } else if ("afterInvoke".equals(point)) {
+            doAnswer(invocation -> {
+                fixture.leaseValid.set(false);
+                return fixture.response;
+            }).when(fixture.llm).complete(any(), contains(fixture.prompt), anyString());
+        } else {
+            doAnswer(invocation -> {
+                Object parsed = invocation.callRealMethod();
+                fixture.leaseValid.set(false);
+                return parsed;
+            }).when(fixture.supervision).parse(fixture.response);
+        }
+        when(fixture.buildMapper.updateById(any(QuestionBankBuild.class))).thenAnswer(invocation -> {
+            assertThat(fixture.leaseValid.get()).as("no build writes after execution ownership is lost").isTrue();
+            return fixture.store(invocation.getArgument(0));
+        });
+
+        assertThatThrownBy(() -> fixture.handler.handle(fixture.job)).isInstanceOf(QuestionBankBuildLeaseLostException.class);
+
+        verify(fixture.llm, times("afterInvoke".equals(point) ? 1 : 0))
+                .complete(any(), contains(fixture.prompt), anyString());
+        verify(fixture.candidateMapper, never()).update(
+                argThat(candidate -> candidate != null && "AUTO_PASS".equals(candidate.getMachineReviewStatus())),
+                any(UpdateWrapper.class));
+        assertThat(fixture.persistedCheckpoint().getJSONObject(fixture.stage).getString("response"))
+                .isEqualTo("beforeApply".equals(point) ? fixture.response : null);
+        if ("afterInvoke".equals(point)) verify(fixture.supervision, never()).parse(anyString());
+    }
+
+    @Test
+    void shouldClearUncalledCheckpointWhenHumanDecisionWinsFreshPrepareCas() throws Exception {
+        RecoveryFixture fixture = new RecoveryFixture("supervision");
+        fixture.removeSavedResponse();
+        when(fixture.candidateMapper.update(any(QuestionBankBuildCandidate.class), any(UpdateWrapper.class)))
+                .thenAnswer(invocation -> { fixture.candidate.setReviewStatus("REJECTED"); return 0; });
+
+        fixture.handler.handle(fixture.job);
+
+        verifyNoInteractions(fixture.llm);
+        assertThat(fixture.candidate.getReviewStatus()).isEqualTo("REJECTED");
+        assertThat(fixture.persistedCheckpoint().containsKey(fixture.stage)).isFalse();
+    }
+
+    @ParameterizedTest(name = "saved {0} response must survive a candidate write failure")
+    @ValueSource(strings = {"supervision", "repair"})
+    void shouldNotRecallModelWhenSavedResponseApplicationFailsDespiteRetryAuthorization(String stage) throws Exception {
+        QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.update(isNull(), any(UpdateWrapper.class))).thenReturn(1);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
+        QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
+        KnowledgeSourceFileMapper sourceFileMapper = mock(KnowledgeSourceFileMapper.class);
+        QuestionBankBuildFileStorage storage = mock(QuestionBankBuildFileStorage.class);
+        UserLlmConfigService configService = mock(UserLlmConfigService.class);
+        QuestionBankBuildLlm llm = mock(QuestionBankBuildLlm.class);
+        AppJobService appJobService = mock(AppJobService.class);
+        KnowledgeBaseMapper knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
+        QuestionBankBuildSupervisionService supervision = new QuestionBankBuildSupervisionService(
+                llm, mock(QuestionBankService.class), knowledgeBaseMapper);
+        QuestionBankBuildJobHandler handler = handler(
+                buildMapper, candidateMapper, sourceFileMapper, storage,
+                new QuestionBankBuildProperties(), configService, llm, appJobService, supervision);
+
+        QuestionBankBuild build = runningBuild(48L);
+        build.setOwnerUserId(7L); build.setLlmConfigId(3L);
+        QuestionBankBuildCandidate candidate = validCandidate(88L, 48L);
+        QuestionBankBuildCheckpoint checkpoint = QuestionBankBuildCheckpoint.parse("[0]");
+        String savedResponse;
+        if ("supervision".equals(stage)) {
+            candidate.setMachineReviewStatus("RUNNING");
+            savedResponse = "{\"verdict\":\"PASS\",\"confidence\":0.95,\"issues\":[]}";
+            checkpoint.startSupervision(88L, 0);
+            checkpoint.persistSupervisionResponse(savedResponse);
+        } else {
+            candidate.setMachineReviewStatus("NEEDS_HUMAN"); candidate.setRepairStatus("RUNNING");
+            savedResponse = "{\"action\":\"UPDATE\",\"candidate\":{\"principles\":\"双亲委派\"}}";
+            checkpoint.startRepair(88L, 1, 0);
+            checkpoint.persistRepairResponse(savedResponse);
+        }
+        build.setCheckpointJson(checkpoint.toJson());
+        when(buildMapper.selectById(48L)).thenReturn(build);
+        when(candidateMapper.selectById(88L)).thenReturn(candidate);
+        when(candidateMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(candidate));
+        KnowledgeSourceFile source = new KnowledgeSourceFile();
+        source.setId(58L); source.setOriginalFilename("notes.md"); source.setStatus("CONVERTED");
+        source.setMarkdownStorageKey("builds/48/text/58.txt");
+        when(sourceFileMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(source));
+        when(storage.readText(source.getMarkdownStorageKey())).thenReturn("JVM 文档片段");
+        when(configService.requireOwnedRuntimeConfig(7L, 3L)).thenReturn(
+                new UserLlmRuntimeConfig(3L, 7L, "test", "test", "http://localhost", "mock", "secret", 0.0));
+        AppJob job = new AppJob();
+        job.setId(309L); job.setBuildId(48L); job.setClaimedBy("worker"); job.setRetryCount(1);
+        bindArtifacts(build, source, job);
+        KnowledgeBase target = new KnowledgeBase();
+        target.setId(10L); target.setPositionId(20L); target.setOwnerUserId(7L);
+        target.setScope("PRIVATE"); target.setStatus("ACTIVE");
+        when(knowledgeBaseMapper.selectById(10L)).thenReturn(target);
+
+        DataAccessResourceFailureException writeFailure = new DataAccessResourceFailureException("candidate write failed");
+        doAnswer(invocation -> {
+            QuestionBankBuildCandidate update = invocation.getArgument(0);
+            if ("supervision".equals(stage)) assertThat(update.getMachineReviewStatus()).isEqualTo("AUTO_PASS");
+            else assertThat(update.getRepairStatus()).isEqualTo("REPAIRED");
+            throw writeFailure;
+        }).doReturn(1).when(candidateMapper).update(any(QuestionBankBuildCandidate.class), any(UpdateWrapper.class));
+        when(llm.complete(any(), anyString(), anyString())).thenThrow(new IllegalStateException("unexpected model invocation"));
+
+        Throwable failure = catchThrowable(() -> handler.handle(job));
+
+        verify(llm, never()).complete(any(), anyString(), anyString());
+        assertThat(failure).isSameAs(writeFailure);
+        assertThat(JSON.parseObject(build.getCheckpointJson()).getJSONObject(stage).getString("response"))
+                .isEqualTo(savedResponse);
+    }
+
     @Test
     void shouldRequireExplicitRetryBeforeRepeatingUnconfirmedSupervisionCall() {
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         AppJobService appJobService = mock(AppJobService.class);
         QuestionBankBuildSupervisionService supervision = mock(QuestionBankBuildSupervisionService.class);
@@ -807,6 +1057,7 @@ class QuestionBankBuildJobHandlerTest {
     @Test
     void shouldRewriteRepairRetryCheckpointBeforeAuthorizedPaidRecall() {
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         AppJobService appJobService = mock(AppJobService.class);
         QuestionBankBuildSupervisionService supervision = mock(QuestionBankBuildSupervisionService.class);
@@ -849,6 +1100,7 @@ class QuestionBankBuildJobHandlerTest {
     @Test
     void shouldRestrictManualRepairToPayloadCandidateScope() {
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         AppJobService appJobService = mock(AppJobService.class);
         QuestionBankBuildRepairService repairService = mock(QuestionBankBuildRepairService.class);
@@ -993,6 +1245,7 @@ class QuestionBankBuildJobHandlerTest {
     @Test
     void candidateMachineWriteMustBeWhitelistedAndGuardedByPendingHumanReview() {
         QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
         QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
         AppJobService appJobService = mock(AppJobService.class);
         QuestionBankBuildSupervisionService supervision = mock(QuestionBankBuildSupervisionService.class);
@@ -1025,6 +1278,121 @@ class QuestionBankBuildJobHandlerTest {
         assertThat(candidate.getReviewStatus()).isEqualTo("REJECTED");
     }
 
+    private class RecoveryFixture {
+        final String stage;
+        final String prompt;
+        final String response;
+        final QuestionBankBuildMapper buildMapper = mock(QuestionBankBuildMapper.class);
+        final QuestionBankBuildCandidateMapper candidateMapper = mock(QuestionBankBuildCandidateMapper.class);
+        final QuestionBankBuildLlm llm = mock(QuestionBankBuildLlm.class);
+        final QuestionBankBuild build = runningBuild(49L);
+        final QuestionBankBuildCandidate candidate = validCandidate(89L, 49L);
+        final AppJob job = new AppJob();
+        final AtomicBoolean leaseValid = new AtomicBoolean(true);
+        final AtomicReference<String> storedCheckpoint = new AtomicReference<>();
+        final QuestionBankBuildSupervisionService supervision;
+        final QuestionBankBuildJobHandler handler;
+
+        RecoveryFixture(String stage) throws Exception {
+            this.stage = stage;
+            prompt = switch (stage) {
+                case "categoryPlanning" -> "知识领域分类规划器";
+                case "generation" -> "知识原子生成器";
+                case "supervision" -> "题库质量监督器";
+                default -> "题库修复助手";
+            };
+            response = switch (stage) {
+                case "categoryPlanning" -> "{\"categories\":[\"jvm\",\"java\"]}";
+                case "generation" -> """
+                        {"atoms":[{"subject":"JVM","category":"jvm","difficulty":"mid",
+                          "content":{"principles":"双亲委派","followUpPaths":["深入追问","引导追问"]},
+                          "sourceEvidence":[{"quote":"JVM 文档片段"}]}]}
+                        """;
+                case "supervision" -> "{\"verdict\":\"PASS\",\"confidence\":0.95,\"issues\":[]}";
+                default -> "{\"action\":\"DROP\",\"summary\":\"原文不足以支持候选\"}";
+            };
+            KnowledgeSourceFileMapper sourceFileMapper = mock(KnowledgeSourceFileMapper.class);
+            QuestionBankBuildFileStorage storage = mock(QuestionBankBuildFileStorage.class);
+            UserLlmConfigService configService = mock(UserLlmConfigService.class);
+            AppJobService jobs = mock(AppJobService.class);
+            KnowledgeBaseMapper knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
+            supervision = spy(new QuestionBankBuildSupervisionService(llm, mock(QuestionBankService.class), knowledgeBaseMapper));
+            handler = handler(buildMapper, candidateMapper, sourceFileMapper, storage,
+                    new QuestionBankBuildProperties(), configService, llm, jobs, supervision);
+            when(jobs.extendRunningJobLease(anyLong(), anyString(), any())).thenAnswer(invocation -> leaseValid.get());
+            when(buildMapper.update(isNull(), any(UpdateWrapper.class))).thenReturn(1);
+            when(buildMapper.updateById(any(QuestionBankBuild.class))).thenAnswer(invocation -> store(invocation.getArgument(0)));
+            when(buildMapper.selectById(49L)).thenReturn(build);
+            build.setOwnerUserId(7L); build.setLlmConfigId(3L);
+            if ("categoryPlanning".equals(stage)) {
+                build.setCategoriesJson("[]");
+                candidate.setReviewStatus("ACCEPTED"); candidate.setMachineReviewStatus("SKIPPED");
+            } else if ("supervision".equals(stage)) {
+                candidate.setMachineReviewStatus("RUNNING");
+            } else if ("repair".equals(stage)) {
+                candidate.setMachineReviewStatus("NEEDS_HUMAN"); candidate.setRepairStatus("RUNNING");
+                candidate.setRepairRound(1); build.setRepairRound(1);
+            }
+            List<QuestionBankBuildCandidate> candidates = new ArrayList<>();
+            if (!"generation".equals(stage)) candidates.add(candidate);
+            when(candidateMapper.selectById(89L)).thenReturn(candidate);
+            when(candidateMapper.selectList(any(QueryWrapper.class))).thenAnswer(invocation -> List.copyOf(candidates));
+            when(candidateMapper.selectOne(any(QueryWrapper.class))).thenAnswer(invocation ->
+                    candidates.isEmpty() ? null : candidates.get(0));
+            when(candidateMapper.selectCount(any(QueryWrapper.class))).thenAnswer(invocation -> (long) candidates.size());
+            when(candidateMapper.insert(any(QuestionBankBuildCandidate.class))).thenAnswer(invocation -> {
+                QuestionBankBuildCandidate inserted = invocation.getArgument(0);
+                inserted.setId(89L); candidates.add(inserted); return 1;
+            });
+            KnowledgeSourceFile source = new KnowledgeSourceFile();
+            source.setId(59L); source.setOriginalFilename("notes.md"); source.setStatus("CONVERTED");
+            source.setMarkdownStorageKey("builds/49/text/59.txt");
+            when(sourceFileMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(source));
+            when(storage.readText(source.getMarkdownStorageKey())).thenReturn("JVM 文档片段");
+            when(configService.requireOwnedRuntimeConfig(7L, 3L)).thenReturn(
+                    new UserLlmRuntimeConfig(3L, 7L, "test", "test", "http://localhost", "mock", "secret", 0.0));
+            job.setId(310L); job.setBuildId(49L); job.setClaimedBy("worker"); job.setRetryCount(1);
+            bindArtifacts(build, source, job);
+            KnowledgeBase target = new KnowledgeBase();
+            target.setId(10L); target.setPositionId(20L); target.setOwnerUserId(7L);
+            target.setScope("PRIVATE"); target.setStatus("ACTIVE");
+            when(knowledgeBaseMapper.selectById(10L)).thenReturn(target);
+            // Literal legacy field names exercise compatibility without the new checkpoint API.
+            JSONObject call = JSON.parseObject("{\"startedRetryCount\":0}");
+            call.put("response", response);
+            if ("generation".equals(stage)) call.put("chunkIndex", 0);
+            if ("supervision".equals(stage) || "repair".equals(stage)) call.put("candidateId", 89L);
+            if ("repair".equals(stage)) call.put("round", 1);
+            JSONObject state = new JSONObject();
+            state.put("completedChunkIndexes", "generation".equals(stage) ? List.of() : List.of(0));
+            state.put(stage, call);
+            seedCheckpoint(state);
+            when(llm.complete(any(), anyString(), anyString())).thenAnswer(invocation -> {
+                String systemPrompt = invocation.getArgument(1);
+                if ("generation".equals(stage) && systemPrompt.contains("题库质量监督器")) return "{\"verdict\":\"PASS\"}";
+                throw new IllegalStateException("unexpected model invocation");
+            });
+        }
+
+        JSONObject persistedCheckpoint() { return JSON.parseObject(storedCheckpoint.get()); }
+
+        void seedCheckpoint(JSONObject state) {
+            storedCheckpoint.set(state.toJSONString());
+            build.setCheckpointJson(storedCheckpoint.get());
+        }
+
+        void removeSavedResponse() {
+            JSONObject state = persistedCheckpoint();
+            state.getJSONObject(stage).remove("response");
+            seedCheckpoint(state);
+        }
+
+        int store(QuestionBankBuild update) {
+            if (update.getCheckpointJson() != null) storedCheckpoint.set(update.getCheckpointJson());
+            return 1;
+        }
+    }
+
     private QuestionBankBuildJobHandler handler(QuestionBankBuildMapper buildMapper,
                                                 QuestionBankBuildCandidateMapper candidateMapper,
                                                 KnowledgeSourceFileMapper sourceFileMapper,
@@ -1035,6 +1403,7 @@ class QuestionBankBuildJobHandlerTest {
                                                 AppJobService appJobService,
                                                 QuestionBankBuildSupervisionService supervisionService) {
         properties.setMaxRepairRounds(0);
+        when(buildMapper.updateById(any(QuestionBankBuild.class))).thenReturn(1);
         when(appJobService.extendRunningJobLease(anyLong(), anyString(), any())).thenReturn(true);
         when(candidateMapper.update(any(QuestionBankBuildCandidate.class), any(UpdateWrapper.class))).thenReturn(1);
         QuestionBankBuildCandidateValidator validator = new QuestionBankBuildCandidateValidator();

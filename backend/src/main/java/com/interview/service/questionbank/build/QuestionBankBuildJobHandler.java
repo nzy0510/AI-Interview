@@ -127,9 +127,6 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
                 }
                 ensureBuildExecutable(build.getId());
                 processChunk(build, chunk, runtime, checkpoint, job);
-                completed.add(chunk.globalIndex());
-                checkpoint.clearGeneration();
-                persistCheckpoint(build, checkpoint, chunks.size(), job);
                 int progress = generationProgress(build, completed.size(), chunks.size());
                 updateProgress(build, job, "GENERATING", progress);
             }
@@ -153,15 +150,18 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
                                 UserLlmRuntimeConfig runtime,
                                 QuestionBankBuildCheckpoint checkpoint,
                                 AppJob job) {
+        QuestionBankBuildModelCall call = new QuestionBankBuildModelCall(
+                build, job, checkpoint, buildMapper, appJobService);
+        QuestionBankBuildModelCall.Key key = QuestionBankBuildModelCall.Key.generation(chunk.globalIndex());
         List<QuestionBankBuildCandidate> existingCandidates = candidateMapper.selectList(new QueryWrapper<QuestionBankBuildCandidate>()
                 .eq("build_id", build.getId()).eq("chunk_index", chunk.globalIndex()).orderByAsc("id"));
         Integer expectedCandidates = expectedCandidateCount(existingCandidates);
-        String generation = checkpoint.persistedResponse(chunk.globalIndex());
-        if (!existingCandidates.isEmpty() && generation == null) {
+        if (!existingCandidates.isEmpty() && checkpoint.persistedResponse(chunk.globalIndex()) == null) {
             if (expectedCandidates != null && existingCandidates.size() < expectedCandidates) {
                 throw new IllegalStateException("分块候选只落库了部分内容，为避免模型重排造成错题，请删除该构建后重新发起");
             }
             refreshBuildCounts(build, job);
+            call.finish(key);
             return;
         }
         int existingCount = candidateCount(build.getId());
@@ -170,48 +170,20 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
         String userPrompt = "请从以下文档片段生成一个或多个可用于技术面试的知识原子。\n"
                 + "文档来源：" + chunk.sourceFile().getOriginalFilename() + "，片段序号：" + chunk.localIndex() + "\n"
                 + "文档片段：\n" + chunk.text();
-        if (generation == null) {
-            int retryCount = job.getRetryCount() == null ? 0 : job.getRetryCount();
-            QuestionBankBuildCheckpoint.GenerationInvocation inFlight = checkpoint.generation();
-            if (inFlight != null) {
-                if (inFlight.chunkIndex() != chunk.globalIndex()) {
-                    throw new IllegalStateException("模型调用检查点与当前分块不一致");
-                }
-                if (retryCount <= inFlight.startedRetryCount()) {
-                    throw new IllegalStateException("上次生成调用结果未确认，为避免重复计费未自动重调；请点击重试明确授权再次调用");
-                }
-            }
-            checkpoint.startGeneration(chunk.globalIndex(), retryCount);
-            persistCheckpoint(build, checkpoint,
-                    Math.max(build.getChunkCount() == null ? 0 : build.getChunkCount(), chunk.globalIndex() + 1), job);
-            requireJobLease(job);
-            generation = llm.complete(runtime, systemPrompt, userPrompt);
-            requireJobLease(job);
-            checkpoint.persistGenerationResponse(generation);
-            persistCheckpoint(build, checkpoint,
-                    Math.max(build.getChunkCount() == null ? 0 : build.getChunkCount(), chunk.globalIndex() + 1), job);
-        }
-        List<QuestionBankBuildCandidate> generatedCandidates;
-        try {
-            generatedCandidates = parseAndValidateCandidates(build, chunk, generation);
-        } catch (RuntimeException invalidResponse) {
-            QuestionBankBuildCheckpoint.GenerationInvocation invocation = checkpoint.generation();
-            int retryCount = job.getRetryCount() == null ? 0 : job.getRetryCount();
-            if (invocation == null || invocation.response() == null
-                    || retryCount <= invocation.startedRetryCount()) {
-                throw invalidResponse;
-            }
-            checkpoint.retryRejectedGeneration(chunk.globalIndex(), retryCount);
-            persistCheckpoint(build, checkpoint,
-                    Math.max(build.getChunkCount() == null ? 0 : build.getChunkCount(), chunk.globalIndex() + 1), job);
-            requireJobLease(job);
-            generation = llm.complete(runtime, systemPrompt, userPrompt);
-            requireJobLease(job);
-            checkpoint.persistGenerationResponse(generation);
-            persistCheckpoint(build, checkpoint,
-                    Math.max(build.getChunkCount() == null ? 0 : build.getChunkCount(), chunk.globalIndex() + 1), job);
-            generatedCandidates = parseAndValidateCandidates(build, chunk, generation);
-        }
+        List<String> allowedCategories = categories(build);
+        call.execute(key, () -> true, () -> llm.complete(runtime, systemPrompt, userPrompt),
+                raw -> parseAndValidateCandidates(build, chunk, raw, allowedCategories), (generated, finished) -> {
+                    persistGeneratedCandidates(build, chunk, generated, expectedCandidates, existingCount, job);
+                    call.persist(finished);
+                });
+    }
+
+    private void persistGeneratedCandidates(QuestionBankBuild build,
+                                            ChunkRef chunk,
+                                            List<QuestionBankBuildCandidate> generatedCandidates,
+                                            Integer expectedCandidates,
+                                            int existingCount,
+                                            AppJob job) {
         int requiredChunkCandidates = Math.max(
                 expectedCandidates == null ? 0 : expectedCandidates,
                 generatedCandidates.size());
@@ -230,6 +202,7 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
             candidate.setRepairRound(0);
             // Persist generated content before supervision. A failed supervision
             // retry must never pay for or reorder generation again.
+            requireJobLease(job);
             candidateMapper.insert(candidate);
             persistedCount++;
         }
@@ -246,41 +219,11 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
                                 UserLlmRuntimeConfig runtime,
                                 QuestionBankBuildCheckpoint checkpoint,
                                 AppJob job) {
-        int retryCount = job.getRetryCount() == null ? 0 : job.getRetryCount();
-        QuestionBankBuildCheckpoint.PlanningInvocation invocation = checkpoint.categoryPlanning();
-        String raw = checkpoint.persistedCategoryPlanningResponse();
-        if (raw == null) {
-            if (invocation != null && retryCount <= invocation.startedRetryCount()) {
-                throw new IllegalStateException("上次分类规划调用结果未确认，为避免重复计费未自动重调；请点击重试明确授权再次调用");
-            }
-            checkpoint.startCategoryPlanning(retryCount);
-            persistCheckpoint(build, checkpoint, chunks.size(), job);
-            requireJobLease(job);
-            raw = llm.complete(runtime, categoryPlanner.systemPrompt(), categoryPlanner.userPrompt(categorySources(chunks)));
-            requireJobLease(job);
-            checkpoint.persistCategoryPlanningResponse(raw);
-            persistCheckpoint(build, checkpoint, chunks.size(), job);
-        }
-        List<String> planned;
-        try {
-            planned = categoryPlanner.parse(raw);
-        } catch (RuntimeException invalidResponse) {
-            invocation = checkpoint.categoryPlanning();
-            if (invocation == null || invocation.response() == null
-                    || retryCount <= invocation.startedRetryCount()) {
-                throw invalidResponse;
-            }
-            checkpoint.retryRejectedCategoryPlanning(retryCount);
-            persistCheckpoint(build, checkpoint, chunks.size(), job);
-            requireJobLease(job);
-            raw = llm.complete(runtime, categoryPlanner.systemPrompt(), categoryPlanner.userPrompt(categorySources(chunks)));
-            requireJobLease(job);
-            checkpoint.persistCategoryPlanningResponse(raw);
-            persistCheckpoint(build, checkpoint, chunks.size(), job);
-            planned = categoryPlanner.parse(raw);
-        }
-        checkpoint.clearCategoryPlanning();
-        persistPlannedCategories(build, checkpoint, planned, chunks.size(), job);
+        new QuestionBankBuildModelCall(build, job, checkpoint, buildMapper, appJobService)
+                .execute(QuestionBankBuildModelCall.Key.planning(), () -> true,
+                        () -> llm.complete(runtime, categoryPlanner.systemPrompt(), categoryPlanner.userPrompt(categorySources(chunks))),
+                        categoryPlanner::parse,
+                        (planned, finished) -> persistPlannedCategories(build, finished, planned, chunks.size(), job));
     }
 
     private List<QuestionBankBuildCategoryPlanner.SourceExcerpt> categorySources(List<ChunkRef> chunks) {
@@ -399,22 +342,6 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
         update.setChunkCount(chunks.size());
         buildMapper.updateById(update);
         return chunks;
-    }
-
-    private void persistCheckpoint(QuestionBankBuild build,
-                                   QuestionBankBuildCheckpoint checkpoint,
-                                   int chunkCount,
-                                   AppJob job) {
-        requireJobLease(job);
-        build.setCheckpointJson(checkpoint.toJson());
-        build.setCompletedChunkCount(checkpoint.completedChunkIndexes().size());
-        build.setChunkCount(chunkCount);
-        QuestionBankBuild update = new QuestionBankBuild();
-        update.setId(build.getId());
-        update.setCheckpointJson(build.getCheckpointJson());
-        update.setCompletedChunkCount(build.getCompletedChunkCount());
-        update.setChunkCount(chunkCount);
-        buildMapper.updateById(update);
     }
 
     private void refreshBuildCounts(QuestionBankBuild build, AppJob job) {
@@ -644,13 +571,14 @@ public class QuestionBankBuildJobHandler implements AppJobHandler {
 
     private List<QuestionBankBuildCandidate> parseAndValidateCandidates(QuestionBankBuild build,
                                                                          ChunkRef chunk,
-                                                                         String raw) {
+                                                                         String raw,
+                                                                         List<String> allowedCategories) {
         List<JSONObject> atoms = parseRequiredAtoms(raw);
         List<QuestionBankBuildCandidate> candidates = new ArrayList<>(atoms.size());
         for (int ordinal = 0; ordinal < atoms.size(); ordinal++) {
             QuestionBankBuildCandidate candidate = QuestionBankBuildCandidateFactory.create(
                     build, chunk.sourceFile(), chunk.globalIndex(), chunk.localIndex(), atoms.get(ordinal), ordinal);
-            validator.validate(candidate, categories(build));
+            validator.validate(candidate, allowedCategories);
             candidates.add(candidate);
         }
         return candidates;
