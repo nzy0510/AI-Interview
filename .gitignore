@@ -28,7 +28,10 @@
 /.nb-gradle/
 
 # VS Code
-.vscode/
+.vscode/*
+!/.vscode/extensions.json
+**/.vscode/*
+!**/.vscode/extensions.json
 
 # ========== 系统/环境忽略 ==========
 # Mac OS
@@ -110,8 +113,8 @@ conflicts_render.txt
 
 # ========== 知识库相关 ==========
 # 忽略原始大型文档，保留导入契约 fixtures
-*.pdf
 **/knowledge_base/archive_original/
+/docs/面试题库pdf/
 /question_bank_imports/*
 !/question_bank_imports/fixtures/
 !/question_bank_imports/fixtures/import-lifecycle/
@@ -122,30 +125,10 @@ conflicts_render.txt
 /AZURE_OPERATIONS.md
 
 # ========== Docs ==========
-/docs/*
-!/docs/
-!/docs/rag-chain-summary.md
-!/docs/贡献指南.md
-!/docs/goai-demo.md
-!/docs/plan/
-!/docs/adr/
-!/docs/adr/*.md
-!/docs/agents/
-!/docs/agents/*.md
-!/docs/agents/plans/
-!/docs/agents/plans/**/*.md
-!/docs/agents/templates/
-!/docs/agents/templates/*.md
-!/docs/agents/runs/
-!/docs/agents/runs/*.md
-!/docs/contracts/
-!/docs/contracts/*.md
-!/docs/superpowers/
-!/docs/specs
-!/docs/superpowers/specs/
-!/docs/superpowers/specs/*.md
-!/docs/superpowers/plans/
-!/docs/superpowers/plans/*.md
+!/docs/deployment/
+/docs/deployment/*
+!/docs/deployment/external-services.md
+!/docs/deployment/aliyun-beta.md
 # Local resume/interview-prep drafts generated for private delivery preparation
 /docs/codex-resume-ai-llm-20260511/
 /docs/AI大模型应用开发简历模板.md
@@ -169,6 +152,7 @@ backend/mvn_result.txt
 
 # Retrieval evaluation raw and generated artifacts
 /output/retrieval-eval/
+/output/pdf/
 /.cache/retrieval-eval/
 /scripts/retrieval_eval/.env
 
