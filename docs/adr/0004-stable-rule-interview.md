@@ -19,7 +19,7 @@
 5. 阶段、对话历史与本场 `usedAtomIds` 只在模型流式 `onComplete` 后提交。保留 `interview_turn` 的问答、证据快照，以及岗位级覆盖、详细报告和 AI Mentor；补救证据不用于本场排重，但成功落库后仍可计入知识暴露覆盖。
 6. 移除 Tool Calling 规划器、回退编排器、专用异常、规划 Prompt、Agent 配置与线程池、超时会话状态、`APP_INTERVIEW_AGENT_*` 配置、前端决策状态条和 SSE `orchestration` 事件。
 7. 保留 V20 历史迁移与数据库旧列、旧值。新轮次的 `orchestration_mode` 固定写入 `RULE`，`decision_action` 保存规则动作，`decisionJson` 只保存 `evidenceAtomIds` 与 `consumedAtomIds`；历史记录继续可读，不做数据清理或改写。
-8. 保留用户 Provider、岗位简历定制、题库入库与终审发布流程。README、领域文档与 RAG 说明描述当前规则主线；ADR 0001 和比赛 Demo 标注为历史资料。
+8. 保留用户 Provider、岗位简历定制、题库入库与终审发布流程。README、领域文档与 RAG 说明描述当前规则主线；ADR 0001 保留为历史资料，GOAI 比赛 Demo 文档移除。
 
 ## 结果与取舍
 

@@ -18,7 +18,7 @@
 - 移除比赛版面试 Agent 的 Tool Calling 规划、自动回退、专用线程池与超时会话状态、`APP_INTERVIEW_AGENT_*` 配置，以及文字 / 视频面试决策状态条和 SSE `orchestration` 事件。
 
 ### 文档
-- README、领域上下文与 RAG 链路说明统一为稳定规则主线；新增 ADR 0004，原 Agent 决策与比赛 Demo 保留为历史资料。
+- README、领域上下文与 RAG 链路说明统一为稳定规则主线；新增 ADR 0004，原 Agent 决策保留为历史资料，移除 GOAI 比赛演示指南。
 
 ## v1.5.0 - 2026-08-13
 
