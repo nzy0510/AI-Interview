@@ -303,7 +303,7 @@ class MentorServiceTest {
     }
 
     @Test
-    @DisplayName("Agent 仅完成规划检索时不提前计入学习覆盖")
+    @DisplayName("仅完成检索时不提前计入学习覆盖")
     void shouldIgnorePlanningOnlyRetrievalWhenMeasuringCoverage() {
         MentorService service = new MentorService();
         ReflectionTestUtils.setField(service, "atomMapper", atomMapper);

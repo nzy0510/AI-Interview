@@ -23,10 +23,6 @@
         </div>
       </el-header>
 
-      <div v-if="orchestrationDecision" class="orchestration-strip">
-        <InterviewOrchestrationIndicator :decision="orchestrationDecision" />
-      </div>
-
       <el-main class="chat-main" ref="chatMainRef">
         <div class="chat-scene">
           <div
@@ -121,8 +117,6 @@ import { startInterviewAPI, finishInterviewAPI, discardInterviewAPI, getHistoryD
 import { getPreferenceAPI } from '@/api/user'
 import * as echarts from 'echarts'
 import { userKey } from '@/utils/auth'
-import { useInterviewOrchestration } from '@/composables/useInterviewOrchestration'
-import InterviewOrchestrationIndicator from '@/components/interview/InterviewOrchestrationIndicator.vue'
 import InterviewReportOverlay from '@/components/interview/InterviewReportOverlay.vue'
 import { buildInterviewRadarOption, gradeToRadarScore } from '@/utils/chartOptions'
 import { buildLlmConfigRouteQuery, isMissingLlmConfigError } from '@/utils/llmConfig'
@@ -136,7 +130,7 @@ import { parseFocusAreas, loadTailoredResumeQuestions, loadInterviewPreferenceFa
 import { trackEvent } from '@/utils/analytics'
 import { getAnonymousId } from '@/utils/visitor'
 import { renderSafeMarkdown } from '@/utils/markdown'
-import { parseInterviewSseData } from '@/utils/interviewOrchestration'
+import { parseInterviewSseData } from '@/utils/interviewSse'
 
 const route = useRoute()
 const router = useRouter()
@@ -154,11 +148,6 @@ const messageList = ref([])
 const inputMsg = ref('')
 const isStreaming = ref(false)
 const currentPhase = ref('OPENING')
-const {
-  orchestrationDecision,
-  setOrchestrationDecision,
-  resetOrchestrationDecision
-} = useInterviewOrchestration()
 const chatMainRef = ref(null)
 const isFinishing = ref(false)
 const isDiscarding = ref(false)
@@ -581,7 +570,6 @@ const sendMessage = () => {
 const streamAiResponse = (msg) => {
   isStreaming.value = true
   pendingEndType = null
-  resetOrchestrationDecision()
   // Use reactive push via an object reference we keep
   const aiMsg = reactive({ role: 'ai', content: '', streaming: true })
   messageList.value.push(aiMsg)
@@ -610,11 +598,6 @@ const streamAiResponse = (msg) => {
       isStreaming.value = false
       source.close()
       if (eventSource === source) eventSource = null
-      return
-    }
-
-    if (parsedEvent.kind === 'orchestration') {
-      setOrchestrationDecision(parsedEvent.data)
       return
     }
 
@@ -807,12 +790,6 @@ const performEndInterview = async (endType = 'manual') => {
   backdrop-filter: blur(18px);
   box-shadow: 0 1px 0 rgba(23, 26, 31, 0.04), 0 10px 30px rgba(23, 26, 31, 0.04);
   flex-shrink: 0;
-}
-
-.orchestration-strip {
-  flex: 0 0 auto;
-  padding: 10px 28px 0;
-  background: rgba(247, 249, 251, 0.72);
 }
 
 .header-left,
@@ -1071,7 +1048,6 @@ const performEndInterview = async (endType = 'manual') => {
 
 @media (max-width: 860px) {
   .interview-header,
-  .orchestration-strip,
   .chat-footer,
   .chat-main {
     padding-left: 16px;

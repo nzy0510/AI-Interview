@@ -79,11 +79,25 @@ final class QuestionBankBuildCheckpoint {
         return JSON.toJSONString(state);
     }
 
+    QuestionBankBuildCheckpoint copy() {
+        return new QuestionBankBuildCheckpoint(new HashSet<>(completedChunkIndexes),
+                categoryPlanning, lastRejectedCategoryPlanning, generation, lastRejectedGeneration,
+                supervision, repair);
+    }
+
+    void replaceWith(QuestionBankBuildCheckpoint saved) {
+        completedChunkIndexes.clear();
+        completedChunkIndexes.addAll(saved.completedChunkIndexes);
+        categoryPlanning = saved.categoryPlanning;
+        lastRejectedCategoryPlanning = saved.lastRejectedCategoryPlanning;
+        generation = saved.generation;
+        lastRejectedGeneration = saved.lastRejectedGeneration;
+        supervision = saved.supervision;
+        repair = saved.repair;
+    }
+
     Set<Integer> completedChunkIndexes() { return completedChunkIndexes; }
     PlanningInvocation categoryPlanning() { return categoryPlanning; }
-    String persistedCategoryPlanningResponse() {
-        return categoryPlanning == null ? null : categoryPlanning.response();
-    }
     void startCategoryPlanning(int retryCount) {
         categoryPlanning = new PlanningInvocation(retryCount, null);
     }
@@ -197,16 +211,21 @@ final class QuestionBankBuildCheckpoint {
         return value;
     }
 
-    record GenerationInvocation(int chunkIndex, int startedRetryCount, String response) {
+    sealed interface Invocation permits PlanningInvocation, GenerationInvocation, SupervisionInvocation, RepairInvocation {
+        int startedRetryCount();
+        String response();
     }
 
-    record PlanningInvocation(int startedRetryCount, String response) {
+    record GenerationInvocation(int chunkIndex, int startedRetryCount, String response) implements Invocation {
     }
 
-    record SupervisionInvocation(long candidateId, int startedRetryCount, String response) {
+    record PlanningInvocation(int startedRetryCount, String response) implements Invocation {
     }
 
-    record RepairInvocation(long candidateId, int round, int startedRetryCount, String response) {
+    record SupervisionInvocation(long candidateId, int startedRetryCount, String response) implements Invocation {
+    }
+
+    record RepairInvocation(long candidateId, int round, int startedRetryCount, String response) implements Invocation {
     }
 }
 

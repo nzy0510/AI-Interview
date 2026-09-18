@@ -123,40 +123,4 @@ class SessionStoreTest {
 
         assertThat(store.loadUsedAtoms(1L)).hasSize(200);
     }
-
-    @Test
-    @DisplayName("记录 Agent 不可用原因后应在本场会话内保持")
-    void shouldRememberAgentDisabledReasonForSession() {
-        store.disableAgent(1L, "TOOLS_UNSUPPORTED");
-
-        assertThat(store.loadAgentDisabledReason(1L)).isEqualTo("TOOLS_UNSUPPORTED");
-    }
-
-    @Test
-    @DisplayName("连续记录 Agent 超时应递增会话内计数")
-    void shouldIncrementConsecutiveAgentTimeoutCount() {
-        assertThat(store.incrementAgentTimeoutCount(1L)).isEqualTo(1);
-        assertThat(store.incrementAgentTimeoutCount(1L)).isEqualTo(2);
-    }
-
-    @Test
-    @DisplayName("清除 Agent 超时计数后下一次应重新从一次开始")
-    void shouldRestartAgentTimeoutCountAfterClear() {
-        store.incrementAgentTimeoutCount(1L);
-        store.clearAgentTimeoutCount(1L);
-
-        assertThat(store.incrementAgentTimeoutCount(1L)).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("删除会话时应同时清除 Agent 不可用状态")
-    void shouldClearAgentDisabledReasonWhenDeletingSession() {
-        store.disableAgent(1L, "TOOLS_UNSUPPORTED");
-        store.incrementAgentTimeoutCount(1L);
-
-        store.delete(1L);
-
-        assertThat(store.loadAgentDisabledReason(1L)).isNull();
-        assertThat(store.incrementAgentTimeoutCount(1L)).isEqualTo(1);
-    }
 }

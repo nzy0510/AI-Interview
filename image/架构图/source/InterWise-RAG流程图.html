@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InterWise RAG 流程图</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:1800px;height:1280px;overflow:hidden}body{font-family:"Microsoft YaHei","Noto Sans CJK SC",sans-serif;background:#f5f8fc;color:#122033;padding:30px 50px}.page{height:100%;display:flex;flex-direction:column;gap:14px}.head{border-top:10px solid #2477f3;padding-top:17px;position:relative}.head:after{content:"";position:absolute;left:55%;right:0;top:-10px;height:10px;background:#16b9a5}.title{font-size:44px;font-weight:700}.subtitle{margin-top:8px;font-size:20px;color:#60728a}.panel{background:#fff;border:2px solid #d8e2ef;border-radius:18px;padding:15px 22px}.panel h2{font-size:27px;margin:0 0 14px}.card{border:2px solid #b9c9df;border-radius:13px;padding:13px 14px;background:#f8fbff;min-height:92px;display:flex;flex-direction:column;justify-content:center}.card h3{font-size:19px;margin:0 0 6px}.card p{font-size:15px;line-height:1.4;margin:0;color:#5c6f87}.blue{background:#eaf4ff;border-color:#4aa3ff}.green{background:#ebfbf2;border-color:#43ce7c}.orange{background:#fff5e6;border-color:#ffad45}.purple{background:#f3edff;border-color:#9a7bff}.teal{background:#e9fbf8;border-color:#30c2ad}.rose{background:#fff0f3;border-color:#ff8292}.gray{background:#f3f6fa;border-color:#aebed1}.flow{display:grid;align-items:center;gap:10px}.flow7{grid-template-columns:1fr 28px 1fr 28px 1fr 28px 1fr 28px 1fr 28px 1fr 28px 1fr}.flow6{grid-template-columns:1fr 28px 1fr 28px 1fr 28px 1fr 28px 1fr 28px 1fr}.arrow{text-align:center;color:#61748c;font-size:28px;font-weight:700}.note{font-size:15px;color:#64768b;line-height:1.45;margin-top:11px}.runtime{display:grid;grid-template-columns:1.08fr 1.2fr 1.5fr;gap:15px}.lane{border-left:5px solid #89a9d0;padding-left:13px}.lane h3{font-size:19px;margin:0 0 9px}.stack{display:flex;flex-direction:column;gap:9px}.branch{display:grid;grid-template-columns:1fr 1fr;gap:9px}.shared{display:grid;grid-template-columns:1fr 28px 1fr 28px 1fr;gap:9px;align-items:center}.outcomes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}.outcomes .card{min-height:82px}.footer{display:grid;grid-template-columns:1.2fr 1fr 1fr 1.25fr;gap:12px}.footer .card{min-height:108px}.gate{margin-top:auto;background:#10233f;color:#eaf2fb;border-radius:14px;padding:12px 20px;font-size:16px;line-height:1.5}.gate strong{color:#7bd0ff}code{font-family:Consolas,monospace;font-size:.95em}
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="head">
+    <div class="title">InterWise 当前 RAG 与题库治理链路</div>
+    <div class="subtitle">受控文档入库 → 可审计 Knowledge Atom → 稳定规则与动态 RAG → 生成完成后复盘</div>
+  </header>
+
+  <section class="panel">
+    <h2>一、题库入库：模型只产出候选，发布权始终在人</h2>
+    <div class="flow flow7">
+      <div class="card blue"><h3>1 资料上传</h3><p>PDF / DOCX / TXT / MD<br>文件校验 + 受控存储</p></div><div class="arrow">→</div>
+      <div class="card gray"><h3>2 解析与分块</h3><p>异步作业 · 限额<br>失败可观察、可恢复</p></div><div class="arrow">→</div>
+      <div class="card purple"><h3>3 分类规划</h3><p>整批 2–10 个领域<br>或用户指定严格目录</p></div><div class="arrow">→</div>
+      <div class="card teal"><h3>4 候选生成</h3><p>执行用户 active Provider<br>保存非密钥运行指纹</p></div><div class="arrow">→</div>
+      <div class="card orange"><h3>5 监督与修复</h3><p>AUTO_PASS / NEEDS_HUMAN / AUTO_REJECT<br>默认最多两轮受限修复复审</p></div><div class="arrow">→</div>
+      <div class="card green"><h3>6 批次终审</h3><p>owner / ADMIN 显式确认<br>机器通过不等于发布</p></div><div class="arrow">→</div>
+      <div class="card rose"><h3>7 发布与索引</h3><p>MySQL 先提交<br>后端可重试同步 Qdrant</p></div>
+    </div>
+    <div class="note">公共题库只是发布目标：源文件、候选、批次和作业仍属于发起管理员的私有工件；只有终审发布后的 Atom 才进入公共作用域。</div>
+  </section>
+
+  <section class="panel">
+    <h2>二、面试运行时：稳定规则决定阶段，LLM 结合证据生成下一问</h2>
+    <div class="runtime">
+      <div class="lane">
+        <h3>触发与编排</h3>
+        <div class="stack">
+          <div class="card blue"><h3>候选人当前回答</h3><p>加载当前岗位、会话、已用 Atom 与简历定制题</p></div>
+          <div class="branch">
+            <div class="card orange"><h3>阶段状态机</h3><p>根据对话阶段标记与轮次，决定本轮所属阶段</p></div>
+            <div class="card purple"><h3>按阶段检索</h3><p>技术 / HR 阶段检索；开场 / 收尾跳过题库检索</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lane">
+        <h3>检索与双层校验</h3>
+        <div class="stack">
+          <div class="card teal"><h3>query 与作用域</h3><p>上一问 + 候选人当前回答<br>scope / owner / position / knowledge base<br>HR 额外限定软技能分类</p></div>
+          <div class="shared">
+            <div class="card green"><h3>embedding-service</h3><p><code>query:</code> 前缀<br>multilingual-e5-base</p></div><div class="arrow">→</div>
+            <div class="card rose"><h3>Qdrant</h3><p>Top-20，最多 Top-30<br>排除 usedAtomIds</p></div><div class="arrow">→</div>
+            <div class="card blue"><h3>MySQL 回查</h3><p>完整 Atom + PASS<br>再次校验全部作用域</p></div>
+          </div>
+          <div class="card gray"><h3>Qdrant 异常 / 无有效命中</h3><p>MySQL LIKE fallback 使用相同业务条件，但 score = 0；记录降级，不作为可靠上下文注入 Prompt。</p></div>
+        </div>
+      </div>
+
+      <div class="lane">
+        <h3>决策、生成与提交</h3>
+        <div class="card orange"><h3>真实回答信号 + 召回分数</h3><p>正常回答且 ≥0.55 可用；低信息且 ≥0.70 才补救。最多 Top-10；继续、补救、切换动作通过结构化字段返回。</p></div>
+        <div class="outcomes">
+          <div class="card green"><h3>可靠召回</h3><p>注入 Atom 深挖<br>成功生成后消费</p></div>
+          <div class="card orange"><h3>补救追问</h3><p>高置信上下文<br>不消费 Atom</p></div>
+          <div class="card rose"><h3>弱召回</h3><p>不注入 Atom<br>切换或自然提问</p></div>
+        </div>
+        <div class="card teal" style="margin-top:10px"><h3>用户 active Provider + SSE</h3><p>模型流式生成完成后，提交阶段、会话、结构化轮次和 consumedAtomIds；保存发生在 SSE done 之前，不代表浏览器已完整收到问题。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>三、观测与复盘：候选、消费、落库三类事实分开记录</h2>
+    <div class="footer">
+      <div class="card blue"><h3>RAG 请求 / 候选日志</h3><p>query、策略、延迟、零命中、分数、排序、是否选入上下文；检索后即可能存在。</p></div>
+      <div class="card green"><h3>会话消费</h3><p>成功生成后写入 usedAtomIds，用于本场后续排重；补救上下文不消费。</p></div>
+      <div class="card purple"><h3>已落库轮次证据</h3><p>结构化 interview_turn 保存 promptAtomIds；岗位覆盖统计知识暴露，不等于掌握。</p></div>
+      <div class="card orange"><h3>并列复盘消费者</h3><p>异步详细报告读取轮次与 RAG 快照；AI Mentor 按 userId + positionId 独立聚合。</p></div>
+    </div>
+  </section>
+
+  <footer class="gate"><strong>正式检索门禁：</strong><code>status=PUBLISHED + publication_status=PUBLISHED + review_status=PASS + vector_status=SYNCED</code>，并且公共 / 私有 owner、岗位和知识库作用域全部匹配。MySQL 是业务真相，Qdrant 是可重建索引。</footer>
+</main>
+</body>
+</html>

@@ -17,9 +17,6 @@ import java.util.List;
 @Service("ruleBasedInterviewOrchestrator")
 public class RuleBasedInterviewOrchestrator implements InterviewOrchestrator {
 
-    private static final String REMEDIAL_MARKER = "本轮检索决策：补救追问";
-    private static final String SWITCH_MARKER = "本轮检索决策：切换知识点";
-
     private final InterviewRetrievalService retrievalService;
     private final InterviewTurnPlanner turnPlanner;
 
@@ -38,19 +35,13 @@ public class RuleBasedInterviewOrchestrator implements InterviewOrchestrator {
                 request.userId(), record, history, request.latestAnswer(), nextPhase, request.usedAtomIds());
         InterviewTurnPlanner.InterviewTurnPlan promptPlan = turnPlanner.plan(
                 record, history, retrieval.promptContext(), request.tailoredQuestions());
-        InterviewAction action = actionFor(retrieval.promptContext());
-
         return new InterviewTurnPlan(
                 promptPlan.phase(),
-                action,
-                OrchestrationMode.RULE,
+                retrieval.action(),
                 promptPlan.systemPrompt(),
                 retrieval.promptContext(),
                 retrieval.promptAtomIds(),
-                retrieval.contextAtomIds(),
-                List.of(),
-                summaryFor(action),
-                null);
+                retrieval.contextAtomIds());
     }
 
     private InterviewRecord toRecord(InterviewTurnRequest request) {
@@ -78,23 +69,5 @@ public class RuleBasedInterviewOrchestrator implements InterviewOrchestrator {
             }
         }
         return messages;
-    }
-
-    private InterviewAction actionFor(String context) {
-        if (context != null && context.contains(REMEDIAL_MARKER)) {
-            return InterviewAction.REMEDIATE;
-        }
-        if (context != null && context.contains(SWITCH_MARKER)) {
-            return InterviewAction.SWITCH_TOPIC;
-        }
-        return InterviewAction.CONTINUE_PHASE;
-    }
-
-    private String summaryFor(InterviewAction action) {
-        return switch (action) {
-            case REMEDIATE -> "使用稳定规则进行基础补救追问";
-            case SWITCH_TOPIC -> "使用稳定规则切换到新的岗位知识点";
-            default -> "使用稳定规则继续当前面试阶段";
-        };
     }
 }

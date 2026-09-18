@@ -13,6 +13,7 @@ import com.interview.mapper.InterviewPositionMapper;
 import com.interview.mapper.KnowledgeBaseMapper;
 import com.interview.mapper.RagRetrievalLogMapper;
 import com.interview.mapper.RagRetrievalRequestLogMapper;
+import com.interview.service.orchestration.InterviewAction;
 import com.interview.service.questionbank.QuestionBankService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -244,7 +245,7 @@ public class InterviewRetrievalService {
             context.append(decision.directive()).append("\n");
         }
         if (!decision.includeContext()) {
-            return new TurnRetrieval(context.toString(), List.of(), List.of());
+            return new TurnRetrieval(context.toString(), List.of(), List.of(), decision.action());
         }
         int count = Math.min(candidates.size(), normalizedContextLimit());
         for (int i = 0; i < count; i++) {
@@ -261,7 +262,8 @@ public class InterviewRetrievalService {
         if (promptAtomIds.isEmpty() && context.isEmpty()) {
             context.append(WEAK_RETRIEVAL_DIRECTIVE).append("\n");
         }
-        return new TurnRetrieval(context.toString(), List.copyOf(consumedAtomIds), List.copyOf(promptAtomIds));
+        return new TurnRetrieval(context.toString(), List.copyOf(consumedAtomIds),
+                List.copyOf(promptAtomIds), decision.action());
     }
 
     private RetrievalDecision decide(String message, List<ChatMessage> chatHistory,
@@ -276,17 +278,17 @@ public class InterviewRetrievalService {
         boolean usableRetrieval = topScore >= minContextScore;
 
         if (consecutiveLowInfo || (lowInfoAnswer && !usableRetrieval)) {
-            return new RetrievalDecision(SWITCH_TOPIC_DIRECTIVE, false, false);
+            return new RetrievalDecision(InterviewAction.SWITCH_TOPIC, SWITCH_TOPIC_DIRECTIVE, false, false);
         }
         if (lowInfoAnswer) {
             return confidentRetrieval
-                    ? new RetrievalDecision(REMEDIAL_DIRECTIVE, true, false)
-                    : new RetrievalDecision(SWITCH_TOPIC_DIRECTIVE, false, false);
+                    ? new RetrievalDecision(InterviewAction.REMEDIATE, REMEDIAL_DIRECTIVE, true, false)
+                    : new RetrievalDecision(InterviewAction.SWITCH_TOPIC, SWITCH_TOPIC_DIRECTIVE, false, false);
         }
         if (!usableRetrieval) {
-            return new RetrievalDecision(WEAK_RETRIEVAL_DIRECTIVE, false, false);
+            return new RetrievalDecision(InterviewAction.CONTINUE_PHASE, WEAK_RETRIEVAL_DIRECTIVE, false, false);
         }
-        return new RetrievalDecision("", true, true);
+        return new RetrievalDecision(InterviewAction.CONTINUE_PHASE, "", true, true);
     }
 
     private boolean previousUserAnswerWasLowInformation(List<ChatMessage> chatHistory) {
@@ -349,13 +351,12 @@ public class InterviewRetrievalService {
         return value.substring(0, maxLength);
     }
 
-    private record RetrievalDecision(String directive, boolean includeContext, boolean consumeContext) {
+    private record RetrievalDecision(InterviewAction action, String directive,
+                                     boolean includeContext, boolean consumeContext) {
     }
 
-    public record TurnRetrieval(String promptContext, List<String> contextAtomIds, List<String> promptAtomIds) {
-        public static TurnRetrieval empty() {
-            return new TurnRetrieval("", List.of(), List.of());
-        }
+    public record TurnRetrieval(String promptContext, List<String> contextAtomIds,
+                                List<String> promptAtomIds, InterviewAction action) {
     }
 
     private record SearchScope(String scope, Long ownerUserId, Long positionId, Long knowledgeBaseId) {

@@ -21,7 +21,7 @@ class InterviewOrchestratorContractTest {
         ));
 
         InterviewTurnRequest request = new InterviewTurnRequest(
-                10L, 20L, 30L, "Java 后端开发", InterviewPhase.TECHNICAL, 3,
+                10L, 20L, 30L, "Java 后端开发", InterviewPhase.TECHNICAL,
                 "mid", focusAreas, history, "我使用过 Redis", List.of("atom-1"), List.of());
 
         focusAreas.add("algorithm");
@@ -32,28 +32,21 @@ class InterviewOrchestratorContractTest {
     }
 
     @Test
-    @DisplayName("编排计划暴露稳定的动作模式和证据快照")
+    @DisplayName("编排计划暴露稳定的动作和证据快照")
     void planShouldExposeStableDecisionSnapshot() {
         List<String> atomIds = new ArrayList<>(List.of("atom-1"));
-        List<String> tools = new ArrayList<>(List.of("searchPositionKnowledge"));
 
         InterviewTurnPlan plan = new InterviewTurnPlan(
                 InterviewPhase.TECHNICAL,
-                InterviewAction.DEEPEN,
-                OrchestrationMode.AGENT,
+                InterviewAction.CONTINUE_PHASE,
                 "system prompt",
                 "evidence",
                 atomIds,
-                atomIds,
-                tools,
-                "继续深挖 Redis 异常场景",
-                null);
+                atomIds);
 
         atomIds.add("atom-2");
-        tools.add("getCurrentResumeEvidence");
 
         assertThat(plan.evidenceAtomIds()).containsExactly("atom-1");
         assertThat(plan.consumedAtomIds()).containsExactly("atom-1");
-        assertThat(plan.toolsUsed()).containsExactly("searchPositionKnowledge");
     }
 }
