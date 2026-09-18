@@ -1,8 +1,8 @@
-# 阿里云轻量内测部署
+# 阿里云小规模公网部署
 
 本方案使用 2 vCPU / 2 GiB ECS 运行前端、Java、MySQL 和 Redis；embedding 通过百炼 `text-embedding-v4` API 生成，向量索引由 Qdrant Cloud 托管。服务器不运行本地 embedding 模型或 Qdrant 容器。
 
-当前阶段已完成受限访问的云端部署和面试功能验收，尚未开放公网网站。下列步骤与模板可公开复用；真实服务器地址、账号、密钥、数据库快照和机器专用操作记录应另行私密保存。
+2026-09-18 已在 [interwise.net.cn](https://interwise.net.cn) 启用公网 HTTPS，原有受限访问方式仍可用于维护。下列步骤与模板可公开复用；服务器登录信息、账号、密钥、数据库快照和机器专用操作记录应另行私密保存。
 
 ## 配置与启动
 
@@ -36,6 +36,32 @@ ssh -N -L 127.0.0.1:18080:127.0.0.1:8080 your-server
 
 本地版本继续使用 `./scripts/deploy-local.ps1 -ExternalServices`，保留 `local-admin` 认证和用户自己的私有题库维护能力。
 
+## 正式域名与 HTTPS
+
+完成适用的 ICP 备案后，将域名 A 记录指向 ECS 公网地址，并在安全组开放 TCP 80、443。数据库、Redis、后端不发布宿主机端口；前端继续只绑定 `127.0.0.1:8080`，由 Caddy 提供公网入口。
+
+私有 `.env.prod` 中设置正式域名、允许的浏览器来源和已核准的备案号：
+
+```dotenv
+DOMAIN_NAME=interwise.net.cn
+APP_CORS_ALLOWED_ORIGINS=https://interwise.net.cn,http://127.0.0.1:18080
+FRONTEND_HTTP_BIND=127.0.0.1:8080
+VITE_ICP_RECORD=浙ICP备2026078082号
+INTERWISE_IMAGE_TAG=20260918-public1
+```
+
+`VITE_ICP_RECORD` 必须在前端构建时传入；仅更改运行环境不会更新已构建页面。直接使用 Docker 构建时传入 `--build-arg VITE_ICP_RECORD=...`，Compose 构建会从上述环境文件传递。备案号按核准结果填写，不自行添加网站序号。
+
+在已有内测数据服务的服务器上，先备份并验证配置，再只更新应用及入口：
+
+```shell
+docker compose --env-file .env.prod --env-file .env.external.prod -f docker-compose.prod.yml -f docker-compose.external.yml -f docker-compose.small.yml -f docker-compose.images.yml --profile https config --quiet
+
+docker compose --env-file .env.prod --env-file .env.external.prod -f docker-compose.prod.yml -f docker-compose.external.yml -f docker-compose.small.yml -f docker-compose.images.yml --profile https up -d --no-build --pull never --no-deps backend frontend caddy
+```
+
+以上更新命令要求镜像已导入且 MySQL、Redis 已运行。Caddy 自动申请和续期证书，`caddy_data`、`caddy_config` 必须持久保存，80/443 保持可达。不能把首次申请成功当作长期续期已经验证。[Caddy 官方说明](https://caddyserver.com/docs/automatic-https)
+
 ## 资源与维护
 
 `docker-compose.small.yml` 为后端、MySQL、Redis、前端分别设置 640 / 512 / 96 / 48 MiB 容器上限；启用 HTTPS 后的 Caddy 上限为 48 MiB。Java 堆上限为 320 MiB。Docker 日志轮转为每个容器最多 3 个 10 MiB 文件。
@@ -44,7 +70,7 @@ ssh -N -L 127.0.0.1:18080:127.0.0.1:8080 your-server
 
 数据备份应同时考虑 MySQL、知识来源文件、可重建的向量索引及必要的加密配置。加密密钥丢失后，数据库中的 Provider 密文不能正常读取。备份文件可读、哈希一致不等于已经验证恢复成功。
 
-## 本次验收与版本归档（2026-09-10）
+## 首次内测验收与版本归档（2026-09-10）
 
 - 后端 446 项测试、后台首次加载组件测试 1 项、前后端构建通过；本地和 ECS 实际容器、健康接口及重启检查通过。
 - 真实邮件验证码、注册、登录、首次 ADMIN、公共题库维护入口和后台自动加载通过；匿名访问受保护接口返回 401。
@@ -52,13 +78,27 @@ ssh -N -L 127.0.0.1:18080:127.0.0.1:8080 your-server
 - 用户已完成云端对话模型配置，并反馈实际面试流程验证无误；此项为用户手工验收，不代表自动化端到端回归或多人容量测试。
 - ECS 到外部 embedding / Qdrant 的少量真实查询通过；20 个并发健康读取通过。检索质量标注评测、多人面试压测、文档构建峰值及长期运行仍待验证。
 
-部署源码归档分支为 `codex/deploy-aliyun-beta`，从 `master` 的 `6b2349f9d656749fcd4ad0274edb96869e32e760` 创建。当前运行镜像标签为 `20260910-cloud-beta2`，镜像先于本次 Git 归档构建。此次提交推送不重建或替换线上镜像；后续发布应同时记录源码提交号和镜像摘要。
+部署源码归档分支为 `codex/deploy-aliyun-beta`，从 `master` 的 `6b2349f9d656749fcd4ad0274edb96869e32e760` 创建。当时运行镜像标签为 `20260910-cloud-beta2`，镜像先于首次 Git 归档构建；该版本现已被下述公网版本替换。
+
+## 公网上线记录（2026-09-18）
+
+- 部署分支通过合并提交 `4e2014d` 纳入 `master` 的 `290e5a0`，保留双方历史；主分支本身未被改动。
+- 运行源码为 `a97578a2450fa61349cd5bf8ce3d5e339be0a9dd`，前后端镜像标签均为 `20260918-public1`，镜像包含对应源码标签。后续部署文档提交不改变该运行源码版本。
+- 后端 432 项、前端 144 项测试通过，前后端镜像构建通过。公网 HTTP 返回 308 并跳转 HTTPS；正式域名 HTTPS 和健康接口返回 200，MySQL、Redis、Qdrant 均为 UP。
+- Let's Encrypt 证书包含正式域名；本次签发证书到期时间为 2026-12-17 08:51:19 UTC。Caddy 已配置自动续期，仍需后续运行监测。
+- 邮箱验证认证、注册和找回密码继续启用；匿名受保护请求返回 401，正式来源 CORS 通过，未允许来源返回 403。普通用户的题库维护继续关闭。
+- MySQL、Redis 容器未重建；其他私有配置与外部服务配置逐项核对未变。原有 1 个账号、1 个启用的对话 Provider 配置及 998 条已同步公共题目保留；未触发题库重新导入或重建。
+- 上线前在服务器保存数据库、私有配置和应用文件备份并核对校验值；本次备份尚未复制到异机，也未进行完整恢复演练。
+- 浏览器自动控制连接超时，正式域名的登录后页面、移动端备案页脚和真实面试流式响应仍待验收；不能将上述接口验证视为完整端到端验收。
+
+前端镜像 ID 为 `sha256:dec99ecb60cbac6faf58c95c5bd680ec6ad9765c0631b71e9d2c6996e9a1a71e`，后端为 `sha256:78ef423b1e3101fb8a41134bf4bbefa1c8853522c2e9c787db1592065ca02b70`。发布清单同时记录镜像包校验值、配置校验值和验证结果，并与敏感备份分开保存，不提交数据库或凭据。
 
 ## 后续步骤
 
-1. **对外访问前：域名、备案与 HTTPS。** 杭州 ECS 属于中国内地地域；按阿里云要求完成适用的备案后，再开放网站。随后配置域名解析、`DOMAIN_NAME`、正式 CORS 来源、Caddy `https` profile 和公网 80/443 入口，实测证书、跳转及面试流式响应。[阿里云备案期间访问说明](https://help.aliyun.com/zh/icp-filing/the-influence-of-the-record-during-the-site-visit)
-2. **保留更多内测数据前：定期备份与恢复演练。** 当前已保存迁移前后备份，尚未配置周期备份或完成完整恢复演练；应在隔离环境恢复一次，验证账号、配置、题库和索引可用。
-3. **邀请更多用户前：逐级验证容量与普通账号权限。** 从少量同时进行的真实面试开始，观察延迟、错误、内存和 swap，再决定可开放人数；补充普通用户无法维护公共题库的完整页面验收。
-4. **持续运行时：监测与费用提醒。** 设置磁盘、内存、服务异常和外部 API 费用告警，结合真实问题决定是否升配或调整资源预算。
+1. **完成正式域名页面验收。** 使用原账号登录，检查工作台、管理员后台、备案页脚及一次真实面试的流式响应，再邀请普通用户试用。
+2. **办理公安联网备案。** 阿里云指引要求网站开通之日起 30 日内办理。短信“公安备案数据码”用于导入备案信息，不是已批准的公安备案号；用户应在公安备案平台核实身份和资料并提交，批准后再展示公安备案号及链接，不把数据码公开到页面或仓库。[阿里云个人网站办理指引](https://help.aliyun.com/zh/icp-filing/basic-icp-service/quick-start-for-public-security-network-filing-for-personal-websites)、[数据码说明](https://help.aliyun.com/zh/icp-filing/basic-icp-service/using-data-code-for-public-security-network-filing)
+3. **保留更多内测数据前：定期备份与恢复演练。** 当前已保存迁移前后备份，尚未配置周期备份或完成完整恢复演练；应在隔离环境恢复一次，验证账号、配置、题库和索引可用。
+4. **邀请更多用户前：逐级验证容量与普通账号权限。** 从少量同时进行的真实面试开始，观察延迟、错误、内存和 swap，再决定可开放人数；补充普通用户无法维护公共题库的完整页面验收。
+5. **持续运行时：监测与费用提醒。** 设置磁盘、内存、服务异常、证书到期和外部 API 费用告警，结合真实问题决定是否升配或调整资源预算。
 
 这些是下一阶段工作，不由提交或推送分支自动触发。
