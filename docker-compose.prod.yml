@@ -133,6 +133,8 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        VITE_ICP_RECORD: "${VITE_ICP_RECORD:-}"
     container_name: interview-frontend
     restart: unless-stopped
     depends_on:

@@ -4,6 +4,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 COPY . .
+ARG VITE_ICP_RECORD=""
+ENV VITE_ICP_RECORD=${VITE_ICP_RECORD}
 RUN npm run build
 
 # Run stage
