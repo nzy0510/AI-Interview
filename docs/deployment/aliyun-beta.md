@@ -47,10 +47,11 @@ DOMAIN_NAME=interwise.net.cn
 APP_CORS_ALLOWED_ORIGINS=https://interwise.net.cn,http://127.0.0.1:18080
 FRONTEND_HTTP_BIND=127.0.0.1:8080
 VITE_ICP_RECORD=浙ICP备2026078082号
+VITE_PUBLIC_SECURITY_RECORD=浙公网安备33020602001742号
 INTERWISE_IMAGE_TAG=20260918-public1
 ```
 
-`VITE_ICP_RECORD` 必须在前端构建时传入；仅更改运行环境不会更新已构建页面。直接使用 Docker 构建时传入 `--build-arg VITE_ICP_RECORD=...`，Compose 构建会从上述环境文件传递。备案号按核准结果填写，不自行添加网站序号。
+`VITE_ICP_RECORD` 和 `VITE_PUBLIC_SECURITY_RECORD` 必须在前端构建时传入；仅更改运行环境不会更新已构建页面。直接使用 Docker 构建时分别传入同名 `--build-arg`，Compose 构建会从上述环境文件传递。备案号按核准结果填写，不自行添加网站序号；未配置时不显示相应链接。
 
 在已有内测数据服务的服务器上，先备份并验证配置，再只更新应用及入口：
 
@@ -61,6 +62,14 @@ docker compose --env-file .env.prod --env-file .env.external.prod -f docker-comp
 ```
 
 以上更新命令要求镜像已导入且 MySQL、Redis 已运行。Caddy 自动申请和续期证书，`caddy_data`、`caddy_config` 必须持久保存，80/443 保持可达。不能把首次申请成功当作长期续期已经验证。[Caddy 官方说明](https://caddyserver.com/docs/automatic-https)
+
+## 公安备案页脚
+
+用户于 2026-09-21 提供公安备案通过的查询截图：域名为 `interwise.net.cn`，备案号为 `浙公网安备33020602001742号`。页脚查询链接使用核准编号 [33020602001742](https://beian.mps.gov.cn/#/query/webSearch?code=33020602001742)，不能直接使用通用示例中的陕西备案号。
+
+图标保存为 `frontend/src/assets/head-logo.png`，原始资源来自[公安备案平台](https://beian.mps.gov.cn/img/logo01.dd7ff50e.png)，随前端构建发布，避免浏览器依赖第三方图片加载。备案文字与官方图标共同链接到查询页面，在窄屏下与 ICP 信息换行显示。
+
+仅更新前端时，可设置 `INTERWISE_FRONTEND_IMAGE_TAG`，不设置则沿用 `INTERWISE_IMAGE_TAG`。在镜像导入、配置校验通过后，使用上述 Compose 文件顺序并执行 `up -d --no-build --pull never --no-deps frontend`，保留后端及数据服务的运行版本。
 
 ## 资源与维护
 
@@ -107,9 +116,8 @@ docker compose --env-file .env.prod --env-file .env.external.prod -f docker-comp
 ## 后续步骤
 
 1. **补充页面与普通账号验收。** 正式域名登录和一次面试已由用户手工验收；继续补查管理员后台、移动端备案页脚，以及普通账号不能维护公共题库的完整流程。
-2. **办理公安联网备案。** 阿里云指引要求网站开通之日起 30 日内办理。短信“公安备案数据码”用于导入备案信息，不是已批准的公安备案号；用户应在公安备案平台核实身份和资料并提交，批准后再展示公安备案号及链接，不把数据码公开到页面或仓库。[阿里云个人网站办理指引](https://help.aliyun.com/zh/icp-filing/basic-icp-service/quick-start-for-public-security-network-filing-for-personal-websites)、[数据码说明](https://help.aliyun.com/zh/icp-filing/basic-icp-service/using-data-code-for-public-security-network-filing)
-3. **持续验证备份可恢复。** 定时备份与首次完整组件恢复演练已完成；妥善另存解密私钥，建议每月及重要版本升级后重复演练，切换生产前另行核对跨服务一致性。
-4. **邀请更多用户前：逐级验证容量与普通账号权限。** 从少量同时进行的真实面试开始，观察延迟、错误、内存和 swap，再决定可开放人数；补充普通用户无法维护公共题库的完整页面验收。
-5. **持续运行时：补充外部可用性与费用提醒。** 主机资源、服务依赖、备份和证书告警已启用；独立站点探测及外部 API 费用告警仍待按预算单独配置，结合实际问题决定是否升配。
+2. **持续验证备份可恢复。** 定时备份与首次完整组件恢复演练已完成；妥善另存解密私钥，建议每月及重要版本升级后重复演练，切换生产前另行核对跨服务一致性。
+3. **邀请更多用户前：逐级验证容量与普通账号权限。** 从少量同时进行的真实面试开始，观察延迟、错误、内存和 swap，再决定可开放人数；补充普通用户无法维护公共题库的完整页面验收。
+4. **持续运行时：补充外部可用性与费用提醒。** 主机资源、服务依赖、备份和证书告警已启用；独立站点探测及外部 API 费用告警仍待按预算单独配置，结合实际问题决定是否升配。
 
 这些是下一阶段工作，不由提交或推送分支自动触发。

@@ -135,6 +135,7 @@ services:
       context: ./frontend
       args:
         VITE_ICP_RECORD: "${VITE_ICP_RECORD:-}"
+        VITE_PUBLIC_SECURITY_RECORD: "${VITE_PUBLIC_SECURITY_RECORD:-}"
     container_name: interview-frontend
     restart: unless-stopped
     depends_on:

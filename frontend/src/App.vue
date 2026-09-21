@@ -7,17 +7,19 @@ import IcpFooter from '@/components/layout/IcpFooter.vue'
 const route = useRoute()
 const isLoginRoute = computed(() => route.path === '/login')
 const icpRecord = (import.meta.env.VITE_ICP_RECORD || '').trim()
+const publicSecurityRecord = (import.meta.env.VITE_PUBLIC_SECURITY_RECORD || '').trim()
+const hasFilingRecord = Boolean(icpRecord || publicSecurityRecord)
 </script>
 
 <template>
-  <div class="app-root" :class="{ 'app-root--with-footer': icpRecord }">
+  <div class="app-root" :class="{ 'app-root--with-footer': hasFilingRecord }">
     <div class="app-root__page">
       <router-view v-if="isLoginRoute" />
       <AppShell v-else>
         <router-view />
       </AppShell>
     </div>
-    <IcpFooter v-if="icpRecord" :record="icpRecord" />
+    <IcpFooter v-if="hasFilingRecord" :record="icpRecord" :public-security-record="publicSecurityRecord" />
   </div>
 </template>
 

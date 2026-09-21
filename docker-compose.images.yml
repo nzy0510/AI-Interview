@@ -5,4 +5,4 @@ services:
     image: interwise/backend:${INTERWISE_IMAGE_TAG:?Set the verified image release tag}
   frontend:
     build: !reset null
-    image: interwise/frontend:${INTERWISE_IMAGE_TAG:?Set the verified image release tag}
+    image: interwise/frontend:${INTERWISE_FRONTEND_IMAGE_TAG:-${INTERWISE_IMAGE_TAG:?Set the verified image release tag}}
