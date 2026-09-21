@@ -4,6 +4,8 @@ InterWise 是一个面向技术面试训练的 AI 模拟面试平台。项目把
 
 后端基于 `Spring Boot 3 + MyBatis-Plus + LangChain4j + MySQL + Redis + Qdrant`，前端基于 `Vue 3 + Vite + Element Plus`。Docker 部署默认使用独立 `embedding-service` 加载 `intfloat/multilingual-e5-base`，通过 Qdrant 为面试追问提供可重建的语义索引。
 
+[在线体验](https://interwise.net.cn)
+
 ## 项目亮点
 
 - 动态面试 RAG：在规则计算出的技术 / HR 阶段检索岗位题库，把候选人真实回答、历史已用知识点和召回结果转成下一问的证据与提示。
