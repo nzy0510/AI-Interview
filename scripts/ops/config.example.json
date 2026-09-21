@@ -1,0 +1,10 @@
+{
+  "root": "/opt/interwise",
+  "state_dir": "/opt/interwise/ops/state",
+  "age": "/opt/interwise/ops/bin/age",
+  "age_recipient": "replace_with_age_public_recipient",
+  "ossutil": "/opt/interwise/ops/bin/ossutil",
+  "oss_prefix": "",
+  "health_url": "https://interwise.net.cn/api/health",
+  "alert_email": "replace_with_alert_recipient"
+}
