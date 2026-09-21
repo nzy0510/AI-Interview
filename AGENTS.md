@@ -34,7 +34,7 @@
 - 不要对我的观点一味地认可，我仍在学习阶段，很多地方很可能理解不深入，你可以提出不同的见解。
 - 不从头造轮子，优先借鉴、学习成熟项目的实现方式（但不是简单复制）以及成熟的框架；对于当前项目，暂定为interview-guide 项目。
 - 开发优先采用tdd方式进行开发，但不需要进行过细的测试(你可自行判断，小任务从简)。
-- 如遇到docker部署失败，优先重试。还是失败再汇报。
+- Docker 构建遇到可能的瞬时故障时，仅在确认引擎正常后保留缓存重试一次；相同的 Desktop 启动错误应先看日志定位，不要反复盲目重启。
 - 不提交 `.env`、密钥文件、私有部署文件、私有题库、临时导入包或本地视频产物。
 - 不在日志或文档中暴露完整 API Key、access token、refresh token、密码或敏感请求头。
 - 完成 feature、bugfix、refactor、deployment 或用户可见代码变更后，按 `post-delivery-analysis` skill 自动输出交付后分析和下一步建议；不得自动执行下一步建议，必须等待用户明确指令。
@@ -72,6 +72,10 @@ APP_QUESTION_BANK_USER_MAINTENANCE_ENABLED=true
 本机浏览器端到端验收默认使用用户已登录并保存凭据的 `nzy333` 账号，不使用 `admin` 代替业务用户。
 
 Windows 本地完整部署统一从仓库根目录运行 `./scripts/deploy-local.ps1`。不要手工设置 `DOCKER_HOST`；脚本固定使用 Docker Desktop `desktop-linux` context、保留 BuildKit/Maven 缓存并在构建失败时自动重试一次。Redis 与 Qdrant 默认只在 Compose 网络内开放；只有宿主机调试时才使用 `-ExposeDataServices` 暴露可配置端口。
+
+排查 Docker Desktop 启动异常或编写容器恢复演练前，必须先阅读 [Docker 故障复盘与恢复步骤](docs/local-docker-deployment.md)。遇到 `dockerInference` / `engine.sock` 无法访问时，先确认日志、进程和路径；若属于已确认的残留 socket 故障，在 Desktop 完全退出后同时检查并改名保留两个通信目录，不能处理一个目录就反复启动。
+
+不要把 Desktop 窗口打开或 `docker --version` 当作引擎恢复成功；必须验证 `desktop-linux` 服务端响应及实际容器操作。修复不得默认执行 factory reset、`prune --volumes`、`down -v` 或注销 WSL 发行版。恢复演练仅清理本次登记的容器与卷，网络可达性、MySQL 就绪状态和镜像内工具都按运行时验证，不凭经验假定。
 
 ## 验收说明
 
