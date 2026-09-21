@@ -6,6 +6,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from email.utils import parsedate_to_datetime
 from unittest.mock import patch
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -40,6 +41,17 @@ class HealthAndAlertsTest(unittest.TestCase):
 
     def test_initial_healthy_run_sends_no_email(self):
         self.assertFalse(ops.alert_transition({}, [], 10000)[0])
+
+    def test_notification_has_date_and_message_id_for_mailbox_display(self):
+        env = {"MAIL_HOST": "smtp.example.test", "MAIL_PORT": "587",
+               "MAIL_USERNAME": "sender@example.test", "MAIL_PASSWORD": "test-fixture"}
+        with patch.object(ops, "read_env", return_value=env), patch.object(ops.smtplib, "SMTP") as smtp:
+            ops.notify({"root": "/unused", "alert_email": "owner@example.test"}, "TEST", "Delivery check")
+        message = smtp.return_value.send_message.call_args.args[0]
+        self.assertIsNotNone(message["Date"], "Notification must have a date for mailbox sorting")
+        self.assertIsNotNone(parsedate_to_datetime(message["Date"]).tzinfo)
+        self.assertRegex(message["Message-ID"], r"^<[^<>\s]+@example\.test>$")
+        self.assertEqual(message["To"], "owner@example.test")
 
     def test_retention_preserves_manual_and_partial_archives(self):
         with tempfile.TemporaryDirectory() as temp:

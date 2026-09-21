@@ -19,6 +19,7 @@ import time
 import urllib.parse
 import urllib.request
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
 
 class OpsError(Exception):
@@ -237,6 +238,8 @@ def notify(config, subject, body):
     message["From"] = env["MAIL_USERNAME"]
     message["To"] = config["alert_email"]
     message["Subject"] = "[InterWise] " + subject
+    message["Date"] = formatdate(localtime=True)
+    message["Message-ID"] = make_msgid(domain=env["MAIL_USERNAME"].rsplit("@", 1)[-1])
     message.set_content(body + "\n\nHost: " + socket.gethostname())
     port = int(env.get("MAIL_PORT", "587"))
     context = ssl.create_default_context()
@@ -319,7 +322,7 @@ def main():
             elif args.command == "check":
                 check(config)
             else:
-                notify(config, "TEST - no production incident", "Backup and monitoring notification delivery test.")
+                notify(config, "运维测试通知（无需处理）", "这是一封备份与监控邮件投递测试通知，不代表生产故障。")
                 print("Test notification accepted by SMTP server")
     except Exception as error:
         print(str(error) if isinstance(error, OpsError) else "Operation failed: " + type(error).__name__)
