@@ -99,6 +99,28 @@ class HealthAndAlertsTest(unittest.TestCase):
                     ops.backup_qdrant(env, root, registry)
                 self.assertEqual(request.call_count, 2)  # Only metadata GETs, no second POST.
 
+    def test_pending_snapshots_are_all_archived_without_another_post(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            registry = root / "state.json"
+            base = "https://qdrant.example/collections/test/snapshots/"
+            ops.write_json(registry, {"snapshots": [
+                {"url": base + "older.snapshot", "created_at": 1},
+                {"url": base + "newer.snapshot", "created_at": 2}],
+                "uncertain_create": False})
+            env = {"QDRANT_URL": "https://qdrant.example", "QDRANT_API_KEY": "fixture", "QDRANT_COLLECTION": "test"}
+            old = {"name": "older.snapshot", "size": 5}
+            new = {"name": "newer.snapshot", "size": 5}
+            responses = [{"result": {}}, {"version": "1.19.1"}, {"result": [old, new]}]
+            with patch.object(ops, "request_json", side_effect=responses) as request, \
+                 patch.object(ops.urllib.request, "urlopen", side_effect=[io.BytesIO(b"older"), io.BytesIO(b"newer")]):
+                ops.backup_qdrant(env, root, registry)
+            self.assertEqual(request.call_count, 3)
+            self.assertEqual((root / "qdrant-pending-1.snapshot").read_bytes(), b"older")
+            self.assertEqual((root / "qdrant.snapshot").read_bytes(), b"newer")
+            self.assertEqual(json.loads((root / "qdrant.json").read_text())["snapshot"]["name"], "newer.snapshot")
+            self.assertEqual(len(json.loads(registry.read_text())["snapshots"]), 2)
+
 
 class RestoreArchiveTest(unittest.TestCase):
     def test_qdrant_contract_ignores_live_counts_but_checks_vector_and_index_types(self):

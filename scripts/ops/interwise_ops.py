@@ -88,26 +88,41 @@ def backup_qdrant(env, stage, registry_path):
     registry = json.loads(registry_path.read_text()) if registry_path.exists() else {"snapshots": []}
     if registry.get("uncertain_create"):
         raise OpsError("Previous Qdrant snapshot creation is uncertain; inspect before retrying")
-    if len(registry["snapshots"]) >= 2:
-        raise OpsError("Two pending Qdrant snapshots need inspection; no further snapshots created")
-    # Do not retry an uncertain POST: the snapshot may already have been created.
-    registry["uncertain_create"] = True
-    write_json(registry_path, registry)
-    snapshot = request_json(url + "/snapshots?wait=true", headers, "POST", 180)["result"]
-    name = snapshot["name"]
-    snap_url = url + "/snapshots/" + urllib.parse.quote(name, safe="")
-    registry["snapshots"].append({"url": snap_url, "created_at": time.time()})
-    registry["uncertain_create"] = False
-    write_json(registry_path, registry)
-    with urllib.request.urlopen(urllib.request.Request(snap_url, headers=headers), timeout=180) as response:
-        with (stage / "qdrant.snapshot").open("wb") as output:
-            shutil.copyfileobj(response, output)
-    if not snapshot.get("size") or (stage / "qdrant.snapshot").stat().st_size != snapshot["size"]:
-        raise OpsError("Qdrant snapshot size mismatch; remote snapshot preserved")
-    if snapshot.get("checksum") and digest(stage / "qdrant.snapshot") != snapshot["checksum"]:
-        raise OpsError("Qdrant snapshot checksum mismatch; remote snapshot preserved")
+    pending = registry["snapshots"]
+    if pending:
+        # A failed download must not trigger another snapshot POST. Preserve every
+        # registered snapshot in the encrypted archive before cleanup removes it.
+        remote = {item["name"]: item for item in request_json(url + "/snapshots", headers)["result"]}
+        snapshots = []
+        for entry in pending:
+            if not entry["url"].startswith(url + "/snapshots/"):
+                raise OpsError("Pending snapshot belongs to a different Qdrant configuration")
+            name = urllib.parse.unquote(entry["url"].rsplit("/", 1)[-1])
+            if name not in remote:
+                raise OpsError("Pending Qdrant snapshot missing; inspect before retrying")
+            snapshots.append((remote[name], entry["url"]))
+    else:
+        # Do not retry an uncertain POST: the snapshot may already have been created.
+        registry["uncertain_create"] = True
+        write_json(registry_path, registry)
+        snapshot = request_json(url + "/snapshots?wait=true", headers, "POST", 180)["result"]
+        snap_url = url + "/snapshots/" + urllib.parse.quote(snapshot["name"], safe="")
+        registry["snapshots"].append({"url": snap_url, "created_at": time.time()})
+        registry["uncertain_create"] = False
+        write_json(registry_path, registry)
+        snapshots = [(snapshot, snap_url)]
+    for index, (snapshot, snap_url) in enumerate(snapshots):
+        path = stage / ("qdrant.snapshot" if index == len(snapshots) - 1 else f"qdrant-pending-{index + 1}.snapshot")
+        with urllib.request.urlopen(urllib.request.Request(snap_url, headers=headers), timeout=180) as response:
+            with path.open("wb") as output:
+                shutil.copyfileobj(response, output)
+        if not snapshot.get("size") or path.stat().st_size != snapshot["size"]:
+            raise OpsError("Qdrant snapshot size mismatch; remote snapshot preserved")
+        if snapshot.get("checksum") and digest(path) != snapshot["checksum"]:
+            raise OpsError("Qdrant snapshot checksum mismatch; remote snapshot preserved")
     write_json(stage / "qdrant.json", {"version": version, "collection": env["QDRANT_COLLECTION"],
-                                      "info": info["result"], "snapshot": snapshot})
+                                      "info": info["result"], "snapshot": snapshots[-1][0],
+                                      "pending_snapshots": [item[0] for item in snapshots[:-1]]})
 
 
 def cleanup_qdrant(env, registry_path):
